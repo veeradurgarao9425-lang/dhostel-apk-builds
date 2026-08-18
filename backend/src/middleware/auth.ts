@@ -98,12 +98,15 @@ export const queryTokenMiddleware = (
   next: NextFunction
 ) => {
   try {
-    const token = req.query.token as string;
+    let token = req.query.token as string;
+    if (!token && req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+      token = req.headers.authorization.substring(7);
+    }
 
     if (!token) {
       return res.status(401).json({
         success: false,
-        error: 'Access token is required in query params',
+        error: 'Access token is required in query params or Authorization header',
       });
     }
 

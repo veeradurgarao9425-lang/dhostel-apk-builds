@@ -11,15 +11,15 @@ import {
 
 const router = express.Router();
 
-router.use(authMiddleware, requireActiveSubscription);
+router.use(authMiddleware);
 
-// Push token registration
+// Push token registration (always permitted for authenticated users)
 router.post('/register-token', registerToken);
 router.post('/deregister-token', deregisterToken);
 
 // Notifications fetching and updates
-router.get('/', getNotifications);
-router.put('/:id/read', markAsRead);
-router.put('/read-all', markAllAsRead);
+router.get('/', requireActiveSubscription, getNotifications);
+router.put('/:id/read', requireActiveSubscription, markAsRead);
+router.put('/read-all', requireActiveSubscription, markAllAsRead);
 
 export default router;

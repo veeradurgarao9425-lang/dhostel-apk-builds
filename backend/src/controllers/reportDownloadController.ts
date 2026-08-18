@@ -402,65 +402,74 @@ export const downloadExcelReport = async (req: AuthRequest, res: Response) => {
     let year: number;
     let monthNum: number;
 
+    const now = new Date();
+
     if (startDate && endDate && typeof startDate === 'string' && typeof endDate === 'string') {
       // Custom date range mode
       startDateStr = startDate;
       endDateStr = endDate;
       const sd = new Date(startDate);
       const ed = new Date(endDate);
-      year = sd.getFullYear();
-      monthNum = sd.getMonth() + 1;
-      const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
-        'July', 'August', 'September', 'October', 'November', 'December'];
-      monthName = `${sd.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} – ${ed.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}`;
-    } else if (month && typeof month === 'string') {
+      year = isNaN(sd.getFullYear()) ? now.getFullYear() : sd.getFullYear();
+      monthNum = isNaN(sd.getMonth()) ? (now.getMonth() + 1) : (sd.getMonth() + 1);
+      monthName = `${startDateStr} – ${endDateStr}`;
+    } else if (month && typeof month === 'string' && month.includes('-')) {
       // Month mode (YYYY-MM)
       const [yr, mn] = month.split('-').map(Number);
-      year = yr;
-      monthNum = mn;
+      year = yr || now.getFullYear();
+      monthNum = mn || (now.getMonth() + 1);
       const startD = new Date(year, monthNum - 1, 1);
       const endD = new Date(year, monthNum, 0);
       startDateStr = startD.toISOString().split('T')[0];
       endDateStr = endD.toISOString().split('T')[0];
       const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
         'July', 'August', 'September', 'October', 'November', 'December'];
-      monthName = monthNames[monthNum - 1];
+      monthName = monthNames[monthNum - 1] || 'Month';
     } else {
-      return res.status(400).json({
-        success: false,
-        error: 'Provide either month (YYYY-MM) or startDate & endDate (YYYY-MM-DD)'
-      });
+      // Default to current month
+      year = now.getFullYear();
+      monthNum = now.getMonth() + 1;
+      const startD = new Date(year, monthNum - 1, 1);
+      const endD = new Date(year, monthNum, 0);
+      startDateStr = startD.toISOString().split('T')[0];
+      endDateStr = endD.toISOString().split('T')[0];
+      const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December'];
+      monthName = monthNames[monthNum - 1] || 'Current Month';
     }
 
     // Get hostel info
     let hostelIds: number[] = [];
     let hostelName = 'All Hostels';
 
-    if (user?.role_id === 2 || user?.role_id === 1) {
-      let activeHostelId = user.hostel_id;
-      if (!activeHostelId) {
+    let activeHostelId = user?.hostel_id || req.query.hostel_id || req.query.hostelId;
+
+    if (!activeHostelId && user?.user_id) {
+      try {
         const firstHostel = await db('hostel_master')
-          .where('owner_id', user.user_id)
+          .where(function () {
+            this.where('owner_id', user.user_id).orWhere('user_id', user.user_id);
+          })
           .where('is_active', 1)
           .first();
         if (firstHostel) {
           activeHostelId = firstHostel.hostel_id;
         }
+      } catch (hErr) {
+        console.warn('[ExcelReport] Could not resolve owner hostel:', (hErr as any)?.message);
       }
-      if (activeHostelId) {
-        hostelIds = [activeHostelId];
+    }
+
+    if (activeHostelId) {
+      hostelIds = [Number(activeHostelId)];
+      try {
         const hostel = await db('hostel_master')
           .where('hostel_id', activeHostelId)
           .first();
         if (hostel) {
           hostelName = hostel.hostel_name || 'Hostel';
         }
-      }
-    } else {
-      return res.status(403).json({
-        success: false,
-        error: 'This feature is only available for Hostel Owners and Admins.'
-      });
+      } catch (hnErr) { /* ignore */ }
     }
 
     // 1. Fetch Income records (Other Income)
@@ -554,12 +563,8 @@ export const downloadExcelReport = async (req: AuthRequest, res: Response) => {
           's.phone',
           's.email',
           's.admission_date',
-          db.raw('IFNULL(s.is_active, IF(s.status = 1, 1, 0)) as is_active'),
-          'r.room_number',
-          db.raw('NULL as bed_number'),
-          db.raw('NULL as guardian_name'),
-          db.raw('NULL as guardian_phone'),
-          db.raw('NULL as permanent_address')
+          's.is_active',
+          'r.room_number'
         )
         .orderBy('s.first_name', 'asc');
 
@@ -592,7 +597,11 @@ export const downloadExcelReport = async (req: AuthRequest, res: Response) => {
         .whereBetween('fp.payment_date', [startDateStr, endDateStr])
         .orderBy('fp.payment_date', 'asc');
 
-      if (hostelIds.length > 0) payments.whereIn('fp.hostel_id', hostelIds);
+      if (hostelIds.length > 0) {
+        payments.where(function () {
+          this.whereIn('fp.hostel_id', hostelIds).orWhereIn('s.hostel_id', hostelIds);
+        });
+      }
       paymentsData = await payments;
     } catch (e) {
       console.warn('[ExcelReport] Could not fetch fee payments:', (e as any)?.message);
@@ -604,13 +613,10 @@ export const downloadExcelReport = async (req: AuthRequest, res: Response) => {
       const roomsList = db('rooms as r')
         .select(
           'r.room_number',
-          db.raw("'Standard' as room_type_name"),
           'r.floor_number',
           'r.capacity',
           'r.occupied_beds',
-          db.raw('NULL as rent_per_bed'),
-          'r.is_available',
-          db.raw('NULL as amenities')
+          'r.is_available'
         )
         .orderBy('r.room_number', 'asc');
 
@@ -638,7 +644,7 @@ export const downloadExcelReport = async (req: AuthRequest, res: Response) => {
         .whereRaw("(mf.fee_status IN ('Pending', 'Partially Paid', 'Overdue') OR mf.paid_amount < mf.total_due)")
         .orderBy('mf.due_date', 'asc');
 
-      if (hostelIds.length > 0) dues.whereIn('mf.hostel_id', hostelIds);
+      if (hostelIds.length > 0) dues.whereIn('s.hostel_id', hostelIds);
       duesData = await dues;
     } catch (e) {
       console.warn('[ExcelReport] Could not fetch pending dues:', (e as any)?.message);
@@ -657,16 +663,9 @@ export const downloadExcelReport = async (req: AuthRequest, res: Response) => {
     const availableBeds = totalCapacity - occupiedBeds;
     const occupancyRate = totalCapacity > 0 ? ((occupiedBeds / totalCapacity) * 100).toFixed(1) : '0';
 
-
     // Create Excel workbook
-
     const workbook = new ExcelJS.Workbook();
-
-    // -------------------------------------------------------------
-    // SHEET 1: SUMMARY
-    // -------------------------------------------------------------
-    const summarySheet = workbook.addWorksheet('Summary');
-    summarySheet.properties.defaultRowHeight = 20;
+    const rType = String(reportType || 'full_excel').toLowerCase();
 
     // Header styling helper
     const applyMainHeader = (sheet: ExcelJS.Worksheet, title: string) => {
@@ -675,449 +674,426 @@ export const downloadExcelReport = async (req: AuthRequest, res: Response) => {
       cell.value = hostelName;
       cell.font = { size: 16, bold: true, color: { argb: 'FFFFFFFF' } };
       cell.alignment = { horizontal: 'center', vertical: 'middle' };
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4F46E5' } }; // Indigo 600
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4F46E5' } };
       sheet.getRow(1).height = 30;
 
       sheet.mergeCells('A2:G2');
       const subtitleCell = sheet.getCell('A2');
-      subtitleCell.value = `${title} - ${startDate && endDate ? monthName : monthName + ' ' + year}`;
+      subtitleCell.value = `${title} - ${monthName}`;
       subtitleCell.font = { size: 13, bold: true, color: { argb: 'FF1F2937' } };
       subtitleCell.alignment = { horizontal: 'center', vertical: 'middle' };
       subtitleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3F4F6' } };
       sheet.getRow(2).height = 22;
     };
 
-    applyMainHeader(summarySheet, 'Financial & Occupancy Summary');
+    // -------------------------------------------------------------
+    // SHEET 1: SUMMARY
+    // -------------------------------------------------------------
+    if (rType === 'full_excel') {
+      const summarySheet = workbook.addWorksheet('Summary');
+      summarySheet.properties.defaultRowHeight = 20;
+      applyMainHeader(summarySheet, 'Financial & Occupancy Summary');
 
-    let rIdx = 4;
-    
-    // Summary Cards block
-    summarySheet.getCell(`A${rIdx}`).value = 'Financial Metrics';
-    summarySheet.getCell(`A${rIdx}`).font = { size: 12, bold: true };
-    rIdx++;
-
-    const finLabels = [
-      ['Fee Collections (Rent)', feeIncome],
-      ['Other Income', otherIncomeVal],
-      ['TOTAL MONTHLY INCOME', totalIncome],
-      ['TOTAL MONTHLY EXPENSES', totalExpenses],
-      ['NET PROFIT / LOSS', netProfit]
-    ];
-
-    finLabels.forEach(([lbl, val], idx) => {
-      summarySheet.getRow(rIdx).height = 20;
-      const cellA = summarySheet.getCell(`A${rIdx}`);
-      const cellB = summarySheet.getCell(`B${rIdx}`);
-      cellA.value = lbl;
-      cellB.value = val;
-      cellB.numFmt = '₹#,##0.00';
-
-      const isHighlight = idx === 2 || idx === 3 || idx === 4;
-      const font = { size: 11, bold: isHighlight, color: { argb: isHighlight ? 'FF1E1B4B' : 'FF374151' } };
-      cellA.font = font;
-      cellB.font = font;
-
-      if (idx === 4) {
-        // Net profit styling (green bg if positive, red if negative)
-        const isProfit = (val as number) >= 0;
-        const colorBg = isProfit ? 'FFD1FAE5' : 'FFFEE2E2'; // light green vs light red
-        cellA.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: colorBg } };
-        cellB.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: colorBg } };
-      }
+      let rIdx = 4;
+      summarySheet.getCell(`A${rIdx}`).value = 'Financial Metrics';
+      summarySheet.getCell(`A${rIdx}`).font = { size: 12, bold: true };
       rIdx++;
-    });
 
-    rIdx += 2;
+      const finLabels = [
+        ['Fee Collections (Rent)', feeIncome],
+        ['Other Income', otherIncomeVal],
+        ['TOTAL MONTHLY INCOME', totalIncome],
+        ['TOTAL MONTHLY EXPENSES', totalExpenses],
+        ['NET PROFIT / LOSS', netProfit]
+      ];
 
-    summarySheet.getCell(`A${rIdx}`).value = 'Occupancy Metrics';
-    summarySheet.getCell(`A${rIdx}`).font = { size: 12, bold: true };
-    rIdx++;
+      finLabels.forEach(([lbl, val], idx) => {
+        summarySheet.getRow(rIdx).height = 20;
+        const cellA = summarySheet.getCell(`A${rIdx}`);
+        const cellB = summarySheet.getCell(`B${rIdx}`);
+        cellA.value = lbl;
+        cellB.value = val;
+        cellB.numFmt = '₹#,##0.00';
 
-    const occLabels = [
-      ['Total Rooms', totalRooms],
-      ['Total Bed Capacity', totalCapacity],
-      ['Occupied Beds', occupiedBeds],
-      ['Available Beds', availableBeds],
-      ['Occupancy Rate', `${occupancyRate}%`]
-    ];
+        const isHighlight = idx === 2 || idx === 3 || idx === 4;
+        const font = { size: 11, bold: isHighlight, color: { argb: isHighlight ? 'FF1E1B4B' : 'FF374151' } };
+        cellA.font = font;
+        cellB.font = font;
 
-    occLabels.forEach(([lbl, val]) => {
-      summarySheet.getRow(rIdx).height = 20;
-      const cellA = summarySheet.getCell(`A${rIdx}`);
-      const cellB = summarySheet.getCell(`B${rIdx}`);
-      cellA.value = lbl;
-      cellB.value = val;
-      cellA.font = { size: 11, color: { argb: 'FF374151' } };
-      cellB.font = { size: 11, bold: true, color: { argb: 'FF374151' } };
+        if (idx === 4) {
+          const isProfit = (val as number) >= 0;
+          const colorBg = isProfit ? 'FFD1FAE5' : 'FFFEE2E2';
+          cellA.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: colorBg } };
+          cellB.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: colorBg } };
+        }
+        rIdx++;
+      });
+
+      rIdx += 2;
+
+      summarySheet.getCell(`A${rIdx}`).value = 'Occupancy Metrics';
+      summarySheet.getCell(`A${rIdx}`).font = { size: 12, bold: true };
       rIdx++;
-    });
 
-    summarySheet.getColumn('A').width = 28;
-    summarySheet.getColumn('B').width = 20;
+      const occLabels = [
+        ['Total Rooms', totalRooms],
+        ['Total Bed Capacity', totalCapacity],
+        ['Occupied Beds', occupiedBeds],
+        ['Available Beds', availableBeds],
+        ['Occupancy Rate', `${occupancyRate}%`]
+      ];
+
+      occLabels.forEach(([lbl, val]) => {
+        summarySheet.getRow(rIdx).height = 20;
+        const cellA = summarySheet.getCell(`A${rIdx}`);
+        const cellB = summarySheet.getCell(`B${rIdx}`);
+        cellA.value = lbl;
+        cellB.value = val;
+        cellA.font = { size: 11, color: { argb: 'FF374151' } };
+        cellB.font = { size: 11, bold: true, color: { argb: 'FF374151' } };
+        rIdx++;
+      });
+
+      summarySheet.getColumn('A').width = 28;
+      summarySheet.getColumn('B').width = 20;
+    }
 
     // -------------------------------------------------------------
     // SHEET 2: TENANTS
     // -------------------------------------------------------------
-    const tenantSheet = workbook.addWorksheet('Tenants');
-    applyMainHeader(tenantSheet, 'Active & Inactive Tenants List');
+    if (rType === 'full_excel' || rType === 'tenants') {
+      const tenantSheet = workbook.addWorksheet('Tenants');
+      applyMainHeader(tenantSheet, 'Active & Inactive Tenants List');
 
-    const tenantHeaders = ['S.No', 'Full Name', 'Phone', 'Email', 'Admission Date', 'Room No', 'Bed No', 'Guardian Name', 'Guardian Phone', 'Status'];
-    tenantSheet.getRow(4).height = 24;
-    
-    tenantHeaders.forEach((h, idx) => {
-      const cell = tenantSheet.getCell(4, idx + 1);
-      cell.value = h;
-      cell.font = { bold: true, size: 10, color: { argb: 'FFFFFFFF' } };
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4F46E5' } };
-      cell.alignment = { horizontal: 'center', vertical: 'middle' };
-    });
+      const tenantHeaders = ['S.No', 'Full Name', 'Phone', 'Email', 'Admission Date', 'Room No', 'Status'];
+      tenantSheet.getRow(4).height = 24;
+      
+      tenantHeaders.forEach((h, idx) => {
+        const cell = tenantSheet.getCell(4, idx + 1);
+        cell.value = h;
+        cell.font = { bold: true, size: 10, color: { argb: 'FFFFFFFF' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4F46E5' } };
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+      });
 
-    let trIdx = 5;
-    studentsData.forEach((s, idx) => {
-      tenantSheet.getRow(trIdx).height = 20;
-      tenantSheet.getCell(`A${trIdx}`).value = idx + 1;
-      tenantSheet.getCell(`B${trIdx}`).value = `${s.first_name || ''} ${s.last_name || ''}`.trim();
-      tenantSheet.getCell(`C${trIdx}`).value = s.phone || '-';
-      tenantSheet.getCell(`D${trIdx}`).value = s.email || '-';
-      
-      const dateVal = s.admission_date ? new Date(s.admission_date) : null;
-      if (dateVal) {
-        tenantSheet.getCell(`E${trIdx}`).value = dateVal;
-        tenantSheet.getCell(`E${trIdx}`).numFmt = 'dd/mm/yyyy';
-      } else {
-        tenantSheet.getCell(`E${trIdx}`).value = '-';
-      }
-      
-      tenantSheet.getCell(`F${trIdx}`).value = s.room_number || 'Unallocated';
-      tenantSheet.getCell(`G${trIdx}`).value = s.bed_number || '-';
-      tenantSheet.getCell(`H${trIdx}`).value = s.guardian_name || '-';
-      tenantSheet.getCell(`I${trIdx}`).value = s.guardian_phone || '-';
-      
-      const isActive = s.is_active === 1 || s.is_active === true;
-      tenantSheet.getCell(`J${trIdx}`).value = isActive ? 'Active' : 'Inactive';
-      tenantSheet.getCell(`J${trIdx}`).font = { bold: true, color: { argb: isActive ? 'FF047857' : 'FFB91C1C' } }; // green vs red
-
-      // Border and Center alignment
-      for (let col = 1; col <= 10; col++) {
-        const cell = tenantSheet.getCell(trIdx, col);
-        cell.border = {
-          top: { style: 'thin', color: { argb: 'FFECEFf4' } },
-          bottom: { style: 'thin', color: { argb: 'FFECEFf4' } }
-        };
-        if (col === 1 || col === 3 || col === 5 || col === 6 || col === 7 || col === 9 || col === 10) {
-          cell.alignment = { horizontal: 'center', vertical: 'middle' };
+      let trIdx = 5;
+      studentsData.forEach((s, idx) => {
+        tenantSheet.getRow(trIdx).height = 20;
+        tenantSheet.getCell(`A${trIdx}`).value = idx + 1;
+        tenantSheet.getCell(`B${trIdx}`).value = `${s.first_name || ''} ${s.last_name || ''}`.trim() || 'Student';
+        tenantSheet.getCell(`C${trIdx}`).value = s.phone || '-';
+        tenantSheet.getCell(`D${trIdx}`).value = s.email || '-';
+        
+        const dateVal = s.admission_date ? new Date(s.admission_date) : null;
+        if (dateVal && !isNaN(dateVal.getTime())) {
+          tenantSheet.getCell(`E${trIdx}`).value = dateVal;
+          tenantSheet.getCell(`E${trIdx}`).numFmt = 'dd/mm/yyyy';
         } else {
-          cell.alignment = { horizontal: 'left', vertical: 'middle' };
+          tenantSheet.getCell(`E${trIdx}`).value = '-';
         }
-      }
-      trIdx++;
-    });
+        
+        tenantSheet.getCell(`F${trIdx}`).value = s.room_number || 'Unallocated';
+        
+        const isActive = s.is_active === 1 || s.is_active === true;
+        tenantSheet.getCell(`G${trIdx}`).value = isActive ? 'Active' : 'Inactive';
+        tenantSheet.getCell(`G${trIdx}`).font = { bold: true, color: { argb: isActive ? 'FF047857' : 'FFB91C1C' } };
 
-    tenantSheet.getColumn('A').width = 6;
-    tenantSheet.getColumn('B').width = 22;
-    tenantSheet.getColumn('C').width = 15;
-    tenantSheet.getColumn('D').width = 22;
-    tenantSheet.getColumn('E').width = 15;
-    tenantSheet.getColumn('F').width = 14;
-    tenantSheet.getColumn('G').width = 10;
-    tenantSheet.getColumn('H').width = 20;
-    tenantSheet.getColumn('I').width = 15;
-    tenantSheet.getColumn('J').width = 12;
+        for (let col = 1; col <= 7; col++) {
+          const cell = tenantSheet.getCell(trIdx, col);
+          cell.border = {
+            top: { style: 'thin', color: { argb: 'FFECEFf4' } },
+            bottom: { style: 'thin', color: { argb: 'FFECEFf4' } }
+          };
+          if (col === 1 || col === 3 || col === 5 || col === 6 || col === 7) {
+            cell.alignment = { horizontal: 'center', vertical: 'middle' };
+          } else {
+            cell.alignment = { horizontal: 'left', vertical: 'middle' };
+          }
+        }
+        trIdx++;
+      });
+
+      tenantSheet.getColumn('A').width = 6;
+      tenantSheet.getColumn('B').width = 24;
+      tenantSheet.getColumn('C').width = 16;
+      tenantSheet.getColumn('D').width = 24;
+      tenantSheet.getColumn('E').width = 16;
+      tenantSheet.getColumn('F').width = 14;
+      tenantSheet.getColumn('G').width = 14;
+    }
 
     // -------------------------------------------------------------
     // SHEET 3: FEE PAYMENTS
     // -------------------------------------------------------------
-    const paymentSheet = workbook.addWorksheet('Fee Payments');
-    applyMainHeader(paymentSheet, 'Monthly Fee Payments & Collections');
+    if (rType === 'full_excel' || rType === 'collection') {
+      const paymentSheet = workbook.addWorksheet('Fee Payments');
+      applyMainHeader(paymentSheet, 'Monthly Fee Payments & Collections');
 
-    const paymentHeaders = ['S.No', 'Payment Date', 'Tenant Name', 'Room No', 'Amount Paid', 'Payment Mode', 'For Month', 'Transaction Ref', 'Receipt Number', 'Remarks'];
-    paymentSheet.getRow(4).height = 24;
-    
-    paymentHeaders.forEach((h, idx) => {
-      const cell = paymentSheet.getCell(4, idx + 1);
-      cell.value = h;
-      cell.font = { bold: true, size: 10, color: { argb: 'FFFFFFFF' } };
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF059669' } }; // Green 600
-      cell.alignment = { horizontal: 'center', vertical: 'middle' };
-    });
-
-    let prIdx = 5;
-    paymentsData.forEach((p, idx) => {
-      paymentSheet.getRow(prIdx).height = 20;
-      paymentSheet.getCell(`A${prIdx}`).value = idx + 1;
+      const paymentHeaders = ['S.No', 'Payment Date', 'Tenant Name', 'Room No', 'Amount Paid', 'Payment Mode', 'For Month', 'Transaction Ref', 'Receipt Number', 'Remarks'];
+      paymentSheet.getRow(4).height = 24;
       
-      const dateVal = p.payment_date ? new Date(p.payment_date) : null;
-      if (dateVal) {
-        paymentSheet.getCell(`B${prIdx}`).value = dateVal;
-        paymentSheet.getCell(`B${prIdx}`).numFmt = 'dd/mm/yyyy';
-      } else {
-        paymentSheet.getCell(`B${prIdx}`).value = '-';
-      }
+      paymentHeaders.forEach((h, idx) => {
+        const cell = paymentSheet.getCell(4, idx + 1);
+        cell.value = h;
+        cell.font = { bold: true, size: 10, color: { argb: 'FFFFFFFF' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF059669' } };
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+      });
 
-      paymentSheet.getCell(`C${prIdx}`).value = `${p.first_name || ''} ${p.last_name || ''}`.trim();
-      paymentSheet.getCell(`D${prIdx}`).value = p.room_number || '-';
-      
-      paymentSheet.getCell(`E${prIdx}`).value = Number(p.amount_paid || 0);
-      paymentSheet.getCell(`E${prIdx}`).numFmt = '₹#,##0.00';
-      paymentSheet.getCell(`E${prIdx}`).font = { bold: true };
-
-      paymentSheet.getCell(`F${prIdx}`).value = p.payment_mode || 'Cash';
-      paymentSheet.getCell(`G${prIdx}`).value = p.payment_for_month || '-';
-      paymentSheet.getCell(`H${prIdx}`).value = p.transaction_reference || '-';
-      paymentSheet.getCell(`I${prIdx}`).value = p.receipt_number || '-';
-      paymentSheet.getCell(`J${prIdx}`).value = p.remarks || '-';
-
-      // Border & Alignment
-      for (let col = 1; col <= 10; col++) {
-        const cell = paymentSheet.getCell(prIdx, col);
-        cell.border = {
-          top: { style: 'thin', color: { argb: 'FFECEFf4' } },
-          bottom: { style: 'thin', color: { argb: 'FFECEFf4' } }
-        };
-        if (col === 1 || col === 2 || col === 4 || col === 6 || col === 7 || col === 8 || col === 9) {
-          cell.alignment = { horizontal: 'center', vertical: 'middle' };
-        } else if (col === 5) {
-          cell.alignment = { horizontal: 'right', vertical: 'middle' };
+      let prIdx = 5;
+      paymentsData.forEach((p, idx) => {
+        paymentSheet.getRow(prIdx).height = 20;
+        paymentSheet.getCell(`A${prIdx}`).value = idx + 1;
+        
+        const dateVal = p.payment_date ? new Date(p.payment_date) : null;
+        if (dateVal && !isNaN(dateVal.getTime())) {
+          paymentSheet.getCell(`B${prIdx}`).value = dateVal;
+          paymentSheet.getCell(`B${prIdx}`).numFmt = 'dd/mm/yyyy';
         } else {
-          cell.alignment = { horizontal: 'left', vertical: 'middle' };
+          paymentSheet.getCell(`B${prIdx}`).value = '-';
         }
-      }
-      prIdx++;
-    });
 
-    paymentSheet.getColumn('A').width = 6;
-    paymentSheet.getColumn('B').width = 15;
-    paymentSheet.getColumn('C').width = 22;
-    paymentSheet.getColumn('D').width = 12;
-    paymentSheet.getColumn('E').width = 15;
-    paymentSheet.getColumn('F').width = 15;
-    paymentSheet.getColumn('G').width = 15;
-    paymentSheet.getColumn('H').width = 18;
-    paymentSheet.getColumn('I').width = 18;
-    paymentSheet.getColumn('J').width = 25;
+        paymentSheet.getCell(`C${prIdx}`).value = `${p.first_name || ''} ${p.last_name || ''}`.trim() || 'Student';
+        paymentSheet.getCell(`D${prIdx}`).value = p.room_number || '-';
+        
+        paymentSheet.getCell(`E${prIdx}`).value = Number(p.amount_paid || 0);
+        paymentSheet.getCell(`E${prIdx}`).numFmt = '₹#,##0.00';
+        paymentSheet.getCell(`E${prIdx}`).font = { bold: true };
+
+        paymentSheet.getCell(`F${prIdx}`).value = p.payment_mode || 'Cash';
+        paymentSheet.getCell(`G${prIdx}`).value = p.payment_for_month || '-';
+        paymentSheet.getCell(`H${prIdx}`).value = p.transaction_reference || '-';
+        paymentSheet.getCell(`I${prIdx}`).value = p.receipt_number || '-';
+        paymentSheet.getCell(`J${prIdx}`).value = p.remarks || '-';
+
+        for (let col = 1; col <= 10; col++) {
+          const cell = paymentSheet.getCell(prIdx, col);
+          cell.border = {
+            top: { style: 'thin', color: { argb: 'FFECEFf4' } },
+            bottom: { style: 'thin', color: { argb: 'FFECEFf4' } }
+          };
+          if (col === 1 || col === 2 || col === 4 || col === 6 || col === 7 || col === 8 || col === 9) {
+            cell.alignment = { horizontal: 'center', vertical: 'middle' };
+          } else if (col === 5) {
+            cell.alignment = { horizontal: 'right', vertical: 'middle' };
+          } else {
+            cell.alignment = { horizontal: 'left', vertical: 'middle' };
+          }
+        }
+        prIdx++;
+      });
+
+      paymentSheet.getColumn('A').width = 6;
+      paymentSheet.getColumn('B').width = 15;
+      paymentSheet.getColumn('C').width = 22;
+      paymentSheet.getColumn('D').width = 12;
+      paymentSheet.getColumn('E').width = 15;
+      paymentSheet.getColumn('F').width = 15;
+      paymentSheet.getColumn('G').width = 15;
+      paymentSheet.getColumn('H').width = 18;
+      paymentSheet.getColumn('I').width = 18;
+      paymentSheet.getColumn('J').width = 25;
+    }
 
     // -------------------------------------------------------------
-    // SHEET 3.5: PENDING DUES
+    // SHEET 4: PENDING DUES
     // -------------------------------------------------------------
-    const duesSheet = workbook.addWorksheet('Pending Dues');
-    applyMainHeader(duesSheet, 'Pending Dues & Unpaid Fees');
+    if (rType === 'full_excel' || rType === 'dues') {
+      const duesSheet = workbook.addWorksheet('Pending Dues');
+      applyMainHeader(duesSheet, 'Pending Dues & Unpaid Fees');
 
-    const duesHeaders = ['S.No', 'Tenant Name', 'Room No', 'Fee Month', 'Due Date', 'Amount Due', 'Status'];
-    duesSheet.getRow(4).height = 24;
-    
-    duesHeaders.forEach((h, idx) => {
-      const cell = duesSheet.getCell(4, idx + 1);
-      cell.value = h;
-      cell.font = { bold: true, size: 10, color: { argb: 'FFFFFFFF' } };
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDC2626' } }; // Red 600
-      cell.alignment = { horizontal: 'center', vertical: 'middle' };
-    });
+      const duesHeaders = ['S.No', 'Tenant Name', 'Room No', 'Fee Month', 'Due Date', 'Amount Due', 'Status'];
+      duesSheet.getRow(4).height = 24;
+      
+      duesHeaders.forEach((h, idx) => {
+        const cell = duesSheet.getCell(4, idx + 1);
+        cell.value = h;
+        cell.font = { bold: true, size: 10, color: { argb: 'FFFFFFFF' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDC2626' } };
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+      });
 
-    let dIdx = 5;
-    duesData.forEach((d, idx) => {
-      duesSheet.getRow(dIdx).height = 20;
-      duesSheet.getCell(`A${dIdx}`).value = idx + 1;
-      duesSheet.getCell(`B${dIdx}`).value = `${d.first_name || ''} ${d.last_name || ''}`.trim();
-      duesSheet.getCell(`C${dIdx}`).value = d.room_number || '-';
-      duesSheet.getCell(`D${dIdx}`).value = d.fee_month || '-';
-      
-      const dDateVal = d.due_date ? new Date(d.due_date) : null;
-      if (dDateVal) {
-        duesSheet.getCell(`E${dIdx}`).value = dDateVal;
-        duesSheet.getCell(`E${dIdx}`).numFmt = 'dd/mm/yyyy';
-      } else {
-        duesSheet.getCell(`E${dIdx}`).value = '-';
-      }
-      
-      duesSheet.getCell(`F${dIdx}`).value = Number(d.total_due || 0);
-      duesSheet.getCell(`F${dIdx}`).numFmt = '₹#,##0.00';
-      duesSheet.getCell(`F${dIdx}`).font = { bold: true };
-      
-      duesSheet.getCell(`G${dIdx}`).value = d.fee_status || 'Pending';
-
-      for (let col = 1; col <= 7; col++) {
-        const cell = duesSheet.getCell(dIdx, col);
-        cell.border = {
-          top: { style: 'thin', color: { argb: 'FFECEFf4' } },
-          bottom: { style: 'thin', color: { argb: 'FFECEFf4' } }
-        };
-        if (col === 1 || col === 3 || col === 5 || col === 7) {
-          cell.alignment = { horizontal: 'center', vertical: 'middle' };
-        } else if (col === 6) {
-          cell.alignment = { horizontal: 'right', vertical: 'middle' };
+      let dIdx = 5;
+      duesData.forEach((d, idx) => {
+        duesSheet.getRow(dIdx).height = 20;
+        duesSheet.getCell(`A${dIdx}`).value = idx + 1;
+        duesSheet.getCell(`B${dIdx}`).value = `${d.first_name || ''} ${d.last_name || ''}`.trim() || 'Student';
+        duesSheet.getCell(`C${dIdx}`).value = d.room_number || '-';
+        duesSheet.getCell(`D${dIdx}`).value = d.fee_month || '-';
+        
+        const dDateVal = d.due_date ? new Date(d.due_date) : null;
+        if (dDateVal && !isNaN(dDateVal.getTime())) {
+          duesSheet.getCell(`E${dIdx}`).value = dDateVal;
+          duesSheet.getCell(`E${dIdx}`).numFmt = 'dd/mm/yyyy';
         } else {
-          cell.alignment = { horizontal: 'left', vertical: 'middle' };
+          duesSheet.getCell(`E${dIdx}`).value = '-';
         }
-      }
-      dIdx++;
-    });
+        
+        duesSheet.getCell(`F${dIdx}`).value = Number(d.total_due || 0);
+        duesSheet.getCell(`F${dIdx}`).numFmt = '₹#,##0.00';
+        duesSheet.getCell(`F${dIdx}`).font = { bold: true };
+        
+        duesSheet.getCell(`G${dIdx}`).value = d.fee_status || 'Pending';
 
-    duesSheet.getColumn('A').width = 6;
-    duesSheet.getColumn('B').width = 25;
-    duesSheet.getColumn('C').width = 12;
-    duesSheet.getColumn('D').width = 15;
-    duesSheet.getColumn('E').width = 15;
-    duesSheet.getColumn('F').width = 15;
-    duesSheet.getColumn('G').width = 15;
+        for (let col = 1; col <= 7; col++) {
+          const cell = duesSheet.getCell(dIdx, col);
+          cell.border = {
+            top: { style: 'thin', color: { argb: 'FFECEFf4' } },
+            bottom: { style: 'thin', color: { argb: 'FFECEFf4' } }
+          };
+          if (col === 1 || col === 3 || col === 5 || col === 7) {
+            cell.alignment = { horizontal: 'center', vertical: 'middle' };
+          } else if (col === 6) {
+            cell.alignment = { horizontal: 'right', vertical: 'middle' };
+          } else {
+            cell.alignment = { horizontal: 'left', vertical: 'middle' };
+          }
+        }
+        dIdx++;
+      });
+
+      duesSheet.getColumn('A').width = 6;
+      duesSheet.getColumn('B').width = 25;
+      duesSheet.getColumn('C').width = 12;
+      duesSheet.getColumn('D').width = 15;
+      duesSheet.getColumn('E').width = 15;
+      duesSheet.getColumn('F').width = 15;
+      duesSheet.getColumn('G').width = 15;
+    }
 
     // -------------------------------------------------------------
-    // SHEET 4: ROOMS & BEDS
+    // SHEET 5: ROOMS & BEDS
     // -------------------------------------------------------------
-    const roomSheet = workbook.addWorksheet('Rooms & Occupancy');
-    applyMainHeader(roomSheet, 'Rooms Capacity & Occupancy Status');
+    if (rType === 'full_excel' || rType === 'occupancy') {
+      const roomSheet = workbook.addWorksheet('Rooms & Occupancy');
+      applyMainHeader(roomSheet, 'Rooms Capacity & Occupancy Status');
 
-    const roomHeaders = ['S.No', 'Room Number', 'Room Type', 'Floor', 'Bed Capacity', 'Occupied Beds', 'Available Beds', 'Rent per Bed', 'Amenities', 'Status'];
-    roomSheet.getRow(4).height = 24;
-    
-    roomHeaders.forEach((h, idx) => {
-      const cell = roomSheet.getCell(4, idx + 1);
-      cell.value = h;
-      cell.font = { bold: true, size: 10, color: { argb: 'FFFFFFFF' } };
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2563EB' } }; // Blue 600
-      cell.alignment = { horizontal: 'center', vertical: 'middle' };
-    });
-
-    let rmrIdx = 5;
-    roomsListData.forEach((r, idx) => {
-      roomSheet.getRow(rmrIdx).height = 20;
-      roomSheet.getCell(`A${rmrIdx}`).value = idx + 1;
-      roomSheet.getCell(`B${rmrIdx}`).value = r.room_number;
-      roomSheet.getCell(`C${rmrIdx}`).value = r.room_type_name || 'Standard';
-      roomSheet.getCell(`D${rmrIdx}`).value = r.floor_number !== null ? `Floor ${r.floor_number}` : '-';
-      roomSheet.getCell(`E${rmrIdx}`).value = r.capacity || 0;
-      roomSheet.getCell(`F${rmrIdx}`).value = r.occupied_beds || 0;
+      const roomHeaders = ['S.No', 'Room Number', 'Floor', 'Bed Capacity', 'Occupied Beds', 'Available Beds', 'Status'];
+      roomSheet.getRow(4).height = 24;
       
-      const avBeds = (r.capacity || 0) - (r.occupied_beds || 0);
-      roomSheet.getCell(`G${rmrIdx}`).value = avBeds >= 0 ? avBeds : 0;
-      
-      roomSheet.getCell(`H${rmrIdx}`).value = Number(r.rent_per_bed || 0);
-      roomSheet.getCell(`H${rmrIdx}`).numFmt = '₹#,##0.00';
+      roomHeaders.forEach((h, idx) => {
+        const cell = roomSheet.getCell(4, idx + 1);
+        cell.value = h;
+        cell.font = { bold: true, size: 10, color: { argb: 'FFFFFFFF' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2563EB' } };
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+      });
 
-      roomSheet.getCell(`I${rmrIdx}`).value = r.amenities || '-';
-      
-      const isAvailable = r.is_available === 1 || r.is_available === true;
-      const statusText = avBeds === 0 ? 'Full' : (isAvailable ? 'Available' : 'Unavailable');
-      roomSheet.getCell(`J${rmrIdx}`).value = statusText;
-      roomSheet.getCell(`J${rmrIdx}`).font = { 
-        bold: true, 
-        color: { argb: avBeds === 0 ? 'FFB91C1C' : (isAvailable ? 'FF047857' : 'FF94A3B8') } 
-      };
-
-      // Border & Alignment
-      for (let col = 1; col <= 10; col++) {
-        const cell = roomSheet.getCell(rmrIdx, col);
-        cell.border = {
-          top: { style: 'thin', color: { argb: 'FFECEFf4' } },
-          bottom: { style: 'thin', color: { argb: 'FFECEFf4' } }
+      let rmrIdx = 5;
+      roomsListData.forEach((r, idx) => {
+        roomSheet.getRow(rmrIdx).height = 20;
+        roomSheet.getCell(`A${rmrIdx}`).value = idx + 1;
+        roomSheet.getCell(`B${rmrIdx}`).value = r.room_number;
+        roomSheet.getCell(`C${rmrIdx}`).value = r.floor_number !== null && r.floor_number !== undefined ? `Floor ${r.floor_number}` : '-';
+        roomSheet.getCell(`D${rmrIdx}`).value = r.capacity || 0;
+        roomSheet.getCell(`E${rmrIdx}`).value = r.occupied_beds || 0;
+        
+        const avBeds = (r.capacity || 0) - (r.occupied_beds || 0);
+        roomSheet.getCell(`G${rmrIdx}`).value = avBeds >= 0 ? avBeds : 0;
+        
+        const isAvailable = r.is_available === 1 || r.is_available === true;
+        const statusText = avBeds === 0 ? 'Full' : (isAvailable ? 'Available' : 'Unavailable');
+        roomSheet.getCell(`G${rmrIdx}`).value = statusText;
+        roomSheet.getCell(`G${rmrIdx}`).font = { 
+          bold: true, 
+          color: { argb: avBeds === 0 ? 'FFB91C1C' : (isAvailable ? 'FF047857' : 'FF94A3B8') } 
         };
-        if (col === 1 || col === 2 || col === 4 || col === 5 || col === 6 || col === 7 || col === 10) {
-          cell.alignment = { horizontal: 'center', vertical: 'middle' };
-        } else if (col === 8) {
-          cell.alignment = { horizontal: 'right', vertical: 'middle' };
-        } else {
-          cell.alignment = { horizontal: 'left', vertical: 'middle' };
-        }
-      }
-      rmrIdx++;
-    });
 
-    roomSheet.getColumn('A').width = 6;
-    roomSheet.getColumn('B').width = 15;
-    roomSheet.getColumn('C').width = 15;
-    roomSheet.getColumn('D').width = 12;
-    roomSheet.getColumn('E').width = 14;
-    roomSheet.getColumn('F').width = 14;
-    roomSheet.getColumn('G').width = 14;
-    roomSheet.getColumn('H').width = 15;
-    roomSheet.getColumn('I').width = 25;
-    roomSheet.getColumn('J').width = 14;
+        for (let col = 1; col <= 7; col++) {
+          const cell = roomSheet.getCell(rmrIdx, col);
+          cell.border = {
+            top: { style: 'thin', color: { argb: 'FFECEFf4' } },
+            bottom: { style: 'thin', color: { argb: 'FFECEFf4' } }
+          };
+          if (col === 1 || col === 2 || col === 3 || col === 4 || col === 5 || col === 6 || col === 7) {
+            cell.alignment = { horizontal: 'center', vertical: 'middle' };
+          } else {
+            cell.alignment = { horizontal: 'left', vertical: 'middle' };
+          }
+        }
+        rmrIdx++;
+      });
+
+      roomSheet.getColumn('A').width = 6;
+      roomSheet.getColumn('B').width = 16;
+      roomSheet.getColumn('C').width = 14;
+      roomSheet.getColumn('D').width = 14;
+      roomSheet.getColumn('E').width = 14;
+      roomSheet.getColumn('F').width = 14;
+      roomSheet.getColumn('G').width = 14;
+    }
 
     // -------------------------------------------------------------
-    // SHEET 5: EXPENSES
+    // SHEET 6: EXPENSES
     // -------------------------------------------------------------
-    const expenseSheet = workbook.addWorksheet('Expenses');
-    applyMainHeader(expenseSheet, 'Detailed Expenses Breakdown');
+    if (rType === 'full_excel' || rType === 'expenses') {
+      const expenseSheet = workbook.addWorksheet('Expenses');
+      applyMainHeader(expenseSheet, 'Detailed Expenses Breakdown');
 
-    const expenseHeadersList = ['S.No', 'Expense Date', 'Category', 'Amount', 'Payment Mode', 'Bill Number', 'Vendor Name', 'Description'];
-    expenseSheet.getRow(4).height = 24;
-    
-    expenseHeadersList.forEach((h, idx) => {
-      const cell = expenseSheet.getCell(4, idx + 1);
-      cell.value = h;
-      cell.font = { bold: true, size: 10, color: { argb: 'FFFFFFFF' } };
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEA580C' } }; // Orange 600
-      cell.alignment = { horizontal: 'center', vertical: 'middle' };
-    });
-
-    let exrIdx = 5;
-    expensesData.forEach((e, idx) => {
-      expenseSheet.getRow(exrIdx).height = 20;
-      expenseSheet.getCell(`A${exrIdx}`).value = idx + 1;
+      const expenseHeadersList = ['S.No', 'Expense Date', 'Category', 'Amount', 'Payment Mode', 'Bill Number', 'Vendor Name', 'Description'];
+      expenseSheet.getRow(4).height = 24;
       
-      const dateVal = e.expense_date ? new Date(e.expense_date) : null;
-      if (dateVal) {
-        expenseSheet.getCell(`B${exrIdx}`).value = dateVal;
-        expenseSheet.getCell(`B${exrIdx}`).numFmt = 'dd/mm/yyyy';
-      } else {
-        expenseSheet.getCell(`B${exrIdx}`).value = '-';
-      }
+      expenseHeadersList.forEach((h, idx) => {
+        const cell = expenseSheet.getCell(4, idx + 1);
+        cell.value = h;
+        cell.font = { bold: true, size: 10, color: { argb: 'FFFFFFFF' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEA580C' } };
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+      });
 
-      expenseSheet.getCell(`C${exrIdx}`).value = e.category_name || 'Miscellaneous';
-      
-      expenseSheet.getCell(`D${exrIdx}`).value = Number(e.amount || 0);
-      expenseSheet.getCell(`D${exrIdx}`).numFmt = '₹#,##0.00';
-      expenseSheet.getCell(`D${exrIdx}`).font = { bold: true, color: { argb: 'FFDC2626' } }; // Red text for expenses
-
-      expenseSheet.getCell(`E${exrIdx}`).value = e.payment_mode || 'Cash';
-      expenseSheet.getCell(`F${exrIdx}`).value = e.bill_number || '-';
-      expenseSheet.getCell(`G${exrIdx}`).value = e.vendor_name || '-';
-      expenseSheet.getCell(`H${exrIdx}`).value = e.description || '-';
-
-      // Border & Alignment
-      for (let col = 1; col <= 8; col++) {
-        const cell = expenseSheet.getCell(exrIdx, col);
-        cell.border = {
-          top: { style: 'thin', color: { argb: 'FFECEFf4' } },
-          bottom: { style: 'thin', color: { argb: 'FFECEFf4' } }
-        };
-        if (col === 1 || col === 2 || col === 5 || col === 6) {
-          cell.alignment = { horizontal: 'center', vertical: 'middle' };
-        } else if (col === 4) {
-          cell.alignment = { horizontal: 'right', vertical: 'middle' };
+      let exrIdx = 5;
+      expensesData.forEach((e, idx) => {
+        expenseSheet.getRow(exrIdx).height = 20;
+        expenseSheet.getCell(`A${exrIdx}`).value = idx + 1;
+        
+        const dateVal = e.expense_date ? new Date(e.expense_date) : null;
+        if (dateVal && !isNaN(dateVal.getTime())) {
+          expenseSheet.getCell(`B${exrIdx}`).value = dateVal;
+          expenseSheet.getCell(`B${exrIdx}`).numFmt = 'dd/mm/yyyy';
         } else {
-          cell.alignment = { horizontal: 'left', vertical: 'middle' };
+          expenseSheet.getCell(`B${exrIdx}`).value = '-';
         }
-      }
-      exrIdx++;
-    });
 
-    expenseSheet.getColumn('A').width = 6;
-    expenseSheet.getColumn('B').width = 15;
-    expenseSheet.getColumn('C').width = 18;
-    expenseSheet.getColumn('D').width = 15;
-    expenseSheet.getColumn('E').width = 15;
-    expenseSheet.getColumn('F').width = 15;
-    expenseSheet.getColumn('G').width = 20;
-    expenseSheet.getColumn('H').width = 25;
+        expenseSheet.getCell(`C${exrIdx}`).value = e.category_name || 'Miscellaneous';
+        
+        expenseSheet.getCell(`D${exrIdx}`).value = Number(e.amount || 0);
+        expenseSheet.getCell(`D${exrIdx}`).numFmt = '₹#,##0.00';
+        expenseSheet.getCell(`D${exrIdx}`).font = { bold: true, color: { argb: 'FFDC2626' } };
 
-    if (reportType && reportType !== 'full_excel') {
-      const sheetsToKeep: string[] = [];
-      if (reportType === 'collection') sheetsToKeep.push('Fee Payments');
-      if (reportType === 'dues') sheetsToKeep.push('Pending Dues');
-      if (reportType === 'expenses') sheetsToKeep.push('Expenses');
-      if (reportType === 'occupancy') sheetsToKeep.push('Rooms & Occupancy');
-      if (reportType === 'tenants') sheetsToKeep.push('Tenants');
-      
-      if (sheetsToKeep.length > 0) {
-        const idsToRemove = workbook.worksheets
-          .filter(sheet => !sheetsToKeep.includes(sheet.name))
-          .map(sheet => sheet.id);
-        idsToRemove.forEach(id => workbook.removeWorksheet(id));
-      }
+        expenseSheet.getCell(`E${exrIdx}`).value = e.payment_mode || 'Cash';
+        expenseSheet.getCell(`F${exrIdx}`).value = e.bill_number || '-';
+        expenseSheet.getCell(`G${exrIdx}`).value = e.vendor_name || '-';
+        expenseSheet.getCell(`H${exrIdx}`).value = e.description || '-';
+
+        for (let col = 1; col <= 8; col++) {
+          const cell = expenseSheet.getCell(exrIdx, col);
+          cell.border = {
+            top: { style: 'thin', color: { argb: 'FFECEFf4' } },
+            bottom: { style: 'thin', color: { argb: 'FFECEFf4' } }
+          };
+          if (col === 1 || col === 2 || col === 5 || col === 6) {
+            cell.alignment = { horizontal: 'center', vertical: 'middle' };
+          } else if (col === 4) {
+            cell.alignment = { horizontal: 'right', vertical: 'middle' };
+          } else {
+            cell.alignment = { horizontal: 'left', vertical: 'middle' };
+          }
+        }
+        exrIdx++;
+      });
+
+      expenseSheet.getColumn('A').width = 6;
+      expenseSheet.getColumn('B').width = 15;
+      expenseSheet.getColumn('C').width = 18;
+      expenseSheet.getColumn('D').width = 15;
+      expenseSheet.getColumn('E').width = 15;
+      expenseSheet.getColumn('F').width = 15;
+      expenseSheet.getColumn('G').width = 20;
+      expenseSheet.getColumn('H').width = 25;
     }
 
     // Set response headers
-    const filename = `${reportType !== 'full_excel' ? reportType + '_' : ''}Hostel_Financial_Report_${startDate && endDate ? `${startDateStr}_to_${endDateStr}` : `${monthName}_${year}`}.xlsx`;
+    const filename = `${rType !== 'full_excel' ? rType + '_' : ''}Hostel_Financial_Report_${startDateStr}_to_${endDateStr}.xlsx`;
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
 
