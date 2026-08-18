@@ -1,6 +1,10 @@
 {
   "extends": "expo/tsconfig.base",
   "compilerOptions": {
+    // src/**/__tests__ run on Node's own test runner (`npm test`), whose ESM
+    // resolver requires the file extension on relative imports. Safe with
+    // noEmit — app code keeps using extensionless imports via Metro.
+    "allowImportingTsExtensions": true,
     "strict": true,
     "jsx": "react-native",
     "lib": [

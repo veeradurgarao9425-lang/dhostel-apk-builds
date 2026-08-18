@@ -35,8 +35,7 @@ import React, {
 import {
   View, Text, StyleSheet, TouchableOpacity, Pressable, ScrollView,
   Modal, Platform, TextInput,
-  Animated, Image, DeviceEventEmitter, Dimensions, Keyboard,
-  LayoutAnimation, LayoutChangeEvent,
+  Animated, Image, DeviceEventEmitter, Keyboard,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -44,6 +43,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { useAuth } from '../../../contexts/AuthContext';
 import * as RootNavigation from '../../navigation/navigationRef';
+import { useKeyboardInset } from '../../hooks/useKeyboardInset';
+import { KeyboardInsetDebugOverlay } from '../KeyboardInsetDebugOverlay';
 import { AssistantResponse, ContentBlock } from './AssistantResponse';
 import {
   resolveIntent, AssistantIntent, QUICK_QUESTIONS,
@@ -229,92 +230,55 @@ export const OwnerAssistant: React.FC = () => {
 
   // ── Keyboard handling ──────────────────────────────────────────────────
   //
-  // The app builds edge-to-edge (Expo SDK 54 / RN 0.81 → edgeToEdgeEnabled=true),
-  // so on Android 11+ the `adjustResize` window flag is ignored by the OS: the
-  // IME just overlays the window and nothing shrinks. On older Android versions
-  // the window still resizes. `KeyboardAvoidingView` can't tell those two worlds
-  // apart — `behavior="height"` double-compensated on resizing devices (the
-  // container lost ~2× the keyboard height, which is why the composer flew up
-  // the screen) and mis-compensated inside this Modal, because KAV compares its
-  // own frame (Modal window coords) against the keyboard's screen coords.
+  // All of the geometry lives in useKeyboardInset / keyboardInsetMath (pure and
+  // unit-tested). The short version: RN's Android keyboard event reports
+  // `ime.bottom − navigationBar.bottom`, but this Modal draws edge-to-edge (RN
+  // forces navigationBarTranslucent on when the edge-to-edge flag is set), so
+  // the column extends *behind* the nav bar. Padding it by the reported height
+  // alone left it short by exactly the nav-bar height — which is why the input
+  // pill sat under the keyboard. The hook adds that strip back and subtracts
+  // anything a window resize already absorbed.
   //
-  // So we drive the layout from two plain *heights*, never coordinates:
-  //   keyboard height — straight from the keyboard event
-  //   shrink          — how much this column already lost to a window resize
-  // and pad the bottom of the column by whatever the OS did not already absorb.
-  // Correct in both worlds, on every screen size, with no native module.
-  const [keyboardInset, setKeyboardInset] = useState(0);
-  const kbHeightRef = useRef(0);
-  const bodyHeightRef = useRef(0);
-  const idleBodyHeightRef = useRef(0);
+  // KeyboardAvoidingView cannot do this: it compares its own frame (Modal
+  // window coordinates) against the keyboard's screen coordinates, and
+  // `behavior="height"` sets an explicit height that leaves a stale grey band
+  // behind once the keyboard closes.
+  //
+  // TEMPORARY: long-press the header avatar/title to toggle an on-screen
+  // readout of every term. Release builds strip console output and this only
+  // reproduces on real hardware, so it is the only way to see the OS numbers
+  // from an installed APK. Remove `showKbdDebug`, the `debug` option, and
+  // KeyboardInsetDebugOverlay once confirmed on device.
+  const [showKbdDebug, setShowKbdDebug] = useState(false);
+  const {
+    keyboardInset,
+    onContainerLayout: handleBodyLayout,
+    resetKeyboardInset,
+    breakdown: kbdBreakdown,
+  } = useKeyboardInset({
+    onVisibilityChange: setIsKeyboardActive,
+    debug: showKbdDebug,
+  });
 
-  const syncKeyboardInset = useCallback(() => {
-    const kb = kbHeightRef.current;
-    if (kb <= 0) {
-      setKeyboardInset(prev => (prev === 0 ? prev : 0));
-      return;
-    }
-    // Slice of the keyboard the OS already took out of our container.
-    const shrink = idleBodyHeightRef.current > 0
-      ? Math.max(0, idleBodyHeightRef.current - bodyHeightRef.current)
-      : 0;
-    // iOS keeps the home-indicator gap via SafeAreaView(edges: bottom); the
-    // keyboard frame already covers that strip, so don't count it twice.
-    const safeOverlap = Platform.OS === 'ios' ? insets.bottom : 0;
-    const cap = Dimensions.get('screen').height * 0.7; // sanity guard
-    const next = Math.round(Math.min(Math.max(kb - shrink - safeOverlap, 0), cap));
-    setKeyboardInset(prev => (Math.abs(prev - next) > 1 ? next : prev));
-  }, [insets.bottom]);
-
-  // The chat column measures itself; that height is the only signal we need to
-  // know whether the window resized under us.
-  const handleBodyLayout = useCallback((e: LayoutChangeEvent) => {
-    const h = e.nativeEvent.layout.height;
-    if (h <= 0 || Math.abs(h - bodyHeightRef.current) < 1) return;
-    bodyHeightRef.current = h;
-    // With no keyboard up, this is the column's natural height — the baseline
-    // every later resize is measured against.
-    if (kbHeightRef.current <= 0) idleBodyHeightRef.current = h;
-    syncKeyboardInset();
-  }, [syncKeyboardInset]);
-
+  // Opening/closing the sheet must never leave keyboard state behind. The Modal
+  // is only hidden, not unmounted, so a stale inset from the previous session
+  // would otherwise be the first thing painted on the next open (a grey band
+  // under the composer), and a keyboard left up while the sheet closes would
+  // sit over the screen underneath. One effect covers every close path —
+  // header button, hardware back, and the CLOSE_ASSISTANT event.
+  const wasOpenRef = useRef(false);
   useEffect(() => {
-    const isIOS = Platform.OS === 'ios';
-    const showSub = Keyboard.addListener(
-      isIOS ? 'keyboardWillShow' : 'keyboardDidShow',
-      (e) => {
-        kbHeightRef.current = e?.endCoordinates?.height ?? 0;
-        // iOS only: ride the keyboard's own animation curve. Android gets a
-        // straight layout pass (LayoutAnimation + IME is unstable there).
-        if (isIOS && e?.duration) {
-          LayoutAnimation.configureNext({
-            duration: e.duration,
-            update: { type: 'keyboard' as any },
-          });
-        }
-        setIsKeyboardActive(true);
-        syncKeyboardInset();
-      }
-    );
-    const hideSub = Keyboard.addListener(
-      isIOS ? 'keyboardWillHide' : 'keyboardDidHide',
-      (e: any) => {
-        kbHeightRef.current = 0;
-        if (isIOS && e?.duration) {
-          LayoutAnimation.configureNext({
-            duration: e.duration,
-            update: { type: 'keyboard' as any },
-          });
-        }
-        setIsKeyboardActive(false);
-        syncKeyboardInset();
-      }
-    );
-    return () => {
-      showSub.remove();
-      hideSub.remove();
-    };
-  }, [syncKeyboardInset]);
+    if (isOpen) { wasOpenRef.current = true; return; }
+    // Skip the mount pass — the sheet starts closed, and dismissing then would
+    // steal the keyboard from whatever screen is actually being typed into.
+    if (!wasOpenRef.current) return;
+    wasOpenRef.current = false;
+    Keyboard.dismiss();
+    setIsAddMenuOpen(false);
+    setIsFocused(false);
+    setIsKeyboardActive(false);
+    resetKeyboardInset();
+  }, [isOpen, resetKeyboardInset]);
 
   // ── Lifecycle ──────────────────────────────────────────────────────────
   useEffect(() => {
@@ -1578,7 +1542,15 @@ export const OwnerAssistant: React.FC = () => {
               <View style={s.headerDecorCircle1} />
               <View style={s.headerDecorCircle2} />
 
-              <View style={s.headerLeft}>
+              {/* TEMPORARY: long-press here toggles the keyboard debug overlay. */}
+              <Pressable
+                style={s.headerLeft}
+                onLongPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => { });
+                  setShowKbdDebug(v => !v);
+                }}
+                delayLongPress={900}
+              >
                 {/* Avatar with glowing ring */}
                 <View style={s.avatarRing}>
                   <View style={s.avatarBox}>
@@ -1605,7 +1577,7 @@ export const OwnerAssistant: React.FC = () => {
                     <Text style={s.aiBadgeText} numberOfLines={1}>{user?.hostel_name || 'Your Hostel'}</Text>
                   </View>
                 </View>
-              </View>
+              </Pressable>
 
               {/* Action buttons — side by side */}
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
@@ -1617,6 +1589,15 @@ export const OwnerAssistant: React.FC = () => {
                 </TouchableOpacity>
               </View>
             </LinearGradient>
+
+            {/* TEMPORARY: keyboard diagnostics, long-press the header to toggle.
+                Absolutely positioned + pointerEvents none, so it cannot affect
+                the very layout it is measuring. */}
+            <KeyboardInsetDebugOverlay
+              breakdown={kbdBreakdown}
+              appliedInset={keyboardInset}
+              top={96}  // just under the header; s.body already starts below the status bar
+            />
 
             {/* ── Main content area (flex:1 — fills all remaining space) ── */}
             <View style={s.chatArea}>
@@ -1688,20 +1669,22 @@ export const OwnerAssistant: React.FC = () => {
             </View>
 
             {/* ── Bottom input bar & Powered by HOSTIX branding ── */}
-            {/* inputBarWrapper bottom padding:
-                - iOS: SafeAreaView(edges=['top','bottom']) already handles the
-                  home indicator, so we only need a small aesthetic padding.
-                - Android: The Modal dialog window does NOT clip the gesture nav
-                  bar area for us, so we use insets.bottom (from
-                  useSafeAreaInsets) with a minimum of 8px to ensure the bar is
-                  never clipped on gesture-nav phones. When the keyboard is up
-                  it covers the nav bar, and the column's keyboardInset already
-                  lifts the composer, so only a hairline of padding is left. */}
+            {/* inputBarWrapper bottom padding — keyed off keyboardInset, not off
+                isKeyboardActive. The two can disagree for a frame (the flag
+                flips on the keyboard event, the inset lands with the layout
+                pass), and keying off the flag meant the composer briefly lost
+                its nav-bar clearance and dropped behind the gesture bar.
+                - keyboard up: the column's keyboardInset already lifts the
+                  composer clear of the IME, so only a hairline is left here.
+                - iOS idle: SafeAreaView(edges=['top','bottom']) already handles
+                  the home indicator.
+                - Android idle: the Modal dialog window draws behind the gesture
+                  nav bar, so we add insets.bottom ourselves (min 8). */}
             <View style={[
               s.inputBarWrapper,
               isFocused && s.inputBarWrapperFocused,
               {
-                paddingBottom: isKeyboardActive
+                paddingBottom: keyboardInset > 0
                   ? 4
                   : (Platform.OS === 'ios'
                     ? 4  // iOS SafeAreaView(bottom) already handles home indicator
@@ -1819,10 +1802,10 @@ export const OwnerAssistant: React.FC = () => {
               {/* Powered by HOSTIX footer branding */}
               {!isKeyboardActive && !isAddMenuOpen && (
                 <View style={s.footerBranding}>
-                  <Ionicons name="sparkles" size={11} color="#6366F1" />
-                  <Text style={s.footerBrandingText}>
-                    Powered by <Text style={s.footerBrandingBold}>HOSTIX</Text>
-                  </Text>
+                  <View style={s.footerRule} />
+                  <Text style={s.footerBrandingText}>Powered by</Text>
+                  <Text style={s.footerBrandingBold}>HOSTIX</Text>
+                  <View style={s.footerRule} />
                 </View>
               )}
             </View>
@@ -2251,20 +2234,34 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4,
-    paddingTop: 4,
+    gap: 7,
+    paddingTop: 6,
     paddingBottom: Platform.OS === 'android' ? 6 : 2,
     backgroundColor: '#FFF',
   },
-  footerBrandingText: {
-    fontSize: 10.5,
-    fontWeight: '500',
-    color: '#94A3B8',
-    letterSpacing: 0.3,
+  // Hairline on each side, so the wordmark reads as a signature rather than a
+  // label. flexShrink lets the rules give way first on narrow screens.
+  footerRule: {
+    height: 1,
+    width: 26,
+    flexShrink: 1,
+    backgroundColor: '#E2E8F0',
+    borderRadius: 1,
   },
+  footerBrandingText: {
+    fontSize: 9.5,
+    fontWeight: '500',
+    color: '#A8B3C4',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  // The wordmark carries its own weight, colour and tracking — that contrast is
+  // what makes it read as a brand instead of more body copy.
   footerBrandingBold: {
-    fontWeight: '700',
-    color: '#4F46E5',
+    fontSize: 10.5,
+    fontWeight: '800',
+    color: '#6D28D9',
+    letterSpacing: 1.4,
   },
 });
 
