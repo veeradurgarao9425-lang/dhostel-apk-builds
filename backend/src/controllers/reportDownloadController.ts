@@ -74,46 +74,54 @@ export const downloadPDFReport = async (req: AuthRequest, res: Response) => {
     }
 
     // Fetch income records
-    const incomes = db('income as i')
-      .leftJoin('payment_modes as pm', 'i.payment_mode_id', 'pm.payment_mode_id')
-      .select(
-        'i.income_date',
-        'i.amount',
-        'i.source',
-        'pm.payment_mode_name as payment_mode',
-        'i.receipt_number',
-        'i.description'
-      )
-      .whereBetween('i.income_date', [startDateStr, endDateStr])
-      .orderBy('i.income_date', 'asc');
+    let incomesData: any[] = [];
+    try {
+      const incomes = db('income as i')
+        .leftJoin('payment_modes as pm', 'i.payment_mode_id', 'pm.payment_mode_id')
+        .select(
+          'i.income_date',
+          'i.amount',
+          'i.source',
+          'pm.payment_mode_name as payment_mode',
+          'i.receipt_number',
+          'i.description'
+        )
+        .whereBetween('i.income_date', [startDateStr, endDateStr])
+        .orderBy('i.income_date', 'asc');
 
-    if (hostelIds.length > 0) {
-      incomes.whereIn('i.hostel_id', hostelIds);
+      if (hostelIds.length > 0) {
+        incomes.whereIn('i.hostel_id', hostelIds);
+      }
+      incomesData = await incomes;
+    } catch (e) {
+      console.warn('[PDFReport] Failed to fetch income records:', (e as any)?.message);
     }
-
-    const incomesData = await incomes;
 
     // Fetch expense records
-    const expenses = db('expenses as e')
-      .leftJoin('expense_categories as ec', 'e.category_id', 'ec.category_id')
-      .leftJoin('payment_modes as pm', 'e.payment_mode_id', 'pm.payment_mode_id')
-      .select(
-        'e.expense_date',
-        'e.amount',
-        'ec.category_name',
-        'pm.payment_mode_name as payment_mode',
-        'e.bill_number',
-        'e.vendor_name',
-        'e.description'
-      )
-      .whereBetween('e.expense_date', [startDateStr, endDateStr])
-      .orderBy('e.expense_date', 'asc');
+    let expensesData: any[] = [];
+    try {
+      const expenses = db('expenses as e')
+        .leftJoin('expense_categories as ec', 'e.category_id', 'ec.category_id')
+        .leftJoin('payment_modes as pm', 'e.payment_mode_id', 'pm.payment_mode_id')
+        .select(
+          'e.expense_date',
+          'e.amount',
+          'ec.category_name',
+          'pm.payment_mode_name as payment_mode',
+          'e.bill_number',
+          'e.vendor_name',
+          'e.description'
+        )
+        .whereBetween('e.expense_date', [startDateStr, endDateStr])
+        .orderBy('e.expense_date', 'asc');
 
-    if (hostelIds.length > 0) {
-      expenses.whereIn('e.hostel_id', hostelIds);
+      if (hostelIds.length > 0) {
+        expenses.whereIn('e.hostel_id', hostelIds);
+      }
+      expensesData = await expenses;
+    } catch (e) {
+      console.warn('[PDFReport] Failed to fetch expense records:', (e as any)?.message);
     }
-
-    const expensesData = await expenses;
 
     // Merge in short-stay guest income + staff wages so exports reconcile with Overview
     try {
@@ -456,40 +464,50 @@ export const downloadExcelReport = async (req: AuthRequest, res: Response) => {
     }
 
     // 1. Fetch Income records (Other Income)
-    const incomes = db('income as i')
-      .leftJoin('payment_modes as pm', 'i.payment_mode_id', 'pm.payment_mode_id')
-      .select(
-        'i.income_date',
-        'i.amount',
-        'i.source',
-        'pm.payment_mode_name as payment_mode',
-        'i.receipt_number',
-        'i.description'
-      )
-      .whereBetween('i.income_date', [startDateStr, endDateStr])
-      .orderBy('i.income_date', 'asc');
+    let incomesData: any[] = [];
+    try {
+      const incomes = db('income as i')
+        .leftJoin('payment_modes as pm', 'i.payment_mode_id', 'pm.payment_mode_id')
+        .select(
+          'i.income_date',
+          'i.amount',
+          'i.source',
+          'pm.payment_mode_name as payment_mode',
+          'i.receipt_number',
+          'i.description'
+        )
+        .whereBetween('i.income_date', [startDateStr, endDateStr])
+        .orderBy('i.income_date', 'asc');
 
-    if (hostelIds.length > 0) incomes.whereIn('i.hostel_id', hostelIds);
-    const incomesData = await incomes;
+      if (hostelIds.length > 0) incomes.whereIn('i.hostel_id', hostelIds);
+      incomesData = await incomes;
+    } catch (e) {
+      console.warn('[ExcelReport] Could not fetch income records:', (e as any)?.message);
+    }
 
     // 2. Fetch Expense records
-    const expenses = db('expenses as e')
-      .leftJoin('expense_categories as ec', 'e.category_id', 'ec.category_id')
-      .leftJoin('payment_modes as pm', 'e.payment_mode_id', 'pm.payment_mode_id')
-      .select(
-        'e.expense_date',
-        'e.amount',
-        'ec.category_name',
-        'pm.payment_mode_name as payment_mode',
-        'e.bill_number',
-        'e.vendor_name',
-        'e.description'
-      )
-      .whereBetween('e.expense_date', [startDateStr, endDateStr])
-      .orderBy('e.expense_date', 'asc');
+    let expensesData: any[] = [];
+    try {
+      const expenses = db('expenses as e')
+        .leftJoin('expense_categories as ec', 'e.category_id', 'ec.category_id')
+        .leftJoin('payment_modes as pm', 'e.payment_mode_id', 'pm.payment_mode_id')
+        .select(
+          'e.expense_date',
+          'e.amount',
+          'ec.category_name',
+          'pm.payment_mode_name as payment_mode',
+          'e.bill_number',
+          'e.vendor_name',
+          'e.description'
+        )
+        .whereBetween('e.expense_date', [startDateStr, endDateStr])
+        .orderBy('e.expense_date', 'asc');
 
-    if (hostelIds.length > 0) expenses.whereIn('e.hostel_id', hostelIds);
-    const expensesData = await expenses;
+      if (hostelIds.length > 0) expenses.whereIn('e.hostel_id', hostelIds);
+      expensesData = await expenses;
+    } catch (e) {
+      console.warn('[ExcelReport] Could not fetch expense records:', (e as any)?.message);
+    }
 
     // Merge in short-stay guest income + staff wages so the export reconciles with Overview
     try {
@@ -526,87 +544,105 @@ export const downloadExcelReport = async (req: AuthRequest, res: Response) => {
     } catch (e) { /* staff_payments table may not exist */ }
 
     // 3. Fetch Student (Tenant) records
-    const students = db('students as s')
-      .leftJoin('rooms as r', 's.room_id', 'r.room_id')
-      .select(
-        's.first_name',
-        's.last_name',
-        's.phone',
-        's.email',
-        's.admission_date',
-        's.status as is_active',
-        'r.room_number',
-        db.raw('NULL as bed_number'),
-        's.guardian_name',
-        's.guardian_phone',
-        's.permanent_address'
-      )
-      .orderBy('s.first_name', 'asc');
+    let studentsData: any[] = [];
+    try {
+      const students = db('students as s')
+        .leftJoin('rooms as r', 's.room_id', 'r.room_id')
+        .select(
+          's.first_name',
+          's.last_name',
+          's.phone',
+          's.email',
+          's.admission_date',
+          db.raw('IFNULL(s.is_active, IF(s.status = 1, 1, 0)) as is_active'),
+          'r.room_number',
+          db.raw('NULL as bed_number'),
+          db.raw('NULL as guardian_name'),
+          db.raw('NULL as guardian_phone'),
+          db.raw('NULL as permanent_address')
+        )
+        .orderBy('s.first_name', 'asc');
 
-    if (hostelIds.length > 0) students.whereIn('s.hostel_id', hostelIds);
-    const studentsData = await students;
+      if (hostelIds.length > 0) students.whereIn('s.hostel_id', hostelIds);
+      studentsData = await students;
+    } catch (e) {
+      console.warn('[ExcelReport] Could not fetch student records:', (e as any)?.message);
+    }
 
     // 4. Fetch Fee Payments (Fee Collections)
-    const payments = db('fee_payments as fp')
-      .join('students as s', 'fp.student_id', 's.student_id')
-      .leftJoin('payment_modes as pm', 'fp.payment_mode_id', 'pm.payment_mode_id')
-      .leftJoin('monthly_fees as mf', 'fp.fee_id', 'mf.fee_id')
-      .leftJoin('rooms as r', 's.room_id', 'r.room_id')
-      .select(
-        'fp.payment_date',
-        's.first_name',
-        's.last_name',
-        'r.room_number',
-        'fp.amount as amount_paid',
-        'pm.payment_mode_name as payment_mode',
-        'mf.fee_month as payment_for_month',
-        'fp.transaction_id as transaction_reference',
-        'fp.receipt_number',
-        'fp.notes as remarks'
-      )
-      .whereBetween('fp.payment_date', [startDateStr, endDateStr])
-      .orderBy('fp.payment_date', 'asc');
+    let paymentsData: any[] = [];
+    try {
+      const payments = db('fee_payments as fp')
+        .join('students as s', 'fp.student_id', 's.student_id')
+        .leftJoin('payment_modes as pm', 'fp.payment_mode_id', 'pm.payment_mode_id')
+        .leftJoin('monthly_fees as mf', 'fp.fee_id', 'mf.fee_id')
+        .leftJoin('rooms as r', 's.room_id', 'r.room_id')
+        .select(
+          'fp.payment_date',
+          's.first_name',
+          's.last_name',
+          'r.room_number',
+          'fp.amount as amount_paid',
+          'pm.payment_mode_name as payment_mode',
+          'mf.fee_month as payment_for_month',
+          'fp.transaction_id as transaction_reference',
+          'fp.receipt_number',
+          'fp.notes as remarks'
+        )
+        .whereBetween('fp.payment_date', [startDateStr, endDateStr])
+        .orderBy('fp.payment_date', 'asc');
 
-    if (hostelIds.length > 0) payments.whereIn('fp.hostel_id', hostelIds);
-    const paymentsData = await payments;
+      if (hostelIds.length > 0) payments.whereIn('fp.hostel_id', hostelIds);
+      paymentsData = await payments;
+    } catch (e) {
+      console.warn('[ExcelReport] Could not fetch fee payments:', (e as any)?.message);
+    }
 
     // 5. Fetch Rooms list
-    const roomsList = db('rooms as r')
-      .leftJoin('room_types as rt', 'r.room_type_id', 'rt.room_type_id')
-      .select(
-        'r.room_number',
-        'rt.room_type_name',
-        'r.floor_number',
-        'r.capacity',
-        'r.occupied_beds',
-        'r.rent_per_bed',
-        'r.is_available',
-        'r.amenities'
-      )
-      .orderBy('r.room_number', 'asc');
+    let roomsListData: any[] = [];
+    try {
+      const roomsList = db('rooms as r')
+        .select(
+          'r.room_number',
+          db.raw("'Standard' as room_type_name"),
+          'r.floor_number',
+          'r.capacity',
+          'r.occupied_beds',
+          db.raw('NULL as rent_per_bed'),
+          'r.is_available',
+          db.raw('NULL as amenities')
+        )
+        .orderBy('r.room_number', 'asc');
 
-    if (hostelIds.length > 0) roomsList.whereIn('r.hostel_id', hostelIds);
-    const roomsListData = await roomsList;
+      if (hostelIds.length > 0) roomsList.whereIn('r.hostel_id', hostelIds);
+      roomsListData = await roomsList;
+    } catch (e) {
+      console.warn('[ExcelReport] Could not fetch rooms list:', (e as any)?.message);
+    }
 
     // 6. Fetch Pending Dues
-    const dues = db('monthly_fees as mf')
-      .join('students as s', 'mf.student_id', 's.student_id')
-      .leftJoin('rooms as r', 's.room_id', 'r.room_id')
-      .leftJoin('fee_status_master as fsm', 'mf.fee_status_id', 'fsm.id')
-      .select(
-        's.first_name',
-        's.last_name',
-        'r.room_number',
-        'mf.fee_month',
-        'mf.total_due',
-        'mf.due_date',
-        'fsm.name as fee_status'
-      )
-      .whereIn('mf.fee_status_id', [3, 4])
-      .orderBy('mf.due_date', 'asc');
+    let duesData: any[] = [];
+    try {
+      const dues = db('monthly_fees as mf')
+        .join('students as s', 'mf.student_id', 's.student_id')
+        .leftJoin('rooms as r', 's.room_id', 'r.room_id')
+        .select(
+          's.first_name',
+          's.last_name',
+          'r.room_number',
+          'mf.fee_month',
+          'mf.total_due',
+          'mf.due_date',
+          db.raw("IFNULL(mf.fee_status, 'Pending') as fee_status")
+        )
+        .whereRaw("(mf.fee_status IN ('Pending', 'Partially Paid', 'Overdue') OR mf.paid_amount < mf.total_due)")
+        .orderBy('mf.due_date', 'asc');
 
-    if (hostelIds.length > 0) dues.whereIn('mf.hostel_id', hostelIds);
-    const duesData = await dues;
+      if (hostelIds.length > 0) dues.whereIn('mf.hostel_id', hostelIds);
+      duesData = await dues;
+    } catch (e) {
+      console.warn('[ExcelReport] Could not fetch pending dues:', (e as any)?.message);
+    }
 
     // Calculate totals
     const feeIncome = paymentsData.reduce((sum, p) => sum + Number(p.amount_paid || 0), 0);

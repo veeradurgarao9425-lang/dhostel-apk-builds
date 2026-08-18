@@ -178,6 +178,58 @@ export async function patchDatabaseSchema() {
           ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         `);
       }
+      if (!tableNamesLower.includes('expense_categories')) {
+        console.log('[schema-patch] creating missing expense_categories table...');
+        await db.raw(`
+          CREATE TABLE expense_categories (
+            category_id INT AUTO_INCREMENT PRIMARY KEY,
+            category_name VARCHAR(100) NOT NULL UNIQUE,
+            is_active BOOLEAN DEFAULT TRUE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        `);
+        await db.raw(`
+          INSERT IGNORE INTO expense_categories (category_id, category_name) VALUES
+          (1, 'Maintenance & Repairs'), (2, 'Utilities & Electricity'), (3, 'Food & Groceries'), (4, 'Staff Wages & Salaries'), (5, 'Rent & Taxes'), (6, 'Miscellaneous')
+        `);
+      }
+      if (!tableNamesLower.includes('expenses')) {
+        console.log('[schema-patch] creating missing expenses table...');
+        await db.raw(`
+          CREATE TABLE expenses (
+            expense_id INT AUTO_INCREMENT PRIMARY KEY,
+            hostel_id INT NOT NULL,
+            category_id INT NULL,
+            expense_date DATE NOT NULL,
+            amount DECIMAL(10, 2) NOT NULL,
+            payment_mode_id INT NULL,
+            vendor_name VARCHAR(150) NULL,
+            description TEXT NULL,
+            bill_number VARCHAR(100) NULL,
+            created_by INT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (hostel_id) REFERENCES hostel_master(hostel_id) ON DELETE CASCADE
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        `);
+      }
+      if (!tableNamesLower.includes('income')) {
+        console.log('[schema-patch] creating missing income table...');
+        await db.raw(`
+          CREATE TABLE income (
+            income_id INT AUTO_INCREMENT PRIMARY KEY,
+            hostel_id INT NOT NULL,
+            income_date DATE NOT NULL,
+            amount DECIMAL(10, 2) NOT NULL,
+            source VARCHAR(150) NULL,
+            payment_mode_id INT NULL,
+            receipt_number VARCHAR(100) NULL,
+            description TEXT NULL,
+            created_by INT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (hostel_id) REFERENCES hostel_master(hostel_id) ON DELETE CASCADE
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        `);
+      }
       if (!tableNamesLower.includes('monthly_fees')) {
         console.log('[schema-patch] creating missing monthly_fees table...');
         await db.raw(`
