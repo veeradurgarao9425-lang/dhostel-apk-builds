@@ -332,7 +332,7 @@ export default function AddStaffScreen() {
                             <Ionicons name="person-outline" size={18} color={errors.fullName ? '#EF4444' : theme.primary} style={styles.inputIcon} />
                             <TextInput
                                 style={styles.input}
-                                placeholder="Enter full name"
+                                placeholder="Ex: Durgarao Goriparthi"
                                 placeholderTextColor="#A0AEC0"
                                 value={fullName}
                                 onChangeText={setFullName}
@@ -347,7 +347,7 @@ export default function AddStaffScreen() {
                             <Ionicons name="call-outline" size={18} color={errors.phone ? '#EF4444' : theme.primary} style={styles.inputIcon} />
                             <TextInput
                                 style={styles.input}
-                                placeholder="Enter 10-digit phone number"
+                                placeholder="6303359425"
                                 placeholderTextColor="#A0AEC0"
                                 keyboardType="phone-pad"
                                 maxLength={10}

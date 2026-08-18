@@ -66,7 +66,7 @@ export default function RoleSelectScreen({ navigation }: any) {
 
           <View style={styles.experienceTagContainer}>
             <Ionicons name="sparkles" size={10} color="#6366F1" style={{ marginRight: 3 }} />
-            <Text style={styles.experienceTagText}>HOSTIX ECOSYSTEM</Text>
+            <Text style={styles.experienceTagText}>HOST<Text style={{ color: '#F59E0B' }}>IX</Text> ECOSYSTEM</Text>
           </View>
 
           <Text style={styles.title}>Choose Your Portal</Text>

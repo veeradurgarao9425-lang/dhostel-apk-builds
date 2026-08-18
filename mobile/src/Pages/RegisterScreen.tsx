@@ -338,12 +338,15 @@ export default function RegisterScreen({ navigation }: any) {
                         <Ionicons name="arrow-back" size={22} color="#FFF" />
                     </TouchableOpacity>
 
-                    <View style={styles.headerLogoContainer}>
-                        <Image
-                            source={require('../../assets/HostixNew.png')}
-                            style={styles.headerLogo}
-                            resizeMode="cover"
-                        />
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <View style={styles.headerLogoContainer}>
+                            <Image
+                                source={require('../../assets/HostixNew.png')}
+                                style={styles.headerLogo}
+                                resizeMode="cover"
+                            />
+                        </View>
+                        <Text style={{ fontSize: 18, fontWeight: '900', color: '#FFF' }}>Host<Text style={{ color: '#FCD34D' }}>ix</Text></Text>
                     </View>
                 </View>
                 <Text style={styles.headerTitle}>Create Account</Text>

@@ -167,7 +167,7 @@ export function TenantHostelKeyScreen() {
               resizeMode="cover"
             />
           </View>
-          <Text style={styles.brandName}>HOSTIX</Text>
+          <Text style={styles.brandName}>HOST<Text style={{ color: '#FCD34D' }}>IX</Text></Text>
           <View style={styles.taglineRow}>
             <View style={styles.taglineLine} />
             <Text style={styles.tagline}>TENANT PORTAL</Text>

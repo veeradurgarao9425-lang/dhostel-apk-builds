@@ -547,11 +547,25 @@ export default function IncomeDetailsScreen() {
         let targetScreen = 'TenantTransactions';
         let targetParams: any = { studentId: tx.student_id, studentName: tx.title };
 
+        const isDeposit = tx.type === 'Deposit' || 
+                          tx.type === 'Deposit Refund' || 
+                          tx.type?.toLowerCase().includes('deposit') || 
+                          tx.title?.toLowerCase().includes('deposit') ||
+                          tx.subtitle?.toLowerCase().includes('deposit') ||
+                          tx.source?.toLowerCase().includes('deposit') || 
+                          tx.source?.toLowerCase().includes('deduction');
+
         if (tx.type === 'Rent') {
             iconBg = '#DCFCE7'; // Rent (green)
             iconColor = '#15803D';
             iconChar = 'R';
             targetScreen = 'TenantTransactions';
+            targetParams = { studentId: tx.student_id, studentName: tx.title };
+        } else if (isDeposit) {
+            iconBg = '#EFF6FF'; // Deposit / Refund (blue)
+            iconColor = '#2563EB';
+            iconChar = 'D';
+            targetScreen = tx.student_id ? 'TenantTransactions' : 'Income';
             targetParams = { studentId: tx.student_id, studentName: tx.title };
         } else if (tx.type === 'Guest') {
             iconBg = '#F3E5F5'; // Guest (purple)
@@ -559,13 +573,21 @@ export default function IncomeDetailsScreen() {
             iconChar = 'G';
             targetScreen = 'Guests';
             targetParams = {};
-        } else if (tx.type === 'Other') {
+        } else if (tx.type === 'Admission') {
+            iconBg = '#EDE9FE';
+            iconColor = '#7C3AED';
+            iconChar = 'A';
+            targetScreen = 'TenantTransactions';
+            targetParams = { studentId: tx.student_id, studentName: tx.title };
+        } else {
             iconBg = '#FFEDD5'; // Other (orange)
             iconColor = '#C2410C';
             iconChar = 'O';
             targetScreen = 'Income'; 
             targetParams = {};
         }
+
+        const displaySubtitle = isDeposit ? (tx.subtitle || 'Deposit / Settlement') : (tx.subtitle || tx.type);
 
         return (
             <TouchableOpacity
@@ -600,7 +622,7 @@ export default function IncomeDetailsScreen() {
                         {tx.title}
                     </Text>
                     <Text style={[s.txSubText, { color: theme.textSecondary }]}>
-                        {new Date(tx.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} · {tx.subtitle || tx.type}
+                        {new Date(tx.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} · {displaySubtitle}
                     </Text>
                 </View>
 
@@ -965,7 +987,7 @@ export default function IncomeDetailsScreen() {
 
                         {/* Month Selector if Month tab is chosen */}
                         {exportRange === 'month' && (
-                            <View style={{ marginBottom: 18 }}>
+                            <View style={{ marginBottom: 14 }}>
                                 <Text style={[s.inputLabelText, { color: theme.textSecondary }]}>MONTH (YYYY-MM)</Text>
                                 <TextInput
                                     style={[
@@ -982,16 +1004,55 @@ export default function IncomeDetailsScreen() {
                             </View>
                         )}
 
-                        {/* Action Button: Download Excel */}
-                        <View style={{ marginTop: 6 }}>
+                        {/* Recipient Email Input */}
+                        <View style={{ marginBottom: 16 }}>
+                            <Text style={[s.inputLabelText, { color: theme.textSecondary }]}>RECIPIENT EMAIL</Text>
+                            <TextInput
+                                style={[
+                                    s.textInputField,
+                                    { color: theme.textPrimary, borderColor: isDark ? '#334155' : '#E2E8F0', backgroundColor: isDark ? '#0F172A' : '#F8FAFC' }
+                                ]}
+                                value={recipientEmail}
+                                onChangeText={setRecipientEmail}
+                                placeholder="name@example.com"
+                                placeholderTextColor={theme.textSecondary}
+                                autoCapitalize="none"
+                                keyboardType="email-address"
+                            />
+                        </View>
+
+                        {/* Dual Action Buttons: Download Excel + Send to Mail */}
+                        <View style={{ flexDirection: 'row', gap: 10, marginTop: 4 }}>
                             <TouchableOpacity
-                                style={[s.dualActionBtn, s.downloadExcelBtn, { width: '100%' }]}
+                                style={[s.dualActionBtn, s.downloadExcelBtn, { flex: 1 }]}
                                 onPress={handleDownloadExcel}
-                                disabled={isExporting}
+                                disabled={isExporting || isSendingEmail}
                                 activeOpacity={0.85}
                             >
-                                <FileSpreadsheet color="#FFF" size={18} />
-                                <Text style={[s.dualActionBtnText, { fontSize: 14.5 }]}>Download Excel Report</Text>
+                                {isExporting ? (
+                                    <ActivityIndicator size="small" color="#FFF" />
+                                ) : (
+                                    <>
+                                        <FileSpreadsheet color="#FFF" size={16} />
+                                        <Text style={[s.dualActionBtnText, { fontSize: 13 }]}>Download</Text>
+                                    </>
+                                )}
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                style={[s.dualActionBtn, { flex: 1, backgroundColor: theme.primary }]}
+                                onPress={handleEmailReport}
+                                disabled={isExporting || isSendingEmail}
+                                activeOpacity={0.85}
+                            >
+                                {isSendingEmail ? (
+                                    <ActivityIndicator size="small" color="#FFF" />
+                                ) : (
+                                    <>
+                                        <Mail color="#FFF" size={16} />
+                                        <Text style={[s.dualActionBtnText, { fontSize: 13 }]}>Send to Mail</Text>
+                                    </>
+                                )}
                             </TouchableOpacity>
                         </View>
                     </View>

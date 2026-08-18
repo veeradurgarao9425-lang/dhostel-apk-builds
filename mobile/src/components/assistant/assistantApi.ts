@@ -226,7 +226,7 @@ export async function fetchDuesSummary(): Promise<DueSummary | null> {
         roomNumber: f.room_number ?? undefined,
         amount: parseFloat(f.balance || 0),
         dueDate: f.due_date,
-        status: (due < nowMs) ? 'overdue' : 'pending',
+        status: (due < nowMs) ? ('overdue' as const) : ('pending' as const),
         studentId: f.student_id,
       };
     });
@@ -484,11 +484,16 @@ export async function fetchNoticesCount(): Promise<number> {
 
 // ─── Room Details by Room Number ──────────────────────────────────────────────
 
-export async function fetchRoomByNumber(roomNum: number): Promise<any | null> {
+export async function fetchRoomByNumber(roomNum: number | string): Promise<any | null> {
   const data = await safeGet('/rooms', { limit: 200 });
   if (!data?.data || !Array.isArray(data.data)) return null;
 
-  const foundRoom = data.data.find((r: any) => Number(r.room_number) === Number(roomNum));
+  const target = String(roomNum).trim().toLowerCase();
+  const foundRoom = data.data.find((r: any) => {
+    const rn = String(r.room_number || '').trim().toLowerCase();
+    const rname = String(r.room_name || '').trim().toLowerCase();
+    return rn === target || rname === target || rn.includes(target);
+  });
   if (!foundRoom) return null;
 
   // Fetch full details including occupants

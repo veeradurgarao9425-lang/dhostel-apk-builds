@@ -8,6 +8,7 @@ import { Bell, CreditCard, UserPlus, AlertTriangle, CheckCircle2, ChevronRight, 
 import { useNotifications, Notification } from '../hooks/useNotifications';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { AnimatedGlowIcon } from '../components/ui/AnimatedGlowIcon';
 import DateTimePickerModal from "react-native-modal-datetime-picker";
 
@@ -53,6 +54,7 @@ const formatRelativeTime = (dateStr: string) => {
 };
  
 export const NotificationScreen = () => {
+    const { user } = useAuth();
     const { notifications, loading, refreshNotifications, markAllAsRead, markAsRead } = useNotifications();
     const navigation = useNavigation<any>();
     const { theme, isDark } = useTheme();

@@ -20,7 +20,7 @@ export type AssistantIntent =
   | { type: 'SHOW_STUDENTS'; filter?: 'active' | 'inactive' | 'prebooked' | 'qr' | 'pending' | 'unallocated' | 'joined_this_month' | 'vacated_this_month' | 'all' }
   | { type: 'SHOW_STUDENT_LIST_INLINE'; filter?: string }
   | { type: 'SHOW_STUDENT_SEARCH'; name: string }
-  | { type: 'SHOW_ROOM_DETAIL'; roomNumber: number }
+  | { type: 'SHOW_ROOM_DETAIL'; roomNumber: number | string }
   | { type: 'SHOW_FLOOR_DETAIL'; floorNumber: number }
   | { type: 'SHOW_PAID_STUDENTS' }
   | { type: 'SHOW_DUES'; filter?: 'overdue' | 'pending' | 'all' }
@@ -224,10 +224,12 @@ export function normalizeQuery(raw: string): string {
 }
 
 // ─── Dynamic Extraction ───────────────────────────────────────────────────────
-/** Extract room number from a query, e.g. "room 101" → 101 */
-export function extractRoomNumber(q: string): number | null {
-  const m = q.match(/room\s+(\d+)/i) || q.match(/(\d{3,4})\s+room/i) || (q.match(/^\s*(\d{1,4})\s*$/) ? q.match(/^\s*(\d{1,4})\s*$/) : null);
-  return m ? parseInt(m[1], 10) : null;
+/** Extract room number or alphanumeric room name, e.g. "room 101", "room 10121", "room 101test" */
+export function extractRoomNumber(q: string): string | null {
+  const m = q.match(/room\s+([a-zA-Z0-9_-]+)/i) || 
+            q.match(/([a-zA-Z0-9_-]+)\s+room/i) || 
+            q.match(/^\s*([a-zA-Z0-9_-]{1,10})\s*$/);
+  return m ? m[1].trim() : null;
 }
 
 /** Extract floor number from a query (after normalizeQuery runs floor synonyms) */
@@ -1586,6 +1588,27 @@ export const HOW_TO_STEPS: Record<HowToAction, { title: string; steps: string[];
     ],
     screen: 'CollectedPayments',
     screenLabel: 'Go to Collected Payments',
+  },
+  download_receipt: {
+    title: 'How to Download / Share a Receipt',
+    steps: [
+      'Navigate to Collected Payments or find the student in Students list.',
+      'Tap on the payment transaction to open the receipt preview.',
+      'Tap "Download PDF" or "Share on WhatsApp" to send to tenant.',
+    ],
+    screen: 'CollectedPayments',
+    screenLabel: 'View Receipts',
+  },
+  prebook_room: {
+    title: 'How to Pre-Book a Room or Bed',
+    steps: [
+      'Go to Pre-Booking from dashboard quick actions.',
+      'Enter prospective tenant information and check-in date.',
+      'Select hostel room and bed.',
+      'Record token/advance fee and tap Confirm Booking.',
+    ],
+    screen: 'PreBooking',
+    screenLabel: 'Open Pre-Booking',
   },
 };
 

@@ -75,7 +75,7 @@ export default function TenantTransactionsScreen() {
             room_number: student?.room_number || 'N/A',
             paid_amount: tx.amount,
             phone: student?.phone || 'N/A',
-            fee_month: tx.fee_month || tx.payment_for_month || new Date(tx.payment_date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+            fee_month: tx.fee_month || (tx as any).payment_for_month || new Date(tx.payment_date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
             due_date: tx.due_date || tx.payment_date
         };
         navigation.navigate('Receipt', { feeData });
@@ -100,7 +100,7 @@ export default function TenantTransactionsScreen() {
                 <View style={styles.txInfo}>
                     <Text style={styles.txTitle}>
                         Rent Payment • {
-                            [item.payment_for_month, item.fee_month].find(m => m && m !== 'NA' && m !== 'N/A') || 
+                            [(item as any).payment_for_month, item.fee_month].find(m => m && m !== 'NA' && m !== 'N/A') || 
                             new Date(item.payment_date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
                         }
                     </Text>

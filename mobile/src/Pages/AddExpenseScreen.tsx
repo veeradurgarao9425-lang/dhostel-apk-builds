@@ -319,8 +319,15 @@ export const AddExpenseScreen = ({ route, navigation }: any) => {
     const fetchStaff = async () => {
         try {
             const response = await api.get('/staff');
-            if (response.data.success) {
-                setStaffList(response.data.data.filter((s: any) => s.is_active));
+            if (response.data.success && Array.isArray(response.data.data)) {
+                setStaffList(response.data.data.filter((s: any) => 
+                    s.status === 1 || 
+                    s.status === '1' || 
+                    s.status === 'Active' || 
+                    s.is_active === 1 || 
+                    s.is_active === true || 
+                    s.status == null
+                ));
             }
         } catch (error) {
             console.error('Error fetching staff:', error);

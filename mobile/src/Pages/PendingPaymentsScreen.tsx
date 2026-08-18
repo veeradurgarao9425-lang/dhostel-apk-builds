@@ -23,6 +23,8 @@ import { AppHeader } from '../components/AppHeader';
 import { useTranslation } from 'react-i18next';
 import * as Clipboard from 'expo-clipboard';
 import { FilterDuesModal } from '../components/FilterDuesModal';
+import { CalendarFilterModal, DateFilterSelection } from '../components/CalendarFilterModal';
+import { PaymentSuccessSheet } from '../components/PaymentSuccessSheet';
 import { EmptyState } from '../components/ui/EmptyState';
 import { ErrorState } from '../components/ui/ErrorState';
 import { LoadMoreFooter } from '../components/ui/LoadMoreFooter';
@@ -770,6 +772,79 @@ export default function PendingPaymentsScreen() {
         setTenants([]);
         load(1, false);
     };
+
+    const handleDateFilterSelect = (sel: DateFilterSelection) => {
+        let presetName = 'All Time';
+        if (sel.type === 'today') presetName = 'Today';
+        else if (sel.type === 'yesterday') presetName = 'Yesterday';
+        else if (sel.type === 'this_month') presetName = 'Last 30 Days';
+        else if (sel.type === 'last_month') presetName = 'Previous Month';
+        else if (sel.type === 'last_3_months') presetName = 'Last 3 Months';
+        else if (sel.type === 'custom_month' && sel.startDate && sel.endDate) {
+            presetName = 'Custom Date Range';
+        }
+
+        const newFilters = {
+            ...activeFilters,
+            datePreset: presetName,
+            customStartDate: sel.startDate || '',
+            customEndDate: sel.endDate || '',
+        };
+        handleApplyFilters(newFilters);
+    };
+
+    const renderTabEmptyState = () => {
+        switch (activeTab) {
+            case 'Overdue':
+                return (
+                    <EmptyState
+                        illustration="rent"
+                        title="Zero Overdue Bills! 🚀"
+                        subtitle="Awesome! All students have paid their rent on time or are within schedule."
+                    />
+                );
+            case 'Next 7 Days':
+                return (
+                    <EmptyState
+                        illustration="pending"
+                        title="No Bills Due in 7 Days"
+                        subtitle="There are no upcoming rent due dates approaching this week."
+                    />
+                );
+            case 'Partially Paid':
+                return (
+                    <EmptyState
+                        illustration="income"
+                        title="No Partial Dues"
+                        subtitle="All rent payments are either fully cleared or awaiting regular cycle collection."
+                    />
+                );
+            case 'Fully Paid':
+                return (
+                    <EmptyState
+                        illustration="notice"
+                        title="No Paid Records Found"
+                        subtitle="Collected payments for this cycle will appear here once recorded."
+                    />
+                );
+            case 'Plan Renewals':
+                return (
+                    <EmptyState
+                        illustration="pending"
+                        title="All Plans Active"
+                        subtitle="No student tenancy plans are expiring in the next 15 days."
+                    />
+                );
+            default:
+                return (
+                    <EmptyState
+                        illustration="rent"
+                        title="All Cleared! 🎉"
+                        subtitle="Great job! There are no pending dues or outstanding balances in this hostel."
+                    />
+                );
+        }
+    };
     const [totalPending, setTotalPending] = useState(0);
     const [partialPaid, setPartialPaid] = useState(0);
     const [totalDefaulters, setTotalDefaulters] = useState(0);
@@ -787,8 +862,12 @@ export default function PendingPaymentsScreen() {
     const [renewalStudents, setRenewalStudents] = useState<any[]>([]);
     const [renewalsLoading, setRenewalsLoading] = useState(false);
 
-    // Collect Drawer
+    // Collect Drawer & Celebration Success
     const [collectModalVisible, setCollectModalVisible] = useState(false);
+    const [calendarModalVisible, setCalendarModalVisible] = useState(false);
+    const [paymentSuccessSheetVisible, setPaymentSuccessSheetVisible] = useState(false);
+    const [successPaymentData, setSuccessPaymentData] = useState<any>(null);
+
     const [selectedFee, setSelectedFee] = useState<any>(null);
     const [payAmount, setPayAmount] = useState('');
     const [payNotes, setPayNotes] = useState('');
@@ -907,9 +986,6 @@ export default function PendingPaymentsScreen() {
             });
 
             // Compute dynamic live tab counts from students
-            // Settled records keep isOverdue === true (the due date is still in
-            // the past), so the balance check keeps them out of the Overdue
-            // count — matching the tab filter below.
             const overdueCount = pending.filter(s => s.isOverdue && s.dueAmount > 0).length;
             const overdueAmount = pending.filter(s => s.isOverdue && s.dueAmount > 0).reduce((sum, s) => sum + s.dueAmount, 0);
             const next7Count = pending.filter(s => !s.isOverdue && s.dueAmount > 0 && s.paidAmount === 0).length;
@@ -992,10 +1068,11 @@ export default function PendingPaymentsScreen() {
         if (!selectedFee) return;
         try {
             setPayLoading(true);
+            const recordedNum = parseFloat(payAmount);
             const payload: any = {
                 student_id: selectedFee.id,
                 hostel_id: selectedFee.hostel_id,
-                amount: parseFloat(payAmount),
+                amount: recordedNum,
                 payment_date: payDate,
                 due_date: payDueDate,
                 payment_mode_id: parseInt(payModeId || '1'),
@@ -1006,7 +1083,21 @@ export default function PendingPaymentsScreen() {
             const res = await api.post('/monthly-fees/record-payment', payload);
             if (res.data.success) {
                 setCollectModalVisible(false);
-                showSuccess(`₹${payAmount} recorded for ${selectedFee.name}`, 'Payment Collected!');
+                const prevDue = parseFloat((selectedFee.dueAmount || 0).toString());
+                const remaining = Math.max(0, prevDue - recordedNum);
+                const modeName = paymentModes.find(m => String(m.id || m.payment_mode_id) === String(payModeId))?.name || 'Cash';
+
+                setSuccessPaymentData({
+                    amount: recordedNum,
+                    payerName: selectedFee.name,
+                    roomLabel: selectedFee.room && selectedFee.room !== 'N/A' ? `Room ${selectedFee.room}` : undefined,
+                    periodLabel: selectedFee.feeMonth,
+                    paymentMode: modeName,
+                    receiptNo: res.data.data?.receipt_number || res.data.receipt_number,
+                    remainingBalance: remaining,
+                    transactionId: payTransactionId || undefined,
+                });
+                setPaymentSuccessSheetVisible(true);
                 setTimeout(() => load(1, true), 500);
             } else {
                 showError(res.data.error || 'Payment was not saved.');
@@ -1016,7 +1107,7 @@ export default function PendingPaymentsScreen() {
         } finally {
             setPayLoading(false);
         }
-    }, [payAmount, payDate, payModeId, payNotes, payTransactionId, payDueDate, selectedFee, load, showSuccess, showError, showApiError]);
+    }, [payAmount, payDate, payModeId, payNotes, payTransactionId, payDueDate, selectedFee, paymentModes, load, showError, showApiError]);
 
     // ── Filtered list ─────────────────────────────────────────────────────────
     const filteredTenants = tenants.filter(t => {
@@ -1042,7 +1133,7 @@ export default function PendingPaymentsScreen() {
         }
 
         // 4. Date Filter
-        const rawDate = t.rawDueDate || t.due_date || t.dueDate || new Date().toISOString();
+        const rawDate = t.rawDueDate || (t as any).due_date || t.dueDate || new Date().toISOString();
         if (activeFilters.datePreset !== 'All Time') {
             const dueDateObj = new Date(rawDate);
             dueDateObj.setHours(0, 0, 0, 0);
@@ -1363,7 +1454,7 @@ export default function PendingPaymentsScreen() {
                             ).length;
                             const pendingCount = tenants.filter(t => {
                                 const due = parseFloat((t.dueAmount || 0).toString());
-                                const isPaid = t.status === 'Fully Paid' || t.status === 'paid' || t.fee_status === 'Fully Paid';
+                                const isPaid = t.status === 'Fully Paid' || t.status === 'paid' || (t as any).fee_status === 'Fully Paid';
                                 if (due <= 0 || isPaid) return false;
                                 if (activeTab === 'Overdue') return t.isOverdue;
                                 if (activeTab === 'Next 7 Days') return !t.isOverdue && due > 0 && t.paidAmount === 0;
@@ -1373,6 +1464,27 @@ export default function PendingPaymentsScreen() {
 
                             return (
                                 <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
+                                    {/* Quick Date Calendar Filter Button */}
+                                    <TouchableOpacity
+                                        style={[s.filterBtn, {
+                                            backgroundColor: isDark ? '#1E293B' : '#FFF',
+                                            borderColor: activeFilters.datePreset !== 'All Time' ? theme.primary : (isDark ? '#334155' : '#ECECEC'),
+                                            borderWidth: activeFilters.datePreset !== 'All Time' ? 1.5 : 1,
+                                            paddingHorizontal: 10,
+                                            shadowColor: 'transparent',
+                                            elevation: 0
+                                        }]}
+                                        activeOpacity={0.7}
+                                        onPress={() => setCalendarModalVisible(true)}
+                                    >
+                                        <Ionicons name="calendar-outline" size={16} color={activeFilters.datePreset !== 'All Time' ? theme.primary : (isDark ? '#94A3B8' : '#64748B')} />
+                                        {activeFilters.datePreset !== 'All Time' && (
+                                            <Text style={[s.filterTxt, { color: theme.primary, maxWidth: 80 }]} numberOfLines={1}>
+                                                {activeFilters.datePreset}
+                                            </Text>
+                                        )}
+                                    </TouchableOpacity>
+
                                     <TouchableOpacity
                                         style={[s.filterBtn, {
                                             backgroundColor: isDark ? '#1E293B' : '#FFF',
@@ -1624,10 +1736,7 @@ export default function PendingPaymentsScreen() {
                     error ? (
                         <ErrorState onRetry={() => load(1, false)} />
                     ) : (
-                        <EmptyState illustration="pending"
-                            title={t('pendingDues.allClear', 'All Clear!')}
-                            subtitle={t('pendingDues.noPendingPayments', 'No pending payments found.')}
-                        />
+                        renderTabEmptyState()
                     )
                 }
                 ListFooterComponent={
@@ -1671,6 +1780,41 @@ export default function PendingPaymentsScreen() {
                 themeColor={theme.primary}
             />
 
+            {/* ── Celebratory Payment Success Sheet ─────────────────────────── */}
+            {successPaymentData && (
+                <PaymentSuccessSheet
+                    visible={paymentSuccessSheetVisible}
+                    onClose={() => {
+                        setPaymentSuccessSheetVisible(false);
+                        setSuccessPaymentData(null);
+                    }}
+                    amount={successPaymentData.amount}
+                    payerName={successPaymentData.payerName}
+                    roomLabel={successPaymentData.roomLabel}
+                    periodLabel={successPaymentData.periodLabel}
+                    paymentMode={successPaymentData.paymentMode}
+                    receiptNo={successPaymentData.receiptNo}
+                    remainingBalance={successPaymentData.remainingBalance}
+                    transactionId={successPaymentData.transactionId}
+                    onViewReceipt={successPaymentData.receiptNo ? () => {
+                        setPaymentSuccessSheetVisible(false);
+                        navigation.navigate('Receipt', { receiptNumber: successPaymentData.receiptNo });
+                    } : undefined}
+                    onGoToPassbook={() => {
+                        setPaymentSuccessSheetVisible(false);
+                        navigation.navigate('AllTransactions');
+                    }}
+                    isDark={isDark}
+                />
+            )}
+
+            {/* ── Universal Calendar Date & Month Filter Modal ──────────────── */}
+            <CalendarFilterModal
+                visible={calendarModalVisible}
+                onClose={() => setCalendarModalVisible(false)}
+                onSelect={handleDateFilterSelect}
+            />
+
             <FilterDuesModal
                 visible={filterModalVisible}
                 onClose={() => setFilterModalVisible(false)}
@@ -1685,7 +1829,7 @@ export default function PendingPaymentsScreen() {
                 isDark={isDark}
                 activeTab={activeTab}
                 navigation={navigation}
-                onOpenMetaCloud={(selectedList) => {
+                onOpenMetaCloud={(selectedList: any[]) => {
                     setMetaCloudStudents(selectedList);
                     setShowMetaWhatsAppModal(true);
                 }}

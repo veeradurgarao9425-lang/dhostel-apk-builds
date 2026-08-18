@@ -1362,14 +1362,15 @@ export const vacateSettlement = async (req: AuthRequest, res: Response) => {
         .first();
 
       const pendingDues = Number(pendingDuesQuery?.total_dues || 0);
+      const studentFullName = `${student.first_name || ''} ${student.last_name || ''}`.trim() || 'Student';
       const refundAmount = originalDeposit - pendingDues - Number(damageDeductions);
 
-      // If there are damages, record it as income (Damage Recovery)
+      // If there are damages, record it as income (Deposit Deduction)
       if (Number(damageDeductions) > 0) {
         await trx('income').insert({
           hostel_id: student.hostel_id,
           amount: Number(damageDeductions),
-          source: `Deposit Deduction (${student.first_name}) - ${finalReason}`,
+          source: `Deposit Deduction (${studentFullName}) - ${finalReason}`,
           payment_mode_id: 1, // Default Cash
           income_date: new Date(),
           created_at: new Date()
@@ -1391,8 +1392,8 @@ export const vacateSettlement = async (req: AuthRequest, res: Response) => {
           expense_date: new Date(),
           amount: refundAmount,
           payment_mode_id: 1, // Defaulting to Cash
-          vendor_name: student.first_name,
-          description: `Refunded Deposit to ${student.first_name} on vacate`,
+          vendor_name: studentFullName,
+          description: `Deposit Refund to ${studentFullName} on vacate`,
           created_at: new Date()
         });
       }

@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../../contexts/ThemeContext';
 
@@ -24,29 +25,50 @@ export const OccupancyCard = ({ data }: OccupancyCardProps) => {
     if (totalBeds === 0) return null;
 
     const fillPct = totalBeds > 0 ? Math.round((occupiedBeds / totalBeds) * 100) : 0;
+    const availPct = Math.max(0, 100 - fillPct);
 
-    // Color based on occupancy level
-    const themeColor =
-        fillPct >= 90 ? '#EF4444' :   // red — almost full
-        fillPct >= 70 ? '#F59E0B' :   // amber — filling up
-        '#10B981';                    // green — available
-
-    const badgeBg = isDark
-        ? (fillPct >= 90 ? 'rgba(239,68,68,0.15)' : fillPct >= 70 ? 'rgba(245,158,11,0.15)' : 'rgba(16,185,129,0.15)')
-        : (fillPct >= 90 ? '#FEE2E2' : fillPct >= 70 ? '#FEF3C7' : '#D1FAE5');
-
-    const statusText =
-        fillPct >= 90 ? 'Almost Full' :
-        fillPct >= 70 ? 'Filling Up' :
-        fillPct >= 40 ? 'Good Vacancy' :
-        'High Vacancy';
+    // Dynamic color theme based on occupancy level
+    const statusConfig = (() => {
+        if (fillPct >= 90) {
+            return {
+                label: 'Almost Full',
+                color: '#EF4444',
+                bgColor: isDark ? 'rgba(239, 68, 68, 0.16)' : '#FEE2E2',
+                icon: 'flame',
+            };
+        }
+        if (fillPct >= 70) {
+            return {
+                label: 'High Occupancy',
+                color: '#F59E0B',
+                bgColor: isDark ? 'rgba(245, 158, 11, 0.16)' : '#FEF3C7',
+                icon: 'trending-up',
+            };
+        }
+        if (fillPct >= 40) {
+            return {
+                label: 'Good Vacancy',
+                color: '#10B981',
+                bgColor: isDark ? 'rgba(16, 185, 129, 0.16)' : '#D1FAE5',
+                icon: 'checkmark-circle',
+            };
+        }
+        return {
+            label: 'High Vacancy',
+            color: '#3B82F6',
+            bgColor: isDark ? 'rgba(59, 130, 246, 0.16)' : '#DBEAFE',
+            icon: 'bed-outline',
+        };
+    })();
 
     return (
         <View style={s.sectionBlock}>
-            {/* Header */}
+            {/* Header with Title & View Rooms Link */}
             <View style={s.sectionHeaderRow}>
                 <View style={s.sectionTitleRow}>
-                    <Ionicons name="bed" size={13} color="#0284C7" />
+                    <View style={[s.titleIconBadge, { backgroundColor: isDark ? 'rgba(99, 102, 241, 0.2)' : '#EEF2FF' }]}>
+                        <Ionicons name="bed" size={13} color="#6366F1" />
+                    </View>
                     <Text style={[s.sectionTitle, { fontSize: fontSize - 2, color: theme.textSecondary }]}>
                         Occupancy Overview
                     </Text>
@@ -54,73 +76,120 @@ export const OccupancyCard = ({ data }: OccupancyCardProps) => {
                 <TouchableOpacity
                     onPress={() => navigation.navigate('Rooms')}
                     activeOpacity={0.7}
-                    style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}
+                    style={s.viewRoomsBtn}
                 >
                     <Text style={[s.viewAll, { color: theme.primary, fontSize: fontSize - 2 }]}>View Rooms</Text>
-                    <Ionicons name="chevron-forward" size={12} color={theme.primary} style={{ marginTop: 1 }} />
+                    <Ionicons name="chevron-forward" size={13} color={theme.primary} />
                 </TouchableOpacity>
             </View>
 
-            {/* Premium Side-by-side circular dashboard card */}
+            {/* High-Level Premium Occupancy Dashboard Card */}
             <TouchableOpacity
-                style={[s.card, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}
+                style={[
+                    s.card,
+                    {
+                        backgroundColor: theme.cardBg,
+                        borderColor: isDark ? '#334155' : '#E2E8F0',
+                    }
+                ]}
                 onPress={() => navigation.navigate('Rooms')}
-                activeOpacity={0.85}
+                activeOpacity={0.92}
             >
-                <View style={s.mainRow}>
-                    {/* Left Column: Concentric circular progress dial */}
-                    <View style={s.leftCol}>
-                        <View style={[s.dialOuter, { borderColor: isDark ? '#1E293B' : '#F1F5F9', backgroundColor: isDark ? '#0F172A' : '#F8FAFC' }]}>
-                            {/* Inner border matches the level color */}
-                            <View style={[s.dialInner, { borderColor: themeColor }]}>
-                                <Text style={[s.dialPctText, { color: isDark ? theme.textPrimary : '#0F172A' }]}>
-                                    {fillPct}%
-                                </Text>
-                                <Text style={[s.dialLabel, { color: theme.textSecondary }]}>
-                                    Filled
-                                </Text>
-                            </View>
+                {/* Top Summary Banner: Big Percentage + Dynamic Status Badge */}
+                <View style={s.topBannerRow}>
+                    <View style={s.mainMetricWrap}>
+                        <View style={s.percentRow}>
+                            <Text style={[s.bigPercentText, { color: theme.textPrimary }]}>
+                                {fillPct}%
+                            </Text>
+                            <Text style={[s.percentLabel, { color: theme.textSecondary }]}>
+                                Occupied
+                            </Text>
                         </View>
+                        <Text style={[s.subSummaryText, { color: theme.textSecondary }]}>
+                            {occupiedBeds} of {totalBeds} total beds filled
+                        </Text>
                     </View>
 
-                    {/* Right Column: Numeric data lists */}
-                    <View style={s.rightCol}>
-                        {/* Status tag */}
-                        <View style={[s.statusTag, { backgroundColor: badgeBg }]}>
-                            <View style={[s.statusDot, { backgroundColor: themeColor }]} />
-                            <Text style={[s.statusTagText, { color: themeColor }]}>{statusText}</Text>
-                        </View>
+                    {/* Status Pill Badge */}
+                    <View style={[s.statusPill, { backgroundColor: statusConfig.bgColor }]}>
+                        <Ionicons name={statusConfig.icon as any} size={13} color={statusConfig.color} />
+                        <Text style={[s.statusPillText, { color: statusConfig.color }]}>
+                            {statusConfig.label}
+                        </Text>
+                    </View>
+                </View>
 
-                        {/* Stats list */}
-                        <View style={s.statsList}>
-                            {/* Occupied */}
-                            <View style={s.statRow}>
-                                <View style={[s.indicatorDot, { backgroundColor: themeColor }]} />
-                                <Text style={[s.statLabelText, { color: theme.textSecondary }]}>Occupied Beds</Text>
-                                <Text style={[s.statValueText, { color: theme.textPrimary }]}>{occupiedBeds}</Text>
-                            </View>
-                            {/* Available */}
-                            <View style={s.statRow}>
-                                <View style={[s.indicatorDot, { backgroundColor: '#10B981' }]} />
-                                <Text style={[s.statLabelText, { color: theme.textSecondary }]}>Available Beds</Text>
-                                <Text style={[s.statValueText, { color: theme.textPrimary }]}>{availableBeds}</Text>
-                            </View>
-                            {/* Total */}
-                            <View style={s.statRow}>
-                                <View style={[s.indicatorDot, { backgroundColor: '#7C3AED' }]} />
-                                <Text style={[s.statLabelText, { color: theme.textSecondary }]}>Total Beds</Text>
-                                <Text style={[s.statValueText, { color: theme.textPrimary }]}>{totalBeds}</Text>
-                            </View>
+                {/* Visual Segmented Progress Bar */}
+                <View style={s.progressSection}>
+                    <View style={[s.progressBarBg, { backgroundColor: isDark ? '#1E293B' : '#F1F5F9' }]}>
+                        <LinearGradient
+                            colors={['#6366F1', '#8B5CF6']}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 0 }}
+                            style={[s.progressBarFill, { width: `${fillPct}%` }]}
+                        />
+                    </View>
+                    <View style={s.progressLabelsRow}>
+                        <View style={s.progressLegend}>
+                            <View style={[s.legendDot, { backgroundColor: '#8B5CF6' }]} />
+                            <Text style={[s.legendText, { color: theme.textSecondary }]}>
+                                Occupied ({fillPct}%)
+                            </Text>
+                        </View>
+                        <View style={s.progressLegend}>
+                            <View style={[s.legendDot, { backgroundColor: '#10B981' }]} />
+                            <Text style={[s.legendText, { color: theme.textSecondary }]}>
+                                Available ({availPct}%)
+                            </Text>
                         </View>
                     </View>
                 </View>
 
-                {/* Footer with Room availability */}
+                {/* 3 Metric Cards Grid */}
+                <View style={s.metricGrid}>
+                    {/* Occupied Card */}
+                    <View style={[s.metricCard, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0' }]}>
+                        <View style={s.metricIconRow}>
+                            <View style={[s.miniIconCircle, { backgroundColor: 'rgba(99, 102, 241, 0.12)' }]}>
+                                <Ionicons name="people" size={13} color="#6366F1" />
+                            </View>
+                            <Text style={[s.metricValue, { color: theme.textPrimary }]}>{occupiedBeds}</Text>
+                        </View>
+                        <Text style={[s.metricTitle, { color: theme.textSecondary }]}>Occupied Beds</Text>
+                    </View>
+
+                    {/* Available Card */}
+                    <View style={[s.metricCard, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0' }]}>
+                        <View style={s.metricIconRow}>
+                            <View style={[s.miniIconCircle, { backgroundColor: 'rgba(16, 185, 129, 0.12)' }]}>
+                                <Ionicons name="bed" size={13} color="#10B981" />
+                            </View>
+                            <Text style={[s.metricValue, { color: '#10B981' }]}>{availableBeds}</Text>
+                        </View>
+                        <Text style={[s.metricTitle, { color: theme.textSecondary }]}>Available Beds</Text>
+                    </View>
+
+                    {/* Total Capacity Card */}
+                    <View style={[s.metricCard, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0' }]}>
+                        <View style={s.metricIconRow}>
+                            <View style={[s.miniIconCircle, { backgroundColor: 'rgba(14, 165, 233, 0.12)' }]}>
+                                <Ionicons name="business" size={13} color="#0EA5E9" />
+                            </View>
+                            <Text style={[s.metricValue, { color: theme.textPrimary }]}>{totalBeds}</Text>
+                        </View>
+                        <Text style={[s.metricTitle, { color: theme.textSecondary }]}>Total Capacity</Text>
+                    </View>
+                </View>
+
+                {/* Footer Insight Note */}
                 {totalRooms > 0 && (
-                    <View style={[s.cardFooter, { borderTopColor: isDark ? '#1E293B' : '#F1F5F9' }]}>
-                        <Ionicons name="information-circle-outline" size={13} color={theme.textSecondary} />
-                        <Text style={[s.footerText, { color: theme.textSecondary }]}>
-                            {availableRooms} of {totalRooms} rooms have vacant beds
+                    <View style={[s.cardFooter, { borderTopColor: isDark ? '#334155' : '#F1F5F9' }]}>
+                        <Ionicons name="sparkles" size={13} color="#F59E0B" />
+                        <Text style={[s.footerText, { color: isDark ? '#94A3B8' : '#64748B' }]}>
+                            {availableRooms > 0
+                                ? `${availableRooms} of ${totalRooms} rooms have vacant beds available to assign.`
+                                : `All ${totalRooms} rooms are currently at full capacity.`}
                         </Text>
                     </View>
                 )}
@@ -130,7 +199,9 @@ export const OccupancyCard = ({ data }: OccupancyCardProps) => {
 };
 
 const s = StyleSheet.create({
-    sectionBlock: { marginVertical: 0 },
+    sectionBlock: {
+        marginVertical: 4,
+    },
     sectionHeaderRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
@@ -141,12 +212,24 @@ const s = StyleSheet.create({
     sectionTitleRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 5,
+        gap: 6,
+    },
+    titleIconBadge: {
+        width: 22,
+        height: 22,
+        borderRadius: 6,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     sectionTitle: {
         fontWeight: '700',
         textTransform: 'uppercase',
         letterSpacing: 0.5,
+    },
+    viewRoomsBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 2,
     },
     viewAll: {
         fontWeight: '700',
@@ -154,107 +237,131 @@ const s = StyleSheet.create({
     card: {
         borderRadius: 20,
         borderWidth: 1,
-        padding: 14,
+        padding: 16,
         elevation: 3,
         shadowColor: '#000',
-        shadowOpacity: 0.04,
-        shadowRadius: 8,
-        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.05,
+        shadowRadius: 10,
+        shadowOffset: { width: 0, height: 4 },
     },
-    mainRow: {
+    topBannerRow: {
         flexDirection: 'row',
-        alignItems: 'center',
         justifyContent: 'space-between',
+        alignItems: 'flex-start',
+        marginBottom: 14,
     },
-    leftCol: {
-        width: '35%',
-        alignItems: 'center',
-        justifyContent: 'center',
+    mainMetricWrap: {
+        gap: 2,
     },
-    rightCol: {
-        width: '62%',
-        gap: 8,
+    percentRow: {
+        flexDirection: 'row',
+        alignItems: 'baseline',
+        gap: 6,
     },
-    // Dial indicators
-    dialOuter: {
-        width: 82,
-        height: 82,
-        borderRadius: 41,
-        borderWidth: 3,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    dialInner: {
-        width: 70,
-        height: 70,
-        borderRadius: 35,
-        borderWidth: 4,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    dialPctText: {
-        fontSize: 16,
+    bigPercentText: {
+        fontSize: 28,
         fontWeight: '900',
+        letterSpacing: -0.5,
     },
-    dialLabel: {
-        fontSize: 8.5,
+    percentLabel: {
+        fontSize: 13,
         fontWeight: '700',
         textTransform: 'uppercase',
-        marginTop: -1,
     },
-    // Status tag
-    statusTag: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        alignSelf: 'flex-start',
-        gap: 4,
-        paddingHorizontal: 8,
-        paddingVertical: 3,
-        borderRadius: 12,
+    subSummaryText: {
+        fontSize: 12,
+        fontWeight: '500',
     },
-    statusDot: {
-        width: 6,
-        height: 6,
-        borderRadius: 3,
-    },
-    statusTagText: {
-        fontSize: 10,
-        fontWeight: '700',
-    },
-    // Stats rows
-    statsList: {
-        gap: 4,
-    },
-    statRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    indicatorDot: {
-        width: 6,
-        height: 6,
-        borderRadius: 3,
-        marginRight: 6,
-    },
-    statLabelText: {
-        fontSize: 11,
-        fontWeight: '600',
-        flex: 1,
-    },
-    statValueText: {
-        fontSize: 11.5,
-        fontWeight: '800',
-    },
-    // Footer
-    cardFooter: {
+    statusPill: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 5,
-        borderTopWidth: 1,
-        paddingTop: 10,
-        marginTop: 10,
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        borderRadius: 14,
     },
-    footerText: {
-        fontSize: 10,
+    statusPillText: {
+        fontSize: 11.5,
+        fontWeight: '700',
+    },
+    progressSection: {
+        gap: 6,
+        marginBottom: 14,
+    },
+    progressBarBg: {
+        height: 8,
+        borderRadius: 4,
+        overflow: 'hidden',
+        width: '100%',
+    },
+    progressBarFill: {
+        height: '100%',
+        borderRadius: 4,
+    },
+    progressLabelsRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    progressLegend: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 5,
+    },
+    legendDot: {
+        width: 6,
+        height: 6,
+        borderRadius: 3,
+    },
+    legendText: {
+        fontSize: 11,
         fontWeight: '600',
     },
+    metricGrid: {
+        flexDirection: 'row',
+        gap: 8,
+    },
+    metricCard: {
+        flex: 1,
+        borderRadius: 14,
+        borderWidth: 1,
+        padding: 10,
+        gap: 4,
+    },
+    metricIconRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    miniIconCircle: {
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    metricValue: {
+        fontSize: 16,
+        fontWeight: '900',
+    },
+    metricTitle: {
+        fontSize: 10.5,
+        fontWeight: '600',
+    },
+    cardFooter: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        borderTopWidth: 1,
+        paddingTop: 10,
+        marginTop: 12,
+    },
+    footerText: {
+        fontSize: 11,
+        fontWeight: '500',
+        flex: 1,
+        lineHeight: 15,
+    },
 });
+
+export default OccupancyCard;

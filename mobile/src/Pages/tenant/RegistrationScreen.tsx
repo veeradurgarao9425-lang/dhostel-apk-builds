@@ -404,11 +404,15 @@ export default function RegistrationScreen({ route, navigation }: any) {
 
       const appendImage = (field: string, uri: string | null) => {
         if (!uri) return;
-        const ext = uri.split('.').pop() || 'jpg';
+        const filename = uri.split('/').pop() || `${field}.jpg`;
+        const match = /\.(\w+)$/.exec(filename);
+        const ext = match ? match[1].toLowerCase() : 'jpg';
+        const mimeType = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
+
         formData.append(field, {
-          uri,
-          name: `${field}.${ext}`,
-          type: `image/${ext === 'jpg' ? 'jpeg' : ext}`,
+          uri: Platform.OS === 'android' ? uri : uri.replace('file://', ''),
+          name: `${field}_${Date.now()}.${ext === 'jpg' ? 'jpeg' : ext}`,
+          type: mimeType,
         } as any);
       };
       appendImage('profile_photo', profilePhoto);
@@ -416,7 +420,10 @@ export default function RegistrationScreen({ route, navigation }: any) {
       appendImage('id_proof_back', aadhaarBack);
 
       const response = await api.post('/auth/tenant/register', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+        headers: {
+          'Accept': 'application/json',
+        },
+        transformRequest: (data) => data,
       });
 
       if (response.data?.success) {
@@ -426,7 +433,8 @@ export default function RegistrationScreen({ route, navigation }: any) {
         showError(response.data?.error || 'Registration failed.');
       }
     } catch (err: any) {
-      showError(err.response?.data?.error || err.message || 'Network error');
+      console.error('Tenant registration error:', err);
+      showError(err.response?.data?.error || err.response?.data?.message || err.message || 'Network error occurred');
     } finally {
       setLoading(false);
     }
@@ -496,15 +504,15 @@ export default function RegistrationScreen({ route, navigation }: any) {
               </View>
 
               <Field label="First Name" required error={errors.firstName}>
-                <InputRow icon={User} placeholder="Enter first name" value={firstName} onChangeText={(t: string) => { setFirstName(t.replace(/[^a-zA-Z\s]/g, '')); setErrors(p => ({...p, firstName: ''})); }} onBlur={() => { if (!firstName.trim()) setErrors(p => ({...p, firstName: 'First name is required.'})); else if (firstName.trim().length < 3) setErrors(p => ({...p, firstName: 'First name must be at least 3 characters.'})); }} error={!!errors.firstName} />
+                <InputRow icon={User} placeholder="Ex: Durgarao Goriparthi" value={firstName} onChangeText={(t: string) => { setFirstName(t.replace(/[^a-zA-Z\s]/g, '')); setErrors(p => ({...p, firstName: ''})); }} onBlur={() => { if (!firstName.trim()) setErrors(p => ({...p, firstName: 'First name is required.'})); else if (firstName.trim().length < 3) setErrors(p => ({...p, firstName: 'First name must be at least 3 characters.'})); }} error={!!errors.firstName} />
               </Field>
               <Field label="Last Name">
-                <InputRow icon={User} placeholder="Enter last name" value={lastName} onChangeText={(t: string) => setLastName(t.replace(/[^a-zA-Z\s]/g, ''))} />
+                <InputRow icon={User} placeholder="Ex: Goriparthi" value={lastName} onChangeText={(t: string) => setLastName(t.replace(/[^a-zA-Z\s]/g, ''))} />
               </Field>
               <Field label="Email Address" required error={errors.emailAddress}>
                 <InputRow
                   icon={Mail}
-                  placeholder="Enter email address"
+                  placeholder="Ex: durgarao@email.com"
                   value={emailAddress}
                   onChangeText={(t: string) => { setEmailAddress(t); setErrors(p => ({...p, emailAddress: ''})); }}
                   onBlur={() => {
@@ -521,7 +529,7 @@ export default function RegistrationScreen({ route, navigation }: any) {
               <Field label="Mobile Number" required error={errors.phone}>
                 <InputRow
                   icon={Phone}
-                  placeholder="Enter 10-digit mobile number"
+                  placeholder="Ex: 6303359425"
                   value={phone}
                   onChangeText={(t: string) => { 
                     const val = t.replace(/\D/g, '').slice(0, 10);
@@ -600,14 +608,24 @@ export default function RegistrationScreen({ route, navigation }: any) {
               </Field>
 
               <Field label="Guardian Name">
-                <InputRow icon={User} placeholder="Enter guardian name" value={guardianName} onChangeText={(t: string) => setGuardianName(t.replace(/[^a-zA-Z\s]/g, ''))} />
+                <InputRow icon={User} placeholder="Ex: Krishnaiah Goriparthi" value={guardianName} onChangeText={(t: string) => setGuardianName(t.replace(/[^a-zA-Z\s]/g, ''))} />
               </Field>
               <Field label="Guardian Mobile Number" error={errors.guardianPhone}>
                 <InputRow
                   icon={Phone}
-                  placeholder="Enter 10-digit mobile number"
+                  placeholder="Ex: 9908631206"
                   value={guardianPhone}
-                  onChangeText={(t: string) => { setGuardianPhone(t.replace(/\D/g, '').slice(0, 10)); setErrors(p => ({...p, guardianPhone: ''})); }}
+                  onChangeText={(t: string) => { 
+                    const val = t.replace(/\D/g, '').slice(0, 10);
+                    setGuardianPhone(val); 
+                    if (val.length > 0 && !/^[6-9]/.test(val)) {
+                      setErrors(p => ({...p, guardianPhone: 'Mobile number must start with 6, 7, 8, or 9.'}));
+                    } else if (val.length > 0 && val === phone) {
+                      setErrors(p => ({...p, guardianPhone: 'Guardian number cannot be same as tenant number.'}));
+                    } else {
+                      setErrors(p => ({...p, guardianPhone: ''}));
+                    }
+                  }}
                   keyboardType="phone-pad"
                   maxLength={10}
                   error={!!errors.guardianPhone}
@@ -655,23 +673,34 @@ export default function RegistrationScreen({ route, navigation }: any) {
                     <InputRow
                       icon={CreditCard}
                       placeholder={
-                        idProofType === 'Aadhaar' ? 'e.g. 123456789012' : 
-                        idProofType === 'PAN' ? 'e.g. ABCDE1234F' : 
+                        idProofType === 'Aadhaar' ? 'Ex: 204095027990' : 
+                        idProofType === 'PAN' ? 'Ex: ABCDE1234F' : 
+                        idProofType === 'Driving License' ? 'Ex: DL-1420110012345' :
+                        idProofType === 'Voter ID' ? 'Ex: ABC1234567' :
+                        idProofType === 'Passport' ? 'Ex: A1234567' :
                         `Enter ${idProofType} number`
                       }
                       value={idProofNumber}
                       onChangeText={(t: string) => { 
                         let clean = t;
-                        if (idProofType === 'Aadhaar') clean = t.replace(/\D/g, '').slice(0, 12);
-                        else if (idProofType === 'PAN') clean = t.toUpperCase().slice(0, 10);
+                        if (idProofType === 'Aadhaar') {
+                          clean = t.replace(/\D/g, '').slice(0, 12);
+                          setIdProofNumber(clean);
+                          if (clean.length > 0 && (clean.startsWith('0') || clean.startsWith('1'))) {
+                            setErrors(p => ({...p, idProofNumber: 'Aadhaar number cannot start with 0 or 1.'}));
+                          } else if (clean.length > 0 && clean.length < 12) {
+                            setErrors(p => ({...p, idProofNumber: 'Aadhaar must be exactly 12 digits.'}));
+                          } else {
+                            setErrors(p => ({...p, idProofNumber: ''})); 
+                          }
+                          return;
+                        } else if (idProofType === 'PAN') clean = t.toUpperCase().slice(0, 10);
                         else if (idProofType === 'Driving License') clean = t.toUpperCase().slice(0, 16);
                         else if (idProofType === 'Voter ID') clean = t.toUpperCase().slice(0, 10);
                         else if (idProofType === 'Passport') clean = t.toUpperCase().slice(0, 8);
                         setIdProofNumber(clean); 
                         
-                        if (idProofType === 'Aadhaar' && clean.length > 0 && !/^\d+$/.test(clean)) {
-                          setErrors(p => ({...p, idProofNumber: 'Aadhaar must contain only digits.'}));
-                        } else if (idProofType === 'PAN' && clean.length > 0 && !/^[A-Z0-9]+$/.test(clean)) {
+                        if (idProofType === 'PAN' && clean.length > 0 && !/^[A-Z0-9]+$/.test(clean)) {
                           setErrors(p => ({...p, idProofNumber: 'PAN must be alphanumeric.'}));
                         } else {
                           setErrors(p => ({...p, idProofNumber: ''})); 
@@ -695,7 +724,8 @@ export default function RegistrationScreen({ route, navigation }: any) {
                           }
                         }
                       }}
-                      keyboardType={idProofType === 'Aadhaar' ? 'numeric' : 'default'}
+                      keyboardType={idProofType === 'Aadhaar' ? 'number-pad' : 'default'}
+                      maxLength={idProofType === 'Aadhaar' ? 12 : idProofType === 'PAN' ? 10 : idProofType === 'Driving License' ? 16 : idProofType === 'Voter ID' ? 10 : idProofType === 'Passport' ? 8 : 30}
                       autoCapitalize={idProofType === 'PAN' || idProofType === 'Driving License' || idProofType === 'Voter ID' || idProofType === 'Passport' ? 'characters' : 'none'}
                       error={!!errors.idProofNumber}
                     />

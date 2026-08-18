@@ -2,7 +2,7 @@ import { Response } from 'express';
 import db from '../config/database.js';
 import { AuthRequest } from '../middleware/auth.js';
 import { checkHostelUniqueIdentifiers } from '../utils/validation.js';
-import { resolveScopedHostelId, resolveOwnerHostelId } from '../utils/scope.js';
+import { resolveScopedHostelId, resolveOwnerHostelId, canAccessHostel } from '../utils/scope.js';
 
 // Get all staff (Owner sees only their hostel staff)
 export const getStaff = async (req: AuthRequest, res: Response) => {
@@ -63,7 +63,7 @@ export const getStaffById = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    if (req.user?.role_id === 2 && staff.hostel_id !== req.user.hostel_id) {
+    if (!canAccessHostel(req.user, staff.hostel_id)) {
       return res.status(403).json({ success: false, error: 'Access denied.' });
     }
 
@@ -99,39 +99,24 @@ export const createStaff = async (req: AuthRequest, res: Response) => {
       notes
     } = req.body;
 
-    // Determine hostel_id: Owner always uses their own hostel; Admin/Super Admin
-    // must specify it explicitly (never silently defaults to the admin's own hostel_id).
-    let hostel_id: number;
-    if (user?.role_id === 2) {
-      if (!user.hostel_id) {
-        return res.status(403).json({
-          success: false,
-          error: 'Your account is not linked to any hostel.'
-        });
-      }
-      hostel_id = user.hostel_id;
-    } else {
-      hostel_id = req.body.hostel_id;
-      if (!hostel_id) {
-        return res.status(400).json({
-          success: false,
-          error: 'hostel_id is required'
-        });
-      }
-    }
-
-    if (!full_name || !phone || !role || !join_date) {
-      return res.status(400).json({
+    const { hostelId, error: hostelError } = await resolveOwnerHostelId(user, req.body.hostel_id);
+    if (hostelError || !hostelId) {
+      return res.status(403).json({
         success: false,
-        error: 'Required fields: full_name, phone, role, join_date'
+        error: hostelError || 'Cannot determine hostel. Specify a valid hostel_id.'
       });
     }
 
-    const validation = await checkHostelUniqueIdentifiers(hostel_id, {
-      phone,
-      email,
-      id_number: aadhaar_number
-    });
+    // Uniqueness validation within hostel
+    const validation = await checkHostelUniqueIdentifiers(
+      hostelId,
+      {
+        phone,
+        email,
+        id_number: aadhaar_number
+      },
+      { entityType: 'staff' }
+    );
 
     if (!validation.isUnique) {
       return res.status(409).json({
@@ -141,31 +126,33 @@ export const createStaff = async (req: AuthRequest, res: Response) => {
     }
 
     const [staff_id] = await db('staff').insert({
-      hostel_id,
+      hostel_id: hostelId,
       full_name,
       phone,
       email: email || null,
-      role,
-      status: status || 'ACTIVE',
-      join_date,
-      monthly_salary: monthly_salary || null,
+      role: role || 'Staff',
+      status: status !== undefined ? status : 1,
+      join_date: join_date || new Date(),
+      monthly_salary: monthly_salary || 0,
       aadhaar_number: aadhaar_number || null,
       photo: photo || null,
       aadhaar_front: aadhaar_front || null,
       aadhaar_back: aadhaar_back || null,
-      notes: notes || null
+      notes: notes || null,
+      created_at: new Date(),
+      updated_at: new Date()
     });
 
     res.status(201).json({
       success: true,
-      message: 'Staff member registered successfully',
+      message: 'Staff member created successfully',
       data: { staff_id }
     });
   } catch (error: any) {
     console.error('Create staff error:', error);
     res.status(500).json({
       success: false,
-      error: error?.message || 'Failed to create staff member'
+      error: error?.sqlMessage || error?.message || 'Failed to create staff member'
     });
   }
 };
@@ -174,9 +161,9 @@ export const createStaff = async (req: AuthRequest, res: Response) => {
 export const updateStaff = async (req: AuthRequest, res: Response) => {
   try {
     const { staffId } = req.params;
-    const updateData = { ...req.body, updated_at: new Date() };
-
+    const user = req.user;
     const staff = await db('staff').where('staff_id', staffId).first();
+
     if (!staff) {
       return res.status(404).json({
         success: false,
@@ -184,15 +171,48 @@ export const updateStaff = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    if (req.user?.role_id === 2 && staff.hostel_id !== req.user.hostel_id) {
+    if (!canAccessHostel(user, staff.hostel_id)) {
       return res.status(403).json({ success: false, error: 'Access denied.' });
     }
 
-    const checkingPhone = req.body.phone !== undefined ? req.body.phone : undefined;
-    const checkingEmail = req.body.email !== undefined ? req.body.email : undefined;
-    const checkingIdNumber = req.body.aadhaar_number !== undefined ? req.body.aadhaar_number : undefined;
+    const {
+      full_name,
+      phone,
+      email,
+      role,
+      status,
+      join_date,
+      monthly_salary,
+      aadhaar_number,
+      photo,
+      aadhaar_front,
+      aadhaar_back,
+      notes
+    } = req.body;
 
-    if (checkingPhone || checkingEmail || checkingIdNumber) {
+    const updateData: any = {
+      updated_at: new Date()
+    };
+
+    if (full_name !== undefined) updateData.full_name = full_name;
+    if (phone !== undefined) updateData.phone = phone;
+    if (email !== undefined) updateData.email = email || null;
+    if (role !== undefined) updateData.role = role;
+    if (status !== undefined) updateData.status = status;
+    if (join_date !== undefined) updateData.join_date = join_date;
+    if (monthly_salary !== undefined) updateData.monthly_salary = monthly_salary;
+    if (aadhaar_number !== undefined) updateData.aadhaar_number = aadhaar_number || null;
+    if (photo !== undefined) updateData.photo = photo;
+    if (aadhaar_front !== undefined) updateData.aadhaar_front = aadhaar_front;
+    if (aadhaar_back !== undefined) updateData.aadhaar_back = aadhaar_back;
+    if (notes !== undefined) updateData.notes = notes;
+
+    // Validate uniqueness if phone/email/aadhaar changed
+    const checkingPhone = phone !== undefined ? phone : staff.phone;
+    const checkingEmail = email !== undefined ? email : staff.email;
+    const checkingIdNumber = aadhaar_number !== undefined ? aadhaar_number : staff.aadhaar_number;
+
+    if (phone !== undefined || email !== undefined || aadhaar_number !== undefined) {
       const validation = await checkHostelUniqueIdentifiers(
         staff.hostel_id,
         {
@@ -236,7 +256,7 @@ export const getStaffPayments = async (req: AuthRequest, res: Response) => {
     if (!staff) {
       return res.status(404).json({ success: false, error: 'Staff member not found' });
     }
-    if (req.user?.role_id === 2 && staff.hostel_id !== req.user.hostel_id) {
+    if (!canAccessHostel(req.user, staff.hostel_id)) {
       return res.status(403).json({ success: false, error: 'Access denied.' });
     }
 
@@ -274,7 +294,7 @@ export const addStaffPayment = async (req: AuthRequest, res: Response) => {
     if (!staff) {
       return res.status(404).json({ success: false, error: 'Staff member not found' });
     }
-    if (req.user?.role_id === 2 && staff.hostel_id !== req.user.hostel_id) {
+    if (!canAccessHostel(req.user, staff.hostel_id)) {
       return res.status(403).json({ success: false, error: 'Access denied.' });
     }
 
@@ -301,6 +321,34 @@ export const addStaffPayment = async (req: AuthRequest, res: Response) => {
       created_at: new Date(),
     });
 
+    // Also auto-sync into expenses table so it shows up in Hostel Expenses
+    try {
+      let salaryCat = await db('expense_categories')
+        .where(function() {
+          this.where('category_name', 'like', '%salary%')
+            .orWhere('category_name', 'like', '%staff%')
+            .orWhere('name', 'like', '%salary%')
+            .orWhere('name', 'like', '%staff%');
+        })
+        .first();
+
+      const categoryId = salaryCat?.category_id || salaryCat?.id || 1;
+
+      await db('expenses').insert({
+        hostel_id: staff.hostel_id,
+        category_id: categoryId,
+        expense_date: payment_date,
+        amount: Number(amount),
+        payment_mode_id: (mode?.toLowerCase() === 'upi' ? 2 : mode?.toLowerCase() === 'bank' ? 3 : 1),
+        vendor_name: staff.full_name,
+        description: `${payment_type || 'Advance'} to ${staff.full_name} (${resolvedMonth})`,
+        bill_number: transaction_id || receipt_number || null,
+        created_at: new Date()
+      });
+    } catch (expErr) {
+      console.warn('Could not auto-insert expense for staff payment:', expErr);
+    }
+
     res.status(201).json({ success: true, message: 'Payment recorded successfully', data: { payment_id } });
   } catch (error: any) {
     console.error('Add staff payment error:', error);
@@ -317,7 +365,7 @@ export const getStaffMonthlySummary = async (req: AuthRequest, res: Response) =>
     if (!staff) {
       return res.status(404).json({ success: false, error: 'Staff member not found' });
     }
-    if (req.user?.role_id === 2 && staff.hostel_id !== req.user.hostel_id) {
+    if (!canAccessHostel(req.user, staff.hostel_id)) {
       return res.status(403).json({ success: false, error: 'Access denied.' });
     }
 
@@ -327,7 +375,8 @@ export const getStaffMonthlySummary = async (req: AuthRequest, res: Response) =>
     const payments = await db('staff_payments')
       .where('staff_id', staffId)
       .orderBy('for_month', 'desc')
-      .orderBy('payment_date', 'desc');
+      .orderBy('payment_date', 'desc')
+      .catch(() => []);
 
     // Group by for_month
     const monthMap: Record<string, { advances: number; salary_paid: number; payments: any[] }> = {};
@@ -407,7 +456,7 @@ export const deleteStaffPayment = async (req: AuthRequest, res: Response) => {
     if (!payment) {
       return res.status(404).json({ success: false, error: 'Payment not found' });
     }
-    if (req.user?.role_id === 2 && payment.hostel_id !== req.user.hostel_id) {
+    if (!canAccessHostel(req.user, payment.hostel_id)) {
       return res.status(403).json({ success: false, error: 'Access denied.' });
     }
 
@@ -432,7 +481,7 @@ export const deleteStaff = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    if (req.user?.role_id === 2 && staff.hostel_id !== req.user.hostel_id) {
+    if (!canAccessHostel(req.user, staff.hostel_id)) {
       return res.status(403).json({ success: false, error: 'Access denied.' });
     }
 

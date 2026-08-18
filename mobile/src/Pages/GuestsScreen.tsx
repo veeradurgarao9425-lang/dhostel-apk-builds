@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
     View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity,
-    StatusBar, RefreshControl, ScrollView,
+    StatusBar, RefreshControl, ScrollView, Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Plus } from 'lucide-react-native';
@@ -172,78 +172,122 @@ export default function GuestsScreen() {
         return g.status === activeTab;
     });
 
-    const renderItem = ({ item }: any) => (
-        <TouchableOpacity 
-            activeOpacity={0.7}
-            onPress={() => navigation.navigate('AddGuest', { guest: item, isEdit: true })}
-            style={[s.card, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}
-        >
-            <View style={s.cardTop}>
-                <View style={[s.avatar, { backgroundColor: isDark ? '#334155' : '#EDE9FE' }]}>
-                    <Text style={[s.avatarText, { color: theme.primary }]}>
-                        {(item.full_name || 'G')[0].toUpperCase()}
-                    </Text>
-                </View>
-                <View style={{ flex: 1 }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                        <Text style={[s.name, { color: theme.textPrimary }]} numberOfLines={1}>{item.full_name}</Text>
-                        {item.is_overstay && (
-                            <View style={s.overstayBadge}>
-                                <Text style={s.overstayText}>OVERSTAY</Text>
-                            </View>
+    const renderItem = ({ item }: any) => {
+        const isStaying = item.status === 'staying' || !item.status;
+        const isOverstay = item.is_overstay;
+        const isCheckedOut = item.status === 'checked_out';
+
+        return (
+            <TouchableOpacity 
+                activeOpacity={0.8}
+                onPress={() => navigation.navigate('AddGuest', { guest: item, isEdit: true })}
+                style={[
+                    s.card,
+                    {
+                        backgroundColor: theme.cardBg,
+                        borderColor: isOverstay ? '#FCA5A5' : (isDark ? '#334155' : '#E2E8F0'),
+                    }
+                ]}
+            >
+                <View style={s.cardTop}>
+                    {/* Photo Avatar or Initials */}
+                    <View style={[s.avatar, { backgroundColor: isDark ? '#334155' : '#EDE9FE', borderColor: theme.primary }]}>
+                        {item.profile_photo_url ? (
+                            <Image source={{ uri: item.profile_photo_url }} style={s.avatarImg} />
+                        ) : (
+                            <Text style={[s.avatarText, { color: theme.primary }]}>
+                                {(item.full_name || 'G')[0].toUpperCase()}
+                            </Text>
                         )}
-                        {item.status === 'checked_out' && (
-                            <View style={s.checkedOutBadge}>
-                                <Text style={s.checkedOutText}>CHECKED OUT</Text>
+                    </View>
+
+                    {/* Name, Phone, and Status Badges */}
+                    <View style={{ flex: 1 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                            <Text style={[s.name, { color: theme.textPrimary }]} numberOfLines={1}>
+                                {item.full_name}
+                            </Text>
+                            
+                            {isOverstay && (
+                                <View style={s.overstayBadge}>
+                                    <Text style={s.overstayText}>OVERSTAY</Text>
+                                </View>
+                            )}
+                            {isCheckedOut && (
+                                <View style={s.checkedOutBadge}>
+                                    <Text style={s.checkedOutText}>CHECKED OUT</Text>
+                                </View>
+                            )}
+                            {isStaying && !isOverstay && (
+                                <View style={s.stayingBadge}>
+                                    <Text style={s.stayingText}>ACTIVE STAY</Text>
+                                </View>
+                            )}
+                        </View>
+                        {!!item.phone && (
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                                <Ionicons name="call-outline" size={12} color={theme.textSecondary} />
+                                <Text style={[s.sub, { color: theme.textSecondary }]}>{item.phone}</Text>
                             </View>
                         )}
                     </View>
-                    {!!item.phone && <Text style={[s.sub, { color: theme.textSecondary }]}>{item.phone}</Text>}
-                </View>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    <View style={s.amountBadge}>
-                        <Text style={s.amountText}>₹{Number(item.amount_paid || 0).toLocaleString('en-IN')}</Text>
+
+                    {/* Amount Collected & Delete */}
+                    <View style={{ alignItems: 'flex-end', gap: 6 }}>
+                        <View style={s.amountBadge}>
+                            <Text style={s.amountText}>₹{Number(item.amount_paid || 0).toLocaleString('en-IN')}</Text>
+                        </View>
+                        <TouchableOpacity onPress={() => handleDelete(item)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                            <Ionicons name="trash-outline" size={17} color="#DC2626" />
+                        </TouchableOpacity>
                     </View>
-                    <TouchableOpacity onPress={() => handleDelete(item)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                        <Ionicons name="trash-outline" size={18} color="#DC2626" />
-                    </TouchableOpacity>
                 </View>
-            </View>
 
-            {!!item.purpose && <Text style={[s.purpose, { color: theme.textSecondary }]}>{item.purpose}</Text>}
-
-            <View style={[s.metaRow, { borderTopColor: isDark ? '#334155' : '#F1F5F9' }]}>
-                <View style={s.metaItem}>
-                    <Ionicons name="log-in-outline" size={13} color="#16A34A" />
-                    <Text style={[s.metaText, { color: theme.textSecondary }]}>{fmtDate(item.check_in_date)}</Text>
-                </View>
-                {!!item.room_number && (
-                    <View style={s.metaItem}>
-                        <Ionicons name="bed-outline" size={13} color="#2563EB" />
-                        <Text style={[s.metaText, { color: theme.textSecondary }]}>Room {item.room_number}</Text>
+                {/* Purpose if present */}
+                {!!item.purpose && (
+                    <View style={[s.purposeWrap, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC' }]}>
+                        <Ionicons name="information-circle-outline" size={13} color={theme.primary} />
+                        <Text style={[s.purpose, { color: theme.textSecondary }]} numberOfLines={1}>{item.purpose}</Text>
                     </View>
                 )}
-                <View style={s.metaItem}>
-                    <Ionicons name="moon-outline" size={13} color={theme.primary} />
-                    <Text style={[s.metaText, { color: theme.textSecondary }]}>
-                        {Number(item.days || 1) === 1 ? '1 day' : `${item.days || 1} days`}
-                    </Text>
+
+                {/* Bottom Meta Row */}
+                <View style={[s.metaRow, { borderTopColor: isDark ? '#334155' : '#F1F5F9' }]}>
+                    <View style={s.metaItem}>
+                        <Ionicons name="log-in-outline" size={14} color="#16A34A" />
+                        <Text style={[s.metaText, { color: theme.textSecondary }]}>{fmtDate(item.check_in_date)}</Text>
+                    </View>
+
+                    {!!item.room_number && (
+                        <View style={[s.metaItem, s.roomBadge]}>
+                            <Ionicons name="bed" size={12} color="#2563EB" />
+                            <Text style={[s.metaText, { color: '#2563EB', fontWeight: '700' }]}>Room {item.room_number}</Text>
+                        </View>
+                    )}
+
+                    <View style={s.metaItem}>
+                        <Ionicons name="moon-outline" size={13} color={theme.primary} />
+                        <Text style={[s.metaText, { color: theme.textSecondary }]}>
+                            {Number(item.days || 1) === 1 ? '1 day' : `${item.days || 1} days`}
+                        </Text>
+                    </View>
+
+                    <View style={{ flex: 1 }} />
+
+                    {isStaying && (
+                        <TouchableOpacity 
+                            style={[s.btn, { backgroundColor: isDark ? '#1E1B4B' : '#EDE9FE', borderColor: '#C4B5FD' }]} 
+                            onPress={() => handleCheckout(item)}
+                            activeOpacity={0.8}
+                        >
+                            <Ionicons name="log-out-outline" size={14} color="#7C3AED" />
+                            <Text style={[s.btnText, { color: '#7C3AED' }]}>Check Out</Text>
+                        </TouchableOpacity>
+                    )}
                 </View>
-                <View style={{ flex: 1 }} />
-                {item.status === 'staying' && (
-                <View style={s.cardActions}>
-                    <TouchableOpacity 
-                        style={[s.btn, { backgroundColor: isDark ? theme.primary + '20' : '#E0E7FF' }]} 
-                        onPress={() => handleCheckout(item)}
-                    >
-                        <Ionicons name="log-out-outline" size={16} color={theme.primary} />
-                        <Text style={[s.btnText, { color: theme.primary }]}>Check Out</Text>
-                    </TouchableOpacity>
-                </View>
-            )}
-        </View>
-    </TouchableOpacity>
-    );
+            </TouchableOpacity>
+        );
+    };
 
     return (
         <View style={[s.root, { backgroundColor: theme.background }]}>
@@ -484,18 +528,41 @@ const s = StyleSheet.create({
         marginBottom: 8,
         paddingHorizontal: 16,
     },
-    card: { borderRadius: 16, padding: 14, marginBottom: 10, borderWidth: 1 },
+    card: {
+        borderRadius: 20,
+        padding: 16,
+        marginBottom: 12,
+        borderWidth: 1,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.08,
+        shadowRadius: 10,
+        elevation: 4,
+    },
     cardTop: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-    avatar: { width: 48, height: 48, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+    avatar: { width: 50, height: 50, borderRadius: 16, alignItems: 'center', justifyContent: 'center', overflow: 'hidden', borderWidth: 1 },
+    avatarImg: { width: '100%', height: '100%', resizeMode: 'cover' },
     avatarText: { fontSize: 20, fontWeight: '800' },
     name: { fontSize: 16, fontWeight: '800' },
-    sub: { fontSize: 13, fontWeight: '600', marginTop: 2 },
-    amountBadge: { backgroundColor: '#DCFCE7', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 },
+    sub: { fontSize: 13, fontWeight: '600' },
+    amountBadge: { backgroundColor: '#DCFCE7', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
     amountText: { color: '#16A34A', fontWeight: '800', fontSize: 14 },
-    purpose: { fontSize: 13, marginTop: 10, fontWeight: '500' },
-    metaRow: { flexDirection: 'row', alignItems: 'center', gap: 14, marginTop: 12, paddingTop: 10, borderTopWidth: 1, flexWrap: 'wrap' },
+    purposeWrap: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        marginTop: 10,
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 10,
+    },
+    purpose: { fontSize: 12, fontWeight: '600' },
+    metaRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 12, paddingTop: 10, borderTopWidth: 1, flexWrap: 'wrap' },
     metaItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
     metaText: { fontSize: 11, fontWeight: '600' },
+    roomBadge: { backgroundColor: '#EFF6FF', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
+    stayingBadge: { backgroundColor: '#DCFCE7', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
+    stayingText: { color: '#16A34A', fontSize: 9, fontWeight: '900', letterSpacing: 0.3 },
     overstayBadge: { backgroundColor: '#FEE2E2', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
     overstayText: { color: '#DC2626', fontSize: 9, fontWeight: '900', letterSpacing: 0.3 },
     checkedOutBadge: { backgroundColor: '#F1F5F9', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
@@ -503,10 +570,10 @@ const s = StyleSheet.create({
     checkoutBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#16A34A', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 },
     checkoutBtnText: { color: '#FFF', fontSize: 11, fontWeight: '700' },
     cardActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-    btn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 },
-    btnText: { fontSize: 11, fontWeight: '700' },
+    btn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 10, borderWidth: 1 },
+    btnText: { fontSize: 12, fontWeight: '800' },
     fab: {
-        position: 'absolute', bottom: 140, right: 20, width: 52, height: 52, borderRadius: 26,
+        position: 'absolute', bottom: 140, right: 20, width: 54, height: 54, borderRadius: 27,
         justifyContent: 'center', alignItems: 'center', elevation: 10,
         shadowColor: '#4F46E5', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.35, shadowRadius: 6, zIndex: 99999,
     },

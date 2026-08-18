@@ -1175,10 +1175,24 @@ export async function patchDatabaseSchema() {
         }
 
         // guests.status — plain VARCHAR so it never suffers ENUM-drift.
-        // The controller reads it as g.status || 'staying', so NULL-safe.
-        if (!guestColNames.includes('status')) {
-          console.log('[schema-patch] adding status column to guests...');
-          await db.raw("ALTER TABLE guests ADD COLUMN status VARCHAR(50) DEFAULT 'staying'");
+        if (!guestColNames.includes('per_day_amount')) {
+          console.log('[schema-patch] adding per_day_amount column to guests...');
+          await db.raw("ALTER TABLE guests ADD COLUMN per_day_amount DECIMAL(10, 2) NULL");
+        }
+
+        if (!guestColNames.includes('profile_photo_url')) {
+          console.log('[schema-patch] adding profile_photo_url column to guests...');
+          await db.raw("ALTER TABLE guests ADD COLUMN profile_photo_url VARCHAR(500) NULL");
+        }
+
+        if (!guestColNames.includes('id_proof_front_url')) {
+          console.log('[schema-patch] adding id_proof_front_url column to guests...');
+          await db.raw("ALTER TABLE guests ADD COLUMN id_proof_front_url VARCHAR(500) NULL");
+        }
+
+        if (!guestColNames.includes('id_proof_back_url')) {
+          console.log('[schema-patch] adding id_proof_back_url column to guests...');
+          await db.raw("ALTER TABLE guests ADD COLUMN id_proof_back_url VARCHAR(500) NULL");
         }
       }
     } catch (e: any) {

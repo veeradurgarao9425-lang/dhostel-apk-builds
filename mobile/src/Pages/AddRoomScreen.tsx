@@ -15,6 +15,7 @@ import {
     Alert,
 } from 'react-native';
 import Toast from 'react-native-toast-message';
+import { Ionicons } from '@expo/vector-icons';
 import { AppHeader } from '../components/AppHeader';
 import api from '../services/api';
 import { useAuth } from '../../contexts/AuthContext';
@@ -89,6 +90,8 @@ export const AddRoomScreen = ({ navigation, route }: any) => {
     const [customAmenityInput, setCustomAmenityInput] = useState('');
     const [showCustomInput, setShowCustomInput] = useState(false);
     const [hostelFloorLimit, setHostelFloorLimit] = useState<number | null>(null);
+    const [successModalVisible, setSuccessModalVisible] = useState(false);
+    const [savedRoomData, setSavedRoomData] = useState<any>(null);
     const insets = useSafeAreaInsets();
     const [isKeyboardVisible, setKeyboardVisible] = useState(false);
     const scrollViewRef = useRef<ScrollView>(null);
@@ -306,34 +309,13 @@ export const AddRoomScreen = ({ navigation, route }: any) => {
                 ? await api.put(`/rooms/${roomToEdit.room_id}`, payload)
                 : await api.post('/rooms', payload);
             if (response.status === 201 || response.status === 200) {
-                Toast.show({ type: 'success', text1: 'Success', text2: `Room ${isEdit ? 'updated' : 'added'} successfully!` });
+                Toast.show({ type: 'success', text1: 'Success', text2: `Room ${isEdit ? 'updated' : 'created'} successfully!` });
                 const savedRoom = response.data?.data;
                 triggerRefresh({ lastCreatedRoomId: savedRoom?.room_id });
 
                 if (!isEdit) {
-                    Alert.alert(
-                        "🎉 Step 2 Completed!",
-                        `Room ${formData.room_number} added successfully.\n\nStep 3: Would you like to register students for this room now?`,
-                        [
-                            {
-                                text: "+ Add Student Now",
-                                onPress: () => {
-                                    navigation.replace('AddStudent', { roomId: savedRoom?.room_id });
-                                }
-                            },
-                            {
-                                text: "Add Another Room",
-                                onPress: () => {
-                                    handleReset();
-                                }
-                            },
-                            {
-                                text: "Back to Dashboard",
-                                onPress: () => navigation.goBack(),
-                                style: "cancel"
-                            }
-                        ]
-                    );
+                    setSavedRoomData(savedRoom || { room_id: null });
+                    setSuccessModalVisible(true);
                 } else {
                     navigation.goBack();
                 }
@@ -763,6 +745,96 @@ export const AddRoomScreen = ({ navigation, route }: any) => {
                     </TouchableOpacity>
                 </TouchableOpacity>
             </Modal>
+
+            {/* ── Room Creation Success Modal ── */}
+            <Modal
+                visible={successModalVisible}
+                transparent={true}
+                animationType="fade"
+                statusBarTranslucent
+                onRequestClose={() => setSuccessModalVisible(false)}
+            >
+                <View style={styles.successModalBackdrop}>
+                    <View style={[styles.successModalCard, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF' }]}>
+                        {/* Top Header: Tick mark & Title side-by-side */}
+                        <View style={styles.successHeaderRow}>
+                            <View style={styles.successIconBadge}>
+                                <Ionicons name="checkmark-circle" size={32} color="#10B981" />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                                <Text style={[styles.successModalTitle, { color: theme.textPrimary }]}>
+                                    Room Created! 🎉
+                                </Text>
+                                <Text style={[styles.successModalSub, { color: theme.textSecondary }]}>
+                                    Room {formData.room_number} is ready for tenants
+                                </Text>
+                            </View>
+                        </View>
+
+                        {/* Summary Grid Box */}
+                        <View style={[styles.successSummaryBox, { backgroundColor: isDark ? '#0F172A' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0' }]}>
+                            <View style={styles.successSummaryRow}>
+                                <View style={styles.successSummaryCol}>
+                                    <Text style={styles.successSummaryLbl}>Room No.</Text>
+                                    <Text style={[styles.successSummaryVal, { color: theme.primary }]}>Room {formData.room_number}</Text>
+                                </View>
+                                <View style={styles.successSummaryCol}>
+                                    <Text style={styles.successSummaryLbl}>Floor</Text>
+                                    <Text style={[styles.successSummaryVal, { color: theme.textPrimary }]}>Floor {formData.floor_number || '1'}</Text>
+                                </View>
+                                <View style={styles.successSummaryCol}>
+                                    <Text style={styles.successSummaryLbl}>Capacity</Text>
+                                    <Text style={[styles.successSummaryVal, { color: theme.textPrimary }]}>{formData.capacity || '4'} Beds</Text>
+                                </View>
+                                <View style={styles.successSummaryCol}>
+                                    <Text style={styles.successSummaryLbl}>Rent / Bed</Text>
+                                    <Text style={[styles.successSummaryVal, { color: '#059669' }]}>₹{formData.rent_per_bed || '0'}</Text>
+                                </View>
+                            </View>
+                        </View>
+
+                        {/* Side-by-Side Action Buttons */}
+                        <View style={styles.successButtonsRow}>
+                            <TouchableOpacity
+                                style={[styles.successActionBtnPrimary, { backgroundColor: theme.primary }]}
+                                onPress={() => {
+                                    setSuccessModalVisible(false);
+                                    navigation.replace('AddStudent', { roomId: savedRoomData?.room_id });
+                                }}
+                                activeOpacity={0.85}
+                            >
+                                <Ionicons name="person-add" size={16} color="#FFF" />
+                                <Text style={styles.successActionBtnPrimaryText}>+ Add Student</Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                style={[styles.successActionBtnSecondary, { borderColor: isDark ? '#334155' : '#CBD5E1', backgroundColor: isDark ? '#1E293B' : '#F8FAFC' }]}
+                                onPress={() => {
+                                    setSuccessModalVisible(false);
+                                    handleReset();
+                                }}
+                                activeOpacity={0.75}
+                            >
+                                <Ionicons name="add-circle-outline" size={16} color={theme.textPrimary} />
+                                <Text style={[styles.successActionBtnSecondaryText, { color: theme.textPrimary }]}>+ Add Room</Text>
+                            </TouchableOpacity>
+                        </View>
+
+                        {/* Next line: Done / Go to Dashboard */}
+                        <TouchableOpacity
+                            style={[styles.successActionBtnDone, { borderColor: isDark ? '#334155' : '#E2E8F0', backgroundColor: isDark ? '#0F172A' : '#F1F5F9' }]}
+                            onPress={() => {
+                                setSuccessModalVisible(false);
+                                navigation.navigate('Main', { screen: 'HomeTab' });
+                            }}
+                            activeOpacity={0.7}
+                        >
+                            <Ionicons name="home-outline" size={15} color={theme.textSecondary} style={{ marginRight: 6 }} />
+                            <Text style={[styles.successActionBtnDoneText, { color: theme.textSecondary }]}>Done / Go to Dashboard</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
         </KeyboardAvoidingView>
     );
 };
@@ -981,6 +1053,120 @@ const styles = StyleSheet.create({
         borderBottomColor: '#F8FAFC',
     },
     modalOptionText: { fontSize: 15, color: '#334155', fontWeight: '500' },
+
+    // Success Modal
+    successModalBackdrop: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.65)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 20,
+    },
+    successModalCard: {
+        width: '100%',
+        maxWidth: 380,
+        borderRadius: 24,
+        padding: 20,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.15,
+        shadowRadius: 20,
+        elevation: 10,
+    },
+    successHeaderRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        marginBottom: 16,
+    },
+    successIconBadge: {
+        width: 46,
+        height: 46,
+        borderRadius: 23,
+        backgroundColor: '#ECFDF5',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    successModalTitle: {
+        fontSize: 18,
+        fontWeight: '800',
+    },
+    successModalSub: {
+        fontSize: 12.5,
+        fontWeight: '500',
+        marginTop: 2,
+    },
+    successSummaryBox: {
+        width: '100%',
+        borderRadius: 14,
+        borderWidth: 1,
+        paddingVertical: 12,
+        paddingHorizontal: 8,
+        marginBottom: 16,
+    },
+    successSummaryRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+    },
+    successSummaryCol: {
+        flex: 1,
+        alignItems: 'center',
+    },
+    successSummaryLbl: {
+        fontSize: 10.5,
+        fontWeight: '600',
+        color: '#94A3B8',
+        marginBottom: 2,
+    },
+    successSummaryVal: {
+        fontSize: 13,
+        fontWeight: '700',
+    },
+    successButtonsRow: {
+        flexDirection: 'row',
+        gap: 10,
+        marginBottom: 10,
+    },
+    successActionBtnPrimary: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: 46,
+        borderRadius: 12,
+        gap: 6,
+    },
+    successActionBtnPrimaryText: {
+        color: '#FFF',
+        fontSize: 13.5,
+        fontWeight: '700',
+    },
+    successActionBtnSecondary: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: 46,
+        borderRadius: 12,
+        borderWidth: 1.5,
+        gap: 6,
+    },
+    successActionBtnSecondaryText: {
+        fontSize: 13.5,
+        fontWeight: '700',
+    },
+    successActionBtnDone: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: 42,
+        borderRadius: 12,
+        borderWidth: 1,
+    },
+    successActionBtnDoneText: {
+        fontSize: 13,
+        fontWeight: '600',
+    },
 });
 
 export default AddRoomScreen;

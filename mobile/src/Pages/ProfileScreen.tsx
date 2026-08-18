@@ -22,6 +22,8 @@ import api from '../services/api';
 import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useConfirmation } from '../../contexts/ConfirmationContext';
+import { HeaderNotification } from '../components/HeaderNotification';
+import { HostixBrand } from '../components/HostixBrand';
 
 const ProfileScreen = ({ navigation }: any) => {
     const { user, signOut, updateTokenAndUser, hostels: contextHostels } = useAuth();
@@ -185,7 +187,7 @@ const ProfileScreen = ({ navigation }: any) => {
         return `₹${n.toLocaleString('en-IN')}`;
     };
 
-    const displayName = user?.full_name || user?.name || (user?.first_name ? `${user.first_name} ${user.last_name || ''}`.trim() : '') || '';
+    const displayName = user?.full_name || user?.name || ((user as any)?.first_name ? `${(user as any).first_name} ${(user as any).last_name || ''}`.trim() : '') || '';
     const initials = (displayName || user?.email || 'U')
         .split(' ')
         .map(w => w[0])
@@ -223,10 +225,7 @@ const ProfileScreen = ({ navigation }: any) => {
                         <View style={{ width: 36 }} />
                     )}
                     <View style={styles.headerActionsRight}>
-                        <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.navigate('Notifications')} activeOpacity={0.7}>
-                            <Ionicons name="notifications-outline" size={22} color="#FFF" />
-                            <View style={styles.notiBadge} />
-                        </TouchableOpacity>
+                        <HeaderNotification navigation={navigation} />
                         <TouchableOpacity style={styles.headerBtn} onPress={() => navigation.navigate('Settings')} activeOpacity={0.7}>
                             <Ionicons name="settings-outline" size={22} color="#FFF" />
                         </TouchableOpacity>
@@ -463,10 +462,13 @@ const ProfileScreen = ({ navigation }: any) => {
                     </View>
                 </TouchableOpacity>
 
-                {/* Footer text */}
-                <Text style={[styles.version, { color: isDark ? '#475569' : '#94A3B8' }]}>
-                    Hostix v1.0.0 - Smart Hostel Management
-                </Text>
+                {/* 2-Color Brand Footer */}
+                <View style={{ alignItems: 'center', marginTop: 24, marginBottom: 12 }}>
+                    <HostixBrand fontSize={22} subtitle="PG OS" lightTheme={!isDark} />
+                    <Text style={[styles.version, { color: isDark ? '#475569' : '#94A3B8', marginTop: 4 }]}>
+                        v1.0.0 · Smart Hostel Management
+                    </Text>
+                </View>
             </ScrollView>
 
             {/* ─── HOSTEL SWITCHER MODAL (DRAWER) ─── */}

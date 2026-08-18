@@ -43,7 +43,7 @@ export default function ProfileScreen({ navigation }: any) {
     .join('')
     .toUpperCase();
   const roomNumber = user?.room_number ? `Room ${user.room_number}` : 'No Room';
-  const phone = user?.phone || user?.mobile || 'No phone added';
+  const phone = user?.phone || (user as any)?.mobile || 'No phone added';
   const email = user?.email || 'No email added';
   const hostelName = (user as any)?.hostel_name || 'My Hostel';
 

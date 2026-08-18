@@ -565,15 +565,23 @@ export const getIncomeAnalytics = async (req: AuthRequest, res: Response) => {
 
     // 3. Combine Transactions
     const transactions = [
-      ...incomes.map(inc => ({
-        id: `inc_${inc.income_id}`,
-        title: inc.source || 'Other Income',
-        subtitle: inc.payment_mode || 'Cash',
-        amount: parseFloat(inc.amount),
-        date: safeGetDateString(inc.income_date),
-        type: 'Other',
-        description: inc.description
-      })),
+      ...incomes.map(inc => {
+        const isDeposit = inc.source && (
+          inc.source.toLowerCase().includes('deposit') ||
+          inc.source.toLowerCase().includes('deduction') ||
+          inc.source.toLowerCase().includes('settle') ||
+          inc.source.toLowerCase().includes('damage')
+        );
+        return {
+          id: `inc_${inc.income_id}`,
+          title: inc.source || (isDeposit ? 'Deposit Deduction' : 'Other Income'),
+          subtitle: isDeposit ? `Deposit / Settlement · ${inc.payment_mode || 'Cash'}` : (inc.payment_mode || 'Cash'),
+          amount: parseFloat(inc.amount),
+          date: safeGetDateString(inc.income_date),
+          type: isDeposit ? 'Deposit' : 'Other',
+          description: inc.description
+        };
+      }),
       ...feePayments.map(fp => ({
         id: `fee_${fp.payment_id}`,
         title: `${fp.first_name || 'Student'} ${fp.last_name || ''}`.trim(),

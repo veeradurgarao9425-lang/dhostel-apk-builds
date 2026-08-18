@@ -4,6 +4,7 @@ import { AuthRequest } from '../middleware/auth.js';
 import { isOverstaying, expectedLastDay } from '../jobs/guestOverstay.js';
 import { checkHostelUniqueIdentifiers } from '../utils/validation.js';
 import { resolveScopedHostelId } from '../utils/scope.js';
+import { processFileUpload } from '../utils/fileUpload.js';
 
 // Resolve the hostel the request is scoped to (owner = JWT hostel, admin = body/query)
 function resolveHostelId(req: AuthRequest): number | null {
@@ -101,6 +102,7 @@ export const createGuest = async (req: AuthRequest, res: Response) => {
       check_in_date,
       check_out_date,
       days,
+      per_day_amount,
       amount_paid,
       purpose,
       room_number,
@@ -125,6 +127,21 @@ export const createGuest = async (req: AuthRequest, res: Response) => {
       });
     }
 
+    const files = req.files as { [field: string]: Express.Multer.File[] } | undefined;
+    let profile_photo_url: string | null = req.body.profile_photo_url || null;
+    let id_proof_front_url: string | null = req.body.id_proof_front_url || null;
+    let id_proof_back_url: string | null = req.body.id_proof_back_url || null;
+
+    if (files?.profile_photo?.[0]) {
+      profile_photo_url = await processFileUpload(files.profile_photo[0], 'avatars');
+    }
+    if (files?.id_proof_front?.[0]) {
+      id_proof_front_url = await processFileUpload(files.id_proof_front[0], 'documents');
+    }
+    if (files?.id_proof_back?.[0]) {
+      id_proof_back_url = await processFileUpload(files.id_proof_back[0], 'documents');
+    }
+
     const [guest_id] = await db('guests').insert({
       hostel_id: hostelId,
       full_name,
@@ -135,10 +152,14 @@ export const createGuest = async (req: AuthRequest, res: Response) => {
       check_in_date,
       check_out_date: check_out_date || null,
       days: days ? Number(days) : 1,
+      per_day_amount: per_day_amount ? Number(per_day_amount) : (amount_paid && days ? Number(amount_paid) / Number(days) : null),
       amount_paid: amount_paid ? Number(amount_paid) : 0,
       purpose: purpose || null,
       room_number: room_number || null,
       notes: notes || null,
+      profile_photo_url,
+      id_proof_front_url,
+      id_proof_back_url,
       created_at: new Date(),
     });
 
@@ -167,12 +188,24 @@ export const updateGuest = async (req: AuthRequest, res: Response) => {
 
     const allowed = [
       'full_name', 'phone', 'email', 'id_proof_type_id', 'id_proof_number',
-      'check_in_date', 'check_out_date', 'days', 'amount_paid', 'purpose', 
-      'room_number', 'notes', 'status', 'checked_out_at'
+      'check_in_date', 'check_out_date', 'days', 'per_day_amount', 'amount_paid', 'purpose', 
+      'room_number', 'notes', 'status', 'checked_out_at',
+      'profile_photo_url', 'id_proof_front_url', 'id_proof_back_url'
     ];
     const updateData: any = { updated_at: new Date() };
     for (const key of allowed) {
       if (req.body[key] !== undefined) updateData[key] = req.body[key];
+    }
+
+    const files = req.files as { [field: string]: Express.Multer.File[] } | undefined;
+    if (files?.profile_photo?.[0]) {
+      updateData.profile_photo_url = await processFileUpload(files.profile_photo[0], 'avatars');
+    }
+    if (files?.id_proof_front?.[0]) {
+      updateData.id_proof_front_url = await processFileUpload(files.id_proof_front[0], 'documents');
+    }
+    if (files?.id_proof_back?.[0]) {
+      updateData.id_proof_back_url = await processFileUpload(files.id_proof_back[0], 'documents');
     }
 
     // If the booking dates/length changed, allow the overstay alert to fire again.

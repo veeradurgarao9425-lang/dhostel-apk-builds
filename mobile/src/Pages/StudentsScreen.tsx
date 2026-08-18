@@ -80,7 +80,7 @@ const StudentCard = React.memo(({ student, onPress, onWhatsApp, onCall, onToggle
 
     useEffect(() => {
         setImageError(false);
-    }, [student.photo]);
+    }, [student.photo, student.profile_photo_url, student.profile_photo]);
 
     const getInitials = (first: string, last: string) => {
         const f = first ? first.charAt(0).toUpperCase() : '';
@@ -89,151 +89,220 @@ const StudentCard = React.memo(({ student, onPress, onWhatsApp, onCall, onToggle
     };
 
     // Determine colors based on status dynamically from theme
-    let statusColor = theme.error;
+    let statusColor = '#94A3B8';
     let statusLabel = t('students.inactive', 'Left');
 
     if (isActive) {
-        statusColor = theme.success;
+        statusColor = '#10B981';
         statusLabel = t('students.active', 'Active');
     } else if (isPreBooked) {
-        statusColor = theme.warning;
+        statusColor = '#F59E0B';
         statusLabel = t('students.prebooked', 'Pre-Booked');
     } else if (isQRSignup) {
-        statusColor = theme.primary;
-        statusLabel = t('students.qrSignup', 'Pending');
+        statusColor = '#6366F1';
+        statusLabel = t('students.qrSignup', 'QR Signup');
     } else if (isRejected) {
         statusColor = '#EF4444';
         statusLabel = 'Rejected';
     }
 
-
-    const badgeBg = statusColor + '15';
-    const badgeText = statusColor;
-    const avatarBg = statusColor + '20';
-    const avatarTextColor = statusColor;
+    const badgeBg = isDark ? `${statusColor}22` : `${statusColor}18`;
+    const avatarBg = isDark ? `${statusColor}25` : `${statusColor}15`;
 
     return (
         <TouchableOpacity
-            style={[styles.card, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}
+            style={[
+                styles.card,
+                {
+                    backgroundColor: theme.cardBg,
+                    borderColor: isDark ? '#334155' : '#E2E8F0',
+                }
+            ]}
             onPress={() => onPress(student.student_id)}
-            activeOpacity={0.8}
+            activeOpacity={0.88}
         >
+            {/* Top Identity Row */}
             <View style={styles.cardHeader}>
-                <View style={[styles.avatarBox, { backgroundColor: avatarBg }]}>
-                    {(() => {
-                        const rawPhoto = student.profile_photo_url || student.photo || student.profile_photo;
-                        let photoUri: string | null = null;
-                        if (rawPhoto) {
-                            if (rawPhoto.includes('r2.cloudflarestorage.com/hostix-media/')) {
-                                const key = rawPhoto.split('hostix-media/')[1];
-                                photoUri = `http://143.244.131.69:8081/api/media/${key}`;
-                            } else if (rawPhoto.startsWith('http://') || rawPhoto.startsWith('https://')) {
-                                photoUri = rawPhoto;
-                            } else {
-                                photoUri = `http://143.244.131.69:8081${rawPhoto.startsWith('/') ? '' : '/'}${rawPhoto}`;
+                {/* Avatar with Status Dot */}
+                <View style={styles.avatarContainer}>
+                    <View style={[styles.avatarBox, { backgroundColor: avatarBg, borderColor: isDark ? '#334155' : '#E2E8F0' }]}>
+                        {(() => {
+                            const rawPhoto = student.profile_photo_url || student.photo || student.profile_photo;
+                            let photoUri: string | null = null;
+                            if (rawPhoto) {
+                                if (rawPhoto.includes('r2.cloudflarestorage.com/hostix-media/')) {
+                                    const key = rawPhoto.split('hostix-media/')[1];
+                                    photoUri = `http://143.244.131.69:8081/api/media/${key}`;
+                                } else if (rawPhoto.startsWith('http://') || rawPhoto.startsWith('https://')) {
+                                    photoUri = rawPhoto;
+                                } else {
+                                    photoUri = `http://143.244.131.69:8081${rawPhoto.startsWith('/') ? '' : '/'}${rawPhoto}`;
+                                }
                             }
-                        }
-                        return photoUri && !imageError ? (
-                            <Image 
-                                source={{ uri: photoUri }} 
-                                style={styles.avatarImg} 
-                                fadeDuration={0} 
-                                onError={() => setImageError(true)}
-                            />
-                        ) : (
-                            <Text style={[styles.avatarTextInitials, { color: avatarTextColor }]}>
-                                {getInitials(student.first_name, student.last_name)}
-                            </Text>
-                        );
-                    })()}
+                            return photoUri && !imageError ? (
+                                <Image 
+                                    source={{ uri: photoUri }} 
+                                    style={styles.avatarImg} 
+                                    fadeDuration={0} 
+                                    onError={() => setImageError(true)}
+                                />
+                            ) : (
+                                <Text style={[styles.avatarTextInitials, { color: statusColor }]}>
+                                    {getInitials(student.first_name, student.last_name)}
+                                </Text>
+                            );
+                        })()}
+                    </View>
+                    <View style={[styles.avatarStatusDot, { backgroundColor: statusColor, borderColor: theme.cardBg }]} />
                 </View>
-                <View style={styles.infoContainer}>
-                    <Text style={[styles.nameText, { color: theme.textPrimary }]} numberOfLines={1}>
-                        {student.first_name} {student.last_name || ''}
-                    </Text>
-                    <Text style={[styles.subDetailText, { color: theme.textSecondary }]}>
-                        {t('students.room')} {student.room_number || 'N/A'} • {student.phone || t('students.noPhone')}
-                    </Text>
 
-                    <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
+                {/* Details */}
+                <View style={styles.infoContainer}>
+                    <View style={styles.nameRow}>
+                        <Text style={[styles.nameText, { color: theme.textPrimary }]} numberOfLines={1}>
+                            {student.first_name} {student.last_name || ''}
+                        </Text>
+                        <View style={[styles.statusBadge, { backgroundColor: badgeBg }]}>
+                            <Text style={[styles.statusBadgeText, { color: statusColor }]}>
+                                {statusLabel}
+                            </Text>
+                        </View>
+                    </View>
+
+                    {/* Room and Phone Tags */}
+                    <View style={styles.tagsRow}>
+                        {student.room_number ? (
+                            <View style={[styles.roomPill, { backgroundColor: isDark ? 'rgba(99, 102, 241, 0.15)' : '#EEF2FF', borderColor: isDark ? 'rgba(99, 102, 241, 0.3)' : '#C7D2FE' }]}>
+                                <Ionicons name="bed" size={12} color="#6366F1" />
+                                <Text style={[styles.roomPillText, { color: '#6366F1' }]}>
+                                    Room {student.room_number}
+                                </Text>
+                            </View>
+                        ) : (
+                            <View style={[styles.roomPill, { backgroundColor: isDark ? 'rgba(239, 68, 68, 0.15)' : '#FEF2F2', borderColor: isDark ? 'rgba(239, 68, 68, 0.3)' : '#FECACA' }]}>
+                                <Ionicons name="alert-circle" size={12} color="#EF4444" />
+                                <Text style={[styles.roomPillText, { color: '#EF4444' }]}>
+                                    No Room
+                                </Text>
+                            </View>
+                        )}
+
+                        {student.phone ? (
+                            <View style={styles.phoneTagWrap}>
+                                <Ionicons name="call-outline" size={12} color={theme.textSecondary} />
+                                <Text style={[styles.phoneTagText, { color: theme.textSecondary }]}>
+                                    {student.phone}
+                                </Text>
+                            </View>
+                        ) : null}
+                    </View>
+
+                    {/* Conditional Action Badges */}
+                    <View style={styles.actionPillsRow}>
                         {isActive && !student.room_id && (
                             <TouchableOpacity
-                                style={[styles.smallActionBtn, { marginTop: 0, backgroundColor: '#FEF2F2', borderColor: '#FECACA' }]}
+                                style={[styles.smallActionBtn, { backgroundColor: isDark ? 'rgba(239, 68, 68, 0.15)' : '#FEF2F2', borderColor: '#FECACA' }]}
                                 onPress={() => onAllocateRoom(student)}
-                                activeOpacity={0.7}
+                                activeOpacity={0.75}
                             >
-                                <Text style={[styles.smallActionBtnText, { color: '#DC2626' }]}>⚠ {t('students.allocateRoom', 'Allocate Room')}</Text>
+                                <Ionicons name="add-circle" size={13} color="#DC2626" />
+                                <Text style={[styles.smallActionBtnText, { color: '#DC2626' }]}>{t('students.allocateRoom', 'Allocate Room')}</Text>
                             </TouchableOpacity>
                         )}
                         {(isActive || isQRSignup || isPreBooked) && student.admission_status === 0 && (
                             <TouchableOpacity
-                                style={[styles.smallActionBtn, { marginTop: 0, backgroundColor: '#FFFBEB', borderColor: '#FDE68A' }]}
+                                style={[styles.smallActionBtn, { backgroundColor: isDark ? 'rgba(245, 158, 11, 0.15)' : '#FFFBEB', borderColor: '#FDE68A' }]}
                                 onPress={() => onPayAdmission(student)}
-                                activeOpacity={0.7}
+                                activeOpacity={0.75}
                             >
-                                <Text style={[styles.smallActionBtnText, { color: '#D97706' }]}>✓ Pay Admission</Text>
+                                <Ionicons name="receipt" size={13} color="#D97706" />
+                                <Text style={[styles.smallActionBtnText, { color: '#D97706' }]}>Pay Admission</Text>
                             </TouchableOpacity>
                         )}
                         {isQRSignup && (
                             <TouchableOpacity
-                                style={[styles.smallActionBtn, { marginTop: 0, backgroundColor: '#FEF2F2', borderColor: '#FECACA' }]}
+                                style={[styles.smallActionBtn, { backgroundColor: isDark ? 'rgba(239, 68, 68, 0.15)' : '#FEF2F2', borderColor: '#FECACA' }]}
                                 onPress={() => onReject(student)}
-                                activeOpacity={0.7}
+                                activeOpacity={0.75}
                             >
-                                <Text style={[styles.smallActionBtnText, { color: '#DC2626' }]}>✕ {t('students.reject', 'Reject')}</Text>
+                                <Ionicons name="close-circle" size={13} color="#DC2626" />
+                                <Text style={[styles.smallActionBtnText, { color: '#DC2626' }]}>{t('students.reject', 'Reject')}</Text>
                             </TouchableOpacity>
                         )}
                         {(isQRSignup || isRejected) && (
                             <TouchableOpacity
-                                style={[styles.smallActionBtn, { marginTop: 0, backgroundColor: '#EFF6FF', borderColor: '#BFDBFE' }]}
+                                style={[styles.smallActionBtn, { backgroundColor: isDark ? 'rgba(37, 99, 235, 0.15)' : '#EFF6FF', borderColor: '#BFDBFE' }]}
                                 onPress={() => onAllocateRoom(student)}
-                                activeOpacity={0.7}
+                                activeOpacity={0.75}
                             >
-                                <Text style={[styles.smallActionBtnText, { color: '#2563EB' }]}>✓ {t('students.approve', 'Approve & Allocate')}</Text>
+                                <Ionicons name="checkmark-circle" size={13} color="#2563EB" />
+                                <Text style={[styles.smallActionBtnText, { color: '#2563EB' }]}>{t('students.approve', 'Approve & Allocate')}</Text>
                             </TouchableOpacity>
                         )}
                     </View>
                 </View>
-                <View style={[styles.statusBadge, { backgroundColor: badgeBg }]}>
-                    <Text style={[styles.statusBadgeText, { color: badgeText }]}>
-                        {statusLabel}
-                    </Text>
-                </View>
             </View>
 
+            {/* Divider */}
             <View style={[styles.divider, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]} />
 
+            {/* Bottom Action Footer with Call, WhatsApp & Status Button */}
             <View style={styles.cardActions}>
-                <View style={{ flexDirection: 'row', gap: 8 }}>
+                <View style={styles.contactActionsGroup}>
+                    {/* Call Button */}
                     <TouchableOpacity
                         onPress={() => onCall(student.phone)}
-                        style={[styles.actionBtnIcon, { backgroundColor: isDark ? '#334155' : '#F8FAFC', borderColor: isDark ? '#475569' : '#E2E8F0' }]}
+                        style={[
+                            styles.actionBtnIcon, 
+                            { 
+                                backgroundColor: isDark ? '#1E293B' : '#F0F9FF', 
+                                borderColor: isDark ? '#334155' : '#BAE6FD' 
+                            }
+                        ]}
+                        activeOpacity={0.75}
                     >
-                        <Phone size={14} color="#0EA5E9" />
-                        <Text style={[styles.actionBtnIconText, { color: theme.textSecondary }]}>{t('students.call')}</Text>
+                        <Ionicons name="call" size={13} color="#0284C7" />
+                        <Text style={[styles.actionBtnIconText, { color: '#0284C7' }]}>{t('students.call', 'Call')}</Text>
+                    </TouchableOpacity>
+
+                    {/* WhatsApp Button */}
+                    <TouchableOpacity
+                        onPress={() => onWhatsApp(student.phone)}
+                        style={[
+                            styles.actionBtnIcon, 
+                            { 
+                                backgroundColor: isDark ? '#064E3B' : '#F0FDF4', 
+                                borderColor: isDark ? '#059669' : '#BBF7D0' 
+                            }
+                        ]}
+                        activeOpacity={0.75}
+                    >
+                        <Ionicons name="logo-whatsapp" size={14} color="#16A34A" />
+                        <Text style={[styles.actionBtnIconText, { color: '#16A34A', fontWeight: '700' }]}>WhatsApp</Text>
                     </TouchableOpacity>
                 </View>
+
+                {/* Status Toggle Button */}
                 <TouchableOpacity
                     onPress={() => onToggle(student)}
                     style={[
                         styles.statusToggleBtnNew,
                         {
-                            backgroundColor: isQRSignup ? theme.primary + '15' : isPreBooked ? theme.warning + '15' : isActive ? theme.error + '15' : theme.success + '15',
-                            borderColor: isQRSignup ? theme.primary + '30' : isPreBooked ? theme.warning + '30' : isActive ? theme.error + '30' : theme.success + '30',
-                            borderWidth: 1
+                            backgroundColor: isQRSignup ? `${theme.primary}18` : isPreBooked ? 'rgba(245, 158, 11, 0.15)' : isActive ? 'rgba(239, 68, 68, 0.15)' : 'rgba(16, 185, 129, 0.15)',
+                            borderColor: isQRSignup ? `${theme.primary}35` : isPreBooked ? 'rgba(245, 158, 11, 0.35)' : isActive ? 'rgba(239, 68, 68, 0.35)' : 'rgba(16, 185, 129, 0.35)',
                         }
                     ]}
+                    activeOpacity={0.8}
                 >
                     {isQRSignup ? (
-                        <Text style={[styles.statusToggleTextNew, { color: theme.primary }]}>{t('students.checkIn')}</Text>
+                        <Text style={[styles.statusToggleTextNew, { color: theme.primary }]}>{t('students.checkIn', 'Check In')}</Text>
                     ) : isPreBooked ? (
-                        <Text style={[styles.statusToggleTextNew, { color: theme.warning }]}>{t('students.checkIn')}</Text>
+                        <Text style={[styles.statusToggleTextNew, { color: '#F59E0B' }]}>{t('students.checkIn', 'Check In')}</Text>
                     ) : (
-                        <Text style={[styles.statusToggleTextNew, { color: isActive ? theme.error : theme.success }]}>
-                            {isActive ? t('students.deactivate') : t('students.activate')}
+                        <Text style={[styles.statusToggleTextNew, { color: isActive ? '#EF4444' : '#10B981' }]}>
+                            {isActive ? t('students.deactivate', 'Mark Left') : t('students.activate', 'Activate')}
                         </Text>
                     )}
-
                 </TouchableOpacity>
             </View>
         </TouchableOpacity>
@@ -506,7 +575,12 @@ export default function StudentsScreen({ navigation, route }: any) {
     }, [navigation]);
 
     const handleWhatsApp = useCallback((phone: string) => {
-        Linking.openURL(`whatsapp://send?phone=91${phone}`);
+        if (!phone) return;
+        const cleanPhone = phone.replace(/[^0-9]/g, '');
+        const fullPhone = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
+        Linking.openURL(`whatsapp://send?phone=${fullPhone}`).catch(() => {
+            Linking.openURL(`https://wa.me/${fullPhone}`);
+        });
     }, []);
 
     const handleToggleStatus = useCallback((student: any) => {
@@ -725,14 +799,14 @@ export default function StudentsScreen({ navigation, route }: any) {
                     contentContainerStyle={styles.tabScrollContent}
                 >
                     {[
-                        { key: 'Active', label: t('students.active'), count: counts.active, show: true },
-                        { key: 'AdmissionPending', label: 'Admission Pending', count: counts.pendingAdmissions || 0, show: true },
-                        { key: 'Unallocated', label: t('students.unallocatedTab', 'No Room'), count: counts.unallocated, show: true },
-                        { key: 'PreBooked', label: t('students.prebooked'), count: counts.prebooked, show: counts.prebooked > 0 },
-                        { key: 'QRRegister', label: t('students.qrSignups'), count: counts.qrRegister, show: counts.qrRegister > 0 },
+                        { key: 'Active', label: t('students.active'), count: counts.active, show: counts.active > 0 || activeTab === 'Active' },
+                        { key: 'AdmissionPending', label: 'Admission Pending', count: counts.pendingAdmissions || 0, show: (counts.pendingAdmissions || 0) > 0 || activeTab === 'AdmissionPending' },
+                        { key: 'Unallocated', label: t('students.unallocatedTab', 'No Room'), count: counts.unallocated, show: counts.unallocated > 0 || activeTab === 'Unallocated' },
+                        { key: 'PreBooked', label: t('students.prebooked'), count: counts.prebooked, show: counts.prebooked > 0 || activeTab === 'PreBooked' },
+                        { key: 'QRRegister', label: t('students.qrSignups'), count: counts.qrRegister, show: counts.qrRegister > 0 || activeTab === 'QRRegister' },
                         { key: 'Rejected', label: 'Rejected', count: counts.rejected, show: counts.rejected > 0 || activeTab === 'Rejected' },
-                        { key: 'Inactive', label: t('students.inactive'), count: counts.inactive, show: true },
-                        { key: 'All', label: t('students.total'), count: counts.total, show: true }
+                        { key: 'Inactive', label: t('students.inactive'), count: counts.inactive, show: counts.inactive > 0 || activeTab === 'Inactive' },
+                        { key: 'All', label: t('students.total'), count: counts.total, show: counts.total > 0 || activeTab === 'All' }
                     ].filter(tab => tab.show).map((tab: any) => (
 
                         <TouchableOpacity
@@ -953,27 +1027,163 @@ const styles = StyleSheet.create({
     listPadding: { padding: 16, paddingBottom: 180 },
     card: {
         backgroundColor: '#FFF',
-        borderRadius: 16,
-        padding: 12,
+        borderRadius: 18,
+        padding: 14,
         marginBottom: 12,
         borderWidth: 1,
-        borderColor: '#F1F5F9',
+        borderColor: '#E2E8F0',
+        elevation: 3,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.04,
+        shadowRadius: 6,
     },
     cardHeader: {
         flexDirection: 'row',
-        alignItems: 'center',
+        alignItems: 'flex-start',
+    },
+    avatarContainer: {
+        position: 'relative',
     },
     avatarBox: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
+        width: 44,
+        height: 44,
+        borderRadius: 14,
         justifyContent: 'center',
         alignItems: 'center',
         overflow: 'hidden',
+        borderWidth: 1,
     },
     avatarImg: {
-        width: 36,
-        height: 36,
+        width: 44,
+        height: 44,
+    },
+    avatarStatusDot: {
+        position: 'absolute',
+        bottom: -2,
+        right: -2,
+        width: 12,
+        height: 12,
+        borderRadius: 6,
+        borderWidth: 2,
+    },
+    avatarTextInitials: {
+        fontSize: 15,
+        fontWeight: '800',
+    },
+    infoContainer: {
+        flex: 1,
+        marginLeft: 12,
+        gap: 6,
+    },
+    nameRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        gap: 8,
+    },
+    nameText: {
+        fontSize: 15,
+        fontWeight: '800',
+        flex: 1,
+    },
+    statusBadge: {
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        borderRadius: 8,
+    },
+    statusBadgeText: {
+        fontSize: 10.5,
+        fontWeight: '800',
+        textTransform: 'uppercase',
+        letterSpacing: 0.3,
+    },
+    tagsRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: 8,
+    },
+    roomPill: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        borderRadius: 8,
+        borderWidth: 1,
+    },
+    roomPillText: {
+        fontSize: 11,
+        fontWeight: '700',
+    },
+    phoneTagWrap: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+    },
+    phoneTagText: {
+        fontSize: 11.5,
+        fontWeight: '600',
+    },
+    actionPillsRow: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 6,
+        marginTop: 2,
+    },
+    smallActionBtn: {
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        borderRadius: 8,
+        borderWidth: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+    },
+    smallActionBtnText: {
+        fontSize: 11,
+        fontWeight: '700',
+    },
+    divider: {
+        height: 1,
+        marginVertical: 12,
+    },
+    cardActions: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        gap: 8,
+    },
+    contactActionsGroup: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    actionBtnIcon: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 5,
+        paddingHorizontal: 10,
+        paddingVertical: 7,
+        borderRadius: 10,
+        borderWidth: 1,
+    },
+    actionBtnIconText: {
+        fontSize: 11.5,
+        fontWeight: '700',
+    },
+    statusToggleBtnNew: {
+        paddingHorizontal: 12,
+        paddingVertical: 7,
+        borderRadius: 10,
+        borderWidth: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    statusToggleTextNew: {
+        fontSize: 11.5,
+        fontWeight: '800',
     },
     addBtnText: {
         color: '#FFF',
@@ -997,56 +1207,6 @@ const styles = StyleSheet.create({
         fontSize: 12,
         fontWeight: '600',
     },
-    avatarTextInitials: {
-        fontSize: 13,
-        fontWeight: '700',
-    },
-    infoContainer: {
-        flex: 1,
-        marginLeft: 12,
-    },
-    nameText: {
-        fontSize: 14,
-        fontWeight: '700',
-        color: '#1E293B',
-    },
-    subDetailText: {
-        fontSize: 11,
-        color: '#64748B',
-        fontWeight: '500',
-        marginTop: 4,
-    },
-    smallActionBtn: {
-        alignSelf: 'flex-start',
-        marginTop: 6,
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 6,
-        borderWidth: 1,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 1,
-        elevation: 1,
-    },
-    smallActionBtnText: {
-        fontSize: 11,
-        fontWeight: '600'
-    },
-    allocateChip: {
-        alignSelf: 'flex-start',
-        marginTop: 6,
-        backgroundColor: '#FEF2F2',
-        borderColor: '#FECACA',
-        borderWidth: 1,
-        paddingHorizontal: 8,
-        paddingVertical: 3,
-        borderRadius: 8,
-    },
-    allocateChipText: { fontSize: 10, fontWeight: '700', color: '#DC2626' },
     allocateBanner: {
         backgroundColor: '#FEF2F2',
         borderColor: '#FECACA',
@@ -1061,52 +1221,6 @@ const styles = StyleSheet.create({
     },
     allocateBannerText: { fontSize: 13, fontWeight: '800', color: '#DC2626', flexShrink: 1 },
     allocateBannerHint: { fontSize: 11, fontWeight: '700', color: '#B91C1C', marginLeft: 8 },
-    statusBadge: {
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 8,
-    },
-    statusBadgeText: {
-        fontSize: 10,
-        fontWeight: '700',
-    },
-    divider: {
-        height: 1,
-        backgroundColor: '#F1F5F9',
-        marginVertical: 10,
-    },
-    cardActions: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-    },
-    actionBtnIcon: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-        backgroundColor: '#F8FAFC',
-        paddingHorizontal: 10,
-        paddingVertical: 6,
-        borderRadius: 8,
-        borderWidth: 1,
-        borderColor: '#E2E8F0',
-    },
-    actionBtnIconText: {
-        fontSize: 11,
-        fontWeight: '600',
-        color: '#475569',
-    },
-    statusToggleBtnNew: {
-        paddingHorizontal: 10,
-        paddingVertical: 6,
-        borderRadius: 8,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    statusToggleTextNew: {
-        fontSize: 11,
-        fontWeight: '700',
-    },
     fab: {
         position: 'absolute', bottom: 140, right: 20,
         width: 52, height: 52, borderRadius: 26,

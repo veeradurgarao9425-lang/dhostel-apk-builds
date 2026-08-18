@@ -1,541 +1,1356 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
-    View, Text, StyleSheet, ScrollView, TouchableOpacity,
-    KeyboardAvoidingView, Platform, Alert, Keyboard, Modal,
+    View,
+    Text,
+    StyleSheet,
+    ScrollView,
+    TouchableOpacity,
+    TextInput,
+    StatusBar,
+    KeyboardAvoidingView,
+    Platform,
+    Modal,
+    FlatList,
+    Image,
+    Alert,
+    Animated,
+    ActivityIndicator,
+    Pressable,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import Toast from 'react-native-toast-message';
-import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { AppHeader } from '../components/AppHeader';
-import { InputField } from '../components/InputField';
-import { Card } from '../components/Card';
-import { FullScreenLoader } from '../components/FullScreenLoader';
-import api from '../services/api';
+import { LinearGradient } from 'expo-linear-gradient';
+import {
+    User, Phone, Mail, Home,
+    CreditCard, Fingerprint, Check,
+    ChevronDown, Camera, X, Calendar,
+    Upload, AlertTriangle, FileText
+} from 'lucide-react-native';
+import DateTimePickerModal from 'react-native-modal-datetime-picker';
+import * as ImagePicker from 'expo-image-picker';
 import { useTheme } from '../../contexts/ThemeContext';
+import api from '../services/api';
+import { useToast } from '../context/ToastContext';
+import { COLORS } from '../theme/index';
+import { AppHeader } from '../components/AppHeader';
 import { toLocalDateStr } from '../utils/dateUtils';
 
 const todayStr = () => toLocalDateStr(new Date());
 
-export default function AddGuestScreen({ route, navigation }: any) {
-    const { guest, isEdit } = route.params || {};
-    const { theme, isDark } = useTheme();
+// ─── Smooth bottom-sheet modal ────────────────────────────────────────────────
+const ModalSheet = ({ visible, onClose, maxHeight = '85%', children }: any) => {
+    const { theme } = useTheme();
+    const anim = useRef(new Animated.Value(0)).current;
     const insets = useSafeAreaInsets();
 
-    const [form, setForm] = useState({
-        full_name: guest?.full_name || '',
-        phone: guest?.phone || '',
-        email: guest?.email || '',
-        id_proof_type_id: guest?.id_proof_type_id?.toString() || '',
-        id_proof_number: guest?.id_proof_number || '',
-        check_in_date: guest?.check_in_date ? toLocalDateStr(new Date(guest.check_in_date)) : todayStr(),
-        days: guest?.days?.toString() || '1',
-        per_day_amount: guest?.per_day_amount?.toString() || '',
-        amount_paid: guest?.amount_paid?.toString() || '',
-        room_number: guest?.room_number || '',
-        purpose: guest?.purpose || '',
-    });
-    const [errors, setErrors] = useState<Record<string, string>>({});
-    const [showDatePicker, setShowDatePicker] = useState(false);
-    const [loading, setLoading] = useState(false);
-
-    const [idProofTypes, setIdProofTypes] = useState<any[]>([]);
-    const [proofModalVisible, setProofModalVisible] = useState(false);
-
-    const [isKeyboardVisible, setKeyboardVisible] = useState(false);
-    const scrollViewRef = useRef<ScrollView>(null);
-
     useEffect(() => {
-        const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', () => setKeyboardVisible(true));
-        const keyboardDidHideListener = Keyboard.addListener('keyboardDidHide', () => setKeyboardVisible(false));
-        return () => {
-            keyboardDidShowListener.remove();
-            keyboardDidHideListener.remove();
-        };
-    }, []);
-
-    useEffect(() => {
-        const fetchInitialData = async () => {
-            try {
-                const res = await api.get('/id-proof-types');
-                if (res.data.success) {
-                    setIdProofTypes(res.data.data);
-                }
-            } catch (e) {
-                console.error('Error fetching proof types:', e);
-            }
-        };
-        fetchInitialData();
-    }, []);
-
-    useEffect(() => {
-        if (isKeyboardVisible) {
-            setTimeout(() => {
-                scrollViewRef.current?.scrollToEnd({ animated: true });
-            }, 150);
+        if (visible) {
+            Animated.timing(anim, {
+                toValue: 1,
+                duration: 250,
+                useNativeDriver: true,
+            }).start();
+        } else {
+            Animated.timing(anim, {
+                toValue: 0,
+                duration: 200,
+                useNativeDriver: true,
+            }).start();
         }
-    }, [isKeyboardVisible]);
+    }, [visible]);
 
-    const up = (k: string, v: string) => {
-        setForm(p => {
-            const next = { ...p, [k]: v };
-            // Auto-calculate amount_paid
-            if (k === 'days' || k === 'per_day_amount') {
-                const d = parseInt(next.days) || 0;
-                const pda = parseFloat(next.per_day_amount) || 0;
-                if (d > 0 && pda > 0) {
-                    next.amount_paid = (d * pda).toString();
-                } else if (k === 'per_day_amount' && !v) {
-                    next.amount_paid = '';
+    if (!visible) return null;
+
+    const backdropOpacity = anim.interpolate({
+        inputRange: [0, 1],
+        outputRange: [0, 0.5],
+    });
+
+    const sheetTranslateY = anim.interpolate({
+        inputRange: [0, 1],
+        outputRange: [600, 0],
+    });
+
+    return (
+        <Modal transparent visible={visible} animationType="none" statusBarTranslucent onRequestClose={onClose}>
+            <View style={{ flex: 1, justifyContent: 'flex-end' }}>
+                <Animated.View style={[StyleSheet.absoluteFillObject, { backgroundColor: '#000', opacity: backdropOpacity }]}>
+                    <Pressable style={StyleSheet.absoluteFillObject} onPress={onClose} />
+                </Animated.View>
+                <Animated.View style={[
+                    styles.sheet,
+                    { maxHeight, backgroundColor: theme.cardBg || '#FFF', transform: [{ translateY: sheetTranslateY }], paddingBottom: insets.bottom > 0 ? insets.bottom : 24 }
+                ]}>
+                    {children}
+                </Animated.View>
+            </View>
+        </Modal>
+    );
+};
+
+// ─── Options Drawer ───────────────────────────────────────────────────────────
+const OptionsDrawer = ({ visible, title, data, selectedId, onSelect, onClose, keyExtractor, labelExtractor, searchable }: any) => {
+    const { theme, isDark, fontSize } = useTheme();
+    const [search, setSearch] = useState('');
+    const filtered = useMemo(() => {
+        if (!searchable || !search) return data;
+        return data.filter((item: any) => labelExtractor(item).toLowerCase().includes(search.toLowerCase()));
+    }, [data, search, searchable, labelExtractor]);
+
+    return (
+        <ModalSheet visible={visible} onClose={() => { setSearch(''); onClose(); }} maxHeight="70%">
+            <View style={styles.sheetHandle} />
+            <View style={[styles.sheetHeader, { borderBottomColor: isDark ? '#334155' : '#F1F5F9' }]}>
+                <Text style={[styles.sheetTitle, { color: theme.textPrimary, fontSize: fontSize + 1 }]}>{title}</Text>
+                <TouchableOpacity onPress={() => { setSearch(''); onClose(); }} style={[styles.doneBtn, { backgroundColor: isDark ? theme.primary + '20' : COLORS.primaryLight }]}>
+                    <Text style={[styles.doneBtnText, { color: theme.primary, fontSize }]}>Done</Text>
+                </TouchableOpacity>
+            </View>
+            {searchable && (
+                <View style={{ paddingHorizontal: 20, marginBottom: 10 }}>
+                    <TextInput
+                        style={[styles.searchInput, { backgroundColor: isDark ? '#334155' : '#F1F5F9', color: theme.textPrimary, fontSize }]}
+                        placeholder="Search..."
+                        placeholderTextColor={isDark ? '#64748B' : '#94A3B8'}
+                        value={search}
+                        onChangeText={setSearch}
+                    />
+                </View>
+            )}
+            <FlatList
+                data={filtered}
+                keyExtractor={keyExtractor}
+                showsVerticalScrollIndicator={false}
+                renderItem={({ item }) => {
+                    const isSelected = selectedId === keyExtractor(item);
+                    return (
+                        <TouchableOpacity
+                            style={[
+                                styles.optionRow,
+                                { borderBottomColor: isDark ? '#334155' : '#F8FAFC' },
+                                isSelected && (isDark ? { backgroundColor: theme.primary + '20' } : styles.optionRowActive)
+                            ]}
+                            onPress={() => { onSelect(item); setSearch(''); onClose(); }}
+                            activeOpacity={0.7}
+                        >
+                            <Text style={[
+                                styles.optionLabel,
+                                { color: theme.textPrimary, fontSize },
+                                isSelected && { color: theme.primary, fontWeight: '700' }
+                            ]}>
+                                {labelExtractor(item)}
+                            </Text>
+                            {isSelected && <Check size={18} color={theme.primary} />}
+                        </TouchableOpacity>
+                    );
+                }}
+                ListEmptyComponent={
+                    <View style={{ padding: 40, alignItems: 'center', minHeight: 200, justifyContent: 'center' }}>
+                        <Text style={{ color: theme.textSecondary, fontSize }}>No options found</Text>
+                    </View>
                 }
+                contentContainerStyle={{ paddingBottom: 40, minHeight: 200 }}
+            />
+        </ModalSheet>
+    );
+};
+
+const SectionHeader = ({ number, title }: { number: number; title: string }) => {
+    const { theme, isDark, fontSize } = useTheme();
+    return (
+        <View style={[styles.sectionHeader, { borderBottomColor: isDark ? '#334155' : '#F1F5F9' }]}>
+            <View style={[styles.sectionBadge, { backgroundColor: theme.primary }]}>
+                <Text style={styles.sectionBadgeText}>{number}</Text>
+            </View>
+            <Text style={[styles.sectionHeaderText, { color: theme.textPrimary, fontSize: fontSize + 1 }]}>{title}</Text>
+        </View>
+    );
+};
+
+const ImageSourceDrawer = ({ visible, onClose, onSelectCamera, onSelectGallery, title }: any) => {
+    const { theme, isDark, fontSize } = useTheme();
+    const insets = useSafeAreaInsets();
+    return (
+        <ModalSheet visible={visible} onClose={onClose} maxHeight="45%">
+            <View style={styles.sheetHandle} />
+            <View style={[styles.sheetHeader, { borderBottomColor: isDark ? '#334155' : '#F1F5F9' }]}>
+                <Text style={[styles.sheetTitle, { color: theme.textPrimary, fontSize: fontSize + 1 }]}>{title || 'Choose Source'}</Text>
+                <TouchableOpacity onPress={onClose} style={[styles.doneBtn, { backgroundColor: isDark ? theme.primary + '20' : COLORS.primaryLight }]}>
+                    <Text style={[styles.doneBtnText, { color: theme.primary, fontSize }]}>Cancel</Text>
+                </TouchableOpacity>
+            </View>
+            <View style={{ padding: 24, paddingBottom: Math.max(insets.bottom, 24) + 20, gap: 16, flexDirection: 'row', justifyContent: 'space-around' }}>
+                <TouchableOpacity
+                    style={[styles.sourceOptionBtn, { backgroundColor: isDark ? '#1E293B' : '#F3EEFF', borderColor: theme.primary }]}
+                    onPress={() => { onSelectCamera(); onClose(); }}
+                    activeOpacity={0.75}
+                >
+                    <View style={[styles.sourceIconBg, { backgroundColor: theme.primary }]}>
+                        <Camera size={24} color="#FFF" />
+                    </View>
+                    <Text style={[styles.sourceOptionText, { color: theme.textPrimary, fontSize }]}>Use Camera</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                    style={[styles.sourceOptionBtn, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0' }]}
+                    onPress={() => { onSelectGallery(); onClose(); }}
+                    activeOpacity={0.75}
+                >
+                    <View style={[styles.sourceIconBg, { backgroundColor: isDark ? '#475569' : '#CBD5E1' }]}>
+                        <Upload size={24} color={isDark ? '#FFF' : '#475569'} />
+                    </View>
+                    <Text style={[styles.sourceOptionText, { color: theme.textPrimary, fontSize }]}>Choose Gallery</Text>
+                </TouchableOpacity>
+            </View>
+        </ModalSheet>
+    );
+};
+
+const DocumentUploadBox = ({ label, uri, onCapture, onRemove, isFront, error }: { label: string; uri: string | null; onCapture: (uri: string) => void; onRemove: () => void; isFront: boolean; error?: string }) => {
+    const { theme, isDark } = useTheme();
+    const [pickerVisible, setPickerVisible] = useState(false);
+
+    const onSelectCamera = async () => {
+        try {
+            const p = await ImagePicker.requestCameraPermissionsAsync();
+            if (!p.granted) {
+                Alert.alert('Permission Required', 'Camera permission is needed to upload documents.');
+                return;
             }
-            return next;
-        });
-        if (errors[k]) setErrors(prev => { const e = { ...prev }; delete e[k]; return e; });
+            const r = await ImagePicker.launchCameraAsync({ quality: 0.75 });
+            if (!r.canceled && r.assets && r.assets.length > 0) {
+                onCapture(r.assets[0].uri);
+            }
+        } catch (err) {
+            console.error('Document camera error:', err);
+        }
     };
 
-    const validate = () => {
-        const e: Record<string, string> = {};
-        if (!form.full_name.trim()) e.full_name = 'Guest name is required';
-        if (!form.check_in_date) e.check_in_date = 'Check-in date is required';
-        if (!form.phone.trim()) {
-            e.phone = 'Mobile number is required';
-        } else if (!/^\d{10}$/.test(form.phone)) {
-            e.phone = 'Phone must be exactly 10 digits';
+    const onSelectGallery = async () => {
+        try {
+            const p = await ImagePicker.requestMediaLibraryPermissionsAsync();
+            if (!p.granted) {
+                Alert.alert('Permission Required', 'Media library permission is needed to upload documents.');
+                return;
+            }
+            const r = await ImagePicker.launchImageLibraryAsync({ quality: 0.75 });
+            if (!r.canceled && r.assets && r.assets.length > 0) {
+                onCapture(r.assets[0].uri);
+            }
+        } catch (err) {
+            console.error('Document gallery error:', err);
         }
-        if (form.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
-            e.email = 'Invalid email format';
+    };
+
+    return (
+        <>
+            <View style={[styles.docUploadBox, { backgroundColor: isDark ? '#1E293B' : '#F9FAFB', borderColor: error ? '#EF4444' : (isDark ? '#334155' : '#E2E8F0'), borderStyle: 'dashed' }]}>
+                {uri ? (
+                    <View style={styles.docPreviewContainer}>
+                        <Image source={{ uri }} style={styles.docPreviewImage} />
+                        <TouchableOpacity style={styles.docRemoveBtn} onPress={onRemove}>
+                            <X size={14} color="#FFF" />
+                        </TouchableOpacity>
+                        <TouchableOpacity style={[styles.docRetakeRow, { backgroundColor: 'rgba(0,0,0,0.6)' }]} onPress={() => setPickerVisible(true)}>
+                            <Camera size={12} color="#FFF" />
+                            <Text style={{ fontSize: 10, color: '#FFF', fontWeight: '700', marginLeft: 4 }}>Retake</Text>
+                        </TouchableOpacity>
+                    </View>
+                ) : (
+                    <View style={{ flex: 1, justifyContent: 'space-between' }}>
+                        <View style={styles.docBoxTopRow}>
+                            <View style={[styles.skeletonCard, { borderColor: error ? '#EF4444' : (isDark ? '#475569' : '#CBD5E1') }]}>
+                                {isFront ? (
+                                    <View style={{ flexDirection: 'row', gap: 4, alignItems: 'center', height: '100%' }}>
+                                        <View style={[styles.skeletonAvatar, { backgroundColor: error ? '#EF4444' : (isDark ? '#475569' : '#CBD5E1') }]} />
+                                        <View style={{ flex: 1, gap: 3 }}>
+                                            <View style={[styles.skeletonLine, { width: '80%', backgroundColor: error ? '#EF4444' : (isDark ? '#475569' : '#CBD5E1') }]} />
+                                            <View style={[styles.skeletonLine, { width: '60%', backgroundColor: error ? '#EF4444' : (isDark ? '#475569' : '#CBD5E1') }]} />
+                                        </View>
+                                    </View>
+                                ) : (
+                                    <View style={{ justifyContent: 'center', height: '100%', gap: 3 }}>
+                                        <View style={[styles.skeletonLine, { width: '90%', backgroundColor: error ? '#EF4444' : (isDark ? '#475569' : '#CBD5E1') }]} />
+                                        <View style={[styles.skeletonLine, { width: '80%', backgroundColor: error ? '#EF4444' : (isDark ? '#475569' : '#CBD5E1') }]} />
+                                        <View style={[styles.skeletonLine, { width: '40%', backgroundColor: error ? '#EF4444' : (isDark ? '#475569' : '#CBD5E1') }]} />
+                                    </View>
+                                )}
+                            </View>
+
+                            <View style={[styles.uploadCircle, { backgroundColor: error ? '#FEE2E2' : (isDark ? '#2D1B6B' : '#F3EEFF') }]}>
+                                <Upload size={14} color={error ? '#EF4444' : theme.primary} />
+                            </View>
+                        </View>
+
+                        <View style={{ marginTop: 8 }}>
+                            <Text style={[styles.docBoxTitle, { color: error ? '#EF4444' : (isDark ? '#F1F5F9' : '#1E293B') }]}>{label}</Text>
+                            <Text style={styles.docBoxSubtitle}>JPG, PNG or PDF{"\n"}Max. 5MB</Text>
+                        </View>
+
+                        <TouchableOpacity
+                            style={[styles.docUploadBtn, { borderColor: error ? '#EF4444' : theme.primary }]}
+                            onPress={() => setPickerVisible(true)}
+                            activeOpacity={0.7}
+                        >
+                            <Upload size={12} color={error ? '#EF4444' : theme.primary} />
+                            <Text style={[styles.docUploadBtnText, { color: error ? '#EF4444' : theme.primary }]}>Upload</Text>
+                        </TouchableOpacity>
+                    </View>
+                )}
+                {error && <Text style={{ color: '#EF4444', fontSize: 9, marginTop: 4, fontWeight: '600', textAlign: 'center' }}>{error}</Text>}
+            </View>
+
+            <ImageSourceDrawer
+                visible={pickerVisible}
+                onClose={() => setPickerVisible(false)}
+                onSelectCamera={onSelectCamera}
+                onSelectGallery={onSelectGallery}
+                title={`Upload ${label}`}
+            />
+        </>
+    );
+};
+
+const ProfilePhotoCapture = ({ uri, onCapture, onRemove, error }: any) => {
+    const { theme, isDark, fontSize } = useTheme();
+
+    const openCamera = async () => {
+        try {
+            const p = await ImagePicker.requestCameraPermissionsAsync();
+            if (!p.granted) {
+                Alert.alert('Permission Required', 'Camera permission is needed to take a profile photo.');
+                return;
+            }
+            const r = await ImagePicker.launchCameraAsync({ quality: 0.8, allowsEditing: false });
+            if (!r.canceled && r.assets && r.assets.length > 0) {
+                onCapture(r.assets[0].uri);
+            }
+        } catch (err) {
+            console.error('Camera error:', err);
         }
-        if (form.id_proof_type_id) {
-            if (!form.id_proof_number.trim()) {
-                e.id_proof_number = 'ID Proof number is required';
+    };
+
+    const openGallery = async () => {
+        try {
+            const p = await ImagePicker.requestMediaLibraryPermissionsAsync();
+            if (!p.granted) {
+                Alert.alert('Permission Required', 'Gallery permission is needed to pick a photo.');
+                return;
+            }
+            const r = await ImagePicker.launchImageLibraryAsync({ quality: 0.8, allowsEditing: false });
+            if (!r.canceled && r.assets && r.assets.length > 0) {
+                onCapture(r.assets[0].uri);
+            }
+        } catch (err) {
+            console.error('Gallery error:', err);
+        }
+    };
+
+    return (
+        <View style={[styles.profilePhotoCard, { backgroundColor: isDark ? '#1E293B' : '#FFF', borderColor: error ? '#EF4444' : (isDark ? '#334155' : 'transparent'), borderWidth: (isDark || error) ? 1 : 0 }]}>
+            <TouchableOpacity onPress={openCamera} activeOpacity={0.85} style={styles.profileAvatarContainer}>
+                {uri ? (
+                    <View style={styles.profileAvatarWrapper}>
+                        <Image source={{ uri }} style={[styles.profileAvatar, { borderColor: error ? '#EF4444' : theme.primary }]} />
+                        <View style={[styles.profileEditBadge, { backgroundColor: theme.primary }]}>
+                            <Camera size={12} color="#FFF" />
+                        </View>
+                        <TouchableOpacity style={styles.profileRemoveBtn} onPress={onRemove}>
+                            <X size={10} color="#FFF" />
+                        </TouchableOpacity>
+                    </View>
+                ) : (
+                    <View style={[styles.profileAvatarPlaceholder, { backgroundColor: isDark ? '#2D1B6B' : '#F3EEFF', borderColor: error ? '#EF4444' : theme.primary }]}>
+                        <User size={32} color={error ? '#EF4444' : theme.primary} />
+                        <View style={[styles.profileEditBadge, { backgroundColor: theme.primary }]}>
+                            <Camera size={12} color="#FFF" />
+                        </View>
+                    </View>
+                )}
+            </TouchableOpacity>
+
+            <View style={styles.profileDetailsContainer}>
+                <Text style={[styles.profilePhotoTitle, { color: theme.textPrimary, fontSize: fontSize + 1 }]}>Guest Profile Photo</Text>
+                <Text style={[styles.profilePhotoSubtitle, { color: theme.textSecondary }]}>Upload a clear face photo of the guest</Text>
+                {error && <Text style={{ color: '#EF4444', fontSize: 11, fontWeight: '600', marginBottom: 8 }}>{error}</Text>}
+                
+                <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
+                    <TouchableOpacity
+                        style={[styles.profileUploadBtn, { borderColor: theme.primary, flex: 1 }]}
+                        onPress={openCamera}
+                        activeOpacity={0.7}
+                    >
+                        <Camera size={14} color={theme.primary} />
+                        <Text style={[styles.profileUploadBtnText, { color: theme.primary }]}>Camera</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        style={[styles.profileUploadBtn, { borderColor: isDark ? '#475569' : '#CBD5E1', flex: 1 }]}
+                        onPress={openGallery}
+                        activeOpacity={0.7}
+                    >
+                        <Upload size={14} color={theme.textSecondary} />
+                        <Text style={[styles.profileUploadBtnText, { color: theme.textSecondary }]}>Gallery</Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
+        </View>
+    );
+};
+
+const FormInput = ({ label, icon: Icon, placeholder, value, onChangeText, keyboardType, multiline, error, onFocus, onBlur, autoCapitalize, maxLength, editable = true }: any) => {
+    const { theme, isDark, fontSize } = useTheme();
+    return (
+        <View style={styles.inputGroup}>
+            <Text style={[styles.inputLabel, { fontSize: fontSize - 1, color: theme.textSecondary }]}>{label}</Text>
+            <View style={[styles.inputContainer, { backgroundColor: isDark ? '#1E293B' : '#F9FAFB', borderColor: isDark ? '#334155' : '#F1F5F9' }, multiline && styles.multilineContainer, error && styles.inputError, !editable && { opacity: 0.6 }]}>
+                {Icon && <View style={styles.inputIcon}><Icon size={18} color={error ? '#EF4444' : theme.primary} /></View>}
+                <TextInput
+                    style={[styles.input, { color: theme.textPrimary, fontSize }, multiline && styles.multilineInput]}
+                    placeholder={placeholder}
+                    placeholderTextColor={isDark ? '#475569' : '#BBBBBB'}
+                    value={value}
+                    onChangeText={onChangeText}
+                    keyboardType={keyboardType}
+                    multiline={multiline}
+                    numberOfLines={multiline ? 3 : 1}
+                    onFocus={onFocus}
+                    onBlur={onBlur}
+                    autoCapitalize={autoCapitalize}
+                    maxLength={maxLength}
+                    editable={editable}
+                />
+            </View>
+            {error ? <Text style={styles.errorText}>{error}</Text> : null}
+        </View>
+    );
+};
+
+const SelectField = ({ label, value, placeholder, icon: Icon, onPress, error }: any) => {
+    const { theme, isDark, fontSize } = useTheme();
+    return (
+        <View style={styles.inputGroup}>
+            <Text style={[styles.inputLabel, { fontSize: fontSize - 1, color: theme.textSecondary }]}>{label}</Text>
+            <TouchableOpacity style={[styles.inputContainer, { backgroundColor: isDark ? '#1E293B' : '#F9FAFB', borderColor: isDark ? '#334155' : '#F1F5F9' }, error && styles.inputError]} onPress={onPress} activeOpacity={0.7}>
+                <View style={styles.inputIcon}><Icon size={18} color={error ? '#EF4444' : theme.primary} /></View>
+                <Text style={[styles.inputText, { color: theme.textPrimary, fontSize }, !value && { color: isDark ? '#475569' : '#BBBBBB' }]}>{value || placeholder}</Text>
+                <ChevronDown size={18} color={theme.textSecondary} />
+            </TouchableOpacity>
+            {error ? <Text style={styles.errorText}>{error}</Text> : null}
+        </View>
+    );
+};
+
+const Selector = ({ label, options, selected, onSelect }: any) => {
+    const { theme, isDark, fontSize } = useTheme();
+    return (
+        <View style={styles.inputGroup}>
+            <Text style={[styles.inputLabel, { fontSize: fontSize - 1, color: theme.textSecondary }]}>{label}</Text>
+            <View style={[styles.selectorContainer, { backgroundColor: isDark ? '#1E293B' : '#F1F5F9', borderColor: isDark ? '#334155' : '#E2E8F0' }]}>
+                {options.map((opt: string) => {
+                    const isAct = selected === opt;
+                    return (
+                        <TouchableOpacity
+                            key={opt}
+                            style={[styles.selectorTab, isAct && { backgroundColor: theme.primary }]}
+                            onPress={() => onSelect(opt)}
+                            activeOpacity={0.8}
+                        >
+                            <Text style={[styles.selectorTabText, { fontSize, color: isAct ? '#FFF' : theme.textSecondary }, isAct && { fontWeight: '800' }]}>
+                                {opt}
+                            </Text>
+                        </TouchableOpacity>
+                    );
+                })}
+            </View>
+        </View>
+    );
+};
+
+const ID_PROOF_TYPES = [
+    { id: 'aadhaar', name: 'Aadhaar Card', maxLength: 12, example: '204095027990', keyboard: 'numeric' },
+    { id: 'pan', name: 'PAN Card', maxLength: 10, example: 'ABCDE1234F', keyboard: 'default' },
+    { id: 'driving_license', name: 'Driving License', maxLength: 16, example: 'DL-1420110012345', keyboard: 'default' },
+    { id: 'voter_id', name: 'Voter ID', maxLength: 10, example: 'ABC1234567', keyboard: 'default' },
+    { id: 'passport', name: 'Passport', maxLength: 8, example: 'A1234567', keyboard: 'default' },
+];
+
+const PURPOSE_TAGS = [
+    'Work / Interview',
+    'Exams',
+    'Transit Stay',
+    'Tourism',
+    'Medical',
+    'Personal',
+];
+
+export default function AddGuestScreen({ navigation, route }: any) {
+    const { theme, isDark } = useTheme();
+    const insets = useSafeAreaInsets();
+    const { showSuccess, showError, showApiError } = useToast();
+    const { guest, isEdit } = route.params || {};
+
+    const [loading, setLoading] = useState(false);
+    const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
+    const [idProofFront, setIdProofFront] = useState<string | null>(null);
+    const [idProofBack, setIdProofBack] = useState<string | null>(null);
+
+    const [formData, setFormData] = useState({
+        full_name: '',
+        gender: 'Male',
+        phone: '',
+        email: '',
+        check_in_date: todayStr(),
+        days: '1',
+        per_day_amount: '500',
+        amount_paid: '500',
+        room_number: '',
+        purpose: 'Work / Interview',
+        id_proof_type: '',
+        id_proof_number: '',
+        remarks: '',
+    });
+
+    const [proofModal, setProofModal] = useState(false);
+    const [showDatePicker, setShowDatePicker] = useState(false);
+    const [errors, setErrors] = useState<Record<string, string>>({});
+    const [touched, setTouched] = useState<Record<string, boolean>>({});
+
+    // Populate on edit
+    useEffect(() => {
+        if (isEdit && guest) {
+            setFormData({
+                full_name: guest.full_name || '',
+                gender: guest.gender || 'Male',
+                phone: guest.phone || '',
+                email: guest.email || '',
+                check_in_date: guest.check_in_date ? toLocalDateStr(new Date(guest.check_in_date)) : todayStr(),
+                days: guest.days ? String(guest.days) : '1',
+                per_day_amount: guest.per_day_amount ? String(guest.per_day_amount) : '500',
+                amount_paid: guest.amount_paid ? String(guest.amount_paid) : '500',
+                room_number: guest.room_number || '',
+                purpose: guest.purpose || 'Work / Interview',
+                id_proof_type: guest.id_proof_type || 'aadhaar',
+                id_proof_number: guest.id_proof_number || '',
+                remarks: guest.remarks || '',
+            });
+            if (guest.profile_photo_url || guest.profile_photo) {
+                setProfilePhoto(guest.profile_photo_url || guest.profile_photo);
+            }
+            if (guest.id_proof_front_url || guest.id_proof_front) {
+                setIdProofFront(guest.id_proof_front_url || guest.id_proof_front);
+            }
+            if (guest.id_proof_back_url || guest.id_proof_back) {
+                setIdProofBack(guest.id_proof_back_url || guest.id_proof_back);
+            }
+        }
+    }, [isEdit, guest]);
+
+    // Live Auto-calculate total amount
+    const handleDaysChange = (daysVal: string) => {
+        const cleanDays = daysVal.replace(/[^0-9]/g, '');
+        const daysNum = parseInt(cleanDays, 10) || 0;
+        const perDayNum = parseFloat(formData.per_day_amount) || 0;
+        const total = daysNum * perDayNum;
+        setFormData(p => ({
+            ...p,
+            days: cleanDays,
+            amount_paid: total > 0 ? String(total) : p.amount_paid,
+        }));
+    };
+
+    const handlePerDayChange = (perDayVal: string) => {
+        const cleanPerDay = perDayVal.replace(/[^0-9.]/g, '');
+        const perDayNum = parseFloat(cleanPerDay) || 0;
+        const daysNum = parseInt(formData.days, 10) || 1;
+        const total = daysNum * perDayNum;
+        setFormData(p => ({
+            ...p,
+            per_day_amount: cleanPerDay,
+            amount_paid: total > 0 ? String(total) : p.amount_paid,
+        }));
+    };
+
+    const validateField = (name: string, value: any) => {
+        let err = '';
+        if (name === 'full_name') {
+            if (!value || !value.trim()) {
+                err = 'Full Name is required';
+            } else if (value.trim().length < 2) {
+                err = 'Name must be at least 2 characters';
+            } else if (!/^[a-zA-Z\s.]+$/.test(value)) {
+                err = 'Name should only contain letters and spaces';
+            }
+        } else if (name === 'phone') {
+            if (!value) {
+                err = 'Mobile number is required';
+            } else if (!/^[6-9]/.test(value)) {
+                err = 'Mobile number must start with 6, 7, 8, or 9';
+            } else if (value.length !== 10) {
+                err = 'Mobile number must be exactly 10 digits';
+            }
+        } else if (name === 'email') {
+            if (value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+                err = 'Invalid email format';
+            }
+        } else if (name === 'id_proof_type') {
+            if (!value) {
+                err = 'Please select an ID proof type';
+            }
+        } else if (name === 'id_proof_number') {
+            if (!value || !value.trim()) {
+                err = 'ID proof number is required';
             } else {
-                const typeName = idProofTypes.find(t => t.id.toString() === form.id_proof_type_id)?.name || '';
-                if (typeName.toLowerCase().includes('aadhar') || typeName.toLowerCase().includes('aadhaar')) {
-                    if (form.id_proof_number.length !== 12) e.id_proof_number = 'Aadhaar must be exactly 12 digits';
-                    else if (!/^\d{12}$/.test(form.id_proof_number)) e.id_proof_number = 'Aadhaar must be numeric';
-                } else if (typeName.toLowerCase().includes('pan')) {
-                    if (form.id_proof_number.length !== 10) e.id_proof_number = 'PAN must be exactly 10 characters';
-                    else if (!/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/i.test(form.id_proof_number)) e.id_proof_number = 'Invalid PAN format. Must be like ABCDE1234F';
+                const proofType = formData.id_proof_type;
+                if (proofType === 'aadhaar') {
+                    if (value.length !== 12) err = 'Aadhaar must be exactly 12 digits';
+                    else if (!/^\d{12}$/.test(value)) err = 'Aadhaar must be numeric';
+                } else if (proofType === 'pan') {
+                    if (value.length !== 10) err = 'PAN must be exactly 10 characters';
+                    else if (!/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/i.test(value)) err = 'Invalid PAN format (e.g. ABCDE1234F)';
+                } else if (proofType === 'driving_license') {
+                    if (value.length < 10 || value.length > 16) err = 'Invalid Driving License length';
+                } else if (proofType === 'voter_id') {
+                    if (value.length !== 10) err = 'Voter ID must be 10 characters (e.g. ABC1234567)';
+                } else if (proofType === 'passport') {
+                    if (value.length !== 8) err = 'Passport must be 8 characters (e.g. A1234567)';
                 }
             }
         }
-        if (!form.room_number.trim()) e.room_number = 'Room number is required';
-        if (form.amount_paid && (isNaN(Number(form.amount_paid)) || Number(form.amount_paid) < 0)) e.amount_paid = 'Enter a valid amount';
-        if (form.days && (isNaN(Number(form.days)) || Number(form.days) < 1)) e.days = 'Days must be at least 1';
+        setErrors(prev => ({ ...prev, [name]: err }));
+        return err;
+    };
+
+    const up = (key: string, val: any) => {
+        setFormData(p => ({ ...p, [key]: val }));
+        setTouched(p => ({ ...p, [key]: true }));
+        validateField(key, val);
+    };
+
+    const validateAll = () => {
+        const e: Record<string, string> = {};
+        const nameErr = validateField('full_name', formData.full_name);
+        if (nameErr) e.full_name = nameErr;
+
+        const phoneErr = validateField('phone', formData.phone);
+        if (phoneErr) e.phone = phoneErr;
+
+        if (formData.email) {
+            const emailErr = validateField('email', formData.email);
+            if (emailErr) e.email = emailErr;
+        }
+
+        if (!formData.id_proof_type) {
+            e.id_proof_type = 'Please select an ID proof type';
+        }
+
+        if (!formData.id_proof_number || !formData.id_proof_number.trim()) {
+            e.id_proof_number = 'ID proof number is required';
+        } else {
+            const idErr = validateField('id_proof_number', formData.id_proof_number);
+            if (idErr) e.id_proof_number = idErr;
+        }
+
         setErrors(e);
         return e;
     };
 
-    const checkUnique = async (field: 'phone' | 'email' | 'id_proof_number', value: string) => {
-        if (!value || !value.trim()) return;
-        
-        if (field === 'phone' && !/^\d{10}$/.test(value.trim())) return;
-        if (field === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())) return;
-        if (field === 'id_proof_number' && form.id_proof_type_id) {
-            const typeName = idProofTypes.find(t => t.id.toString() === form.id_proof_type_id)?.name || '';
-            if ((typeName.toLowerCase().includes('aadhar') || typeName.toLowerCase().includes('aadhaar')) && value.trim().length !== 12) return;
-            if (typeName.toLowerCase().includes('pan') && value.trim().length !== 10) return;
-        }
-
-        try {
-            const res = await api.get('/guests/check-unique', {
-                params: {
-                    ...(field === 'phone' ? { phone: value.trim() } : {}),
-                    ...(field === 'email' ? { email: value.trim() } : {}),
-                    ...(field === 'id_proof_number' ? { id_proof_number: value.trim() } : {}),
-                    ...(isEdit && guest?.id ? { guestId: guest.id } : {})
-                }
-            });
-            if (res.data?.success) {
-                if (field === 'phone' && res.data.phoneExists) {
-                    setErrors(prev => ({ ...prev, phone: 'This phone number is already registered' }));
-                }
-                if (field === 'email' && res.data.emailExists) {
-                    setErrors(prev => ({ ...prev, email: 'This email is already registered' }));
-                }
-                if (field === 'id_proof_number' && res.data.idProofExists) {
-                    setErrors(prev => ({ ...prev, id_proof_number: 'This ID proof number is already registered' }));
-                }
-            }
-        } catch (e) {
-            console.log('Guest check unique error', e);
-        }
+    const handleReset = () => {
+        setFormData({
+            full_name: '',
+            gender: 'Male',
+            phone: '',
+            email: '',
+            check_in_date: todayStr(),
+            days: '1',
+            per_day_amount: '500',
+            amount_paid: '500',
+            room_number: '',
+            purpose: 'Work / Interview',
+            id_proof_type: '',
+            id_proof_number: '',
+            remarks: '',
+        });
+        setProfilePhoto(null);
+        setIdProofFront(null);
+        setIdProofBack(null);
+        setErrors({});
+        setTouched({});
     };
 
     const handleSave = async () => {
-        const validationErrors = validate();
+        const validationErrors = validateAll();
         if (Object.keys(validationErrors).length > 0) {
-            const missing = Object.keys(validationErrors).map((key) => {
-                const labels: Record<string, string> = {
-                    full_name: 'Guest name',
-                    check_in_date: 'Check-in date',
-                    phone: 'Mobile number',
-                    email: 'Email address',
-                    id_proof_number: 'ID proof number',
-                    room_number: 'Room number',
-                    amount_paid: 'Amount paid',
-                    days: 'Days',
-                };
-                return labels[key] || key;
-            }).join(', ');
-            Toast.show({ type: 'error', text1: 'Validation Error', text2: `Please complete: ${missing}` });
+            showError('Please check and fill all mandatory fields (Full Name, Phone, ID Proof)');
             return;
         }
+
         setLoading(true);
         try {
-            const payload = {
-                full_name: form.full_name.trim(),
-                phone: form.phone.trim() || null,
-                email: form.email.trim() || null,
-                id_proof_type_id: form.id_proof_type_id || null,
-                id_proof_number: form.id_proof_number.trim() || null,
-                check_in_date: form.check_in_date,
-                days: form.days ? parseInt(form.days) : 1,
-                amount_paid: form.amount_paid ? parseFloat(form.amount_paid) : 0,
-                room_number: form.room_number.trim() || null,
-                purpose: form.purpose.trim() || null,
-            };
-            
+            const hasLocalProfilePhoto = profilePhoto && profilePhoto.startsWith('file:');
+            const hasLocalIdFront = idProofFront && idProofFront.startsWith('file:');
+            const hasLocalIdBack = idProofBack && idProofBack.startsWith('file:');
+            const hasFiles = hasLocalProfilePhoto || hasLocalIdFront || hasLocalIdBack;
+
             let res;
-            if (isEdit && guest?.id) {
-                res = await api.put(`/guests/${guest.id}`, payload);
+            if (hasFiles) {
+                const bodyFormData = new FormData();
+                bodyFormData.append('full_name', formData.full_name.trim());
+                bodyFormData.append('gender', formData.gender);
+                bodyFormData.append('phone', formData.phone.trim());
+                if (formData.email.trim()) bodyFormData.append('email', formData.email.trim());
+                bodyFormData.append('check_in_date', formData.check_in_date);
+                bodyFormData.append('days', formData.days || '1');
+                bodyFormData.append('per_day_amount', formData.per_day_amount || '0');
+                bodyFormData.append('amount_paid', formData.amount_paid || '0');
+                if (formData.room_number.trim()) bodyFormData.append('room_number', formData.room_number.trim());
+                if (formData.purpose.trim()) bodyFormData.append('purpose', formData.purpose.trim());
+                bodyFormData.append('id_proof_type', formData.id_proof_type);
+                bodyFormData.append('id_proof_number', formData.id_proof_number.trim());
+                if (formData.remarks.trim()) bodyFormData.append('remarks', formData.remarks.trim());
+
+                if (hasLocalProfilePhoto) {
+                    const filename = profilePhoto.split('/').pop() || 'profile.jpg';
+                    const match = /\.(\w+)$/.exec(filename);
+                    const type = match ? `image/${match[1]}` : 'image/jpeg';
+                    bodyFormData.append('profile_photo', { uri: profilePhoto, name: filename, type } as any);
+                }
+
+                if (hasLocalIdFront) {
+                    const filename = idProofFront.split('/').pop() || 'id_front.jpg';
+                    const match = /\.(\w+)$/.exec(filename);
+                    const type = match ? `image/${match[1]}` : 'image/jpeg';
+                    bodyFormData.append('id_proof_front', { uri: idProofFront, name: filename, type } as any);
+                }
+
+                if (hasLocalIdBack) {
+                    const filename = idProofBack.split('/').pop() || 'id_back.jpg';
+                    const match = /\.(\w+)$/.exec(filename);
+                    const type = match ? `image/${match[1]}` : 'image/jpeg';
+                    bodyFormData.append('id_proof_back', { uri: idProofBack, name: filename, type } as any);
+                }
+
+                res = isEdit
+                    ? await api.put(`/guests/${guest.guest_id}`, bodyFormData)
+                    : await api.post('/guests', bodyFormData);
             } else {
-                res = await api.post('/guests', payload);
+                const jsonPayload = {
+                    full_name: formData.full_name.trim(),
+                    gender: formData.gender,
+                    phone: formData.phone.trim(),
+                    email: formData.email.trim() || undefined,
+                    check_in_date: formData.check_in_date,
+                    days: Number(formData.days || 1),
+                    per_day_amount: Number(formData.per_day_amount || 0),
+                    amount_paid: Number(formData.amount_paid || 0),
+                    room_number: formData.room_number.trim() || undefined,
+                    purpose: formData.purpose.trim() || undefined,
+                    id_proof_type: formData.id_proof_type,
+                    id_proof_number: formData.id_proof_number.trim(),
+                    remarks: formData.remarks.trim() || undefined,
+                };
+
+                res = isEdit
+                    ? await api.put(`/guests/${guest.guest_id}`, jsonPayload)
+                    : await api.post('/guests', jsonPayload);
             }
-            if (res.data?.success) {
-                Toast.show({ type: 'success', text1: 'Saved', text2: 'Guest recorded successfully!' });
+
+            if (res.data?.success || res.status === 200 || res.status === 201) {
+                showSuccess(isEdit ? 'Guest updated successfully' : 'Guest checked in successfully');
                 navigation.goBack();
             }
-        } catch (error: any) {
-            Alert.alert('Save Failed', error.response?.data?.error || 'Failed to save guest. Please try again.');
+        } catch (err: any) {
+            const rawMsg = err.response?.data?.error || err.message || '';
+            if (rawMsg.includes('Required fields')) {
+                showError('Please enter all mandatory fields: Full Name & Check-in Date');
+            } else if (rawMsg) {
+                showError(rawMsg);
+            } else {
+                showApiError(err, 'Failed to save guest');
+            }
         } finally {
             setLoading(false);
         }
     };
 
-    const handleReset = () => {
-        setForm({
-            full_name: '',
-            phone: '',
-            email: '',
-            id_proof_type_id: '',
-            id_proof_number: '',
-            check_in_date: todayStr(),
-            days: '1',
-            per_day_amount: '',
-            amount_paid: '',
-            room_number: '',
-            purpose: '',
-        });
-        setErrors({});
-    };
+    const selectedProofConfig = ID_PROOF_TYPES.find(t => t.id === formData.id_proof_type);
 
     return (
         <KeyboardAvoidingView
-            style={[styles.container, { backgroundColor: theme.background }]}
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            keyboardVerticalOffset={0}
+            style={[styles.container, { backgroundColor: theme.background }]}
         >
-            <AppHeader 
-                alignLeft={true} 
-                title={isEdit ? "Edit Guest" : "Add Guest"} 
-                subtitle="Enter details for short-stay or daily visitors"
-                showBack 
+            <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+            <AppHeader
+                title={isEdit ? 'Edit Guest' : 'Add Guest'}
+                subtitle="Record short-stay & daily visitor details"
+                alignLeft={true}
             />
-            <FullScreenLoader visible={loading} />
 
             <ScrollView
-                ref={scrollViewRef}
-                style={{ flex: 1 }}
-                contentContainerStyle={[styles.scroll, { paddingBottom: (isKeyboardVisible ? 220 : 100) + insets.bottom }]}
+                style={styles.content}
                 showsVerticalScrollIndicator={false}
+                contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 120 }]}
                 keyboardShouldPersistTaps="handled"
             >
-                <Card style={[styles.card, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}>
-                    <InputField
-                        label="Guest Name *"
-                        placeholder="e.g. Ramesh"
-                        value={form.full_name}
-                        error={errors.full_name}
-                        onChangeText={(t) => up('full_name', t)}
+                {/* ── Profile Photo ── */}
+                <ProfilePhotoCapture
+                    uri={profilePhoto}
+                    onCapture={(uri: string) => setProfilePhoto(uri)}
+                    onRemove={() => setProfilePhoto(null)}
+                    error={errors.profilePhoto}
+                />
+
+                {/* ── 1. Personal Details ── */}
+                <View style={[styles.formCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : 'transparent', borderWidth: isDark ? 1 : 0 }]}>
+                    <SectionHeader number={1} title="Personal Details" />
+                    
+                    <FormInput
+                        label="Full Name *"
+                        icon={User}
+                        placeholder="Ex: Durgarao Goriparthi"
+                        value={formData.full_name}
+                        error={touched.full_name ? errors.full_name : undefined}
+                        onChangeText={(t: string) => up('full_name', t)}
                     />
-                    <InputField
-                        label="Phone *"
-                        placeholder="10-digit mobile"
+
+                    <Selector
+                        label="Gender *"
+                        options={['Male', 'Female', 'Other']}
+                        selected={formData.gender}
+                        onSelect={(v: string) => up('gender', v)}
+                    />
+
+                    <FormInput
+                        label="Mobile Number *"
+                        icon={Phone}
+                        placeholder="6303359425"
                         keyboardType="numeric"
                         maxLength={10}
-                        value={form.phone}
-                        error={errors.phone}
-                        onChangeText={(t) => up('phone', t.replace(/[^0-9]/g, ''))}
-                        onBlur={() => checkUnique('phone', form.phone)}
+                        value={formData.phone}
+                        error={touched.phone ? errors.phone : undefined}
+                        onChangeText={(t: string) => {
+                            const numeric = t.replace(/\D/g, '').slice(0, 10);
+                            up('phone', numeric);
+                        }}
                     />
-                    <InputField
-                        label="Email Address"
-                        placeholder="e.g. guest@example.com"
+
+                    <FormInput
+                        label="Email (Optional)"
+                        icon={Mail}
+                        placeholder="durgarao@example.com"
                         keyboardType="email-address"
-                        value={form.email}
-                        error={errors.email}
-                        onChangeText={(t) => up('email', t)}
-                        onBlur={() => checkUnique('email', form.email)}
+                        value={formData.email}
+                        error={touched.email ? errors.email : undefined}
+                        onChangeText={(t: string) => up('email', t)}
+                    />
+                </View>
+
+                {/* ── 2. Stay & Pricing Details ── */}
+                <View style={[styles.formCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : 'transparent', borderWidth: isDark ? 1 : 0 }]}>
+                    <SectionHeader number={2} title="Stay & Pricing Details" />
+
+                    <SelectField
+                        label="Check-in Date *"
+                        value={formData.check_in_date}
+                        placeholder="Pick check-in date"
+                        icon={Calendar}
+                        onPress={() => setShowDatePicker(true)}
                     />
 
-                    {/* ID Proof Selector */}
-                    <Text style={[styles.label, { color: theme.textPrimary }]}>ID Proof Type</Text>
-                    <TouchableOpacity
-                        style={[styles.dateBtn, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF', borderColor: errors.id_proof_type_id ? '#EF4444' : (isDark ? '#334155' : '#E2E8F0') }]}
-                        onPress={() => setProofModalVisible(true)}
-                        activeOpacity={0.7}
-                    >
-                        <Ionicons name="card-outline" size={18} color={theme.primary} />
-                        <Text style={[styles.dateText, { color: form.id_proof_type_id ? theme.textPrimary : '#94A3B8' }]}>
-                            {idProofTypes.find(t => t.id.toString() === form.id_proof_type_id)?.name || 'Select ID Proof Type'}
-                        </Text>
-                        <Ionicons name="chevron-down-outline" size={16} color={theme.textSecondary} style={{ marginLeft: 'auto' }} />
-                    </TouchableOpacity>
-                    {errors.id_proof_type_id ? <Text style={styles.err}>{errors.id_proof_type_id}</Text> : null}
+                    <View style={{ flexDirection: 'row', gap: 12 }}>
+                        <View style={{ flex: 1 }}>
+                            <FormInput
+                                label="Stay Days *"
+                                icon={Calendar}
+                                placeholder="1"
+                                keyboardType="numeric"
+                                value={formData.days}
+                                onChangeText={handleDaysChange}
+                            />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                            <FormInput
+                                label="Rent Per Day (₹) *"
+                                icon={CreditCard}
+                                placeholder="500"
+                                keyboardType="numeric"
+                                value={formData.per_day_amount}
+                                onChangeText={handlePerDayChange}
+                            />
+                        </View>
+                    </View>
 
-                    {/* ID Proof Number */}
-                    {form.id_proof_type_id ? (
-                        <InputField
-                            label={`${idProofTypes.find(t => t.id.toString() === form.id_proof_type_id)?.name || 'ID'} Number *`}
-                            placeholder={`Enter ${idProofTypes.find(t => t.id.toString() === form.id_proof_type_id)?.name || 'ID'} Number`}
-                            value={form.id_proof_number}
-                            error={errors.id_proof_number}
-                            onChangeText={(t) => {
-                                const proofTypeName = idProofTypes.find(p => p.id.toString() === form.id_proof_type_id)?.name || '';
-                                let clean = t;
-                                if (proofTypeName.toLowerCase().includes('aadhar') || proofTypeName.toLowerCase().includes('aadhaar')) {
-                                    clean = t.replace(/\D/g, '').slice(0, 12);
-                                } else if (proofTypeName.toLowerCase().includes('pan')) {
-                                    clean = t.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10);
+                    <FormInput
+                        label="Total Amount Paid (₹) *"
+                        icon={CreditCard}
+                        placeholder="500"
+                        keyboardType="numeric"
+                        value={formData.amount_paid}
+                        onChangeText={(t: string) => up('amount_paid', t.replace(/[^0-9.]/g, ''))}
+                    />
+
+                    {/* Direct Room Input */}
+                    <FormInput
+                        label="Assigned Room No (Optional)"
+                        icon={Home}
+                        placeholder="e.g. 101"
+                        value={formData.room_number}
+                        onChangeText={(t: string) => up('room_number', t)}
+                    />
+
+                    {/* Purpose of Stay */}
+                    <View style={styles.inputGroup}>
+                        <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>Purpose of Stay</Text>
+                        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+                            {PURPOSE_TAGS.map(tag => {
+                                const isSel = formData.purpose === tag;
+                                return (
+                                    <TouchableOpacity
+                                        key={tag}
+                                        style={[
+                                            styles.tagChip,
+                                            {
+                                                backgroundColor: isSel ? theme.primary : (isDark ? '#1E293B' : '#F1F5F9'),
+                                                borderColor: isSel ? theme.primary : (isDark ? '#334155' : '#E2E8F0')
+                                            }
+                                        ]}
+                                        onPress={() => up('purpose', tag)}
+                                        activeOpacity={0.8}
+                                    >
+                                        <Text style={[styles.tagChipText, { color: isSel ? '#FFF' : theme.textSecondary }, isSel && { fontWeight: '700' }]}>
+                                            {tag}
+                                        </Text>
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </View>
+                        <TextInput
+                            style={[
+                                styles.input,
+                                {
+                                    backgroundColor: isDark ? '#1E293B' : '#F9FAFB',
+                                    borderColor: isDark ? '#334155' : '#F1F5F9',
+                                    borderWidth: 1,
+                                    borderRadius: 12,
+                                    paddingHorizontal: 14,
+                                    paddingVertical: 10,
+                                    color: theme.textPrimary,
                                 }
-                                up('id_proof_number', clean);
-                            }}
-                            onBlur={() => checkUnique('id_proof_number', form.id_proof_number)}
-                        />
-                    ) : null}
-
-                    {/* Check-in date */}
-                    <Text style={[styles.label, { color: theme.textPrimary, marginTop: 12 }]}>Check-in Date *</Text>
-                    <TouchableOpacity
-                        style={[styles.dateBtn, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF', borderColor: errors.check_in_date ? '#EF4444' : (isDark ? '#334155' : '#E2E8F0') }]}
-                        onPress={() => setShowDatePicker(true)}
-                        activeOpacity={0.7}
-                    >
-                        <Ionicons name="calendar-outline" size={18} color={theme.primary} />
-                        <Text style={[styles.dateText, { color: theme.textPrimary }]}>{form.check_in_date}</Text>
-                    </TouchableOpacity>
-                    {errors.check_in_date ? <Text style={styles.err}>{errors.check_in_date}</Text> : null}
-
-                    <View style={styles.row}>
-                        <InputField
-                            label="Days"
-                            placeholder="1"
-                            keyboardType="numeric"
-                            value={form.days}
-                            error={errors.days}
-                            containerStyle={{ flex: 1, marginRight: 8 }}
-                            onChangeText={(t) => up('days', t.replace(/[^0-9]/g, ''))}
-                        />
-                        <InputField
-                            label="Per Day (₹)"
-                            placeholder="e.g. 250"
-                            keyboardType="numeric"
-                            value={form.per_day_amount}
-                            containerStyle={{ flex: 1, marginLeft: 8 }}
-                            onChangeText={(t) => up('per_day_amount', t.replace(/[^0-9.]/g, ''))}
+                            ]}
+                            placeholder="Or type custom purpose..."
+                            placeholderTextColor={isDark ? '#475569' : '#BBBBBB'}
+                            value={formData.purpose}
+                            onChangeText={(t) => up('purpose', t)}
                         />
                     </View>
-                    <InputField
-                        label="Total Amount (₹)"
-                        placeholder="e.g. 500"
-                        keyboardType="numeric"
-                        value={form.amount_paid}
-                        error={errors.amount_paid}
-                        editable={false}
-                        onChangeText={(t) => up('amount_paid', t.replace(/[^0-9.]/g, ''))}
+                </View>
+
+                {/* ── 3. Identity Proof & Documents ── */}
+                <View style={[styles.formCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : 'transparent', borderWidth: isDark ? 1 : 0 }]}>
+                    <SectionHeader number={3} title="Identity Proof & Documents" />
+
+                    <SelectField
+                        label="ID Proof Type *"
+                        value={selectedProofConfig?.name}
+                        placeholder="Select ID Proof Type"
+                        icon={Fingerprint}
+                        error={touched.id_proof_type ? errors.id_proof_type : undefined}
+                        onPress={() => setProofModal(true)}
                     />
 
-                    <InputField
-                        label="Room Number *"
-                        placeholder="e.g. 204"
-                        value={form.room_number}
-                        error={errors.room_number}
-                        onChangeText={(t) => up('room_number', t)}
-                        onFocus={() => {
-                            setTimeout(() => {
-                                scrollViewRef.current?.scrollToEnd({ animated: true });
-                            }, 200);
-                        }}
-                    />
-                    <InputField
-                        label="Purpose / Notes"
-                        placeholder="e.g. Relative of tenant, 1 night stay"
-                        value={form.purpose}
-                        onChangeText={(t) => up('purpose', t)}
-                        onFocus={() => {
-                            setTimeout(() => {
-                                scrollViewRef.current?.scrollToEnd({ animated: true });
-                            }, 200);
-                        }}
-                    />
+                    {formData.id_proof_type && selectedProofConfig ? (
+                        <>
+                            <FormInput
+                                label={`${selectedProofConfig.name} Number *`}
+                                icon={CreditCard}
+                                placeholder={`Ex: ${selectedProofConfig.example}`}
+                                keyboardType={selectedProofConfig.keyboard}
+                                autoCapitalize={selectedProofConfig.id === 'pan' ? 'characters' : 'none'}
+                                maxLength={selectedProofConfig.maxLength}
+                                value={formData.id_proof_number}
+                                error={touched.id_proof_number ? errors.id_proof_number : undefined}
+                                onChangeText={(t: string) => {
+                                    let clean = t;
+                                    if (selectedProofConfig.id === 'aadhaar') {
+                                        clean = t.replace(/\D/g, '').slice(0, 12);
+                                    } else if (selectedProofConfig.id === 'pan') {
+                                        clean = t.toUpperCase().slice(0, 10);
+                                    }
+                                    up('id_proof_number', clean);
+                                }}
+                            />
 
-                </Card>
+                            <View style={{ marginTop: 6 }}>
+                                <Text style={[styles.inputLabel, { color: theme.textSecondary, marginBottom: 8 }]}>
+                                    {selectedProofConfig.name} Photos (Front & Back)
+                                </Text>
+                                <View style={{ flexDirection: 'row', gap: 12 }}>
+                                    <DocumentUploadBox
+                                        label="Front Side"
+                                        uri={idProofFront}
+                                        onCapture={(uri: string) => setIdProofFront(uri)}
+                                        onRemove={() => setIdProofFront(null)}
+                                        isFront={true}
+                                    />
+                                    <DocumentUploadBox
+                                        label="Back Side"
+                                        uri={idProofBack}
+                                        onCapture={(uri: string) => setIdProofBack(uri)}
+                                        onRemove={() => setIdProofBack(null)}
+                                        isFront={false}
+                                    />
+                                </View>
+                            </View>
+                        </>
+                    ) : null}
+                </View>
+
+                {/* ── 4. Remarks (Optional) ── */}
+                <View style={[styles.formCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : 'transparent', borderWidth: isDark ? 1 : 0 }]}>
+                    <SectionHeader number={4} title="Special Remarks (Optional)" />
+                    <FormInput
+                        label="Remarks / Luggage Notes"
+                        icon={FileText}
+                        placeholder="Any special remarks or luggage instructions..."
+                        multiline={true}
+                        value={formData.remarks}
+                        onChangeText={(t: string) => up('remarks', t)}
+                    />
+                </View>
             </ScrollView>
 
-            {/* Sticky Footer (always shown) */}
-            <View style={[styles.stickyFooter, { backgroundColor: theme.cardBg, borderTopColor: isDark ? '#334155' : '#F1F5F9', paddingBottom: insets.bottom + 16 }]}>
+            {/* ── Sticky Bottom Footer (Exact Student Screen Pattern) ── */}
+            <View style={[styles.footerBar, { backgroundColor: isDark ? '#0F172A' : '#FFFFFF', borderTopColor: isDark ? '#1E293B' : '#F1F5F9', paddingBottom: Math.max(insets.bottom, 16) }]}>
                 <TouchableOpacity
-                    style={[styles.resetButton, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#CBD5E1' }]}
+                    style={[styles.resetBtn, { backgroundColor: isDark ? '#1E293B' : '#F1F5F9', borderColor: isDark ? '#334155' : '#E2E8F0' }]}
                     onPress={handleReset}
-                    activeOpacity={0.7}
-                    disabled={loading}
-                >
-                    <Text style={[styles.resetButtonText, { color: theme.textSecondary }]}>Reset</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                    style={[styles.saveButton, { backgroundColor: theme.primary }, loading && styles.disabledButton]}
-                    onPress={handleSave}
-                    disabled={loading}
                     activeOpacity={0.8}
                 >
-                    <Text style={styles.saveButtonText}>{loading ? 'Saving...' : 'Save Guest'}</Text>
+                    <Text style={[styles.resetBtnText, { color: theme.textSecondary }]}>Reset</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                    style={[styles.saveBtn, { backgroundColor: theme.primary }]}
+                    onPress={handleSave}
+                    disabled={loading}
+                    activeOpacity={0.85}
+                >
+                    {loading ? (
+                        <ActivityIndicator color="#FFF" size="small" />
+                    ) : (
+                        <Text style={styles.saveBtnText}>{isEdit ? 'Update Guest' : 'Save & Check In'}</Text>
+                    )}
                 </TouchableOpacity>
             </View>
+
+            {/* Options Drawers */}
+            <OptionsDrawer
+                visible={proofModal}
+                title="Select ID Proof Type"
+                data={ID_PROOF_TYPES}
+                selectedId={formData.id_proof_type}
+                keyExtractor={(item: any) => item.id}
+                labelExtractor={(item: any) => item.name}
+                onSelect={(item: any) => up('id_proof_type', item.id)}
+                onClose={() => setProofModal(false)}
+            />
 
             <DateTimePickerModal
                 isVisible={showDatePicker}
                 mode="date"
-                onConfirm={(d) => { up('check_in_date', toLocalDateStr(d)); setShowDatePicker(false); }}
+                date={formData.check_in_date ? new Date(formData.check_in_date) : new Date()}
+                onConfirm={(d: Date) => {
+                    up('check_in_date', toLocalDateStr(d));
+                    setShowDatePicker(false);
+                }}
                 onCancel={() => setShowDatePicker(false)}
             />
-
-            {/* ID Proof Type Modal */}
-            <Modal
-                visible={proofModalVisible}
-                transparent
-                animationType="fade"
-                onRequestClose={() => setProofModalVisible(false)}
-            >
-                <TouchableOpacity 
-                    style={styles.modalOverlay} 
-                    activeOpacity={1} 
-                    onPress={() => setProofModalVisible(false)}
-                >
-                    <View style={[styles.modalContent, { backgroundColor: theme.cardBg }]}>
-                        <Text style={[styles.modalTitle, { color: theme.textPrimary }]}>Select ID Proof Type</Text>
-                        <ScrollView style={{ maxHeight: 300 }}>
-                            {idProofTypes.map((type) => (
-                                <TouchableOpacity
-                                    key={type.id}
-                                    style={[
-                                        styles.modalItem,
-                                        form.id_proof_type_id === type.id.toString() && { backgroundColor: theme.primary + '15' }
-                                    ]}
-                                    onPress={() => {
-                                        up('id_proof_type_id', type.id.toString());
-                                        setProofModalVisible(false);
-                                    }}
-                                >
-                                    <Text style={[
-                                        styles.modalItemText, 
-                                        { color: theme.textPrimary },
-                                        form.id_proof_type_id === type.id.toString() && { color: theme.primary, fontWeight: '700' }
-                                    ]}>
-                                        {type.name}
-                                    </Text>
-                                </TouchableOpacity>
-                            ))}
-                        </ScrollView>
-                    </View>
-                </TouchableOpacity>
-            </Modal>
         </KeyboardAvoidingView>
     );
 }
 
 const styles = StyleSheet.create({
     container: { flex: 1 },
-    scroll: { padding: 16 },
-    card: { padding: 20, borderRadius: 24, borderWidth: 1 },
-    label: { fontSize: 14, fontWeight: '600', marginBottom: 8 },
-    dateBtn: {
-        height: 50, borderRadius: 12, borderWidth: 1, paddingHorizontal: 16,
-        flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 4,
-    },
-    dateText: { fontSize: 16, fontWeight: '500' },
-    err: { color: '#EF4444', fontSize: 11, marginBottom: 12, marginLeft: 4 },
-    row: { flexDirection: 'row', marginTop: 16 },
-    scrollFooter: {
+    content: { flex: 1 },
+    scrollContent: { padding: 16, gap: 16 },
+
+    profilePhotoCard: {
+        borderRadius: 20,
+        padding: 16,
         flexDirection: 'row',
-        gap: 12,
-        paddingTop: 16,
-        borderTopWidth: 1,
-        marginTop: 16,
+        alignItems: 'center',
+        gap: 16,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.05,
+        shadowRadius: 10,
+        elevation: 3,
     },
-    stickyFooter: {
+    profileAvatarContainer: { position: 'relative' },
+    profileAvatarWrapper: { position: 'relative' },
+    profileAvatar: { width: 80, height: 80, borderRadius: 40, borderWidth: 2.5 },
+    profileAvatarPlaceholder: {
+        width: 80,
+        height: 80,
+        borderRadius: 40,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 2,
+        borderStyle: 'dashed',
+    },
+    profileEditBadge: {
+        position: 'absolute',
+        bottom: 0,
+        right: 0,
+        width: 26,
+        height: 26,
+        borderRadius: 13,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 2,
+        borderColor: '#FFF',
+    },
+    profileRemoveBtn: {
+        position: 'absolute',
+        top: -4,
+        right: -4,
+        width: 20,
+        height: 20,
+        borderRadius: 10,
+        backgroundColor: '#EF4444',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    profileDetailsContainer: { flex: 1 },
+    profilePhotoTitle: { fontSize: 16, fontWeight: '800' },
+    profilePhotoSubtitle: { fontSize: 12, marginTop: 2, marginBottom: 8 },
+    profileUploadBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        paddingVertical: 7,
+        borderRadius: 10,
+        borderWidth: 1,
+    },
+    profileUploadBtnText: { fontSize: 12, fontWeight: '700' },
+
+    formCard: {
+        borderRadius: 20,
+        padding: 18,
+        gap: 14,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.05,
+        shadowRadius: 10,
+        elevation: 3,
+    },
+    sectionHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+        paddingBottom: 12,
+        borderBottomWidth: 1,
+        marginBottom: 4,
+    },
+    sectionBadge: {
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    sectionBadgeText: { color: '#FFF', fontSize: 12, fontWeight: '800' },
+    sectionHeaderText: { fontSize: 16, fontWeight: '800' },
+
+    inputGroup: { gap: 6 },
+    inputLabel: { fontSize: 13, fontWeight: '700' },
+    inputContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        borderRadius: 12,
+        borderWidth: 1.5,
+        paddingHorizontal: 14,
+        height: 48,
+    },
+    multilineContainer: { height: 90, alignItems: 'flex-start', paddingTop: 10 },
+    inputIcon: { marginRight: 10 },
+    input: { flex: 1, fontWeight: '600', height: '100%' },
+    multilineInput: { height: '100%', textAlignVertical: 'top' },
+    inputText: { flex: 1, fontWeight: '600' },
+    inputError: { borderColor: '#EF4444' },
+    errorText: { color: '#EF4444', fontSize: 11, fontWeight: '600', marginTop: 2 },
+
+    selectorContainer: {
+        flexDirection: 'row',
+        borderRadius: 12,
+        padding: 4,
+        borderWidth: 1,
+    },
+    selectorTab: {
+        flex: 1,
+        paddingVertical: 9,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderRadius: 9,
+    },
+    selectorTabText: { fontSize: 13, fontWeight: '600' },
+
+    tagChip: {
+        paddingHorizontal: 12,
+        paddingVertical: 7,
+        borderRadius: 18,
+        borderWidth: 1,
+    },
+    tagChipText: { fontSize: 12, fontWeight: '600' },
+
+    docUploadBox: {
+        flex: 1,
+        height: 140,
+        borderRadius: 16,
+        borderWidth: 1.5,
+        padding: 12,
+    },
+    docPreviewContainer: { flex: 1, position: 'relative', borderRadius: 10, overflow: 'hidden' },
+    docPreviewImage: { width: '100%', height: '100%', borderRadius: 10 },
+    docRemoveBtn: {
+        position: 'absolute',
+        top: 6,
+        right: 6,
+        width: 22,
+        height: 22,
+        borderRadius: 11,
+        backgroundColor: '#EF4444',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    docRetakeRow: {
+        position: 'absolute',
+        bottom: 6,
+        left: 6,
+        right: 6,
+        paddingVertical: 4,
+        borderRadius: 6,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    docBoxTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    skeletonCard: { width: 48, height: 32, borderRadius: 6, borderWidth: 1, padding: 3 },
+    skeletonAvatar: { width: 14, height: 14, borderRadius: 7 },
+    skeletonLine: { height: 3, borderRadius: 1.5 },
+    uploadCircle: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+    docBoxTitle: { fontSize: 12, fontWeight: '800' },
+    docBoxSubtitle: { fontSize: 10, color: '#94A3B8', marginTop: 2 },
+    docUploadBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 4,
+        borderWidth: 1,
+        borderRadius: 8,
+        paddingVertical: 5,
+        marginTop: 6,
+    },
+    docUploadBtnText: { fontSize: 11, fontWeight: '700' },
+
+    sheet: {
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+        paddingTop: 12,
+        paddingHorizontal: 16,
+    },
+    sheetHandle: {
+        width: 40,
+        height: 4,
+        borderRadius: 2,
+        backgroundColor: '#CBD5E1',
+        alignSelf: 'center',
+        marginBottom: 12,
+    },
+    sheetHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingBottom: 14,
+        borderBottomWidth: 1,
+        marginBottom: 10,
+    },
+    sheetTitle: { fontSize: 17, fontWeight: '800' },
+    doneBtn: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 12 },
+    doneBtnText: { fontWeight: '700' },
+    searchInput: {
+        height: 42,
+        borderRadius: 10,
+        paddingHorizontal: 12,
+        fontWeight: '600',
+    },
+    optionRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingVertical: 14,
+        paddingHorizontal: 12,
+        borderBottomWidth: 1,
+        borderRadius: 10,
+    },
+    optionRowActive: { backgroundColor: '#F3EEFF' },
+    optionLabel: { fontSize: 14, fontWeight: '600' },
+
+    sourceOptionBtn: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 20,
+        borderRadius: 16,
+        borderWidth: 1.5,
+        gap: 10,
+    },
+    sourceIconBg: {
+        width: 52,
+        height: 52,
+        borderRadius: 26,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    sourceOptionText: { fontSize: 13, fontWeight: '700' },
+
+    footerBar: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
         flexDirection: 'row',
         gap: 12,
         paddingHorizontal: 16,
         paddingTop: 12,
         borderTopWidth: 1,
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: -2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 8,
+        shadowOffset: { width: 0, height: -4 },
+        shadowOpacity: 0.08,
+        shadowRadius: 10,
         elevation: 8,
     },
-    resetButton: {
+    resetBtn: {
         flex: 1,
-        height: 48,
-        borderRadius: 12,
-        borderWidth: 1.5,
-        borderColor: '#CBD5E1',
+        height: 50,
+        borderRadius: 14,
+        borderWidth: 1,
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: '#FFF'
     },
-    resetButtonText: { fontWeight: '600', fontSize: 15 },
-    saveButton: {
+    resetBtnText: { fontSize: 14, fontWeight: '700' },
+    saveBtn: {
         flex: 2,
-        height: 48,
-        borderRadius: 12,
+        height: 50,
+        borderRadius: 14,
         alignItems: 'center',
         justifyContent: 'center',
-    },
-    saveButtonText: { color: '#FFF', fontWeight: '700', fontSize: 15 },
-    disabledButton: { opacity: 0.7 },
-    modalOverlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: 20,
-    },
-    modalContent: {
-        width: '85%',
-        borderRadius: 16,
-        padding: 20,
-        elevation: 5,
-        shadowColor: '#000',
-        shadowOpacity: 0.15,
-        shadowRadius: 10,
+        shadowColor: '#4F46E5',
         shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 4,
     },
-    modalTitle: {
-        fontSize: 16,
-        fontWeight: '700',
-        marginBottom: 16,
-        textAlign: 'center',
-    },
-    modalItem: {
-        paddingVertical: 14,
-        paddingHorizontal: 16,
-        borderRadius: 8,
-        marginVertical: 2,
-    },
-    modalItemText: {
-        fontSize: 14,
-    },
+    saveBtnText: { color: '#FFF', fontSize: 15, fontWeight: '800' },
 });

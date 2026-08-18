@@ -12,7 +12,7 @@ const BASE_URL = 'http://143.244.131.69:8081/api';
 // ─── Axios Instance ───────────────────────────────────────────────────────────
 export const api = axios.create({
   baseURL: BASE_URL,
-  timeout: 15000, // 15s timeout
+  timeout: 30000, // 30s timeout for image uploads
   headers: {
     'Content-Type': 'application/json',
   },
@@ -25,6 +25,9 @@ api.interceptors.request.use(
       const token = await getSecureItem('token');
       if (token) {
         config.headers['Authorization'] = `Bearer ${token}`;
+      }
+      if (config.data instanceof FormData) {
+        delete config.headers['Content-Type'];
       }
     } catch {
       // Token read failed — proceed without token

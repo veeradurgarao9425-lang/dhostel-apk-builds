@@ -1213,9 +1213,9 @@ export const authController = {
       const { identifier, hostel_id, first_name, last_name, phone, email, gender, date_of_birth, guardian_name, guardian_phone, guardian_relation, current_address, permanent_address, id_proof_type, id_proof_number } = req.body;
 
       const files = req.files as { [field: string]: Express.Multer.File[] } | undefined;
-      const profilePhotoUrl = files?.profile_photo?.[0] ? await processFileUpload(files.profile_photo[0], 'avatars') : null;
-      const idProofFrontUrl = files?.id_proof_front?.[0] ? await processFileUpload(files.id_proof_front[0], 'id_proofs') : null;
-      const idProofBackUrl = files?.id_proof_back?.[0] ? await processFileUpload(files.id_proof_back[0], 'id_proofs') : null;
+      const profilePhotoUrl = files?.profile_photo?.[0] ? await processFileUpload(files.profile_photo[0], 'avatars').catch(() => null) : null;
+      const idProofFrontUrl = files?.id_proof_front?.[0] ? await processFileUpload(files.id_proof_front[0], 'id_proofs').catch(() => null) : null;
+      const idProofBackUrl = files?.id_proof_back?.[0] ? await processFileUpload(files.id_proof_back[0], 'id_proofs').catch(() => null) : null;
 
       if (!identifier || !hostel_id || !first_name || !gender) {
         return res.status(400).json({ success: false, error: 'Missing required fields' });

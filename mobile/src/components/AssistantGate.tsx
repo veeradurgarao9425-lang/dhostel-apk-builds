@@ -3,16 +3,44 @@ import { DeviceEventEmitter } from 'react-native';
 import { OwnerAssistant } from './assistant/OwnerAssistant';
 import { navigationRef } from '../navigation/navigationRef';
 
-const AUTH_ROUTES = [
+// Explicitly hidden screens: only input forms, edit forms, details view pages, and auth screens
+const EXPLICITLY_HIDDEN_ROUTES = [
+  // Auth & Onboarding
   'Splash',
   'Onboarding',
   'RoleSelect',
   'Login',
-  'ForgotPassword',
   'Register',
-  'TenantHostelKey',
+  'ForgotPassword',
   'TenantLogin',
   'TenantRegister',
+  'TenantHostelKey',
+  'QRSignup',
+
+  // Input & Edit Forms
+  'AddStudent',
+  'AddGuest',
+  'AddRoom',
+  'AddStaff',
+  'AddExpense',
+  'AddIncome',
+  'AddNotice',
+  'AddHostel',
+  'BulkRoomSetup',
+  'AddPreBooking',
+
+  // View / Details / Receipt Screens
+  'StudentDetails',
+  'RoomDetails',
+  'StaffDetails',
+  'HostelDetails',
+  'ExpenseDetails',
+  'IncomeDetails',
+  'PaymentDetails',
+  'Receipt',
+  'Profile',
+  'Settings',
+  'PrivacyPolicy',
 ];
 
 export const AssistantGate: React.FC = () => {
@@ -40,13 +68,24 @@ export const AssistantGate: React.FC = () => {
     };
   }, []);
 
-  // Hide completely on Splash and auth screens
-  if (currentRoute && AUTH_ROUTES.includes(currentRoute)) {
+  if (!currentRoute) return <OwnerAssistant />;
+
+  // Hide only on forms, detail/receipt views, and auth screens
+  const isFormOrDetail = (
+    EXPLICITLY_HIDDEN_ROUTES.includes(currentRoute) ||
+    currentRoute.startsWith('Add') ||
+    currentRoute.startsWith('Edit') ||
+    currentRoute.endsWith('Details') ||
+    currentRoute.endsWith('Detail') ||
+    currentRoute.startsWith('Tenant')
+  );
+
+  if (isFormOrDetail) {
     return null;
   }
 
+  // Render on all list & dashboard screens (Home, Students, Rooms, Guests, Staff, Expense, Income, Finance, More, etc.)
   return <OwnerAssistant />;
 };
 
 export default AssistantGate;
-

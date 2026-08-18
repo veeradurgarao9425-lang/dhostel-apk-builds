@@ -713,8 +713,8 @@ const s = StyleSheet.create({
   formFooter: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 20, paddingVertical: 14, borderTopWidth: 1, borderTopColor: '#F1F5F9', backgroundColor: WHITE },
   btnReset: { paddingHorizontal: 20, height: 48, borderRadius: 14, borderWidth: 1, borderColor: '#E2E8F0', alignItems: 'center', justifyContent: 'center', backgroundColor: '#F8FAFC' },
   btnResetTxt: { fontSize: 14, fontWeight: '700', color: TEXT_MID },
-  btnBlue: { backgroundColor: BLUE, height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  btnBlueTxt: { color: WHITE, fontSize: 15, fontWeight: '700' },
+  btnSubmitModal: { backgroundColor: BLUE, height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  btnSubmitModalTxt: { color: WHITE, fontSize: 15, fontWeight: '700' },
   
   // Category Picker
   catOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center', padding: 20 },

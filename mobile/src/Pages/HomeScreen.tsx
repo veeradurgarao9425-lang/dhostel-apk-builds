@@ -35,6 +35,7 @@ import { TopOverdueStudents } from '../components/dashboard/TopOverdueStudents';
 import { UpcomingDues } from '../components/dashboard/UpcomingDues';
 import { OccupancyCard } from '../components/dashboard/OccupancyCard';
 import { SetupGuideCard } from '../components/dashboard/SetupGuideCard';
+import { DashboardFooter } from '../components/dashboard/DashboardFooter';
 
 // ─── Initial state ────────────────────────────────────────────────────────────
 const INITIAL_STATE = {
@@ -870,6 +871,7 @@ export default function HomeScreen() {
                                 </>
                             )}
                             <TenantAppCard theme={theme} isDark={isDark} hostelCode={data.hostelCode} />
+                            <DashboardFooter />
                         </View>
                     </ScrollView>
                 </View>

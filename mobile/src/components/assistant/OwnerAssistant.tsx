@@ -137,14 +137,13 @@ interface HomeProps {
   onIntent: (i: AssistantIntent) => void;
 }
 // ─── Merged suggestion chips shown inline in the welcome area ─────────────────
-// These replace both the old HomeContent pill-grid AND the separate ChipsPanel.
-// Only the most-used queries — 5 chips, icon + short label each.
 const WELCOME_CHIPS: Array<{ icon: string; label: string; q: string }> = [
-  { icon: 'alert-circle-outline', label: 'Pending dues', q: "Who hasn't paid this month?" },
-  { icon: 'bed-outline', label: 'Available beds', q: 'How many beds available?' },
-  { icon: 'cash-outline', label: 'Month profit', q: 'Profit this month' },
-  { icon: 'people-outline', label: 'Active students', q: 'Total students count' },
-  { icon: 'receipt-outline', label: 'Expenses', q: 'Expense breakdown' },
+  { icon: 'alert-circle-outline', label: 'Pending Dues', q: "Who hasn't paid this month?" },
+  { icon: 'bed-outline', label: 'Available Beds', q: 'How many beds available?' },
+  { icon: 'cash-outline', label: 'Month Profit', q: 'Profit this month' },
+  { icon: 'people-outline', label: 'Active Students', q: 'Total students count' },
+  { icon: 'receipt-outline', label: 'Expense Summary', q: 'Expense breakdown' },
+  { icon: 'briefcase-outline', label: 'Staff & Wages', q: 'Show staff list' },
 ];
 
 
@@ -1026,7 +1025,10 @@ export const OwnerAssistant: React.FC = () => {
 
       case 'SHOW_ROOMS': {
         setIsTyping(true);
-        const occ = await fetchOccupancy();
+        const [occ, allRooms] = await Promise.all([
+          fetchOccupancy(),
+          fetchRooms()
+        ]);
         if (!occ || occ.total === 0) {
           addBot([
             { type: 'info_tip', text: 'As of now, no rooms or beds are registered in this hostel.', icon: 'business-outline', color: '#64748B' },
@@ -1034,7 +1036,13 @@ export const OwnerAssistant: React.FC = () => {
             { type: 'action_buttons', buttons: [{ label: 'Add Room Now', icon: 'add-circle-outline', screen: 'AddRoom', variant: 'primary' }] }
           ]);
         } else {
-          const pct = occ.total > 0 ? Math.round((occ.occupied / occ.total) * 100) : 0;
+          // Build real room suggestion chips from the actual hostel database
+          const realRoomChips = (allRooms || []).slice(0, 4).map((r: any) => ({
+            label: `Room ${r.room_number}`,
+            icon: 'home-outline',
+            onPress: () => handleIntent({ type: 'SHOW_ROOM_DETAIL', roomNumber: r.room_number })
+          }));
+
           addBot([
             { type: 'info_tip', text: `Rooms Overview: ${occ.totalRooms} Rooms, ${occ.totalFloors} Floors, ${occ.total} Total Beds (${occ.available} Available Beds).`, icon: 'business-outline', color: '#4F46E5' },
             {
@@ -1056,15 +1064,9 @@ export const OwnerAssistant: React.FC = () => {
               ]
             },
             {
-              type: 'follow_up_chips', label: 'Explore Details:', chips: [
+              type: 'follow_up_chips', label: 'Explore Your Hostel Rooms:', chips: [
                 { label: 'Available Beds', icon: 'bed-outline', onPress: () => handleQuery('how many vacant beds') },
-                { label: 'Floor 1 Rooms', icon: 'layers-outline', onPress: () => handleQuery('floor 1 how many rooms') },
-                { label: 'Room 101 Details', icon: 'home-outline', onPress: () => handleQuery('room 101') },
-                { label: 'Occupancy Rate', icon: 'stats-chart-outline', onPress: () => handleQuery('occupancy rate') },
-              ]
-            },
-            {
-              type: 'follow_up_chips', label: 'Do you want to see all rooms?', chips: [
+                ...realRoomChips,
                 { label: 'View All Rooms', icon: 'list-outline', onPress: () => handleIntent({ type: 'SHOW_ROOM_LIST_INLINE' }) },
               ]
             },
@@ -1611,16 +1613,56 @@ export const OwnerAssistant: React.FC = () => {
                 onContentSizeChange={() => scrollToEnd(true)}
               >
 
-                {/* Empty-state spacer: while the thread is short this grows to
-                    fill the free height so the welcome card and chips sit just
-                    above the composer (chat-style, no dead gap). It collapses
-                    to zero as soon as the conversation outgrows the viewport. */}
-                {messages.length <= 2 && <View style={s.introSpacer} />}
+                {/* ── AI Copilot Top Live Hub (replaces blank gap) ── */}
+                {messages.length <= 2 && (
+                  <View style={s.topHubCard}>
+                    {/* Welcome Banner */}
+                    <View style={s.topHubHeader}>
+                      <View style={s.topHubBotBadge}>
+                        <Ionicons name="chatbubble-ellipses" size={16} color="#7C3AED" />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={s.topHubTitle}>Hostix AI</Text>
+                        <Text style={s.topHubSub}>Ask any question or tap a quick action below</Text>
+                      </View>
+                    </View>
+
+                    {/* Quick Live Pulse Action Capsules */}
+                    <View style={s.topPulseRow}>
+                      <TouchableOpacity
+                        style={[s.topPulseItem, { backgroundColor: '#FEE2E2', borderColor: '#FECACA' }]}
+                        onPress={() => handleQuery("Who hasn't paid this month?")}
+                        activeOpacity={0.75}
+                      >
+                        <Ionicons name="alert-circle" size={13} color="#EF4444" />
+                        <Text style={[s.topPulseText, { color: '#B91C1C' }]}>Check Dues</Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={[s.topPulseItem, { backgroundColor: '#E0E7FF', borderColor: '#C7D2FE' }]}
+                        onPress={() => handleQuery("How many beds available?")}
+                        activeOpacity={0.75}
+                      >
+                        <Ionicons name="bed" size={13} color="#6366F1" />
+                        <Text style={[s.topPulseText, { color: '#4338CA' }]}>Available Beds</Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={[s.topPulseItem, { backgroundColor: '#DCFCE7', borderColor: '#BBF7D0' }]}
+                        onPress={() => handleQuery("Profit this month")}
+                        activeOpacity={0.75}
+                      >
+                        <Ionicons name="trending-up" size={13} color="#16A34A" />
+                        <Text style={[s.topPulseText, { color: '#15803D' }]}>Month Profit</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                )}
 
                 {/* Quick-ask chips — 2-col grid */}
                 {messages.length <= 2 && (
                   <View style={s.chipsSection}>
-                    <Text style={s.chipsSectionLabel}>💬 Ask me about</Text>
+                    <Text style={s.chipsSectionLabel}>💬 Frequently Asked</Text>
                     <View style={s.chipsGrid}>
                       {WELCOME_CHIPS.map((chip, i) => (
                         <TouchableOpacity
@@ -1930,9 +1972,62 @@ const s = StyleSheet.create({
 
   /* Messages */
   msgList: { padding: 16, gap: 16, paddingBottom: 12, flexGrow: 1 },
-  // flexBasis 0 + grow: takes the leftover height when the thread is short,
-  // shrinks away to nothing once the messages fill the viewport.
-  introSpacer: { flexGrow: 1, flexBasis: 0 },
+  topHubCard: {
+    backgroundColor: '#FFF',
+    borderRadius: 20,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    gap: 12,
+    marginBottom: 4,
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
+  topHubHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  topHubBotBadge: {
+    width: 34,
+    height: 34,
+    borderRadius: 12,
+    backgroundColor: '#F3E8FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  topHubTitle: {
+    fontSize: 14.5,
+    fontWeight: '800',
+    color: '#1E293B',
+  },
+  topHubSub: {
+    fontSize: 11.5,
+    fontWeight: '500',
+    color: '#64748B',
+    marginTop: 1,
+  },
+  topPulseRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  topPulseItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  topPulseText: {
+    fontSize: 11.5,
+    fontWeight: '700',
+  },
   topSmallCard: {
     flexDirection: 'row',
     alignItems: 'center',

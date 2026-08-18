@@ -184,19 +184,20 @@ export function generateReceiptHtml(d: ReceiptData): string {
 
   /* ── Totals ───────────────────────────────────────────── */
   .totals { width: 100%; border-collapse: collapse; margin-top: 14px; }
-  .totals td { padding: 0; vertical-align: top; }
+  .totals td { padding: 0; vertical-align: middle; }
   .words-box {
-    background: #F8FAFC; border: 1px dashed #CBD5E1; border-radius: 8px;
-    padding: 11px 13px; margin-right: 16px;
+    background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px;
+    padding: 8px 12px; margin-right: 14px;
   }
-  .words-label { font-size: 9.5px; font-weight: 800; letter-spacing: 0.9px; color: #64748B; }
-  .words-value { font-size: 11.5px; font-weight: 700; margin-top: 4px; line-height: 1.5; }
+  .words-label { font-size: 8.5px; font-weight: 800; letter-spacing: 0.8px; color: #64748B; }
+  .words-value { font-size: 11px; font-weight: 700; color: #1E293B; margin-top: 2px; line-height: 1.4; }
   .grand {
-    background: #6D28D9; color: #FFFFFF; border-radius: 8px;
-    padding: 13px 16px; text-align: right; min-width: 210px;
+    display: inline-block;
+    background: #ECFDF5; border: 1px solid #10B981; border-radius: 8px;
+    padding: 6px 14px; text-align: right;
   }
-  .grand-label { font-size: 9.5px; letter-spacing: 1.2px; font-weight: 700; opacity: 0.9; }
-  .grand-value { font-size: 21px; font-weight: 800; margin-top: 3px; letter-spacing: -0.4px; }
+  .grand-label { font-size: 8.5px; letter-spacing: 0.8px; font-weight: 800; color: #047857; }
+  .grand-value { font-size: 16px; font-weight: 900; margin-top: 1px; color: #047857; }
 
   /* ── Terms + footer ───────────────────────────────────── */
   .terms { margin-top: 26px; }
@@ -307,7 +308,7 @@ export function generateReceiptHtml(d: ReceiptData): string {
             <div class="words-value">${esc(amountInWords(paid))}</div>
           </div>
         </td>
-        <td style="width: 230px;">
+        <td style="text-align: right; white-space: nowrap;">
           <div class="grand">
             <div class="grand-label">TOTAL RECEIVED</div>
             <div class="grand-value">₹${money(paid)}</div>

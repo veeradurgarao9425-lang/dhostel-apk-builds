@@ -22,12 +22,16 @@ try {
 }
 
 export const notificationService = {
+  _lastRegisteredToken: null as string | null,
+  _handledNotificationIds: new Set<string>(),
+  _appLaunchTime: Date.now(),
+
   async registerForPushNotificationsAsync() {
     let token = null;
 
     if (Platform.OS === 'android') {
       await Notifications.setNotificationChannelAsync('default', {
-        name: 'Default Notifications',
+        name: 'Hostix Notifications',
         importance: Notifications.AndroidImportance.MAX,
         vibrationPattern: [0, 250, 250, 250],
         lightColor: '#6D4AFF',
@@ -73,8 +77,6 @@ export const notificationService = {
     return token;
   },
 
-  _lastRegisteredToken: null as string | null,
-
   async sendTokenToBackend(token: string) {
     if (this._lastRegisteredToken === token) {
       return;
@@ -119,43 +121,55 @@ export const notificationService = {
   },
 
   setupNotificationListeners(navigate: (screen: string, params?: any) => void) {
-    const handleResponse = (response: Notifications.NotificationResponse) => {
-      console.log('Notification clicked:', response);
-      const data = response?.notification?.request?.content?.data;
-      const title = (response?.notification?.request?.content?.title || '').toLowerCase();
-      
-      if (data) {
-        const dataType = typeof data.type === 'string' ? data.type.toUpperCase() : '';
-        
-        if (dataType === 'NEW ADMISSION' || title.includes('admission')) {
-          if (data.id || data.studentId) {
-            navigate('StudentDetails', { studentId: data.id || data.studentId });
-          } else {
-            navigate('Students');
-          }
-        } else if (title.includes('payment') || title.includes('collect') || title.includes('due') || dataType === 'PAYMENT' || dataType === 'SUCCESS' || dataType === 'DUE_REMINDER') {
-          navigate('FeeManagement');
-        } else if (title.includes('room') || title.includes('assign') || title.includes('vacate') || dataType === 'ROOM_ALLOCATED' || dataType === 'VACATE') {
-          navigate('Rooms');
-        } else if (dataType === 'NOTICE' || title.includes('notice')) {
-          navigate('Notices');
-        } else if (dataType === 'COMPLAINT' || dataType === 'MAINTENANCE' || title.includes('complaint')) {
-          navigate('Complaints');
-        } else if (dataType === 'EXPENSE' || title.includes('expense')) {
-          navigate('Expenses');
-        } else if (dataType === 'PREBOOKING' || title.includes('pre-booking')) {
-          navigate('PreBooking');
-        } else if (dataType === 'DOCUMENT' || title.includes('receipt')) {
-          navigate('FeeManagement');
-        } else if (dataType === 'SUMMARY' || title.includes('summary')) {
-          navigate('Reports');
-        } else if (title.includes('tenant')) {
-          navigate('Rooms');
-        } else {
-          // Default fallback
-          navigate('Notifications');
+    const handleResponse = (response: Notifications.NotificationResponse, isColdStart = false) => {
+      if (!response) return;
+
+      const identifier = response.notification?.request?.identifier;
+      if (identifier) {
+        if (this._handledNotificationIds.has(identifier)) {
+          return;
         }
-      } else {
+        this._handledNotificationIds.add(identifier);
+      }
+
+      console.log('Notification response received:', response);
+      const data = response?.notification?.request?.content?.data || {};
+      const title = (response?.notification?.request?.content?.title || '').toLowerCase();
+      const dataType = typeof data.type === 'string' ? data.type.toUpperCase() : '';
+
+      // Direct screen targeting if provided in payload data
+      if (data.screen && typeof data.screen === 'string') {
+        navigate(data.screen, data.params || data);
+        return;
+      }
+      
+      if (dataType === 'NEW ADMISSION' || dataType === 'NEW_ADMISSION' || title.includes('admission')) {
+        if (data.id || data.studentId || data.student_id) {
+          navigate('StudentDetails', { studentId: data.id || data.studentId || data.student_id });
+        } else {
+          navigate('Students');
+        }
+      } else if (title.includes('payment') || title.includes('collect') || title.includes('due') || dataType === 'PAYMENT' || dataType === 'SUCCESS' || dataType === 'DUE_REMINDER') {
+        navigate('FeeManagement');
+      } else if (title.includes('room') || title.includes('assign') || title.includes('vacate') || dataType === 'ROOM_ALLOCATED' || dataType === 'VACATE') {
+        navigate('Rooms');
+      } else if (dataType === 'NOTICE' || title.includes('notice')) {
+        navigate('Notices');
+      } else if (dataType === 'COMPLAINT' || dataType === 'MAINTENANCE' || title.includes('complaint')) {
+        navigate('ComplaintsManagement');
+      } else if (dataType === 'EXPENSE' || title.includes('expense')) {
+        navigate('Expenses');
+      } else if (dataType === 'PREBOOKING' || title.includes('pre-booking')) {
+        navigate('PreBooking');
+      } else if (dataType === 'DOCUMENT' || title.includes('receipt')) {
+        navigate('FeeManagement');
+      } else if (dataType === 'SUMMARY' || title.includes('summary')) {
+        navigate('Reports');
+      } else if (title.includes('tenant')) {
+        navigate('Rooms');
+      } else if (!isColdStart) {
+        // Only navigate to general Notifications screen if this was an active user tap,
+        // never from an automatic cold-start resolution
         navigate('Notifications');
       }
     };
@@ -163,7 +177,22 @@ export const notificationService = {
     // Handle cold-start: user clicked notification when app was closed/killed
     Notifications.getLastNotificationResponseAsync().then(response => {
       if (response) {
-        setTimeout(() => handleResponse(response), 600);
+        const identifier = response.notification?.request?.identifier;
+        if (identifier && !this._handledNotificationIds.has(identifier)) {
+          // Check if the response was triggered around this session (within 30 seconds of launch)
+          const notifDate = response.notification?.date;
+          const isRecent = notifDate ? (Date.now() - notifDate * 1000 < 60000) : false;
+          
+          // Only auto-route if it has actual specific payload data or is freshly tapped
+          const hasData = response?.notification?.request?.content?.data && 
+                          Object.keys(response.notification.request.content.data).length > 0;
+          if (hasData || isRecent) {
+            setTimeout(() => handleResponse(response, true), 500);
+          } else {
+            // Mark as handled without routing so it doesn't cause unexpected popups
+            if (identifier) this._handledNotificationIds.add(identifier);
+          }
+        }
       }
     }).catch(err => console.log('Error checking last notification response:', err));
 
@@ -174,7 +203,7 @@ export const notificationService = {
 
     // Fired when user taps/interacts with notification while app is running/backgrounded
     const responseSubscription = Notifications.addNotificationResponseReceivedListener(response => {
-      handleResponse(response);
+      handleResponse(response, false);
     });
 
     return () => {

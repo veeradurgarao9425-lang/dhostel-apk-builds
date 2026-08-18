@@ -9,6 +9,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import api from '../services/api';
 import { AppHeader } from '../components/AppHeader';
 import { SkeletonList } from '../components/ui/SkeletonCard';
+import { CalendarFilterModal, DateFilterSelection } from '../components/CalendarFilterModal';
 
 export default function AllTransactionsScreen() {
     const navigation = useNavigation<any>();
@@ -23,6 +24,8 @@ export default function AllTransactionsScreen() {
     // Initial data passed from route params or loaded fresh
     const [transactions, setTransactions] = useState<any[]>([]);
     const [filteredTransactions, setFilteredTransactions] = useState<any[]>([]);
+    const [calendarModalVisible, setCalendarModalVisible] = useState(false);
+    const [dateFilter, setDateFilter] = useState<DateFilterSelection | null>(null);
     
     // Pagination
     const [visibleCount, setVisibleCount] = useState(15);
@@ -58,7 +61,7 @@ export default function AllTransactionsScreen() {
         }
     }, [route.params?.transactions, loadData]);
 
-    // Apply search and category filtering
+    // Apply search, category, and date filtering
     useEffect(() => {
         let result = [...transactions];
 
@@ -75,9 +78,18 @@ export default function AllTransactionsScreen() {
             );
         }
 
+        if (dateFilter && dateFilter.startDate && dateFilter.endDate) {
+            const start = new Date(dateFilter.startDate).getTime();
+            const end = new Date(dateFilter.endDate + 'T23:59:59').getTime();
+            result = result.filter(tx => {
+                const txTime = new Date(tx.date).getTime();
+                return txTime >= start && txTime <= end;
+            });
+        }
+
         setFilteredTransactions(result);
         setVisibleCount(15); // Reset pagination on filter change
-    }, [transactions, searchQuery, selectedCategory]);
+    }, [transactions, searchQuery, selectedCategory, dateFilter]);
 
     const handleRefresh = () => {
         setRefreshing(true);
@@ -163,20 +175,44 @@ export default function AllTransactionsScreen() {
 
             {/* SEARCH AND FILTERS */}
             <View style={[styles.filterBar, { backgroundColor: theme.cardBg, borderBottomColor: isDark ? '#1E293B' : '#E2E8F0' }]}>
-                <View style={[styles.searchBox, { backgroundColor: isDark ? '#1E293B' : '#F1F5F9' }]}>
-                    <Ionicons name="search-outline" size={18} color={theme.textSecondary} style={{ marginRight: 8 }} />
-                    <TextInput
-                        placeholder="Search by name or description..."
-                        placeholderTextColor={theme.textSecondary}
-                        value={searchQuery}
-                        onChangeText={setSearchQuery}
-                        style={[styles.searchInput, { color: theme.textPrimary }]}
-                    />
-                    {searchQuery.length > 0 && (
-                        <TouchableOpacity onPress={() => setSearchQuery('')} activeOpacity={0.7}>
-                            <Ionicons name="close-circle" size={18} color={theme.textSecondary} />
-                        </TouchableOpacity>
-                    )}
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginHorizontal: 16, marginBottom: 10, gap: 8 }}>
+                    <View style={[styles.searchBox, { flex: 1, marginHorizontal: 0, marginBottom: 0, backgroundColor: isDark ? '#1E293B' : '#F1F5F9' }]}>
+                        <Ionicons name="search-outline" size={18} color={theme.textSecondary} style={{ marginRight: 8 }} />
+                        <TextInput
+                            placeholder="Search by name or description..."
+                            placeholderTextColor={theme.textSecondary}
+                            value={searchQuery}
+                            onChangeText={setSearchQuery}
+                            style={[styles.searchInput, { color: theme.textPrimary }]}
+                        />
+                        {searchQuery.length > 0 && (
+                            <TouchableOpacity onPress={() => setSearchQuery('')} activeOpacity={0.7}>
+                                <Ionicons name="close-circle" size={18} color={theme.textSecondary} />
+                            </TouchableOpacity>
+                        )}
+                    </View>
+
+                    <TouchableOpacity
+                        style={{
+                            height: 44,
+                            paddingHorizontal: 12,
+                            borderRadius: 12,
+                            backgroundColor: dateFilter ? theme.primary : (isDark ? '#1E293B' : '#F1F5F9'),
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexDirection: 'row',
+                            gap: 4
+                        }}
+                        onPress={() => setCalendarModalVisible(true)}
+                        activeOpacity={0.8}
+                    >
+                        <Ionicons name="calendar" size={18} color={dateFilter ? '#FFF' : theme.textSecondary} />
+                        {dateFilter && (
+                            <TouchableOpacity onPress={() => setDateFilter(null)} style={{ marginLeft: 2 }}>
+                                <Ionicons name="close-circle" size={14} color="#FFF" />
+                            </TouchableOpacity>
+                        )}
+                    </TouchableOpacity>
                 </View>
 
                 {/* CATEGORY CHIPS */}
@@ -243,10 +279,16 @@ export default function AllTransactionsScreen() {
                     </View>
                     <Text style={[styles.emptyTitle, { color: theme.textPrimary }]}>No transactions found</Text>
                     <Text style={[styles.emptySub, { color: theme.textSecondary }]}>
-                        {searchQuery || selectedCategory !== 'All' ? 'Try adjusting your search or filter' : 'Transactions will appear here once recorded'}
+                        {searchQuery || selectedCategory !== 'All' || dateFilter ? 'Try adjusting your search or filter' : 'Transactions will appear here once recorded'}
                     </Text>
                 </View>
             )}
+
+            <CalendarFilterModal
+                visible={calendarModalVisible}
+                onClose={() => setCalendarModalVisible(false)}
+                onSelect={(sel) => setDateFilter(sel)}
+            />
         </View>
     );
 }

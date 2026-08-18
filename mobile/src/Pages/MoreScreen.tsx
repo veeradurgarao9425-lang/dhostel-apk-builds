@@ -16,6 +16,8 @@ import { useConfirmation } from '../../contexts/ConfirmationContext';
 import { useToast } from '../context/ToastContext';
 import * as Clipboard from 'expo-clipboard';
 import { TenantAppCard } from '../components/TenantAppCard';
+import { HeaderNotification } from '../components/HeaderNotification';
+import { HostixBrand } from '../components/HostixBrand';
 
 // ─── Menu item definition ─────────────────────────────────────────────────────
 interface MenuItem {
@@ -331,15 +333,6 @@ export default function MoreScreen({ hideHeader = false }: MoreScreenProps) {
                     iconBg: '#D1FAE5',
                     route: 'PrivacyPolicy',
                 },
-                {
-                    label: t('more.logOut'),
-                    subtitle: t('more.logOutSub'),
-                    icon: 'log-out-outline',
-                    iconColor: '#EF4444',
-                    iconBg: '#FEE2E2',
-                    route: 'LOGOUT',
-                    danger: true,
-                },
             ]
         }
     ], [t, stats]);
@@ -371,7 +364,7 @@ export default function MoreScreen({ hideHeader = false }: MoreScreenProps) {
             title: t('more.logOutTitle', 'Logout'),
             message: t('more.logOutConfirm', 'Are you sure you want to log out?'),
             confirmText: t('more.logOut', 'Logout'),
-            confirmDanger: true,
+            variant: 'danger',
             onConfirm: async () => {
                 try {
                     await signOut();
@@ -409,39 +402,110 @@ export default function MoreScreen({ hideHeader = false }: MoreScreenProps) {
         }
     };
 
+    const openHostelSelector = async () => {
+        setSelectorVisible(true);
+        setLoadingHostels(true);
+        try {
+            const res = await api.get('/hostels?my_hostels=true');
+            if (res.data?.success) {
+                setOwnedHostels(res.data.data || []);
+            }
+        } catch (e) {
+            console.error('Failed to fetch owned hostels:', e);
+        } finally {
+            setLoadingHostels(false);
+        }
+    };
+
     return (
         <View style={[s.root, { backgroundColor: theme.background }]}>
-            <StatusBar barStyle="light-content" />
+            <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
             {/* Header */}
             {!hideHeader && (
-                <LinearGradient colors={[theme.gradientStart, theme.gradientEnd]} style={[s.header, { paddingTop: insets.top ? insets.top + 12 : 44 }]}>
-                    <View style={s.headerContent}>
-                        {navigation.canGoBack() && (
+                <LinearGradient colors={[theme.gradientStart, theme.gradientEnd]} style={[s.header, { paddingTop: insets.top ? insets.top + 8 : 40, paddingBottom: 16 }]}>
+                    {/* Top Row: Brand & Actions */}
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                            {navigation.canGoBack() && (
+                                <TouchableOpacity
+                                    onPress={() => navigation.goBack()}
+                                    style={{ padding: 4 }}
+                                    activeOpacity={0.7}
+                                >
+                                    <Ionicons name="arrow-back" size={24} color="#FFF" />
+                                </TouchableOpacity>
+                            )}
+                            <HostixBrand fontSize={22} uppercase={true} />
+                        </View>
+
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                            <HeaderNotification navigation={navigation} />
                             <TouchableOpacity
-                                onPress={() => navigation.goBack()}
-                                style={{ marginRight: 4, padding: 4 }}
+                                onPress={() => navigation.navigate('Settings')}
+                                style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.18)', alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.3)' }}
                                 activeOpacity={0.7}
                             >
-                                <Ionicons name="arrow-back" size={24} color="#FFF" />
+                                <Ionicons name="settings-outline" size={20} color="#FFF" />
                             </TouchableOpacity>
-                        )}
-                        <TouchableOpacity onPress={() => navigation.navigate('Profile')} activeOpacity={0.9} style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-                            <View style={s.avatarCircle}>
-                                <Text style={s.avatarText}>
-                                    {(user?.full_name || user?.name || user?.first_name || 'O')[0].toUpperCase()}
-                                </Text>
-                            </View>
-                            <View style={{ flex: 1 }}>
-                                <Text style={[s.headerName, { fontSize: fontSize + 3 }]} numberOfLines={1}>
-                                    {user?.full_name || user?.name || (user?.first_name ? `${user.first_name} ${user.last_name || ''}`.trim() : '') || (user?.role_id === 1 ? 'Hostel Administrator' : 'Hostel Owner')}
-                                </Text>
-                                <Text style={{ fontSize: fontSize - 2, color: 'rgba(255, 255, 255, 0.75)', fontWeight: '600', marginTop: 2 }} numberOfLines={1}>
-                                    {user?.phone ? `+91 ${user.phone}` : (user?.email || 'Admin User')}
-                                </Text>
-                            </View>
-                        </TouchableOpacity>
+                        </View>
                     </View>
+
+                    {/* Owner Profile Banner Card */}
+                    <TouchableOpacity
+                        onPress={() => navigation.navigate('Profile')}
+                        activeOpacity={0.9}
+                        style={{
+                            backgroundColor: 'rgba(255, 255, 255, 0.12)',
+                            borderRadius: 18,
+                            padding: 12,
+                            borderWidth: 1,
+                            borderColor: 'rgba(255, 255, 255, 0.22)',
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            gap: 12,
+                        }}
+                    >
+                        <LinearGradient
+                            colors={['#A78BFA', '#F472B6']}
+                            style={{ width: 46, height: 46, borderRadius: 23, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: 'rgba(255,255,255,0.6)' }}
+                        >
+                            <Text style={{ fontSize: 18, fontWeight: '900', color: '#FFF' }}>
+                                {(user?.full_name || user?.name || (user as any)?.first_name || 'O')[0].toUpperCase()}
+                            </Text>
+                        </LinearGradient>
+
+                        <View style={{ flex: 1 }}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                <Text style={{ fontSize: 16, fontWeight: '800', color: '#FFF' }} numberOfLines={1}>
+                                    {user?.full_name || user?.name || ((user as any)?.first_name ? `${(user as any).first_name} ${(user as any).last_name || ''}`.trim() : '') || (user?.role_id === 1 ? 'Hostel Administrator' : 'Hostel Owner')}
+                                </Text>
+                            </View>
+                            <TouchableOpacity
+                                onPress={openHostelSelector}
+                                activeOpacity={0.8}
+                                style={{
+                                    flexDirection: 'row',
+                                    alignItems: 'center',
+                                    gap: 4,
+                                    backgroundColor: 'rgba(0,0,0,0.25)',
+                                    alignSelf: 'flex-start',
+                                    paddingHorizontal: 8,
+                                    paddingVertical: 3,
+                                    borderRadius: 10,
+                                    marginTop: 4,
+                                }}
+                            >
+                                <Ionicons name="business" size={12} color="#FCD34D" />
+                                <Text style={{ fontSize: 11, fontWeight: '700', color: '#FCD34D' }} numberOfLines={1}>
+                                    {user?.hostel_name || 'Switch Hostel'}
+                                </Text>
+                                <Ionicons name="chevron-down" size={12} color="#FCD34D" />
+                            </TouchableOpacity>
+                        </View>
+
+                        <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.7)" />
+                    </TouchableOpacity>
                 </LinearGradient>
             )}
 
@@ -531,9 +595,9 @@ export default function MoreScreen({ hideHeader = false }: MoreScreenProps) {
                                         <Text style={[s.cardLabel, { color: theme.textPrimary, fontSize: fontSize - 1 }]} numberOfLines={1}>{item.label}</Text>
                                         <Text style={[s.cardSub, { color: theme.textSecondary, fontSize: fontSize - 3, lineHeight: fontSize - 1 }]} numberOfLines={2}>{item.subtitle}</Text>
                                     </View>
-                                    {item.badgeCount !== undefined && (item.badgeCount !== 0 && item.badgeCount !== '0/0') && (
+                                    {(item as any).badgeCount !== undefined && ((item as any).badgeCount !== 0 && (item as any).badgeCount !== '0/0') && (
                                         <View style={[s.badgeContainer, { backgroundColor: theme.primary }]}>
-                                            <Text style={s.badgeText}>{item.badgeCount}</Text>
+                                            <Text style={s.badgeText}>{(item as any).badgeCount}</Text>
                                         </View>
                                     )}
 
@@ -558,8 +622,13 @@ export default function MoreScreen({ hideHeader = false }: MoreScreenProps) {
                     <Text style={[s.logoutText, { color: '#DC2626', fontSize: fontSize }]}>{t('more.logOut')}</Text>
                 </TouchableOpacity>
 
-                {/* App version */}
-                <Text style={[s.version, { fontSize: fontSize - 3, color: theme.textSecondary }]}>Hostix v1.0.0</Text>
+                {/* 2-Color Brand Footer */}
+                <View style={{ alignItems: 'center', marginTop: 24, marginBottom: 12 }}>
+                    <HostixBrand fontSize={22} subtitle="PG OS" lightTheme={!isDark} />
+                    <Text style={[s.version, { fontSize: fontSize - 3, color: theme.textSecondary, marginTop: 4 }]}>
+                        v1.0.0 · Smart Hostel Management
+                    </Text>
+                </View>
             </ScrollView>
 
             {/* ─────────────────── HOSTEL SWITCHER MODAL ─────────────────── */}

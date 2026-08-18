@@ -638,14 +638,15 @@ export default function PreBookingScreen({ navigation, route }: any) {
 
                 <View style={[styles.formCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : 'transparent', borderWidth: isDark ? 1 : 0 }]}>
                     <Text style={[styles.sectionTitle, { fontSize: fontSize + 1, color: theme.textPrimary }]}>👤 Tenant Information</Text>
-                    <FormInput label="First Name *" icon={User} placeholder="e.g. Rahul" value={formData.first_name} error={errors.first_name} onChangeText={(t: string) => up('first_name', t)} />
-                    <FormInput label="Last Name" icon={User} placeholder="e.g. Sharma" value={formData.last_name} onChangeText={(t: string) => up('last_name', t)} />
+                    <FormInput label="First Name *" icon={User} placeholder="Ex: Durgarao Goriparthi" value={formData.first_name} error={errors.first_name} onChangeText={(t: string) => up('first_name', t)} />
+                    <FormInput label="Last Name" icon={User} placeholder="Ex: Goriparthi" value={formData.last_name} onChangeText={(t: string) => up('last_name', t)} />
                     <Selector label="Gender" options={['Male', 'Female', 'Other']} selected={formData.gender} onSelect={(v: string) => up('gender', v)} />
                     <FormInput 
                         label="Phone *" 
                         icon={Phone} 
-                        placeholder="9876543210" 
+                        placeholder="6303359425" 
                         keyboardType="phone-pad" 
+                        maxLength={10} 
                         value={formData.phone} 
                         error={errors.phone} 
                         onChangeText={(t: string) => {

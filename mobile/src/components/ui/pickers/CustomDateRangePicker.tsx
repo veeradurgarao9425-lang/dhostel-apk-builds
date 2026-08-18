@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Modal, ScrollView, SafeAreaView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../../../contexts/ThemeContext';
 import { ModalSheet } from '../../FormComponents';
 
@@ -28,9 +29,10 @@ export interface CustomDateRangePickerProps {
 export function CustomDateRangePicker({ 
     visible, onClose, onConfirm, initialStart, initialEnd, restrictMonth 
 }: CustomDateRangePickerProps) {
-    const { theme } = useTheme();
-    const primary = theme?.primary || '#8B291A';
-    const primarySoft = primary + '25'; // slightly darker for better visibility
+    const { theme, isDark } = useTheme();
+    const insets = useSafeAreaInsets();
+    const primary = theme?.primary || '#6366F1';
+    const primarySoft = isDark ? `${primary}35` : `${primary}18`;
 
     const [currentDate, setCurrentDate] = useState(restrictMonth || initialStart || new Date());
     const [range, setRange] = useState<DateRange>({
@@ -43,8 +45,6 @@ export function CustomDateRangePicker({
             const start = restrictMonth || initialStart || new Date();
             setCurrentDate(start);
             
-            // If restrictMonth is active, clamp range start/end to be within that month,
-            // or reset them to null if they are in a different month to prevent mismatches.
             if (restrictMonth) {
                 const targetYear = restrictMonth.getFullYear();
                 const targetMonth = restrictMonth.getMonth();
@@ -93,7 +93,7 @@ export function CustomDateRangePicker({
     };
 
     const formatDisplay = (d: Date | null) => {
-        if (!d) return '--';
+        if (!d) return 'Select Date';
         return `${DAYS[d.getDay()]}, ${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
     };
 
@@ -118,42 +118,69 @@ export function CustomDateRangePicker({
         return d > range.start.getTime() && d < range.end.getTime();
     };
 
+    const hasCompleteRange = Boolean(range.start && range.end);
+
     return (
-        <ModalSheet visible={visible} onClose={onClose} maxHeight="75%">
-            <View style={{ flex: 1 }}>
+        <ModalSheet visible={visible} onClose={onClose} maxHeight="90%">
+            <View style={S.containerWrapper}>
                 {/* Header */}
-                <View style={S.header}>
-                    <TouchableOpacity onPress={onClose} style={{ padding: 4 }}>
-                        <Ionicons name="arrow-back" size={24} color="#1E293B" />
+                <View style={[S.header, { borderBottomColor: isDark ? '#334155' : '#F1F5F9' }]}>
+                    <TouchableOpacity onPress={onClose} style={[S.navIconBtn, { backgroundColor: isDark ? '#1E293B' : '#F1F5F9' }]}>
+                        <Ionicons name="close" size={20} color={isDark ? '#F1F5F9' : '#1E293B'} />
                     </TouchableOpacity>
-                    <Text style={S.headerTitle}>Select Date Range</Text>
-                    <View style={{ width: 24 }} />
+                    <View style={{ alignItems: 'center' }}>
+                        <Text style={[S.headerTitle, { color: isDark ? '#F8FAFC' : '#0F172A' }]}>Select Date Range</Text>
+                        <Text style={[S.headerSub, { color: isDark ? '#94A3B8' : '#64748B' }]}>
+                            {hasCompleteRange ? 'Range Selected' : range.start ? 'Select End Date' : 'Select Start Date'}
+                        </Text>
+                    </View>
+                    <TouchableOpacity 
+                        onPress={() => setRange({ start: null, end: null })} 
+                        style={[S.navIconBtn, { backgroundColor: isDark ? '#1E293B' : '#F1F5F9' }]}
+                    >
+                        <Ionicons name="refresh" size={17} color={isDark ? '#94A3B8' : '#64748B'} />
+                    </TouchableOpacity>
                 </View>
 
-                <ScrollView style={{ paddingHorizontal: 20 }}>
-                    {/* Month Selector */}
+                {/* Scrollable Body */}
+                <ScrollView 
+                    style={S.scrollBody} 
+                    contentContainerStyle={{ paddingBottom: 16 }}
+                    showsVerticalScrollIndicator={false}
+                >
+                    {/* Month Navigator */}
                     <View style={S.monthSelector}>
                         {!restrictMonth ? (
-                            <TouchableOpacity onPress={() => changeMonth(-1)}>
-                                <Ionicons name="chevron-back" size={24} color="#64748B" />
+                            <TouchableOpacity 
+                                onPress={() => changeMonth(-1)} 
+                                style={[S.monthNavBtn, { backgroundColor: isDark ? '#1E293B' : '#F1F5F9' }]}
+                            >
+                                <Ionicons name="chevron-back" size={20} color={isDark ? '#F1F5F9' : '#334155'} />
                             </TouchableOpacity>
                         ) : (
-                            <View style={{ width: 24 }} />
+                            <View style={{ width: 36 }} />
                         )}
-                        <Text style={S.monthText}>{MONTHS[month]} {year}</Text>
+                        
+                        <Text style={[S.monthText, { color: isDark ? '#F8FAFC' : '#0F172A' }]}>
+                            {MONTHS[month]} {year}
+                        </Text>
+
                         {!restrictMonth ? (
-                            <TouchableOpacity onPress={() => changeMonth(1)}>
-                                <Ionicons name="chevron-forward" size={24} color="#64748B" />
+                            <TouchableOpacity 
+                                onPress={() => changeMonth(1)}
+                                style={[S.monthNavBtn, { backgroundColor: isDark ? '#1E293B' : '#F1F5F9' }]}
+                            >
+                                <Ionicons name="chevron-forward" size={20} color={isDark ? '#F1F5F9' : '#334155'} />
                             </TouchableOpacity>
                         ) : (
-                            <View style={{ width: 24 }} />
+                            <View style={{ width: 36 }} />
                         )}
                     </View>
 
-                    {/* Days Header */}
+                    {/* Days Header (Sun - Sat) */}
                     <View style={S.daysHeader}>
                         {DAYS.map((d, i) => (
-                            <Text key={i} style={S.dayHeaderText}>{d}</Text>
+                            <Text key={i} style={[S.dayHeaderText, { color: isDark ? '#94A3B8' : '#64748B' }]}>{d}</Text>
                         ))}
                     </View>
 
@@ -170,15 +197,25 @@ export function CustomDateRangePicker({
                                 <View key={i} style={[
                                     S.cellWrap,
                                     inR && { backgroundColor: primarySoft },
-                                    isStart && { borderTopLeftRadius: 22, borderBottomLeftRadius: 22, backgroundColor: range.end ? primarySoft : 'transparent', overflow: 'hidden' },
-                                    isEnd && { borderTopRightRadius: 22, borderBottomRightRadius: 22, backgroundColor: primarySoft, overflow: 'hidden' }
+                                    isStart && { borderTopLeftRadius: 20, borderBottomLeftRadius: 20, backgroundColor: range.end ? primarySoft : 'transparent', overflow: 'hidden' },
+                                    isEnd && { borderTopRightRadius: 20, borderBottomRightRadius: 20, backgroundColor: primarySoft, overflow: 'hidden' }
                                 ]}>
                                     {day ? (
                                         <TouchableOpacity 
-                                            style={[S.dayCell, sel && { backgroundColor: primary }]}
+                                            style={[
+                                                S.dayCell, 
+                                                sel && { backgroundColor: primary },
+                                            ]}
                                             onPress={() => handleDayPress(day)}
+                                            activeOpacity={0.7}
                                         >
-                                            <Text style={[S.dayText, (sel || inR) && { color: sel ? '#FFF' : primary, fontWeight: '900' }]}>{day}</Text>
+                                            <Text style={[
+                                                S.dayText, 
+                                                { color: isDark ? '#F8FAFC' : '#1E293B' },
+                                                (sel || inR) && { color: sel ? '#FFF' : primary, fontWeight: '900' }
+                                            ]}>
+                                                {day}
+                                            </Text>
                                         </TouchableOpacity>
                                     ) : <View style={S.dayCell} />}
                                 </View>
@@ -186,33 +223,66 @@ export function CustomDateRangePicker({
                         })}
                     </View>
 
-                    {/* Selected Display */}
-                    <View style={S.selectedBox}>
+                    {/* Selected Range Display Cards */}
+                    <View style={[S.selectedBox, { backgroundColor: isDark ? '#0F172A' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0' }]}>
                         <View style={S.selectedRow}>
-                            <View style={S.iconBox}>
-                                <Ionicons name="calendar-outline" size={16} color={primary} />
+                            <View style={[S.iconBox, { backgroundColor: isDark ? '#1E293B' : '#EEF2FF' }]}>
+                                <Ionicons name="calendar-outline" size={15} color={primary} />
                             </View>
-                            <Text style={S.selectedLabel}>Start Date</Text>
-                            <Text style={S.selectedDate}>{formatDisplay(range.start)}</Text>
+                            <View style={{ flex: 1 }}>
+                                <Text style={[S.selectedLabel, { color: isDark ? '#94A3B8' : '#64748B' }]}>Start Date</Text>
+                                <Text style={[S.selectedDate, { color: range.start ? (isDark ? '#F8FAFC' : '#0F172A') : '#94A3B8' }]}>
+                                    {formatDisplay(range.start)}
+                                </Text>
+                            </View>
                         </View>
-                        <View style={S.divider} />
+
+                        <View style={[S.divider, { backgroundColor: isDark ? '#334155' : '#E2E8F0' }]} />
+
                         <View style={S.selectedRow}>
-                            <View style={S.iconBox}>
-                                <Ionicons name="calendar-outline" size={16} color={primary} />
+                            <View style={[S.iconBox, { backgroundColor: isDark ? '#1E293B' : '#EEF2FF' }]}>
+                                <Ionicons name="calendar" size={15} color={primary} />
                             </View>
-                            <Text style={S.selectedLabel}>End Date</Text>
-                            <Text style={S.selectedDate}>{formatDisplay(range.end)}</Text>
+                            <View style={{ flex: 1 }}>
+                                <Text style={[S.selectedLabel, { color: isDark ? '#94A3B8' : '#64748B' }]}>End Date</Text>
+                                <Text style={[S.selectedDate, { color: range.end ? (isDark ? '#F8FAFC' : '#0F172A') : '#94A3B8' }]}>
+                                    {formatDisplay(range.end)}
+                                </Text>
+                            </View>
                         </View>
                     </View>
-
                 </ScrollView>
 
-                <View style={S.footer}>
+                {/* STICKY ALWAYS-VISIBLE CONFIRM FOOTER BUTTON */}
+                <View style={[
+                    S.footer, 
+                    { 
+                        backgroundColor: isDark ? '#1E293B' : '#FFFFFF', 
+                        borderTopColor: isDark ? '#334155' : '#F1F5F9',
+                        paddingBottom: Math.max(insets.bottom, 16),
+                    }
+                ]}>
                     <TouchableOpacity 
-                        style={[S.confirmBtn, { backgroundColor: primary }]} 
-                        onPress={() => { if (range.start && range.end) onConfirm(range.start, range.end); }}
+                        style={[
+                            S.confirmBtn, 
+                            { 
+                                backgroundColor: hasCompleteRange ? primary : (isDark ? '#334155' : '#CBD5E1'),
+                                opacity: hasCompleteRange ? 1 : 0.75,
+                            }
+                        ]} 
+                        disabled={!hasCompleteRange}
+                        onPress={() => { 
+                            if (range.start && range.end) {
+                                onConfirm(range.start, range.end);
+                                onClose();
+                            }
+                        }}
+                        activeOpacity={0.85}
                     >
-                        <Text style={S.confirmBtnText}>Confirm</Text>
+                        <Ionicons name="checkmark-circle" size={18} color="#FFF" style={{ marginRight: 6 }} />
+                        <Text style={S.confirmBtnText}>
+                            {hasCompleteRange ? 'Confirm & Apply Date Range' : 'Select Start & End Date'}
+                        </Text>
                     </TouchableOpacity>
                 </View>
             </View>
@@ -221,51 +291,66 @@ export function CustomDateRangePicker({
 }
 
 const S = StyleSheet.create({
-    modalOverlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.4)',
-        justifyContent: 'flex-end',
-    },
-    container: {
-        backgroundColor: '#FFFFFF',
-        borderTopLeftRadius: 28,
-        borderTopRightRadius: 28,
-        height: '75%',
+    containerWrapper: {
+        height: 560,
+        display: 'flex',
+        flexDirection: 'column',
     },
     header: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingHorizontal: 20,
-        paddingTop: 24,
-        paddingBottom: 16,
+        paddingHorizontal: 18,
+        paddingTop: 8,
+        paddingBottom: 12,
+        borderBottomWidth: 1,
+    },
+    navIconBtn: {
+        width: 34,
+        height: 34,
+        borderRadius: 17,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     headerTitle: {
-        fontSize: 18,
+        fontSize: 16,
         fontWeight: '800',
-        color: '#1E293B',
+    },
+    headerSub: {
+        fontSize: 11,
+        fontWeight: '600',
+        marginTop: 1,
+    },
+    scrollBody: {
+        flex: 1,
+        paddingHorizontal: 18,
     },
     monthSelector: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingVertical: 16,
+        paddingVertical: 12,
+    },
+    monthNavBtn: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     monthText: {
-        fontSize: 18,
+        fontSize: 16,
         fontWeight: '800',
-        color: '#1E293B',
     },
     daysHeader: {
         flexDirection: 'row',
-        marginBottom: 10,
+        marginBottom: 8,
     },
     dayHeaderText: {
         flex: 1,
         textAlign: 'center',
-        fontSize: 12,
+        fontSize: 11.5,
         fontWeight: '700',
-        color: '#94A3B8',
     },
     grid: {
         flexDirection: 'row',
@@ -273,70 +358,75 @@ const S = StyleSheet.create({
     },
     cellWrap: {
         width: '14.28%',
-        height: 44,
+        height: 40,
         justifyContent: 'center',
         alignItems: 'center',
-        marginVertical: 4,
+        marginVertical: 2,
     },
     dayCell: {
-        width: 36,
-        height: 36,
+        width: 34,
+        height: 34,
         justifyContent: 'center',
         alignItems: 'center',
-        borderRadius: 18,
+        borderRadius: 17,
     },
     dayText: {
-        fontSize: 15,
+        fontSize: 14,
         fontWeight: '600',
-        color: '#1E293B',
     },
     selectedBox: {
         borderWidth: 1,
-        borderColor: '#E2E8F0',
         borderRadius: 16,
-        padding: 16,
-        marginTop: 20,
+        padding: 12,
+        marginTop: 14,
     },
     selectedRow: {
         flexDirection: 'row',
         alignItems: 'center',
+        gap: 10,
     },
     iconBox: {
-        marginRight: 12,
+        width: 28,
+        height: 28,
+        borderRadius: 8,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     selectedLabel: {
-        fontSize: 13,
-        color: '#64748B',
+        fontSize: 10.5,
         fontWeight: '600',
-        flex: 1,
     },
     selectedDate: {
-        fontSize: 14,
+        fontSize: 13,
         fontWeight: '700',
-        color: '#1E293B',
+        marginTop: 1,
     },
     divider: {
         height: 1,
-        backgroundColor: '#E2E8F0',
-        marginVertical: 12,
+        marginVertical: 8,
     },
     footer: {
-        padding: 20,
+        paddingHorizontal: 18,
+        paddingTop: 12,
         borderTopWidth: 1,
-        borderColor: '#F1F5F9',
     },
     confirmBtn: {
-        paddingVertical: 16,
-        borderRadius: 14,
+        flexDirection: 'row',
         alignItems: 'center',
-        elevation: 3,
+        justifyContent: 'center',
+        paddingVertical: 14,
+        borderRadius: 14,
         shadowColor: '#000',
-        shadowOpacity: 0.1,
-        shadowRadius: 5,
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.15,
+        shadowRadius: 6,
+        elevation: 4,
     },
     confirmBtnText: {
         color: '#FFF',
-        fontSize: 16,
+        fontSize: 14.5,
         fontWeight: '800',
-    }
+    },
 });
+
+export default CustomDateRangePicker;

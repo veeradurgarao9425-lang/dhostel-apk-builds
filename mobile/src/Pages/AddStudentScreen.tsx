@@ -358,7 +358,7 @@ const DocumentUploadBox = ({ label, uri, onCapture, onRemove, isFront, error }: 
                 setPermError({ visible: true, title: 'Permission Required', message: 'Camera permission is needed to upload documents. Please enable it in your device settings.' });
                 return;
             }
-            const r = await ImagePicker.launchCameraAsync({ quality: 0.75 });
+            const r = await ImagePicker.launchCameraAsync({ quality: 0.6 });
             if (!r.canceled && r.assets && r.assets.length > 0) {
                 onCapture(r.assets[0].uri);
             }
@@ -374,7 +374,7 @@ const DocumentUploadBox = ({ label, uri, onCapture, onRemove, isFront, error }: 
                 setPermError({ visible: true, title: 'Permission Required', message: 'Media library permission is needed to upload documents. Please enable it in your device settings.' });
                 return;
             }
-            const r = await ImagePicker.launchImageLibraryAsync({ quality: 0.75 });
+            const r = await ImagePicker.launchImageLibraryAsync({ quality: 0.6 });
             if (!r.canceled && r.assets && r.assets.length > 0) {
                 onCapture(r.assets[0].uri);
             }
@@ -522,7 +522,7 @@ const ProfilePhotoCapture = ({ uri, onCapture, onRemove, error }: any) => {
                 Alert.alert('Permission Required', 'Camera permission is needed to take a profile photo.');
                 return;
             }
-            const r = await ImagePicker.launchCameraAsync({ quality: 0.8, allowsEditing: false });
+            const r = await ImagePicker.launchCameraAsync({ quality: 0.6, allowsEditing: false });
             if (!r.canceled && r.assets && r.assets.length > 0) {
                 onCapture(r.assets[0].uri);
             }
@@ -538,7 +538,7 @@ const ProfilePhotoCapture = ({ uri, onCapture, onRemove, error }: any) => {
                 Alert.alert('Permission Required', 'Gallery permission is needed to pick a photo.');
                 return;
             }
-            const r = await ImagePicker.launchImageLibraryAsync({ quality: 0.8, allowsEditing: false });
+            const r = await ImagePicker.launchImageLibraryAsync({ quality: 0.6, allowsEditing: false });
             if (!r.canceled && r.assets && r.assets.length > 0) {
                 onCapture(r.assets[0].uri);
             }
@@ -574,7 +574,7 @@ const ProfilePhotoCapture = ({ uri, onCapture, onRemove, error }: any) => {
                 <Text style={[styles.profilePhotoTitle, { color: theme.textPrimary, fontSize: fontSize + 1 }]}>Add Profile Photo</Text>
                 <Text style={[styles.profilePhotoSubtitle, { color: theme.textSecondary }]}>Upload a clear photo of the tenant</Text>
                 {error && <Text style={{ color: '#EF4444', fontSize: 11, fontWeight: '600', marginBottom: 8 }}>{error}</Text>}
-                
+
                 <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
                     <TouchableOpacity
                         style={[styles.profileUploadBtn, { borderColor: theme.primary, flex: 1 }]}
@@ -1083,50 +1083,63 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
                     return end.toISOString().split('T')[0];
                 })(),
             };
-            const bodyFormData = new FormData();
-            Object.keys(payload).forEach(key => {
-                const val = (payload as any)[key];
-                if (val !== null && val !== undefined) {
-                    bodyFormData.append(key, String(val));
+            const hasNewProfilePhoto = profilePhoto && profilePhoto.startsWith('file:');
+            const hasNewAadhaarFront = aadhaarFront && aadhaarFront.startsWith('file:');
+            const hasNewAadhaarBack = aadhaarBack && aadhaarBack.startsWith('file:');
+            const hasNewFiles = hasNewProfilePhoto || hasNewAadhaarFront || hasNewAadhaarBack;
+
+            let res;
+            if (hasNewFiles) {
+                const bodyFormData = new FormData();
+                Object.keys(payload).forEach(key => {
+                    const val = (payload as any)[key];
+                    if (val !== null && val !== undefined) {
+                        bodyFormData.append(key, String(val));
+                    }
+                });
+
+                if (hasNewProfilePhoto) {
+                    const filename = profilePhoto.split('/').pop() || 'profile.jpg';
+                    const match = /\.(\w+)$/.exec(filename);
+                    const type = match ? `image/${match[1]}` : 'image/jpeg';
+                    bodyFormData.append('profile_photo', {
+                        uri: profilePhoto,
+                        name: filename,
+                        type,
+                    } as any);
                 }
-            });
 
-            if (profilePhoto && profilePhoto.startsWith('file:')) {
-                const filename = profilePhoto.split('/').pop() || 'profile.jpg';
-                const match = /\.(\w+)$/.exec(filename);
-                const type = match ? `image/${match[1]}` : 'image/jpeg';
-                bodyFormData.append('profile_photo', {
-                    uri: profilePhoto,
-                    name: filename,
-                    type,
-                } as any);
+                if (hasNewAadhaarFront) {
+                    const filename = aadhaarFront.split('/').pop() || 'id_proof_front.jpg';
+                    const match = /\.(\w+)$/.exec(filename);
+                    const type = match ? `image/${match[1]}` : 'image/jpeg';
+                    bodyFormData.append('id_proof_front', {
+                        uri: aadhaarFront,
+                        name: filename,
+                        type,
+                    } as any);
+                }
+
+                if (hasNewAadhaarBack) {
+                    const filename = aadhaarBack.split('/').pop() || 'id_proof_back.jpg';
+                    const match = /\.(\w+)$/.exec(filename);
+                    const type = match ? `image/${match[1]}` : 'image/jpeg';
+                    bodyFormData.append('id_proof_back', {
+                        uri: aadhaarBack,
+                        name: filename,
+                        type,
+                    } as any);
+                }
+
+                res = isEdit
+                    ? await api.put(`/students/${student.student_id}`, bodyFormData)
+                    : await api.post('/students', bodyFormData);
+            } else {
+                res = isEdit
+                    ? await api.put(`/students/${student.student_id}`, payload)
+                    : await api.post('/students', payload);
             }
 
-            if (aadhaarFront && aadhaarFront.startsWith('file:')) {
-                const filename = aadhaarFront.split('/').pop() || 'id_proof_front.jpg';
-                const match = /\.(\w+)$/.exec(filename);
-                const type = match ? `image/${match[1]}` : 'image/jpeg';
-                bodyFormData.append('id_proof_front', {
-                    uri: aadhaarFront,
-                    name: filename,
-                    type,
-                } as any);
-            }
-
-            if (aadhaarBack && aadhaarBack.startsWith('file:')) {
-                const filename = aadhaarBack.split('/').pop() || 'id_proof_back.jpg';
-                const match = /\.(\w+)$/.exec(filename);
-                const type = match ? `image/${match[1]}` : 'image/jpeg';
-                bodyFormData.append('id_proof_back', {
-                    uri: aadhaarBack,
-                    name: filename,
-                    type,
-                } as any);
-            }
-
-            const res = isEdit
-                ? await api.put(`/students/${student.student_id}`, bodyFormData, { headers: { 'Content-Type': 'multipart/form-data' } })
-                : await api.post('/students', bodyFormData, { headers: { 'Content-Type': 'multipart/form-data' } });
             if (res.status === 200 || res.status === 201 || res.data?.success || res.data?.data) {
                 showSuccess(`Tenant ${isEdit ? 'updated' : 'registered'} successfully!`);
                 navigation.goBack();
@@ -1228,7 +1241,7 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
                     <FormInput
                         label="First Name *"
                         icon={User}
-                        placeholder="e.g. Ravi"
+                        placeholder="Ex: VeeraDurgarao"
                         value={formData.first_name}
                         error={getFieldError('first_name')}
                         onBlur={() => markTouched('first_name')}
@@ -1238,7 +1251,7 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
                             validateField('first_name', clean);
                         }}
                     />
-                    <FormInput label="Last Name" icon={User} placeholder="e.g. Kumar" value={formData.last_name} onChangeText={(t: string) => up('last_name', t.replace(/[^a-zA-Z0-9\s]/g, ''))} />
+                    <FormInput label="Last Name" icon={User} placeholder="Ex: Goriparthi" value={formData.last_name} onChangeText={(t: string) => up('last_name', t.replace(/[^a-zA-Z0-9\s]/g, ''))} />
                     <Selector label="Gender *" options={['Male', 'Female', 'Other']} selected={formData.gender} onSelect={(v: string) => up('gender', v)} />
                     <SelectField
                         label="Date of Birth *"
@@ -1254,8 +1267,9 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
                     <FormInput
                         label="Mobile Number *"
                         icon={Phone}
-                        placeholder="9876543210"
+                        placeholder="Ex: 6303359425"
                         keyboardType="phone-pad"
+                        maxLength={10}
                         value={formData.phone}
                         error={getFieldError('phone')}
                         onBlur={() => markTouched('phone')}
@@ -1268,7 +1282,7 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
                     <FormInput
                         label="Email"
                         icon={Mail}
-                        placeholder="tenant@email.com"
+                        placeholder="Ex: durgarao@email.com"
                         keyboardType="email-address"
                         value={formData.email}
                         error={getFieldError('email')}
@@ -1297,13 +1311,14 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
                             label={`${cleanIdLabel} Number *`}
                             icon={CreditCard}
                             placeholder={(selectedIdProofName.toLowerCase().includes('aadhar') || selectedIdProofName.toLowerCase().includes('aadhaar'))
-                                ? '12-digit Aadhaar number'
+                                ? 'Ex: 204095027990'
                                 : selectedIdProofName.toLowerCase().includes('pan')
-                                    ? '10-character PAN number'
+                                    ? 'Ex: ABCDE1234F'
                                     : 'Enter ID number'}
                             value={formData.id_proof_number}
                             keyboardType={(selectedIdProofName.toLowerCase().includes('aadhar') || selectedIdProofName.toLowerCase().includes('aadhaar')) ? 'number-pad' : 'default'}
                             autoCapitalize={selectedIdProofName.toLowerCase().includes('pan') ? 'characters' : 'none'}
+                            maxLength={(selectedIdProofName.toLowerCase().includes('aadhar') || selectedIdProofName.toLowerCase().includes('aadhaar')) ? 12 : selectedIdProofName.toLowerCase().includes('pan') ? 10 : 20}
                             error={getFieldError('id_proof_number')}
                             onBlur={() => markTouched('id_proof_number')}
                             onChangeText={(t: string) => {
@@ -1319,7 +1334,7 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
                         />
                     ) : null}
 
-                    {showIdPhotos && formData.id_proof_type_id && (
+                    {!!formData.id_proof_type_id && (
                         <IdentityUploadCard
                             title={cleanIdLabel}
                             frontUri={aadhaarFront}
@@ -1354,12 +1369,13 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
                 <View style={[styles.formCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : 'transparent', borderWidth: isDark ? 1 : 0 }]}>
                     <SectionHeader number={3} title="Guardian (Optional)" />
                     <SelectField label="Relation" value={relations.find(r => r.relation_id.toString() === formData.guardian_relation_id)?.relation_name} placeholder="Relation" icon={Users} onPress={() => setRelationModal(true)} />
-                    <FormInput label="Guardian Name" icon={User} placeholder="Parent / Guardian" value={formData.guardian_name} onChangeText={(t: string) => up('guardian_name', t.replace(/[^a-zA-Z0-9\s]/g, ''))} />
+                    <FormInput label="Guardian Name" icon={User} placeholder="Ex: Krishnaiah Goriparthi" value={formData.guardian_name} onChangeText={(t: string) => up('guardian_name', t.replace(/[^a-zA-Z0-9\s]/g, ''))} />
                     <FormInput
                         label="Guardian Phone"
                         icon={Phone}
-                        placeholder="9876543211"
+                        placeholder="Ex: 9908631206"
                         keyboardType="phone-pad"
+                        maxLength={10}
                         value={formData.guardian_phone}
                         error={getFieldError('guardian_phone')}
                         onBlur={() => markTouched('guardian_phone')}
@@ -1414,11 +1430,9 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
                         </View>
                     ) : (
                         <>
-                            <FormInput label="Joining Fee *" icon={CreditCard} placeholder="e.g. 3000" keyboardType="numeric" value={formData.admission_fee} editable={!isAdmissionPaid} onChangeText={(t: string) => up('admission_fee', t.replace(/\D/g, ''))} error={getFieldError('admission_fee')} />
-                            {isEdit && (
-                                <FormInput label="Refundable Deposit (Refunded after deducting maintenance charges) *" icon={CreditCard} placeholder="e.g. 1000" keyboardType="numeric" value={formData.refundable_deposit} onChangeText={(t: string) => up('refundable_deposit', t.replace(/\D/g, ''))} error={getFieldError('refundable_deposit')} />
-                            )}
-                            <Selector label="Payment Status" options={['Paid', 'Unpaid']} selected={formData.admission_status} disabled={isAdmissionPaid} onSelect={(v: string) => up('admission_status', v)} />
+                            <FormInput label="Joining Fee *" icon={CreditCard} placeholder="e.g. 3000" keyboardType="numeric" value={formData.admission_fee} onChangeText={(t: string) => up('admission_fee', t.replace(/\D/g, ''))} error={getFieldError('admission_fee')} />
+                            <FormInput label="Refundable Deposit (Refunded after deducting maintenance charges)" icon={CreditCard} placeholder="e.g. 1000" keyboardType="numeric" value={formData.refundable_deposit} onChangeText={(t: string) => up('refundable_deposit', t.replace(/\D/g, ''))} error={getFieldError('refundable_deposit')} />
+                            <Selector label="Payment Status" options={['Paid', 'Unpaid']} selected={formData.admission_status} onSelect={(v: string) => up('admission_status', v)} />
                         </>
                     )}
                 </View>

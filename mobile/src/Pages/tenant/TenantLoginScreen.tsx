@@ -232,7 +232,7 @@ export function TenantLoginScreen({ navigation }: any) {
               resizeMode="cover"
             />
           </View>
-          <Text style={s.brandName}>HOSTIX</Text>
+          <Text style={s.brandName}>HOST<Text style={{ color: '#FCD34D' }}>IX</Text></Text>
           <View style={s.taglineRow}>
             <View style={s.taglineLine} />
             <Text style={s.tagline}>TENANT LOGIN</Text>
