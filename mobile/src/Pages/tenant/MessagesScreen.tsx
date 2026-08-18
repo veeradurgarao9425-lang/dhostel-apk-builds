@@ -1,3 +1,11 @@
+/**
+ * ⚠️ DISABLED — tenant chat is switched off.
+ *
+ * This screen is no longer registered in AppNavigator. Even before that it was
+ * unreachable: nothing in the app ever called navigate('Messages'), and no push
+ * notification targets it. Its only purpose was to open ChatRoom, which never
+ * worked (see contexts/ChatContext.tsx). Code left intact, not deleted.
+ */
 import React from 'react';
 import {
   StyleSheet, Text, View, TouchableOpacity,

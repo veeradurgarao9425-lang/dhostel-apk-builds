@@ -1,3 +1,25 @@
+/**
+ * ⚠️ DISABLED — tenant chat is switched off.
+ *
+ * ChatProvider is not mounted anywhere and has not been since 2026-06-30
+ * (commit ae2da09 removed `<ChatProvider>` from the old tenant-mobile/App.tsx,
+ * one day after chat was built in b9b2768). Every `useChat()` call therefore
+ * received the default context below — empty messages, isConnected false, and
+ * no-op senders — so the chat room rendered blank and sending did nothing.
+ *
+ * Its only consumer, ChatRoomScreen, is now unregistered in AppNavigator, so
+ * nothing in the app imports this file and it no longer reaches the bundle.
+ * The code is left intact, not deleted.
+ *
+ * To re-enable, in this order:
+ *   1. Confirm the backend socket contract still matches the event names below
+ *      (send_message / new_message / mark_read / react / delete_for_everyone /
+ *      typing / stop_typing) — this was never verified.
+ *   2. Uncomment the ChatRoom + Messages routes and imports in AppNavigator.
+ *   3. Mount ChatProvider around the chat screens only — NOT app-wide. A global
+ *      mount opens a second socket (alongside SocketProvider) for every user,
+ *      including owners, and pushes message state through the root of the tree.
+ */
 import React, { createContext, useContext, useEffect, useState, useRef, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
 import AsyncStorage from '@react-native-async-storage/async-storage';

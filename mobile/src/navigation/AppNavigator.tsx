@@ -22,7 +22,14 @@ import TenantNoticesScreen from '../Pages/tenant/NoticesScreen';
 // ── Stack screens (Tenant) — reachable from Home/Dues/Expenses/Profile, but were never
 // registered anywhere in this navigator, so tapping them failed silently or (for the 4
 // that collide with an owner screen name below) rendered the owner's screen instead ──
-import ChatRoomScreen from '../Pages/tenant/ChatRoomScreen';
+// DISABLED — tenant chat. ChatProvider has never been mounted since 2026-06-30
+// (commit ae2da09), so this screen only ever rendered an empty, permanently
+// disconnected room. Nothing navigates to Messages, and no push notification
+// targets either route, so disabling them is not user-visible.
+// Re-enable: uncomment this import, the MessagesScreen import below, and both
+// <Stack.Screen> lines further down — then mount ChatProvider (see the note in
+// contexts/ChatContext.tsx).
+// import ChatRoomScreen from '../Pages/tenant/ChatRoomScreen';
 import TenantComplaintsScreen from '../Pages/tenant/ComplaintsScreen';
 import RoomInfoScreen from '../Pages/tenant/RoomInfoScreen';
 import VisitorPassScreen from '../Pages/tenant/VisitorPassScreen';
@@ -39,7 +46,8 @@ import AllExpensesScreen from '../Pages/tenant/AllExpensesScreen';
 import FullMenuScreen from '../Pages/tenant/FullMenuScreen';
 import TenantPaymentScreen from '../Pages/tenant/PaymentScreen';
 import TenantAddExpenseScreen from '../Pages/tenant/AddExpenseScreen';
-import MessagesScreen from '../Pages/tenant/MessagesScreen';
+// DISABLED — tenant chat (see the ChatRoomScreen note above).
+// import MessagesScreen from '../Pages/tenant/MessagesScreen';
 import TenantProfileScreen from '../Pages/tenant/ProfileScreen';
 import TenantSettingsScreen from '../Pages/tenant/SettingsScreen';
 import TenantPrivacyPolicyScreen from '../Pages/tenant/PrivacyPolicyScreen';
@@ -318,8 +326,10 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
 
                     {/* Tenant — reachable from Home quick actions, Dues, Expenses, and Profile.
                         None of these route names collide with an owner screen. */}
-                    <Stack.Screen name="ChatRoom" component={ChatRoomScreen} />
-                    <Stack.Screen name="Messages" component={MessagesScreen} />
+                    {/* DISABLED — tenant chat. See the import note at the top of
+                        this file for why and how to re-enable. */}
+                    {/* <Stack.Screen name="ChatRoom" component={ChatRoomScreen} /> */}
+                    {/* <Stack.Screen name="Messages" component={MessagesScreen} /> */}
                     <Stack.Screen name="Complaints" component={TenantComplaintsScreen} />
                     <Stack.Screen name="TenantComplaints" component={TenantComplaintsScreen} />
                     <Stack.Screen name="RoomInfo" component={RoomInfoScreen} />

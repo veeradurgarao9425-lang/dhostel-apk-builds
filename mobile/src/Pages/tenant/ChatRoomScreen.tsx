@@ -1,3 +1,12 @@
+/**
+ * ⚠️ DISABLED — tenant chat is switched off.
+ *
+ * This screen is no longer registered in AppNavigator, so it is unreachable and
+ * out of the bundle. It never worked: ChatProvider was unmounted on 2026-06-30,
+ * so useChat() below returned the default no-op context and this room always
+ * rendered empty. See contexts/ChatContext.tsx for the full history and the
+ * re-enable checklist. Code left intact, not deleted.
+ */
 import React, { useState, useRef, useEffect } from 'react';
 import {
   StyleSheet, Text, View, TouchableOpacity,
