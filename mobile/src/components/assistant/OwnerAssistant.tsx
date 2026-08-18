@@ -1483,7 +1483,7 @@ export const OwnerAssistant: React.FC = () => {
               On Android release builds, behavior=undefined = no-op (KAV does
               nothing) which is why it broke after APK build. */}
           <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             style={s.kav}
           >
 
@@ -1612,11 +1612,9 @@ export const OwnerAssistant: React.FC = () => {
               s.inputBarWrapper,
               isFocused && s.inputBarWrapperFocused,
               {
-                paddingBottom: isKeyboardActive
+                paddingBottom: Platform.OS === 'ios'
                   ? 4
-                  : (Platform.OS === 'ios'
-                    ? 4  // iOS SafeAreaView(bottom) already handles home indicator
-                    : Math.max(insets.bottom, 8))  // Android gesture-nav clearance
+                  : Math.max(insets.bottom, 8)
               }
             ]}>
               {/* Quick Actions Grid — 2 Rows Grid (All 8 items visible, no clipping) */}
@@ -1727,15 +1725,6 @@ export const OwnerAssistant: React.FC = () => {
                 </TouchableOpacity>
               </View>
 
-              {/* Powered by HOSTIX footer branding */}
-              {!isKeyboardActive && !isAddMenuOpen && (
-                <View style={s.footerBranding}>
-                  <Ionicons name="sparkles" size={11} color="#6366F1" />
-                  <Text style={s.footerBrandingText}>
-                    Powered by <Text style={s.footerBrandingBold}>HOSTIX</Text>
-                  </Text>
-                </View>
-              )}
             </View>
 
           </KeyboardAvoidingView>
