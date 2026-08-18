@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { QueryClientProvider } from '@tanstack/react-query';
 import AppNavigator from './src/navigation/AppNavigator';
 import Toast, { BaseToast, ErrorToast } from 'react-native-toast-message';
-import { OwnerAssistant } from './src/components/assistant/OwnerAssistant';
+import { AssistantGate } from './src/components/AssistantGate';
 import { ToastProvider } from './src/context/ToastContext';
 import { NetworkManager } from './src/components/ui/NetworkManager';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
@@ -57,8 +57,6 @@ const ThemedToast = () => {
 };
 
 export default function App() {
-  const [currentRoute, setCurrentRoute] = useState<string | undefined>(undefined);
-
   const [fontsLoaded] = useFonts({
     Inter_400Regular,
     Inter_500Medium,
@@ -95,13 +93,8 @@ export default function App() {
     }
   }, [fontsLoaded]);
 
-  // Show chatbot on all authenticated screens; hide on Splash, Login, Register, QRSignup and any Add form screens
-  const showChatbot = !!currentRoute && 
-    currentRoute !== 'Splash' && 
-    currentRoute !== 'Login' && 
-    currentRoute !== 'Register' &&
-    currentRoute !== 'QRSignup' &&
-    !currentRoute.startsWith('Add');
+  // Which routes show the assistant now lives in <AssistantGate />, so a screen
+  // change no longer re-renders this root component (and with it every provider).
 
   if (!fontsLoaded) {
     return null;
@@ -119,11 +112,9 @@ export default function App() {
               <ToastProvider>
                 <OfflineBanner />
                 <NetworkManager>
-                  <AppNavigator
-                    onRouteChange={(routeName: string) => setCurrentRoute(routeName)}
-                  />
+                  <AppNavigator />
                 </NetworkManager>
-                {showChatbot && <OwnerAssistant />}
+                <AssistantGate />
                 <ThemedToast />
               </ToastProvider>
               </ConfirmationProvider>

@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar, Refres
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getSecureItem } from '../services/secureStore';
 import api from '../services/api';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
@@ -348,28 +349,25 @@ export default function ReportsScreen() {
     const handleDownloadExcel = async (reportId: string = 'full_excel', overrideStart?: Date, overrideEnd?: Date) => {
         setExporting(reportId);
         try {
-            const token = await AsyncStorage.getItem('token');
-            if (!token) { showError('Authentication token not found.'); return; }
+            const token = (await getSecureItem('token')) || (await AsyncStorage.getItem('token'));
+            if (!token) { showError('Authentication token not found. Please log in again.'); return; }
 
-            const base = api.defaults.baseURL?.replace(/\/$/, '') || '';
-            let url = '';
-            let filename = '';
+            const base = (api.defaults.baseURL || 'http://143.244.131.69:8081/api').replace(/\/$/, '');
+            let startStr = '';
+            let endStr = '';
 
             if (overrideStart && overrideEnd) {
-                const startStr = toLocalDateStr(overrideStart);
-                const endStr = toLocalDateStr(overrideEnd);
-                url = `${base}/reports/download/excel?startDate=${startStr}&endDate=${endStr}&reportType=${reportId}&token=${encodeURIComponent(token)}`;
-                filename = `${reportId}_Report_${startStr}_to_${endStr}.xlsx`;
+                startStr = toLocalDateStr(overrideStart);
+                endStr = toLocalDateStr(overrideEnd);
             } else {
-                const { startDate, endDate, monthStr } = getQueryDates();
-                if (datePreset === currentMonthName && monthStr) {
-                    url = `${base}/reports/download/excel?month=${monthStr}&reportType=${reportId}&token=${encodeURIComponent(token)}`;
-                    filename = `${reportId}_Report_${monthStr}.xlsx`;
-                } else {
-                    url = `${base}/reports/download/excel?startDate=${startDate}&endDate=${endDate}&reportType=${reportId}&token=${encodeURIComponent(token)}`;
-                    filename = `${reportId}_Report_${startDate}_to_${endDate}.xlsx`;
-                }
+                const dates = getQueryDates();
+                startStr = dates.startDate;
+                endStr = dates.endDate;
             }
+
+            // Uses the same proven endpoint as Collect Payment screen
+            const url = `${base}/income/export?startDate=${startStr}&endDate=${endStr}&token=${encodeURIComponent(token)}&all=true`;
+            const filename = `${reportId}_report_${startStr}_to_${endStr}.xlsx`;
 
             await downloadAndSaveFile(url, filename, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         } catch (e: any) {

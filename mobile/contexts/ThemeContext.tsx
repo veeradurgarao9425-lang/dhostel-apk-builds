@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 
 const commonLayout = {
     headerRounded: 30, // Always rounded for "Premium" look
@@ -106,43 +106,50 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
         loadSettings();
     }, []);
 
-    const baseTheme = themes[themeId];
-    const theme = isDark ? {
-        ...baseTheme,
-        background: '#0F172A',
-        cardBg: '#1E293B',
-        textPrimary: '#F8FAFC',
-        textSecondary: '#94A3B8',
-        white: '#1E293B',
-        lightBg: '#334155',
-    } : baseTheme;
+    // Derived purely from themeId + isDark — same object shape as before.
+    const theme = useMemo(() => {
+        const baseTheme = themes[themeId];
+        return isDark ? {
+            ...baseTheme,
+            background: '#0F172A',
+            cardBg: '#1E293B',
+            textPrimary: '#F8FAFC',
+            textSecondary: '#94A3B8',
+            white: '#1E293B',
+            lightBg: '#334155',
+        } : baseTheme;
+    }, [themeId, isDark]);
 
-    const toggleTheme = () => {
+    // Reads `isDark` to compute + persist the next value, so it must depend on it.
+    const toggleTheme = useCallback(() => {
         const nextDark = !isDark;
         setIsDark(nextDark);
         AsyncStorage.setItem('isDark', nextDark.toString()).catch(e => console.error(e));
-    };
+    }, [isDark]);
 
-    const handleSetThemeId = (id: ThemeId) => {
+    // These two only use their argument and setState — no captured state, deps [].
+    const handleSetThemeId = useCallback((id: ThemeId) => {
         setThemeId(id);
         AsyncStorage.setItem('themeId', id).catch(e => console.error(e));
-    };
+    }, []);
 
-    const handleSetFontSize = (size: number) => {
+    const handleSetFontSize = useCallback((size: number) => {
         setFontSize(size);
         AsyncStorage.setItem('fontSize', size.toString()).catch(e => console.error(e));
-    };
+    }, []);
+
+    const value = useMemo(() => ({
+        theme,
+        themeId,
+        setThemeId: handleSetThemeId,
+        isDark,
+        toggleTheme,
+        fontSize,
+        setFontSize: handleSetFontSize,
+    }), [theme, themeId, handleSetThemeId, isDark, toggleTheme, fontSize, handleSetFontSize]);
 
     return (
-        <ThemeContext.Provider value={{
-            theme,
-            themeId,
-            setThemeId: handleSetThemeId,
-            isDark,
-            toggleTheme,
-            fontSize,
-            setFontSize: handleSetFontSize
-        }}>
+        <ThemeContext.Provider value={value}>
             {children}
         </ThemeContext.Provider>
     );

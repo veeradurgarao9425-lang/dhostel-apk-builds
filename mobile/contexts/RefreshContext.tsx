@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo } from 'react';
 
 /**
  * RefreshContext — lightweight global signal for data invalidation.
@@ -34,8 +34,15 @@ export const RefreshProvider = ({ children }: { children: React.ReactNode }) => 
         setRefreshCounter(prev => prev + 1);
     }, []);
 
+    // Deps are the two state values plus triggerRefresh, which is already
+    // useCallback([]) and uses functional setState — so no stale closure.
+    const value = useMemo(
+        () => ({ refreshCounter, triggerRefresh, refreshPayload }),
+        [refreshCounter, refreshPayload, triggerRefresh]
+    );
+
     return (
-        <RefreshContext.Provider value={{ refreshCounter, triggerRefresh, refreshPayload }}>
+        <RefreshContext.Provider value={value}>
             {children}
         </RefreshContext.Provider>
     );

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useCallback } from 'react';
+import React, { createContext, useContext, useCallback, useMemo } from 'react';
 import Toast from 'react-native-toast-message';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -73,8 +73,15 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     showToast({ type: 'warning', message, title });
   }, [showToast]);
 
+  // Every member is already useCallback'd with correct deps above, and this
+  // provider holds no state, so the value is stable for the app's lifetime.
+  const value = useMemo(
+    () => ({ showToast, showApiError, showSuccess, showError, showWarning }),
+    [showToast, showApiError, showSuccess, showError, showWarning]
+  );
+
   return (
-    <ToastContext.Provider value={{ showToast, showApiError, showSuccess, showError, showWarning }}>
+    <ToastContext.Provider value={value}>
       {children}
     </ToastContext.Provider>
   );

@@ -18,6 +18,15 @@
  *  Tapping [≡] slides in a narrow left drawer with categories.
  *  Every tap on a category / question resolves an intent and
  *  renders the response in the main scroll area.
+ *
+ *  Layout states — the column above never changes shape, only the size of
+ *  the gap under the composer:
+ *    1. idle              keyboardInset = 0, composer rests on the safe area
+ *    2. input focused     keyboardInset = keyboard height not absorbed by the OS
+ *    3. chatting w/ kbd   same as (2); only the message list's height changes
+ *    4. keyboard dismissed  back to (1)
+ *  See the "Keyboard handling" block in the component for how the inset is
+ *  derived (and why KeyboardAvoidingView could not do it here).
  */
 
 import React, {
@@ -25,15 +34,11 @@ import React, {
 } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, Pressable, ScrollView,
-  Modal, Platform, KeyboardAvoidingView, TextInput,
+  Modal, Platform, TextInput,
   Animated, Image, DeviceEventEmitter, Dimensions, Keyboard,
-  LayoutAnimation, UIManager,
+  LayoutAnimation, LayoutChangeEvent,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-
-if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
-  UIManager.setLayoutAnimationEnabledExperimental(true);
-}
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
@@ -214,34 +219,102 @@ export const OwnerAssistant: React.FC = () => {
   };
 
   const toggleQuickMenu = useCallback(() => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    // NOTE: no LayoutAnimation here — on Android (Fabric) it races with the
+    // keyboard-driven layout pass below and was a source of jank/crashes.
     if (isKeyboardActive) {
       Keyboard.dismiss();
     }
     setIsAddMenuOpen(prev => !prev);
   }, [isKeyboardActive]);
 
-  // NOTE: keyboardHeight state removed — KAV handles the layout shift.
-  // LayoutAnimation was also removed from keyboard listeners as it conflicts
-  // with KAV's own layout pass on Android release builds.
+  // ── Keyboard handling ──────────────────────────────────────────────────
+  //
+  // The app builds edge-to-edge (Expo SDK 54 / RN 0.81 → edgeToEdgeEnabled=true),
+  // so on Android 11+ the `adjustResize` window flag is ignored by the OS: the
+  // IME just overlays the window and nothing shrinks. On older Android versions
+  // the window still resizes. `KeyboardAvoidingView` can't tell those two worlds
+  // apart — `behavior="height"` double-compensated on resizing devices (the
+  // container lost ~2× the keyboard height, which is why the composer flew up
+  // the screen) and mis-compensated inside this Modal, because KAV compares its
+  // own frame (Modal window coords) against the keyboard's screen coords.
+  //
+  // So we drive the layout from two plain *heights*, never coordinates:
+  //   keyboard height — straight from the keyboard event
+  //   shrink          — how much this column already lost to a window resize
+  // and pad the bottom of the column by whatever the OS did not already absorb.
+  // Correct in both worlds, on every screen size, with no native module.
+  const [keyboardInset, setKeyboardInset] = useState(0);
+  const kbHeightRef = useRef(0);
+  const bodyHeightRef = useRef(0);
+  const idleBodyHeightRef = useRef(0);
+
+  const syncKeyboardInset = useCallback(() => {
+    const kb = kbHeightRef.current;
+    if (kb <= 0) {
+      setKeyboardInset(prev => (prev === 0 ? prev : 0));
+      return;
+    }
+    // Slice of the keyboard the OS already took out of our container.
+    const shrink = idleBodyHeightRef.current > 0
+      ? Math.max(0, idleBodyHeightRef.current - bodyHeightRef.current)
+      : 0;
+    // iOS keeps the home-indicator gap via SafeAreaView(edges: bottom); the
+    // keyboard frame already covers that strip, so don't count it twice.
+    const safeOverlap = Platform.OS === 'ios' ? insets.bottom : 0;
+    const cap = Dimensions.get('screen').height * 0.7; // sanity guard
+    const next = Math.round(Math.min(Math.max(kb - shrink - safeOverlap, 0), cap));
+    setKeyboardInset(prev => (Math.abs(prev - next) > 1 ? next : prev));
+  }, [insets.bottom]);
+
+  // The chat column measures itself; that height is the only signal we need to
+  // know whether the window resized under us.
+  const handleBodyLayout = useCallback((e: LayoutChangeEvent) => {
+    const h = e.nativeEvent.layout.height;
+    if (h <= 0 || Math.abs(h - bodyHeightRef.current) < 1) return;
+    bodyHeightRef.current = h;
+    // With no keyboard up, this is the column's natural height — the baseline
+    // every later resize is measured against.
+    if (kbHeightRef.current <= 0) idleBodyHeightRef.current = h;
+    syncKeyboardInset();
+  }, [syncKeyboardInset]);
+
   useEffect(() => {
+    const isIOS = Platform.OS === 'ios';
     const showSub = Keyboard.addListener(
-      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
-      () => {
+      isIOS ? 'keyboardWillShow' : 'keyboardDidShow',
+      (e) => {
+        kbHeightRef.current = e?.endCoordinates?.height ?? 0;
+        // iOS only: ride the keyboard's own animation curve. Android gets a
+        // straight layout pass (LayoutAnimation + IME is unstable there).
+        if (isIOS && e?.duration) {
+          LayoutAnimation.configureNext({
+            duration: e.duration,
+            update: { type: 'keyboard' as any },
+          });
+        }
         setIsKeyboardActive(true);
+        syncKeyboardInset();
       }
     );
     const hideSub = Keyboard.addListener(
-      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
-      () => {
+      isIOS ? 'keyboardWillHide' : 'keyboardDidHide',
+      (e: any) => {
+        kbHeightRef.current = 0;
+        if (isIOS && e?.duration) {
+          LayoutAnimation.configureNext({
+            duration: e.duration,
+            update: { type: 'keyboard' as any },
+          });
+        }
         setIsKeyboardActive(false);
+        syncKeyboardInset();
       }
     );
     return () => {
       showSub.remove();
       hideSub.remove();
     };
-  }, []);
+  }, [syncKeyboardInset]);
 
   // ── Lifecycle ──────────────────────────────────────────────────────────
   useEffect(() => {
@@ -297,11 +370,17 @@ export const OwnerAssistant: React.FC = () => {
     }
   }, [isOpen, messages.length, getInitialWelcomeMsgs, user?.role]);
 
+  const scrollToEnd = useCallback((animated = true) => {
+    scrollRef.current?.scrollToEnd({ animated });
+  }, []);
+
+  // Keep the newest turn in view when the thread changes or the keyboard opens.
+  // (Content-growth scrolling is handled by the list's onContentSizeChange.)
   useEffect(() => {
-    if (messages.length) {
-      setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 120);
-    }
-  }, [messages, isTyping, isKeyboardActive]);
+    if (!messages.length) return;
+    const t = setTimeout(() => scrollToEnd(true), 120);
+    return () => clearTimeout(t);
+  }, [messages, isTyping, isKeyboardActive, scrollToEnd]);
 
   const loadSnap = async () => {
     setSnapLoading(true);
@@ -309,26 +388,6 @@ export const OwnerAssistant: React.FC = () => {
     catch { }
     finally { setSnapLoading(false); }
   };
-
-  /**
-   * Bottom inset for content inside the Modal.
-   *
-   * A non-transparent RN Modal on Android gets its own dialog window that already
-   * excludes the navigation bar, so adding `insets.bottom` (~48px on gesture-nav
-   * phones) there is pure dead space. iOS Modals are truly full screen and do need
-   * the home-indicator inset. Once the keyboard is up nothing needs the inset.
-   */
-  const bottomInset = useMemo(() => {
-    // When the keyboard is active, KAV handles the upward shift — no extra
-    // bottom inset is needed on either platform.
-    if (isKeyboardActive) return 0;
-    // On iOS the Modal is truly full-screen, so we always need the home
-    // indicator inset.  On Android the non-transparent Modal dialog window
-    // does NOT exclude the gesture-nav bar (unlike the old navigation bar),
-    // so we also apply insets.bottom — but cap it to 48 to avoid excessive
-    // dead space on older three-button-nav phones where insets can be 0.
-    return Math.min(Math.max(insets.bottom, 0), 48);
-  }, [isKeyboardActive, insets.bottom]);
 
   // ── Position ───────────────────────────────────────────────────────────
   const isFormPage = useMemo(() => {
@@ -1476,15 +1535,14 @@ export const OwnerAssistant: React.FC = () => {
             so we only claim the top inset there and handle the bottom
             manually in inputBarWrapper. */}
         <SafeAreaView style={s.safe} edges={Platform.OS === 'ios' ? ['top', 'bottom'] : ['top']}>
-          {/* behavior='height' on Android: shrinks the KAV container by the
-              keyboard height so the input bar is pushed up inside the layout.
-              behavior='padding' on iOS: adds bottom padding equal to keyboard
-              height. Both are more reliable in release APKs than undefined.
-              On Android release builds, behavior=undefined = no-op (KAV does
-              nothing) which is why it broke after APK build. */}
-          <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            style={s.kav}
+          {/* Chat column: header (fixed) → message list (flex) → composer
+              (bottom). The only thing the keyboard changes is this column's
+              bottom padding, so the composer is always the last thing above
+              the keyboard and the list absorbs the space change. See
+              syncKeyboardInset() for why this replaces KeyboardAvoidingView. */}
+          <View
+            style={[s.body, keyboardInset > 0 && { paddingBottom: keyboardInset }]}
+            onLayout={handleBodyLayout}
           >
 
             {/* ── Header ── */}
@@ -1542,11 +1600,18 @@ export const OwnerAssistant: React.FC = () => {
               <ScrollView
                 ref={scrollRef}
                 style={{ flex: 1 }}
-                contentContainerStyle={[s.msgList, { flexGrow: 1 }]}
+                contentContainerStyle={s.msgList}
                 showsVerticalScrollIndicator={false}
                 keyboardShouldPersistTaps="handled"
+                keyboardDismissMode="on-drag"
+                onContentSizeChange={() => scrollToEnd(true)}
               >
 
+                {/* Empty-state spacer: while the thread is short this grows to
+                    fill the free height so the welcome card and chips sit just
+                    above the composer (chat-style, no dead gap). It collapses
+                    to zero as soon as the conversation outgrows the viewport. */}
+                {messages.length <= 2 && <View style={s.introSpacer} />}
 
                 {/* Quick-ask chips — 2-col grid */}
                 {messages.length <= 2 && (
@@ -1606,8 +1671,9 @@ export const OwnerAssistant: React.FC = () => {
                 - Android: The Modal dialog window does NOT clip the gesture nav
                   bar area for us, so we use insets.bottom (from
                   useSafeAreaInsets) with a minimum of 8px to ensure the bar is
-                  never clipped on gesture-nav phones. When the keyboard is up,
-                  KAV shrinks the container so no extra padding is needed. */}
+                  never clipped on gesture-nav phones. When the keyboard is up
+                  it covers the nav bar, and the column's keyboardInset already
+                  lifts the composer, so only a hairline of padding is left. */}
             <View style={[
               s.inputBarWrapper,
               isFocused && s.inputBarWrapperFocused,
@@ -1738,7 +1804,7 @@ export const OwnerAssistant: React.FC = () => {
               )}
             </View>
 
-          </KeyboardAvoidingView>
+          </View>
 
         </SafeAreaView>
       </Modal>
@@ -1765,7 +1831,8 @@ const s = StyleSheet.create({
   // the bottom safe-area slot (edges={['top','bottom']}) shows a purple block
   // below the content when the keyboard is closed.
   safe: { flex: 1, backgroundColor: '#FFF' },
-  kav: { flex: 1, backgroundColor: '#FFF' },
+  // Chat column. Its bottom padding is the single knob the keyboard turns.
+  body: { flex: 1, backgroundColor: '#FFF' },
   chatArea: { flex: 1, backgroundColor: '#F8FAFC' },
 
   /* Header */
@@ -1856,7 +1923,10 @@ const s = StyleSheet.create({
   },
 
   /* Messages */
-  msgList: { padding: 16, gap: 16, paddingBottom: 8 },
+  msgList: { padding: 16, gap: 16, paddingBottom: 12, flexGrow: 1 },
+  // flexBasis 0 + grow: takes the leftover height when the thread is short,
+  // shrinks away to nothing once the messages fill the viewport.
+  introSpacer: { flexGrow: 1, flexBasis: 0 },
   topSmallCard: {
     flexDirection: 'row',
     alignItems: 'center',

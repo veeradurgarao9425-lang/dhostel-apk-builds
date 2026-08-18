@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useRef, useEffect } from 'react';
+import React, { createContext, useContext, useState, useRef, useEffect, useCallback } from 'react';
 import { Modal, View, Text, StyleSheet, TouchableOpacity, Animated, Pressable, Platform, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from './ThemeContext';
@@ -28,10 +28,13 @@ export const ConfirmationProvider = ({ children }: { children: React.ReactNode }
     const fadeAnim = useRef(new Animated.Value(0)).current;
     const scaleAnim = useRef(new Animated.Value(0.9)).current;
 
-    const showConfirmation = (cfg: ConfirmationConfig) => {
+    // Uses only its argument and setState — no captured state, so deps []. This
+    // is the whole context value, so consumers no longer re-render every time
+    // the dialog opens, closes or this provider's theme changes.
+    const showConfirmation = useCallback((cfg: ConfirmationConfig) => {
         setConfig(cfg);
         setVisible(true);
-    };
+    }, []);
 
     useEffect(() => {
         if (visible) {

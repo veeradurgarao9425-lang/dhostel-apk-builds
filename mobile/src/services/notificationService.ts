@@ -10,6 +10,7 @@ import api from './api';
 try {
   Notifications.setNotificationHandler({
     handleNotification: async () => ({
+      shouldShowAlert: true,
       shouldShowBanner: true,
       shouldShowList: true,
       shouldPlaySound: true,
@@ -17,7 +18,7 @@ try {
     }),
   });
 } catch (e) {
-  console.log('Expo Go notification handler initialized with fallback.');
+  console.log('Notification handler initialized with fallback.');
 }
 
 export const notificationService = {
@@ -26,10 +27,13 @@ export const notificationService = {
 
     if (Platform.OS === 'android') {
       await Notifications.setNotificationChannelAsync('default', {
-        name: 'default',
+        name: 'Default Notifications',
         importance: Notifications.AndroidImportance.MAX,
         vibrationPattern: [0, 250, 250, 250],
-        lightColor: '#FF231F7C',
+        lightColor: '#6D4AFF',
+        sound: 'default',
+        enableVibrate: true,
+        showBadge: true,
       });
     }
 
@@ -115,24 +119,17 @@ export const notificationService = {
   },
 
   setupNotificationListeners(navigate: (screen: string, params?: any) => void) {
-    // Fired whenever a notification is received in the foreground
-    const notificationSubscription = Notifications.addNotificationReceivedListener(notification => {
-      console.log('Notification received in foreground:', notification);
-    });
-
-    // Fired when user taps/interacts with notification
-    const responseSubscription = Notifications.addNotificationResponseReceivedListener(response => {
+    const handleResponse = (response: Notifications.NotificationResponse) => {
       console.log('Notification clicked:', response);
-      const data = response.notification.request.content.data;
-      const title = (response.notification.request.content.title || '').toLowerCase();
+      const data = response?.notification?.request?.content?.data;
+      const title = (response?.notification?.request?.content?.title || '').toLowerCase();
       
       if (data) {
-        // Direct navigation based on notification payload structure
         const dataType = typeof data.type === 'string' ? data.type.toUpperCase() : '';
         
         if (dataType === 'NEW ADMISSION' || title.includes('admission')) {
-          if (data.id) {
-            navigate('StudentDetails', { studentId: data.id });
+          if (data.id || data.studentId) {
+            navigate('StudentDetails', { studentId: data.id || data.studentId });
           } else {
             navigate('Students');
           }
@@ -149,14 +146,35 @@ export const notificationService = {
         } else if (dataType === 'PREBOOKING' || title.includes('pre-booking')) {
           navigate('PreBooking');
         } else if (dataType === 'DOCUMENT' || title.includes('receipt')) {
-          // Send them to their payments/receipts area (tenant) or fee management (owner)
           navigate('FeeManagement');
         } else if (dataType === 'SUMMARY' || title.includes('summary')) {
           navigate('Reports');
         } else if (title.includes('tenant')) {
           navigate('Rooms');
+        } else {
+          // Default fallback
+          navigate('Notifications');
         }
+      } else {
+        navigate('Notifications');
       }
+    };
+
+    // Handle cold-start: user clicked notification when app was closed/killed
+    Notifications.getLastNotificationResponseAsync().then(response => {
+      if (response) {
+        setTimeout(() => handleResponse(response), 600);
+      }
+    }).catch(err => console.log('Error checking last notification response:', err));
+
+    // Fired whenever a notification is received in the foreground
+    const notificationSubscription = Notifications.addNotificationReceivedListener(notification => {
+      console.log('Notification received in foreground:', notification);
+    });
+
+    // Fired when user taps/interacts with notification while app is running/backgrounded
+    const responseSubscription = Notifications.addNotificationResponseReceivedListener(response => {
+      handleResponse(response);
     });
 
     return () => {
