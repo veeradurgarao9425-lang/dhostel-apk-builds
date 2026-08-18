@@ -8,9 +8,10 @@ import {
     TextInput,
     StatusBar,
     ActivityIndicator,
+    Modal,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Plus, Search, Calendar, ChevronDown, Download, Mail } from 'lucide-react-native';
+import { Download, Mail, FileSpreadsheet, X, Send } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { downloadAndSaveFile } from '../utils/fileDownloader';
 import { useAuth } from '../../contexts/AuthContext';
@@ -18,12 +19,10 @@ import api from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { ProfileMenu } from '../components/ProfileMenu';
 import { useTheme } from '../../contexts/ThemeContext';
-import { HeaderNotification } from '../components/HeaderNotification';
 import { AppHeader } from '../components/AppHeader';
 import { EmptyState } from '../components/ui/EmptyState';
 import { SkeletonList } from '../components/ui/SkeletonCard';
 import { FullScreenLoader } from '../components/FullScreenLoader';
-import { Modal } from 'react-native';
 
 export const IncomeScreen = ({ navigation }: any) => {
     const { user } = useAuth();
@@ -34,17 +33,54 @@ export const IncomeScreen = ({ navigation }: any) => {
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState<'Day' | 'Week' | 'Month'>('Day');
     const [isExporting, setIsExporting] = useState(false);
-    const [showEmailModal, setShowEmailModal] = useState(false);
-    const [emailMonth, setEmailMonth] = useState(new Date().toISOString().slice(0, 7)); // YYYY-MM
+    const [showExportModal, setShowExportModal] = useState(false);
+    const [exportRange, setExportRange] = useState<'Day' | 'Week' | 'Month'>('Day');
+    const [recipientEmail, setRecipientEmail] = useState(user?.email || '');
+    const [exportMonth, setExportMonth] = useState(new Date().toISOString().slice(0, 7)); // YYYY-MM
     const [isSendingEmail, setIsSendingEmail] = useState(false);
 
+    // Keep recipient email in sync when user loads
+    useEffect(() => {
+        if (user?.email && !recipientEmail) {
+            setRecipientEmail(user.email);
+        }
+    }, [user?.email]);
+
+    // Open export modal with current active tab
+    const openExportModal = () => {
+        setExportRange(activeTab);
+        setRecipientEmail(user?.email || '');
+        setExportMonth(new Date().toISOString().slice(0, 7));
+        setShowExportModal(true);
+    };
+
     const handleEmailReport = async () => {
+        const target = recipientEmail.trim();
+        if (!target) {
+            showError('Please enter a valid recipient email address.');
+            return;
+        }
+
         setIsSendingEmail(true);
         try {
-            const response = await api.post('/income/email-export', { month: emailMonth });
+            const todayStr = new Date().toISOString().slice(0, 10);
+            const currentMonthStr = exportMonth || todayStr.slice(0, 7);
+
+            // Always include month so legacy/current backends both accept it
+            const payload: any = {
+                email: target,
+                recipientEmail: target,
+                month: currentMonthStr,
+                type: exportRange.toLowerCase(),
+                date: todayStr,
+            };
+
+            const response = await api.post('/income/email-export', payload);
             if (response.data.success) {
-                showSuccess('Report sent to your email successfully!');
-                setShowEmailModal(false);
+                showSuccess(response.data.message || `Excel report sent to ${target}!`);
+                setShowExportModal(false);
+            } else {
+                showError(response.data.error || 'Failed to send email report');
             }
         } catch (error: any) {
             console.error(error);
@@ -54,7 +90,7 @@ export const IncomeScreen = ({ navigation }: any) => {
         }
     };
 
-    const handleExport = async () => {
+    const handleDownloadExcel = async () => {
         setIsExporting(true);
         try {
             const token = await AsyncStorage.getItem('token');
@@ -63,11 +99,27 @@ export const IncomeScreen = ({ navigation }: any) => {
                 return;
             }
 
+            const todayStr = new Date().toISOString().slice(0, 10);
+            const currentMonthStr = exportMonth || todayStr.slice(0, 7);
             const baseURL = (api.defaults.baseURL || 'http://143.244.131.69:8081/api').replace(/\/$/, '');
-            const exportUrl = `${baseURL}/income/export?token=${encodeURIComponent(token)}&all=true`;
-            const filename = `Income_Report_${new Date().toISOString().slice(0, 10)}.xlsx`;
 
+            let queryParams = `token=${encodeURIComponent(token)}`;
+            let filename = `Income_Report_${exportRange}_${todayStr}.xlsx`;
+
+            if (exportRange === 'Day') {
+                queryParams += `&type=day&date=${todayStr}&month=${currentMonthStr}`;
+            } else if (exportRange === 'Week') {
+                queryParams += `&type=week&date=${todayStr}&month=${currentMonthStr}`;
+            } else {
+                queryParams += `&month=${currentMonthStr}`;
+                filename = `Income_Report_Month_${currentMonthStr}.xlsx`;
+            }
+
+            const exportUrl = `${baseURL}/income/export?${queryParams}`;
+
+            setShowExportModal(false);
             await downloadAndSaveFile(exportUrl, filename, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+            showSuccess(`Excel report downloaded successfully!`);
         } catch (error) {
             console.error(error);
             showApiError(error, 'Failed to export income report');
@@ -222,38 +274,19 @@ export const IncomeScreen = ({ navigation }: any) => {
             <AppHeader
                 title="Income"
                 rightComponent={
-                    <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
+                    <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
+                        {/* Single Download/Export Button */}
                         <TouchableOpacity
-                            onPress={() => setShowEmailModal(true)}
-                            activeOpacity={0.75}
-                            style={{
-                                width: 38,
-                                height: 38,
-                                borderRadius: 19,
-                                backgroundColor: 'rgba(255,255,255,0.15)',
-                                justifyContent: 'center',
-                                alignItems: 'center'
-                            }}
-                        >
-                            <Mail color="#FFF" size={18} />
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            onPress={handleExport}
+                            onPress={openExportModal}
                             disabled={isExporting}
                             activeOpacity={0.75}
-                            style={{
-                                width: 38,
-                                height: 38,
-                                borderRadius: 19,
-                                backgroundColor: 'rgba(255,255,255,0.15)',
-                                justifyContent: 'center',
-                                alignItems: 'center'
-                            }}
+                            style={styles.headerActionBtn}
+                            accessibilityLabel="Export Income Report"
                         >
                             {isExporting ? (
                                 <ActivityIndicator size="small" color="#FFF" />
                             ) : (
-                                <Download color="#FFF" size={18} />
+                                <Download color="#FFF" size={19} />
                             )}
                         </TouchableOpacity>
                         <ProfileMenu />
@@ -278,36 +311,120 @@ export const IncomeScreen = ({ navigation }: any) => {
                 </View>
             )}
 
-
-
-            <Modal visible={showEmailModal} animationType="slide" transparent={true}>
+            {/* Export & Email Report Modal */}
+            <Modal visible={showExportModal} animationType="fade" transparent={true} onRequestClose={() => setShowExportModal(false)}>
                 <View style={styles.modalOverlay}>
-                    <View style={[styles.modalContent, { backgroundColor: theme.cardBg }]}>
-                        <Text style={[styles.modalTitle, { color: theme.textPrimary }]}>Email Monthly Report</Text>
-                        <Text style={[styles.modalSubtitle, { color: theme.textSecondary }]}>Enter the month for the report (YYYY-MM)</Text>
+                    <View style={[styles.modalContent, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#E2E8F0', borderWidth: 1 }]}>
                         
-                        <TextInput
-                            style={[styles.input, { color: theme.textPrimary, borderColor: isDark ? '#334155' : '#E2E8F0', backgroundColor: isDark ? '#0F172A' : '#F8FAFC' }]}
-                            value={emailMonth}
-                            onChangeText={setEmailMonth}
-                            placeholder="YYYY-MM"
-                            placeholderTextColor={theme.textSecondary}
-                            maxLength={7}
-                        />
-
-                        <View style={styles.modalActions}>
-                            <TouchableOpacity style={styles.cancelBtn} onPress={() => setShowEmailModal(false)}>
-                                <Text style={styles.cancelBtnText}>Cancel</Text>
+                        {/* Header with Title and Close (Cross) button */}
+                        <View style={styles.modalHeaderRow}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
+                                <View style={[styles.modalIconWrap, { backgroundColor: theme.primary + '18' }]}>
+                                    <FileSpreadsheet color={theme.primary} size={22} />
+                                </View>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={[styles.modalTitle, { color: theme.textPrimary }]}>Export Income Report</Text>
+                                    <Text style={[styles.modalSubtitle, { color: theme.textSecondary }]}>
+                                        Download Excel or send to email
+                                    </Text>
+                                </View>
+                            </View>
+                            {/* Close Cross Button */}
+                            <TouchableOpacity
+                                onPress={() => setShowExportModal(false)}
+                                style={[styles.closeCrossBtn, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]}
+                                activeOpacity={0.7}
+                            >
+                                <X size={18} color={theme.textPrimary} />
                             </TouchableOpacity>
+                        </View>
+
+                        {/* Period Selector Tabs */}
+                        <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>REPORT PERIOD</Text>
+                        <View style={[styles.rangeTabRow, { backgroundColor: isDark ? '#0F172A' : '#F1F5F9' }]}>
+                            {(['Day', 'Week', 'Month'] as const).map(r => (
+                                <TouchableOpacity
+                                    key={r}
+                                    style={[
+                                        styles.rangeTabItem,
+                                        exportRange === r && [styles.rangeTabItemActive, { backgroundColor: theme.primary }]
+                                    ]}
+                                    onPress={() => setExportRange(r)}
+                                    activeOpacity={0.8}
+                                >
+                                    <Text style={[
+                                        styles.rangeTabText,
+                                        { color: exportRange === r ? '#FFF' : theme.textSecondary }
+                                    ]}>
+                                        {r === 'Day' ? 'Today (Day)' : r === 'Week' ? '7 Days (Week)' : 'Month'}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+
+                        {/* Month Selector if Month tab is chosen */}
+                        {exportRange === 'Month' && (
+                            <View style={{ marginBottom: 14 }}>
+                                <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>MONTH (YYYY-MM)</Text>
+                                <TextInput
+                                    style={[
+                                        styles.input,
+                                        { color: theme.textPrimary, borderColor: isDark ? '#334155' : '#E2E8F0', backgroundColor: isDark ? '#0F172A' : '#F8FAFC' }
+                                    ]}
+                                    value={exportMonth}
+                                    onChangeText={setExportMonth}
+                                    placeholder="YYYY-MM"
+                                    placeholderTextColor={theme.textSecondary}
+                                    maxLength={7}
+                                    autoCapitalize="none"
+                                />
+                            </View>
+                        )}
+
+                        {/* Recipient Email input for sending email */}
+                        <View style={{ marginBottom: 20 }}>
+                            <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>RECIPIENT EMAIL (FOR EMAIL OPTION)</Text>
+                            <TextInput
+                                style={[
+                                    styles.input,
+                                    { color: theme.textPrimary, borderColor: isDark ? '#334155' : '#E2E8F0', backgroundColor: isDark ? '#0F172A' : '#F8FAFC' }
+                                ]}
+                                value={recipientEmail}
+                                onChangeText={setRecipientEmail}
+                                placeholder="name@example.com"
+                                placeholderTextColor={theme.textSecondary}
+                                keyboardType="email-address"
+                                autoCapitalize="none"
+                            />
+                        </View>
+
+                        {/* Dual Action Buttons at Bottom */}
+                        <View style={styles.modalActions}>
+                            {/* 1. Download Excel Button */}
+                            <TouchableOpacity
+                                style={[styles.actionBtn, styles.downloadBtn]}
+                                onPress={handleDownloadExcel}
+                                disabled={isExporting}
+                                activeOpacity={0.85}
+                            >
+                                <FileSpreadsheet color="#FFF" size={16} />
+                                <Text style={styles.actionBtnText}>Download Excel</Text>
+                            </TouchableOpacity>
+
+                            {/* 2. Send via Email Button */}
                             <TouchableOpacity 
-                                style={[styles.sendBtn, { backgroundColor: theme.primary }]} 
+                                style={[styles.actionBtn, { backgroundColor: theme.primary }]} 
                                 onPress={handleEmailReport}
                                 disabled={isSendingEmail}
+                                activeOpacity={0.85}
                             >
                                 {isSendingEmail ? (
                                     <ActivityIndicator size="small" color="#FFF" />
                                 ) : (
-                                    <Text style={styles.sendBtnText}>Send to Email</Text>
+                                    <>
+                                        <Mail color="#FFF" size={16} />
+                                        <Text style={styles.actionBtnText}>Send to Email</Text>
+                                    </>
                                 )}
                             </TouchableOpacity>
                         </View>
@@ -320,6 +437,16 @@ export const IncomeScreen = ({ navigation }: any) => {
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#F8FAFC' },
+    headerActionBtn: {
+        width: 38,
+        height: 38,
+        borderRadius: 19,
+        backgroundColor: 'rgba(255,255,255,0.18)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.25)',
+    },
     tabContainer: { flexDirection: 'row', backgroundColor: 'rgba(0,0,0,0.15)', padding: 4, borderRadius: 14, marginTop: 10, marginBottom: 10 },
     tab: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 12 },
     activeTab: { backgroundColor: '#FFFFFF' },
@@ -358,16 +485,23 @@ const styles = StyleSheet.create({
     errorSub: { fontSize: 14, color: '#64748B', textAlign: 'center', marginBottom: 24 },
     retryBtn: { paddingHorizontal: 32, paddingVertical: 14, borderRadius: 14, elevation: 4 },
     retryText: { fontSize: 16, fontWeight: '800', color: '#FFFFFF' },
-    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
-    modalContent: { width: '85%', padding: 24, borderRadius: 24, elevation: 10, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 12 },
-    modalTitle: { fontSize: 20, fontWeight: '800', marginBottom: 8, textAlign: 'center' },
-    modalSubtitle: { fontSize: 13, marginBottom: 20, textAlign: 'center' },
-    input: { borderWidth: 1, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 12, fontSize: 16, fontWeight: '600', marginBottom: 24, textAlign: 'center' },
-    modalActions: { flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
-    cancelBtn: { flex: 1, paddingVertical: 14, borderRadius: 12, backgroundColor: '#E2E8F0', alignItems: 'center' },
-    cancelBtnText: { color: '#475569', fontSize: 15, fontWeight: '700' },
-    sendBtn: { flex: 1, paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
-    sendBtnText: { color: '#FFF', fontSize: 15, fontWeight: '700' },
+    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 20 },
+    modalContent: { width: '100%', maxWidth: 420, padding: 22, borderRadius: 24, elevation: 14, shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.22, shadowRadius: 16 },
+    modalHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 18 },
+    modalIconWrap: { width: 44, height: 44, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
+    closeCrossBtn: { width: 34, height: 34, borderRadius: 17, justifyContent: 'center', alignItems: 'center', marginLeft: 8 },
+    modalTitle: { fontSize: 18, fontWeight: '800' },
+    modalSubtitle: { fontSize: 12, marginTop: 2 },
+    inputLabel: { fontSize: 10.5, fontWeight: '800', letterSpacing: 0.5, marginBottom: 6 },
+    rangeTabRow: { flexDirection: 'row', borderRadius: 12, padding: 3, marginBottom: 14 },
+    rangeTabItem: { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: 10 },
+    rangeTabItemActive: { elevation: 2, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 4 },
+    rangeTabText: { fontSize: 12, fontWeight: '700' },
+    input: { borderWidth: 1, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 11, fontSize: 14, fontWeight: '600' },
+    modalActions: { flexDirection: 'row', justifyContent: 'space-between', gap: 10, marginTop: 6 },
+    actionBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 13, borderRadius: 14 },
+    downloadBtn: { backgroundColor: '#10B981' },
+    actionBtnText: { color: '#FFF', fontSize: 13.5, fontWeight: '800' },
 });
 
-export default IncomeScreen;
+export default IncomeScreen;

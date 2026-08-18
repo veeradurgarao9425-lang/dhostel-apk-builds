@@ -7,12 +7,17 @@ export const runDailyExcelReports = async () => {
   try {
     const hostels = await db('hostel_master')
       .where('is_active', 1)
-      .select('hostel_id', 'owner_id');
+      .select('hostel_id', 'owner_id', 'hostel_name');
 
     let reportsSent = 0;
     for (const hostel of hostels) {
-      if (hostel.owner_id) {
-        await sendDailyOwnerReportEmail(hostel.owner_id, hostel.hostel_id)
+      let ownerId = hostel.owner_id;
+      if (!ownerId) {
+        const ownerUser = await db('users').where({ hostel_id: hostel.hostel_id, role_id: 2 }).first();
+        ownerId = ownerUser?.user_id;
+      }
+      if (ownerId) {
+        await sendDailyOwnerReportEmail(ownerId, hostel.hostel_id)
           .catch((err) => console.error(`[dailyExcelReports] Failed for hostel ${hostel.hostel_id}:`, err?.message));
         reportsSent++;
       }

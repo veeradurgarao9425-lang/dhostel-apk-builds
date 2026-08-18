@@ -135,7 +135,7 @@ export const UpcomingDues = ({ data, renewalStudents = [] }: UpcomingDuesProps) 
                             <Ionicons name="chevron-forward" size={12} color="#7C3AED" style={{ marginTop: 1 }} />
                         </TouchableOpacity>
                     </View>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingBottom: 2 }}>
+                    <ScrollView horizontal nestedScrollEnabled={true} showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingBottom: 2 }}>
                         {renewalStudents.map((student: any, idx: number) => {
                             const today = new Date(); today.setHours(0, 0, 0, 0);
                             const planEnd = new Date(student.plan_end_date); planEnd.setHours(0, 0, 0, 0);

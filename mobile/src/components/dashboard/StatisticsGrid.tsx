@@ -126,6 +126,7 @@ export const StatisticsGrid = ({ data, fmt }: StatisticsGridProps) => {
                     data={PAGES}
                     keyExtractor={(_, idx) => `page-${idx}`}
                     horizontal
+                    nestedScrollEnabled={true}
                     showsHorizontalScrollIndicator={false}
                     pagingEnabled
                     snapToInterval={PAGE_W}

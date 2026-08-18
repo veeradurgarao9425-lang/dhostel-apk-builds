@@ -9,7 +9,8 @@ import {
   getIncomeSummary,
   getIncomeAnalytics,
   getIncomeExport,
-  emailIncomeExport
+  emailIncomeExport,
+  triggerDailyOwnerReport
 } from '../controllers/incomeController.js';
 
 const router = express.Router();
@@ -22,6 +23,7 @@ router.use(authMiddleware, requireActiveSubscription, isOwnerOrAdmin);
 
 // Income routes
 router.post('/email-export', emailIncomeExport);
+router.post('/trigger-daily-report', triggerDailyOwnerReport);
 router.get('/', getAllIncome);
 router.post('/', createIncome);
 router.put('/:incomeId', updateIncome);

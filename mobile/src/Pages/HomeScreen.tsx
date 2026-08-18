@@ -763,6 +763,7 @@ export default function HomeScreen() {
                 ref={horizontalScrollRef}
                 horizontal
                 pagingEnabled={true}
+                scrollEnabled={isPagerScrollEnabled}
                 showsHorizontalScrollIndicator={false}
                 keyboardShouldPersistTaps="handled"
                 nestedScrollEnabled={true}
@@ -804,16 +805,67 @@ export default function HomeScreen() {
                                 </View>
                             ) : null}
                             {(data.unallocatedCount > 0 || data.qrRegisterCount > 0 || data.openComplaintsCount > 0 || data.pendingAdmissionsCount > 0) && (
-                                <WarningCards data={data} />
+                                <View
+                                    collapsable={false}
+                                    onTouchStart={() => setIsPagerScrollEnabled(false)}
+                                    onTouchEnd={() => setIsPagerScrollEnabled(true)}
+                                    onTouchCancel={() => setIsPagerScrollEnabled(true)}
+                                >
+                                    <WarningCards data={data} />
+                                </View>
                             )}
-                            <QuickActionsGrid data={data} />
+                            {(data.totalBeds > 0 || data.totalRooms > 0) && (
+                                <View
+                                    collapsable={false}
+                                    onTouchStart={() => setIsPagerScrollEnabled(false)}
+                                    onTouchEnd={() => setIsPagerScrollEnabled(true)}
+                                    onTouchCancel={() => setIsPagerScrollEnabled(true)}
+                                >
+                                    <OverviewCard data={data} setShowCollectionSheet={setShowCollectionSheet} pulseValue={pulseValue} fmt={fmt} />
+                                </View>
+                            )}
+                            <View
+                                collapsable={false}
+                                onTouchStart={() => setIsPagerScrollEnabled(false)}
+                                onTouchEnd={() => setIsPagerScrollEnabled(true)}
+                                onTouchCancel={() => setIsPagerScrollEnabled(true)}
+                            >
+                                <QuickActionsGrid data={data} />
+                            </View>
                             {(data.totalBeds > 0 || data.totalRooms > 0) && (
                                 <>
-                                    <OverviewCard data={data} setShowCollectionSheet={setShowCollectionSheet} pulseValue={pulseValue} fmt={fmt} />
-                                    <StatisticsGrid data={data} fmt={fmt} />
-                                    <TopOverdueStudents data={data} />
-                                    <UpcomingDues data={data} renewalStudents={renewalStudents} />
-                                    <UpcomingCheckoutSchedules data={data} />
+                                    <View
+                                        collapsable={false}
+                                        onTouchStart={() => setIsPagerScrollEnabled(false)}
+                                        onTouchEnd={() => setIsPagerScrollEnabled(true)}
+                                        onTouchCancel={() => setIsPagerScrollEnabled(true)}
+                                    >
+                                        <StatisticsGrid data={data} fmt={fmt} />
+                                    </View>
+                                    <View
+                                        collapsable={false}
+                                        onTouchStart={() => setIsPagerScrollEnabled(false)}
+                                        onTouchEnd={() => setIsPagerScrollEnabled(true)}
+                                        onTouchCancel={() => setIsPagerScrollEnabled(true)}
+                                    >
+                                        <TopOverdueStudents data={data} />
+                                    </View>
+                                    <View
+                                        collapsable={false}
+                                        onTouchStart={() => setIsPagerScrollEnabled(false)}
+                                        onTouchEnd={() => setIsPagerScrollEnabled(true)}
+                                        onTouchCancel={() => setIsPagerScrollEnabled(true)}
+                                    >
+                                        <UpcomingDues data={data} renewalStudents={renewalStudents} />
+                                    </View>
+                                    <View
+                                        collapsable={false}
+                                        onTouchStart={() => setIsPagerScrollEnabled(false)}
+                                        onTouchEnd={() => setIsPagerScrollEnabled(true)}
+                                        onTouchCancel={() => setIsPagerScrollEnabled(true)}
+                                    >
+                                        <UpcomingCheckoutSchedules data={data} />
+                                    </View>
                                     <OccupancyCard data={data} />
                                 </>
                             )}

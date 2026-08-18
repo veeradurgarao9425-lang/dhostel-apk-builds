@@ -1,15 +1,17 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import {
     View, Text, StyleSheet, TouchableOpacity,
-    ScrollView, StatusBar, ActivityIndicator, Dimensions, Linking, Modal, Platform, Animated, RefreshControl
+    ScrollView, StatusBar, ActivityIndicator, Dimensions, Linking, Modal, Platform, Animated, RefreshControl,
+    TextInput
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
-import { Download, X } from 'lucide-react-native';
+import { Download, X, Mail, FileSpreadsheet, Send } from 'lucide-react-native';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../services/api';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useAuth } from '../../contexts/AuthContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { toLocalDateStr as toLocalDateString } from '../utils/dateUtils';
 import { AppHeader } from '../components/AppHeader';
@@ -28,7 +30,6 @@ const { width, height } = Dimensions.get('window');
 type Period = 'day' | 'week' | 'month';
 
 // toLocalDateString is now imported from utils/dateUtils as an alias.
-
 
 function getWeekRangeLabel(start: Date, end: Date): string {
     const fmt = (d: Date) => d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
@@ -63,6 +64,7 @@ function getDateLabel(period: Period, date: Date): string {
 }
 
 export default function IncomeDetailsScreen() {
+    const { user } = useAuth();
     const { theme, isDark } = useTheme();
     const { showError, showSuccess, showApiError } = useToast();
     const navigation = useNavigation<any>();
@@ -83,7 +85,12 @@ export default function IncomeDetailsScreen() {
     const [customRangeStart, setCustomRangeStart] = useState<Date | null>(null);
     const [customRangeEnd, setCustomRangeEnd] = useState<Date | null>(null);
 
+    // Export Modal states
     const [showExportModal, setShowExportModal] = useState(false);
+    const [exportRange, setExportRange] = useState<'day' | 'week' | 'month'>('month');
+    const [recipientEmail, setRecipientEmail] = useState(user?.email || '');
+    const [exportMonth, setExportMonth] = useState(new Date().toISOString().slice(0, 7)); // YYYY-MM
+    const [isSendingEmail, setIsSendingEmail] = useState(false);
     const [exportStart, setExportStart] = useState(() => {
         const d = new Date();
         d.setDate(1);
@@ -94,6 +101,20 @@ export default function IncomeDetailsScreen() {
     const [isStartDatePickerVisible, setStartDatePickerVisible] = useState(false);
     const [isEndDatePickerVisible, setEndDatePickerVisible] = useState(false);
     const [isDatePickerVisible, setDatePickerVisible] = useState(false);
+
+    // Keep recipient email in sync when user loads
+    useEffect(() => {
+        if (user?.email && !recipientEmail) {
+            setRecipientEmail(user.email);
+        }
+    }, [user?.email]);
+
+    const openExportModal = () => {
+        setExportRange(period);
+        setRecipientEmail(user?.email || '');
+        setExportMonth(toLocalDateString(refDate).slice(0, 7));
+        setShowExportModal(true);
+    };
     
     // Bottom Sheet Select Modal state
     const [showSelectorModal, setShowSelectorModal] = useState(false);
@@ -125,39 +146,77 @@ export default function IncomeDetailsScreen() {
         });
     };
 
-    const handleMailOption = () => {
-        Linking.openURL('mailto:support@dhostel.com?subject=DHostel%20Earnings%20Feedback');
-    };
-
-    const handleExport = async () => {
-        if (exportStart > exportEnd) {
-            showError('Start date must be before end date.');
-            return;
-        }
-
+    const handleDownloadExcel = async () => {
         setIsExporting(true);
         try {
-            const startStr = toLocalDateString(exportStart);
-            const endStr = toLocalDateString(exportEnd);
             const token = await AsyncStorage.getItem('token');
-
             if (!token) {
                 showError('Authentication token not found. Please log in again.');
                 return;
             }
 
+            const todayStr = toLocalDateString(refDate);
+            const currentMonthStr = exportMonth || todayStr.slice(0, 7);
             const baseURL = (api.defaults.baseURL || 'http://143.244.131.69:8081/api').replace(/\/$/, '');
-            const exportUrl = `${baseURL}/income/export?startDate=${startStr}&endDate=${endStr}&token=${encodeURIComponent(token)}&all=true`;
 
-            const filename = `income_report_${startStr}_to_${endStr}.xlsx`;
+            let queryParams = `token=${encodeURIComponent(token)}`;
+            let filename = `Earnings_Report_${exportRange}_${todayStr}.xlsx`;
+
+            if (exportRange === 'day') {
+                queryParams += `&type=day&date=${todayStr}&month=${currentMonthStr}`;
+            } else if (exportRange === 'week') {
+                queryParams += `&type=week&date=${todayStr}&month=${currentMonthStr}`;
+            } else {
+                queryParams += `&month=${currentMonthStr}`;
+                filename = `Earnings_Report_Month_${currentMonthStr}.xlsx`;
+            }
+
+            const exportUrl = `${baseURL}/income/export?${queryParams}`;
 
             setShowExportModal(false);
             await downloadAndSaveFile(exportUrl, filename, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+            showSuccess('Excel report downloaded successfully!');
         } catch (error: any) {
             console.error(error);
-            showApiError(error, 'Failed to export data');
+            showApiError(error, 'Failed to export earnings report');
         } finally {
             setIsExporting(false);
+        }
+    };
+
+    const handleEmailReport = async () => {
+        const target = recipientEmail.trim();
+        if (!target) {
+            showError('Please enter a valid recipient email address.');
+            return;
+        }
+
+        setIsSendingEmail(true);
+        try {
+            const todayStr = toLocalDateString(refDate);
+            const currentMonthStr = exportMonth || todayStr.slice(0, 7);
+
+            // Always include month so legacy/current backends both accept it
+            const payload: any = {
+                email: target,
+                recipientEmail: target,
+                month: currentMonthStr,
+                type: exportRange,
+                date: todayStr,
+            };
+
+            const response = await api.post('/income/email-export', payload);
+            if (response.data.success) {
+                showSuccess(response.data.message || `Excel report sent to ${target}!`);
+                setShowExportModal(false);
+            } else {
+                showError(response.data.error || 'Failed to send email report');
+            }
+        } catch (error: any) {
+            console.error(error);
+            showApiError(error, 'Failed to send email report');
+        } finally {
+            setIsSendingEmail(false);
         }
     };
 
@@ -563,35 +622,27 @@ export default function IncomeDetailsScreen() {
             <AppHeader
                 title="Earnings"
                 rightComponent={
-                    <View style={{ flexDirection: 'row', gap: 10 }}>
-                        <TouchableOpacity 
-                            onPress={handleMailOption} 
-                            style={{
-                                width: 40,
-                                height: 40,
-                                borderRadius: 20,
-                                backgroundColor: 'rgba(255, 255, 255, 0.18)',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                            }}
-                        >
-                            <Ionicons name="mail-outline" size={20} color="#FFF" />
-                        </TouchableOpacity>
-
-                        <TouchableOpacity 
-                            onPress={() => setShowExportModal(true)} 
-                            style={{
-                                width: 40,
-                                height: 40,
-                                borderRadius: 20,
-                                backgroundColor: 'rgba(255, 255, 255, 0.18)',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                            }}
-                        >
+                    <TouchableOpacity 
+                        onPress={openExportModal} 
+                        style={{
+                            width: 40,
+                            height: 40,
+                            borderRadius: 20,
+                            backgroundColor: 'rgba(255, 255, 255, 0.18)',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            borderWidth: 1,
+                            borderColor: 'rgba(255, 255, 255, 0.25)',
+                        }}
+                        activeOpacity={0.75}
+                        accessibilityLabel="Export Earnings Report"
+                    >
+                        {isExporting ? (
+                            <ActivityIndicator size="small" color="#FFF" />
+                        ) : (
                             <Download size={20} color="#FFF" />
-                        </TouchableOpacity>
-                    </View>
+                        )}
+                    </TouchableOpacity>
                 }
             >
                 {/* Outlined Period tab selectors */}
@@ -856,79 +907,96 @@ export default function IncomeDetailsScreen() {
                 restrictMonth={refDate}
             />
 
-            {/* DATE EXPORT MODAL */}
-            <ModalSheet
+            {/* EXPORT & EMAIL MODAL */}
+            <Modal
                 visible={showExportModal}
-                onClose={() => setShowExportModal(false)}
-                maxHeight="75%"
+                animationType="fade"
+                transparent={true}
+                onRequestClose={() => setShowExportModal(false)}
             >
-                <View style={s.bottomSheetHeader}>
-                    <Text style={[s.bottomSheetTitle, { color: theme.textPrimary }]}>Export Income Report</Text>
-                    <TouchableOpacity onPress={() => setShowExportModal(false)}>
-                        <Text style={{ color: theme.primary, fontSize: 15, fontWeight: '700' }}>Close</Text>
-                    </TouchableOpacity>
-                </View>
-
-                <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 30 }} showsVerticalScrollIndicator={false}>
-                    <Text style={[s.exportLabel, { color: theme.textSecondary }]}>Select Date Range</Text>
-                    <Text style={{ fontSize: 12, color: '#94A3B8', marginBottom: 16 }}>All transactions in this range will be exported</Text>
-
-                    <View style={{ flexDirection: 'row', gap: 12, marginBottom: 20 }}>
-                        <TouchableOpacity 
-                            style={{ flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: (theme as any).isDark ? '#334155' : '#F8FAFC', borderWidth: 1, borderColor: (theme as any).isDark ? '#475569' : '#E2E8F0', padding: 12, borderRadius: 12, gap: 8 }} 
-                            onPress={() => setStartDatePickerVisible(true)}
-                        >
-                            <Ionicons name="calendar-outline" size={18} color="#64748B" />
-                            <View>
-                                <Text style={{ fontSize: 10, color: '#94A3B8' }}>Start Date</Text>
-                                <Text style={{ fontSize: 13, fontWeight: '700', color: theme.textPrimary, marginTop: 2 }}>
-                                    {exportStart.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                                </Text>
+                <View style={s.modalOverlay}>
+                    <View style={[s.exportModalBox, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#E2E8F0', borderWidth: 1 }]}>
+                        
+                        {/* Header with Title and Close (Cross) button */}
+                        <View style={s.modalHeaderRow}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
+                                <View style={[s.modalIconWrap, { backgroundColor: theme.primary + '18' }]}>
+                                    <FileSpreadsheet color={theme.primary} size={22} />
+                                </View>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={[s.modalTitleText, { color: theme.textPrimary }]}>Export Earnings Report</Text>
+                                    <Text style={[s.modalSubtitleText, { color: theme.textSecondary }]}>
+                                        Select period to download Excel spreadsheet
+                                    </Text>
+                                </View>
                             </View>
-                        </TouchableOpacity>
+                            {/* Close Cross Button */}
+                            <TouchableOpacity
+                                onPress={() => setShowExportModal(false)}
+                                style={[s.closeCrossBtn, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]}
+                                activeOpacity={0.7}
+                            >
+                                <X size={18} color={theme.textPrimary} />
+                            </TouchableOpacity>
+                        </View>
 
-                        <TouchableOpacity 
-                            style={{ flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: (theme as any).isDark ? '#334155' : '#F8FAFC', borderWidth: 1, borderColor: (theme as any).isDark ? '#475569' : '#E2E8F0', padding: 12, borderRadius: 12, gap: 8 }} 
-                            onPress={() => setEndDatePickerVisible(true)}
-                        >
-                            <Ionicons name="calendar-outline" size={18} color="#64748B" />
-                            <View>
-                                <Text style={{ fontSize: 10, color: '#94A3B8' }}>End Date</Text>
-                                <Text style={{ fontSize: 13, fontWeight: '700', color: theme.textPrimary, marginTop: 2 }}>
-                                    {exportEnd.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                                </Text>
+                        {/* Period Selector Tabs */}
+                        <Text style={[s.inputLabelText, { color: theme.textSecondary }]}>REPORT PERIOD</Text>
+                        <View style={[s.rangeTabRow, { backgroundColor: isDark ? '#0F172A' : '#F1F5F9' }]}>
+                            {(['day', 'week', 'month'] as const).map(r => (
+                                <TouchableOpacity
+                                    key={r}
+                                    style={[
+                                        s.rangeTabItem,
+                                        exportRange === r && [s.rangeTabItemActive, { backgroundColor: theme.primary }]
+                                    ]}
+                                    onPress={() => setExportRange(r)}
+                                    activeOpacity={0.8}
+                                >
+                                    <Text style={[
+                                        s.rangeTabText,
+                                        { color: exportRange === r ? '#FFF' : theme.textSecondary }
+                                    ]}>
+                                        {r === 'day' ? 'Today (Day)' : r === 'week' ? '7 Days (Week)' : 'Month'}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+
+                        {/* Month Selector if Month tab is chosen */}
+                        {exportRange === 'month' && (
+                            <View style={{ marginBottom: 18 }}>
+                                <Text style={[s.inputLabelText, { color: theme.textSecondary }]}>MONTH (YYYY-MM)</Text>
+                                <TextInput
+                                    style={[
+                                        s.textInputField,
+                                        { color: theme.textPrimary, borderColor: isDark ? '#334155' : '#E2E8F0', backgroundColor: isDark ? '#0F172A' : '#F8FAFC' }
+                                    ]}
+                                    value={exportMonth}
+                                    onChangeText={setExportMonth}
+                                    placeholder="YYYY-MM"
+                                    placeholderTextColor={theme.textSecondary}
+                                    maxLength={7}
+                                    autoCapitalize="none"
+                                />
                             </View>
-                        </TouchableOpacity>
-                    </View>
-
-                    {exportStart > exportEnd && (
-                        <Text style={{ color: '#EF4444', fontSize: 12, fontWeight: '700', marginBottom: 16 }}>⚠️ Start date must be before end date</Text>
-                    )}
-
-                    <TouchableOpacity
-                        style={{
-                            backgroundColor: (isExporting || exportStart > exportEnd) ? '#94A3B8' : theme.primary,
-                            borderRadius: 16,
-                            paddingVertical: 14,
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            flexDirection: 'row',
-                            gap: 8,
-                        }}
-                        onPress={handleExport}
-                        disabled={isExporting || exportStart > exportEnd}
-                    >
-                        {isExporting ? (
-                            <ActivityIndicator color="#FFF" size="small" />
-                        ) : (
-                            <>
-                                <Text style={{ color: '#FFF', fontSize: 15, fontWeight: '700' }}>Download Excel Report</Text>
-                                <Download size={18} color="#FFF" />
-                            </>
                         )}
-                    </TouchableOpacity>
-                </ScrollView>
-            </ModalSheet>
+
+                        {/* Action Button: Download Excel */}
+                        <View style={{ marginTop: 6 }}>
+                            <TouchableOpacity
+                                style={[s.dualActionBtn, s.downloadExcelBtn, { width: '100%' }]}
+                                onPress={handleDownloadExcel}
+                                disabled={isExporting}
+                                activeOpacity={0.85}
+                            >
+                                <FileSpreadsheet color="#FFF" size={18} />
+                                <Text style={[s.dualActionBtnText, { fontSize: 14.5 }]}>Download Excel Report</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
 
             {/* POPUP DATE PICKERS */}
             <DateTimePickerModal
@@ -1437,93 +1505,104 @@ const s = StyleSheet.create({
         color: '#FFFFFF',
     },
 
-    // ── DATE EXPORT MODAL ──────────────────────────────────────────────────
-    exportOverlay: {
-        flex: 1,
-        backgroundColor: 'transparent',
-        justifyContent: 'center',
-        padding: 20,
-    },
-    exportModalContent: {
-        backgroundColor: '#FFFFFF',
-        borderRadius: 20,
-        padding: 20,
+    // ── UNIFIED EXPORT MODAL STYLING ──────────────────────────────────────
+    exportModalBox: {
+        width: '100%',
+        maxWidth: 420,
+        borderRadius: 24,
+        padding: 22,
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 12,
-        elevation: 16,
-        borderWidth: 1,
-        borderColor: 'rgba(148, 163, 184, 0.15)',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.22,
+        shadowRadius: 16,
+        elevation: 14,
     },
-    exportModalHeader: {
+    modalHeaderRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
+        alignItems: 'flex-start',
+        marginBottom: 18,
+    },
+    modalIconWrap: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
         alignItems: 'center',
-        marginBottom: 16,
+        justifyContent: 'center',
     },
-    exportModalTitle: {
-        fontSize: 16,
+    modalTitleText: {
+        fontSize: 18,
         fontWeight: '800',
-        color: '#0F172A',
     },
-    exportLabel: {
-        fontSize: 13,
+    modalSubtitleText: {
+        fontSize: 12,
+        marginTop: 2,
+    },
+    closeCrossBtn: {
+        width: 34,
+        height: 34,
+        borderRadius: 17,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginLeft: 8,
+    },
+    inputLabelText: {
+        fontSize: 10.5,
         fontWeight: '800',
-        color: '#334155',
-        marginBottom: 4,
+        letterSpacing: 0.5,
+        marginBottom: 6,
     },
-    exportSubLabel: {
-        fontSize: 11,
-        color: '#94A3B8',
-        fontWeight: '600',
-        marginBottom: 16,
-    },
-    exportInputsRow: {
+    rangeTabRow: {
         flexDirection: 'row',
-        alignItems: 'center',
-        gap: 10,
-        marginBottom: 12,
+        borderRadius: 12,
+        padding: 3,
+        marginBottom: 14,
     },
-    exportDateInput: {
+    rangeTabItem: {
+        flex: 1,
+        paddingVertical: 8,
+        alignItems: 'center',
+        borderRadius: 10,
+    },
+    rangeTabItemActive: {
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+    },
+    rangeTabText: {
+        fontSize: 12.5,
+        fontWeight: '700',
+    },
+    textInputField: {
+        borderWidth: 1,
+        borderRadius: 12,
+        paddingHorizontal: 14,
+        paddingVertical: 11,
+        fontSize: 14,
+        fontWeight: '600',
+    },
+    modalActionsRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        gap: 10,
+        marginTop: 6,
+    },
+    dualActionBtn: {
         flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#F8FAFC',
-        borderWidth: 1.5,
-        borderColor: '#E2E8F0',
-        borderRadius: 12,
-        paddingHorizontal: 12,
-        height: 44,
-        gap: 8,
-    },
-    exportDateInputText: {
-        fontSize: 12,
-        fontWeight: '700',
-        color: '#1F2937',
-    },
-    exportWarningText: {
-        fontSize: 11,
-        fontWeight: '700',
-        color: '#EF4444',
-        marginBottom: 12,
-    },
-    exportConfirmBtn: {
-        flexDirection: 'row',
-        alignItems: 'center',
         justifyContent: 'center',
+        gap: 6,
+        paddingVertical: 13,
+        borderRadius: 14,
+    },
+    downloadExcelBtn: {
         backgroundColor: '#10B981',
-        borderRadius: 12,
-        height: 48,
-        gap: 8,
-        marginTop: 4,
     },
-    exportConfirmBtnDisabled: {
-        backgroundColor: '#A7F3D0',
-    },
-    exportConfirmText: {
-        color: '#FFFFFF',
-        fontSize: 13,
+    dualActionBtnText: {
+        color: '#FFF',
+        fontSize: 13.5,
         fontWeight: '800',
     },
 

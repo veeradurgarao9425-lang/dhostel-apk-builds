@@ -102,6 +102,7 @@ export const QuickActionsGrid = ({ data }: QuickActionsGridProps) => {
                     data={PAGES}
                     keyExtractor={(_, idx) => `page-${idx}`}
                     horizontal
+                    nestedScrollEnabled={true}
                     showsHorizontalScrollIndicator={false}
                     pagingEnabled
                     snapToInterval={PAGE_W}

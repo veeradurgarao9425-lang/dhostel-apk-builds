@@ -89,6 +89,7 @@ export const WarningCards = ({ data }: WarningCardsProps) => {
             </View>
             <ScrollView
                 horizontal
+                nestedScrollEnabled={true}
                 showsHorizontalScrollIndicator={false}
                 contentContainerStyle={s.scrollContent}
             >

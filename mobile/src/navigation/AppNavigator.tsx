@@ -285,7 +285,7 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
                     <Stack.Screen name="PaymentDetails" component={PaymentDetailsScreen} />
                     <Stack.Screen name="FeeManagement" component={FeeManagementScreen} />
                     <Stack.Screen name="Receipt" component={ReceiptScreen} />
-                    <Stack.Screen name="Income" component={IncomeScreen} />
+                    <Stack.Screen name="Income" component={IncomeDetailsScreen} />
                     <Stack.Screen name="IncomeDetails" component={IncomeDetailsScreen} />
                     <Stack.Screen name="AllTransactions" component={AllTransactionsScreen} />
                     <Stack.Screen name="CollectedPayments" component={CollectedPaymentsScreen} />
