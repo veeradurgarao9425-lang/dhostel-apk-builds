@@ -333,15 +333,17 @@ export const OwnerAssistant: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    const t = setTimeout(() => {
+    const updateRoute = () => {
       if (RootNavigation.navigationRef.isReady()) {
-        setCurrentRoute(RootNavigation.navigationRef.getCurrentRoute()?.name || null);
+        const routeName = RootNavigation.navigationRef.getCurrentRoute()?.name || null;
+        setCurrentRoute(routeName);
       }
-    }, 500);
-    const unsub = RootNavigation.navigationRef.addListener?.('state', () => {
-      setCurrentRoute(RootNavigation.navigationRef.getCurrentRoute()?.name || null);
-    });
-    return () => { clearTimeout(t); unsub?.(); };
+    };
+    updateRoute();
+    const t1 = setTimeout(updateRoute, 100);
+    const t2 = setTimeout(updateRoute, 400);
+    const unsub = RootNavigation.navigationRef.addListener?.('state', updateRoute);
+    return () => { clearTimeout(t1); clearTimeout(t2); unsub?.(); };
   }, []);
 
   const getInitialWelcomeMsgs = useCallback((): Msg[] => {
@@ -392,24 +394,29 @@ export const OwnerAssistant: React.FC = () => {
   // ── Position ───────────────────────────────────────────────────────────
   const isFormPage = useMemo(() => {
     if (!currentRoute) return false;
-    return (
-      currentRoute.startsWith('Add') ||
-      currentRoute.includes('Details') ||
-      currentRoute === 'Settings' ||
-      currentRoute === 'Profile' ||
-      currentRoute === 'QRSignup' ||
-      currentRoute === 'PreBooking'
-    );
+    const hideOnRoutes = [
+      'Login', 'Register', 'ForgotPassword', 'Splash', 'Onboarding', 
+      'RoleSelect', 'QRSignup', 'TenantLogin', 'TenantRegister'
+    ];
+    return hideOnRoutes.includes(currentRoute);
   }, [currentRoute]);
 
   const fabPos = useMemo(() => {
-    const listPages = [
-      'Students', 'StudentsTab', 'Rooms', 'RoomsTab', 'Expenses', 'ExpensesTab',
-      'Staff', 'StaffTab', 'Guests', 'StaffPayments', 'Reminders', 'IncomeDetails',
-      'Hostels', 'Notices', 'NoticesTab', 'NoticesManagement', 'InCome'
+    const listPagesWithFab = [
+      'Students', 'StudentsTab', 'Student',
+      'Rooms', 'RoomsTab', 'Room',
+      'Expenses', 'ExpensesTab', 'Expense',
+      'Staff', 'StaffTab',
+      'Guests', 'GuestsTab',
+      'Notices', 'NoticesTab', 'NoticesManagement',
+      'Hostels', 'HostelsTab',
+      'Reminders', 'InCome'
     ];
-    return currentRoute && listPages.includes(currentRoute)
-      ? { bottom: 210, right: 20 } : { bottom: 140, right: 20 };
+    const hasPlusFab = currentRoute && listPagesWithFab.includes(currentRoute);
+    // Add generous bottom spacing so it doesn't look too low or stuck to the bottom
+    return hasPlusFab
+      ? { bottom: 215, right: 20 }
+      : { bottom: 115, right: 20 };
   }, [currentRoute]);
 
   // ── Message helpers ────────────────────────────────────────────────────
@@ -797,6 +804,7 @@ export const OwnerAssistant: React.FC = () => {
               { type: 'info_tip', text: `Found ${results.length} students matching "${(intent as any).name}".`, icon: 'people-outline', color: '#4F46E5' },
               {
                 type: 'student_list_card', title: `Search Results for "${(intent as any).name}"`, students: results.map(s => ({
+                  student_id: s.student_id,
                   name: `${s.first_name || ''} ${s.last_name || ''}`.trim(),
                   roomNumber: s.room_number || 'N/A',
                   phone: s.phone || '',
@@ -1509,13 +1517,14 @@ export const OwnerAssistant: React.FC = () => {
     loadSnap();
   };
 
-  // Only owners
-  if (!user || user.role === 'TENANT' || isTourActive) return null;
+  // Only owners (exclude tenants)
+  const isTenant = user?.role?.toUpperCase() === 'TENANT' || user?.role_id === 3;
+  if (!user || isTenant || isTourActive) return null;
 
   return (
     <>
       {/* FAB */}
-      {!isOpen && !isFormPage && (
+      {!isOpen && (
         <TouchableOpacity
           style={[s.fab, fabPos]}
           onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => { }); setIsOpen(true); }}
@@ -1819,9 +1828,9 @@ const s = StyleSheet.create({
     position: 'absolute',
     width: 52, height: 52, borderRadius: 26,
     overflow: 'hidden',
-    elevation: 10,
+    elevation: 20,
     shadowColor: '#7C3AED', shadowOpacity: 0.45, shadowRadius: 8, shadowOffset: { width: 0, height: 4 },
-    zIndex: 9999,
+    zIndex: 999999,
   },
   fabGrad: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 

@@ -435,17 +435,46 @@ export async function fetchStudentStats(): Promise<any> {
   return data?.data || { active: 0, inactive: 0, prebooked: 0, qrRegister: 0, total: 0, unallocated: 0, pendingAdmissions: 0 };
 }
 
-// ─── Student Search by Name ───────────────────────────────────────────────────
+// ─── Student Search by Name & Details ─────────────────────────────────────────
+export async function fetchStudentDetails(studentId: number | string): Promise<any | null> {
+  const data = await safeGet(`/students/${studentId}`);
+  return data?.data || null;
+}
+
 export async function fetchStudentByName(nameQuery: string): Promise<any[]> {
   const q = nameQuery.toLowerCase().trim();
-  const data = await safeGet('/students', { limit: 250 });
-  if (!data?.data || !Array.isArray(data.data)) return [];
+  const data = await safeGet('/students', { limit: 250, search: q });
+  let list: any[] = [];
+  
+  if (data?.data && Array.isArray(data.data)) {
+    list = data.data;
+  } else {
+    // Fallback: fetch general list and filter locally
+    const fallback = await safeGet('/students', { limit: 250 });
+    if (fallback?.data && Array.isArray(fallback.data)) {
+      list = fallback.data.filter((s: any) => {
+        const fullName = `${s.first_name || ''} ${s.last_name || ''}`.toLowerCase();
+        const phone = (s.phone || '').toLowerCase();
+        const room = String(s.room_number || '').toLowerCase();
+        return fullName.includes(q) || phone.includes(q) || room.includes(q);
+      });
+    }
+  }
 
-  return data.data.filter((s: any) => {
-    const fullName = `${s.first_name || ''} ${s.last_name || ''}`.toLowerCase();
-    const phone = (s.phone || '').toLowerCase();
-    return fullName.includes(q) || phone.includes(q);
-  });
+  // Hydrate top matches with full detailed profile (guardian, payments, dues, documents)
+  const hydrated = await Promise.all(
+    list.slice(0, 5).map(async (s: any) => {
+      if (s.student_id) {
+        try {
+          const detail = await fetchStudentDetails(s.student_id);
+          if (detail) return { ...s, ...detail };
+        } catch {}
+      }
+      return s;
+    })
+  );
+
+  return hydrated.length > 0 ? hydrated : list;
 }
 
 export async function fetchNoticesCount(): Promise<number> {

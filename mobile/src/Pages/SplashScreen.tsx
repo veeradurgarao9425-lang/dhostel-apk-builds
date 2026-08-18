@@ -149,7 +149,9 @@ export default function SplashScreen({ navigation }: any) {
       <StatusBar hidden />
       <LinearGradient
         colors={[COLORS.gradientStart, COLORS.gradientEnd, COLORS.primaryDark]}
-        style={[styles.gradient, { paddingBottom: Math.max(insets.bottom + 12, 24) }]}
+        // Clear the gesture-nav bar, then add a fixed breathing gap on top of it
+        // so the footer reads as placed rather than pinned to the screen edge.
+        style={[styles.gradient, { paddingBottom: Math.max(insets.bottom, 12) + 28 }]}
         start={{ x: 0.2, y: 0 }}
         end={{ x: 0.8, y: 1 }}
       >
@@ -326,7 +328,8 @@ const styles = StyleSheet.create({
   footer: {
     textAlign: 'center',
     fontSize: FONT.sm,
-    color: 'rgba(255,255,255,0.5)',
+    color: 'rgba(255,255,255,0.55)',
     fontWeight: FONT.medium,
+    letterSpacing: 0.4,
   },
 });

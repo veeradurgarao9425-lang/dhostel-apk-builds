@@ -1,11 +1,10 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import {
     View,
     Text,
     StyleSheet,
     TextInput,
     TouchableOpacity,
-    KeyboardAvoidingView,
     Platform,
     StatusBar,
     Dimensions,
@@ -19,6 +18,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useKeyboardInset } from '../hooks/useKeyboardInset';
 
 const { width, height } = Dimensions.get('window');
 const isSmall = height < 700;
@@ -41,23 +41,10 @@ export default function LoginScreen({ navigation }: any) {
     const scrollRef = useRef<ScrollView>(null);
     const passwordRef = useRef<TextInput>(null);
 
-    const [keyboardHeight, setKeyboardHeight] = useState(0);
-
-    useEffect(() => {
-        const showSubscription = Keyboard.addListener(
-            Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
-            (e) => setKeyboardHeight(e.endCoordinates.height)
-        );
-        const hideSubscription = Keyboard.addListener(
-            Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
-            () => setKeyboardHeight(0)
-        );
-
-        return () => {
-            showSubscription.remove();
-            hideSubscription.remove();
-        };
-    }, []);
+    // Keyboard handling. Replaces KeyboardAvoidingView(behavior="height"), whose
+    // stale container height was leaving a grey band along the bottom of this
+    // screen after you typed into a field. See useKeyboardInset for the details.
+    const { keyboardHeight, keyboardInset, onContainerLayout } = useKeyboardInset();
 
     const validateField = (name: string, value: string) => {
         let err = '';
@@ -119,9 +106,12 @@ export default function LoginScreen({ navigation }: any) {
     };
 
     return (
-        <KeyboardAvoidingView
-            style={{ flex: 1, backgroundColor: '#FFFFFF' }}
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        <View
+            style={[
+                { flex: 1, backgroundColor: '#FFFFFF' },
+                keyboardInset > 0 && { paddingBottom: keyboardInset },
+            ]}
+            onLayout={onContainerLayout}
         >
             <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
@@ -294,7 +284,7 @@ export default function LoginScreen({ navigation }: any) {
                     <Text style={styles.bottomBrandingText}>Powered by Hostix • PG OS</Text>
                 </View>
             </ScrollView>
-        </KeyboardAvoidingView>
+        </View>
     );
 }
 

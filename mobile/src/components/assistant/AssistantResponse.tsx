@@ -4,10 +4,10 @@
  * All content blocks are pure display components; data is fetched by parent.
  */
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  ActivityIndicator, Animated, Dimensions, DeviceEventEmitter, Linking
+  ActivityIndicator, Animated, Dimensions, DeviceEventEmitter, Linking, Image
 } from 'react-native';
 
 import { Ionicons } from '@expo/vector-icons';
@@ -967,80 +967,477 @@ const InfoTipBlock = ({ text, icon, color }: { text: string; icon?: string; colo
   );
 };
 
-// ─── Student Detail Card Block ───────────────────────────────────────────────
+// ─── Photo Resolver Helper ───────────────────────────────────────────────────
+const resolveStudentPhotoUri = (rawPhoto?: string | null) => {
+  if (!rawPhoto || typeof rawPhoto !== 'string' || rawPhoto.trim() === '' || rawPhoto.trim() === 'null') return null;
+  const raw = rawPhoto.trim();
+  if (raw.startsWith('http://') || raw.startsWith('https://')) return raw;
+  if (raw.startsWith('media/') || raw.startsWith('photos/') || raw.startsWith('documents/')) {
+    return `http://143.244.131.69:8081/api/media/${raw.replace(/^media\//, '')}`;
+  }
+  return `http://143.244.131.69:8081${raw.startsWith('/') ? '' : '/'}${raw}`;
+};
+
+// ─── Student Detail Accordion Card Block ──────────────────────────────────────
 const StudentDetailCardBlock = ({ student }: { student: any }) => {
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
+    basic: true,
+    personal: false,
+    guardian: false,
+    payments: false,
+    documents: false,
+    timeline: false,
+  });
+
+  const toggleSection = (key: string) => {
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    } catch {}
+    setExpandedSections(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
   const name = `${student.first_name || ''} ${student.last_name || ''}`.trim() || student.name || 'Student';
   const initial = name.charAt(0).toUpperCase();
   const room = student.room_number || student.roomNumber || 'Unassigned';
-  const bed = student.bed_number || student.bedNumber || 'N/A';
-  const phone = student.phone || student.mobile || 'No phone recorded';
+  const bed = student.bed_name || student.bed_no || student.bed_number || student.bedNumber || 'N/A';
+  const phone = student.phone || student.mobile || '';
+  const email = student.email || '';
   const rent = student.monthly_rent || student.rent || 0;
+  const deposit = student.deposit_amount || student.security_deposit || 0;
+  const maintenance = student.maintenance_fee || 0;
   const status = student.status === 1 ? 'Active' : student.status === 0 ? 'Left / Vacated' : student.status === 2 ? 'Pre-Booked' : 'Pending';
   const statusColor = student.status === 1 ? '#10B981' : student.status === 0 ? '#64748B' : '#F59E0B';
 
-  const rawJoiningDate = student.joining_date || student.created_at;
+  const rawJoiningDate = student.admission_date || student.joining_date || student.created_at;
   const joiningDateStr = rawJoiningDate ? new Date(rawJoiningDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'N/A';
+  
+  const photoUri = resolveStudentPhotoUri(student.photo);
+  const [imgError, setImgError] = useState(false);
+
+  const payments = Array.isArray(student.payment_history) ? student.payment_history : [];
+  const dues = Array.isArray(student.pending_dues) ? student.pending_dues : [];
+  const totalDueAmount = dues.reduce((acc: number, d: any) => acc + Number(d.balance || d.amount || 0), 0);
+
+  const aadhaarNumber = student.aadhaar_card_number || student.id_proof_number || (student.id_proof ? 'On File' : null);
+  const documentsCount = (student.aadhaar_card_photo ? 1 : 0) + (student.student_id_proof_photo ? 1 : 0) + (aadhaarNumber ? 1 : 0);
 
   return (
-    <View style={st.detailCardContainer}>
-      <View style={st.detailCardHeader}>
-        <View style={[st.avatarCircle, { backgroundColor: '#EEF2FF' }]}>
-          <Text style={{ fontSize: 18, fontWeight: '800', color: '#4F46E5' }}>{initial}</Text>
+    <View style={st.accordionCardContainer}>
+      {/* ── 1. PROFILE HEADER ── */}
+      <View style={st.accordionProfileHeader}>
+        <View style={st.accordionAvatarWrap}>
+          {photoUri && !imgError ? (
+            <Image
+              source={{ uri: photoUri }}
+              style={st.accordionAvatarImg}
+              onError={() => setImgError(true)}
+            />
+          ) : (
+            <View style={[st.accordionAvatarCircle, { backgroundColor: '#4F46E5' }]}>
+              <Text style={st.accordionAvatarLetter}>{initial}</Text>
+            </View>
+          )}
         </View>
-        <View style={{ flex: 1 }}>
-          <Text style={st.detailCardName}>{name}</Text>
-          <Text style={st.detailCardSub}>Phone: {phone}</Text>
-        </View>
-        <View style={[st.listItemBadge, { backgroundColor: statusColor + '18' }]}>
-          <Text style={[st.listItemBadgeText, { color: statusColor }]}>{status}</Text>
+
+        <View style={{ flex: 1, marginLeft: 12 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Text style={st.accordionProfileName} numberOfLines={1}>{name}</Text>
+            <View style={[st.accordionStatusBadge, { backgroundColor: statusColor + '15' }]}>
+              <View style={[st.accordionStatusDot, { backgroundColor: statusColor }]} />
+              <Text style={[st.accordionStatusText, { color: statusColor }]}>{status}</Text>
+            </View>
+          </View>
+
+          <Text style={st.accordionProfileSubtitle} numberOfLines={1}>
+            {student.college_or_working_company || student.occupation || 'Hostel Resident'}
+          </Text>
+
+          <View style={st.accordionPillRow}>
+            <View style={st.accordionRoomPill}>
+              <Ionicons name="bed-outline" size={11} color="#4F46E5" />
+              <Text style={st.accordionRoomPillText}>Room {room} • Bed {bed}</Text>
+            </View>
+            <Text style={st.accordionRentText}>{INR(rent)}/mo</Text>
+          </View>
         </View>
       </View>
 
-      <View style={st.detailGrid}>
-        <View style={st.detailGridItem}>
-          <Text style={st.detailGridLabel}>Room / Bed</Text>
-          <Text style={st.detailGridVal}>Rm {room} • Bed {bed}</Text>
-        </View>
-        <View style={st.detailGridItem}>
-          <Text style={st.detailGridLabel}>Joined Date</Text>
-          <Text style={st.detailGridVal}>{joiningDateStr}</Text>
-        </View>
-        <View style={st.detailGridItem}>
-          <Text style={st.detailGridLabel}>Monthly Rent</Text>
-          <Text style={[st.detailGridVal, { color: '#10B981' }]}>{INR(rent)}</Text>
-        </View>
+      {/* ── 2. QUICK ACTION BUTTONS ── */}
+      <View style={st.accordionActionRow}>
+        {phone ? (
+          <>
+            <TouchableOpacity
+              style={[st.accordionQuickBtn, { backgroundColor: '#ECFDF5', borderColor: '#A7F3D0' }]}
+              onPress={() => Linking.openURL(`tel:${phone}`)}
+              activeOpacity={0.75}
+            >
+              <Ionicons name="call" size={13} color="#10B981" />
+              <Text style={[st.accordionQuickBtnText, { color: '#059669' }]}>Call</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[st.accordionQuickBtn, { backgroundColor: '#F0FDF4', borderColor: '#BBF7D0' }]}
+              onPress={() => Linking.openURL(`https://wa.me/91${phone.replace(/[^0-9]/g, '')}`)}
+              activeOpacity={0.75}
+            >
+              <Ionicons name="logo-whatsapp" size={13} color="#16A34A" />
+              <Text style={[st.accordionQuickBtnText, { color: '#16A34A' }]}>WhatsApp</Text>
+            </TouchableOpacity>
+          </>
+        ) : null}
+
+        <TouchableOpacity
+          style={[st.accordionQuickBtn, { backgroundColor: '#EEF2FF', borderColor: '#C7D2FE', flex: 1.2 }]}
+          onPress={() => {
+            if (student.student_id) {
+              RootNavigation.navigate('StudentDetails', { studentId: student.student_id });
+            } else {
+              RootNavigation.navigate('Students');
+            }
+            DeviceEventEmitter.emit('CLOSE_ASSISTANT');
+          }}
+          activeOpacity={0.75}
+        >
+          <Ionicons name="person" size={13} color="#4F46E5" />
+          <Text style={[st.accordionQuickBtnText, { color: '#4F46E5' }]}>Full Profile</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[st.accordionQuickBtn, { backgroundColor: '#4F46E5', borderColor: '#4F46E5', flex: 1.2 }]}
+          onPress={() => {
+            RootNavigation.navigate('CollectedPayments');
+            DeviceEventEmitter.emit('CLOSE_ASSISTANT');
+          }}
+          activeOpacity={0.75}
+        >
+          <Ionicons name="cash" size={13} color="#FFF" />
+          <Text style={[st.accordionQuickBtnText, { color: '#FFF' }]}>Payments</Text>
+        </TouchableOpacity>
       </View>
 
-      <View style={{ flexDirection: 'row', gap: 6, marginTop: 10 }}>
-        {phone !== 'No phone recorded' && (
+      {/* ── 3. ACCORDION SECTIONS ── */}
+      <View style={st.accordionListWrap}>
+
+        {/* ── SECTION 1: Basic & Room Details ── */}
+        <View style={st.accordionItem}>
           <TouchableOpacity
-            style={[st.actionBtn, { backgroundColor: '#ECFDF5', borderColor: '#A7F3D0', borderWidth: 1, flex: 1, justifyContent: 'center' }]}
-            onPress={() => Linking.openURL(`tel:${phone}`)}
+            style={st.accordionHeader}
+            onPress={() => toggleSection('basic')}
+            activeOpacity={0.7}
           >
-            <Ionicons name="call-outline" size={14} color="#10B981" style={{ marginRight: 4 }} />
-            <Text style={[st.actionBtnText, { color: '#10B981' }]}>Call</Text>
+            <View style={[st.accordionIconCircle, { backgroundColor: '#EEF2FF' }]}>
+              <Ionicons name="person-outline" size={16} color="#4F46E5" />
+            </View>
+            <Text style={st.accordionTitle}>Basic details</Text>
+            <Ionicons
+              name={expandedSections.basic ? "chevron-up" : "chevron-down"}
+              size={18}
+              color="#64748B"
+            />
           </TouchableOpacity>
-        )}
-        <TouchableOpacity
-          style={[st.actionBtn, st.actionBtnPrimary, { flex: 1, justifyContent: 'center' }]}
-          onPress={() => {
-            RootNavigation.navigate('Students');
-            DeviceEventEmitter.emit('CLOSE_ASSISTANT');
-          }}
-        >
-          <Ionicons name="person-outline" size={14} color="#FFF" style={{ marginRight: 4 }} />
-          <Text style={[st.actionBtnText, { color: '#FFF' }]}>Profile</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[st.actionBtn, st.actionBtnOutline, { flex: 1, justifyContent: 'center' }]}
-          onPress={() => {
-            RootNavigation.navigate('PendingPayments');
-            DeviceEventEmitter.emit('CLOSE_ASSISTANT');
-          }}
-        >
-          <Ionicons name="cash-outline" size={14} color="#4F46E5" style={{ marginRight: 4 }} />
-          <Text style={[st.actionBtnText, { color: '#4F46E5' }]}>Collect Rent</Text>
-        </TouchableOpacity>
+
+          {expandedSections.basic && (
+            <View style={st.accordionContent}>
+              <View style={st.accordionRow}>
+                <Ionicons name="location-outline" size={15} color="#3B82F6" style={st.rowIcon} />
+                <Text style={st.rowText}>{student.hostel_name || 'Hostix PG, Hyderabad'}</Text>
+              </View>
+
+              <View style={st.accordionRow}>
+                <Ionicons name="business-outline" size={15} color="#0EA5E9" style={st.rowIcon} />
+                <Text style={st.rowText}>Room {room} • Bed {bed} • {student.room_type_name || 'Standard AC/Non-AC'}</Text>
+              </View>
+
+              <View style={st.accordionRow}>
+                <Ionicons name="calendar-outline" size={15} color="#6366F1" style={st.rowIcon} />
+                <Text style={st.rowText}>Joined: {joiningDateStr}</Text>
+              </View>
+
+              <View style={st.accordionRow}>
+                <Ionicons name="wallet-outline" size={15} color="#10B981" style={st.rowIcon} />
+                <Text style={st.rowText}>Monthly Rent: <Text style={{ fontWeight: '700', color: '#10B981' }}>{INR(rent)}</Text> {deposit > 0 ? `• Deposit: ${INR(deposit)}` : ''}</Text>
+              </View>
+
+              {email ? (
+                <View style={st.accordionRow}>
+                  <Ionicons name="mail-outline" size={15} color="#3B82F6" style={st.rowIcon} />
+                  <Text style={[st.rowText, { flex: 1 }]}>{email}</Text>
+                  <Ionicons name="checkmark-circle" size={16} color="#10B981" />
+                </View>
+              ) : null}
+
+              {phone ? (
+                <View style={st.accordionRow}>
+                  <Ionicons name="call-outline" size={15} color="#10B981" style={st.rowIcon} />
+                  <Text style={[st.rowText, { flex: 1 }]}>{phone}</Text>
+                  <Ionicons name="checkmark-circle" size={16} color="#10B981" />
+                </View>
+              ) : null}
+
+              {student.college_or_working_company ? (
+                <View style={st.accordionRow}>
+                  <Ionicons name="briefcase-outline" size={15} color="#8B5CF6" style={st.rowIcon} />
+                  <Text style={st.rowText}>{student.college_or_working_company}</Text>
+                </View>
+              ) : null}
+            </View>
+          )}
+        </View>
+
+        {/* ── SECTION 2: Personal Details ── */}
+        <View style={st.accordionItem}>
+          <TouchableOpacity
+            style={st.accordionHeader}
+            onPress={() => toggleSection('personal')}
+            activeOpacity={0.7}
+          >
+            <View style={[st.accordionIconCircle, { backgroundColor: '#F0FDF4' }]}>
+              <Ionicons name="id-card-outline" size={16} color="#16A34A" />
+            </View>
+            <Text style={st.accordionTitle}>Personal details</Text>
+            <Ionicons
+              name={expandedSections.personal ? "chevron-up" : "chevron-down"}
+              size={18}
+              color="#64748B"
+            />
+          </TouchableOpacity>
+
+          {expandedSections.personal && (
+            <View style={st.accordionContent}>
+              <View style={st.accordionRow}>
+                <Ionicons name="male-female-outline" size={15} color="#64748B" style={st.rowIcon} />
+                <Text style={st.rowText}>Gender: <Text style={{ fontWeight: '600' }}>{student.gender || 'Not specified'}</Text></Text>
+              </View>
+
+              {student.date_of_birth ? (
+                <View style={st.accordionRow}>
+                  <Ionicons name="gift-outline" size={15} color="#EC4899" style={st.rowIcon} />
+                  <Text style={st.rowText}>DOB: {new Date(student.date_of_birth).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</Text>
+                </View>
+              ) : null}
+
+              {student.blood_group ? (
+                <View style={st.accordionRow}>
+                  <Ionicons name="water-outline" size={15} color="#EF4444" style={st.rowIcon} />
+                  <Text style={st.rowText}>Blood Group: <Text style={{ fontWeight: '700', color: '#EF4444' }}>{student.blood_group}</Text></Text>
+                </View>
+              ) : null}
+
+              {student.permanent_address ? (
+                <View style={st.accordionRow}>
+                  <Ionicons name="home-outline" size={15} color="#059669" style={st.rowIcon} />
+                  <Text style={st.rowText}>Permanent: {student.permanent_address}</Text>
+                </View>
+              ) : null}
+
+              {student.present_working_address ? (
+                <View style={st.accordionRow}>
+                  <Ionicons name="navigate-outline" size={15} color="#0284C7" style={st.rowIcon} />
+                  <Text style={st.rowText}>Work / College Address: {student.present_working_address}</Text>
+                </View>
+              ) : null}
+            </View>
+          )}
+        </View>
+
+        {/* ── SECTION 3: Guardian Details ── */}
+        <View style={st.accordionItem}>
+          <TouchableOpacity
+            style={st.accordionHeader}
+            onPress={() => toggleSection('guardian')}
+            activeOpacity={0.7}
+          >
+            <View style={[st.accordionIconCircle, { backgroundColor: '#FEF3C7' }]}>
+              <Ionicons name="shield-checkmark-outline" size={16} color="#D97706" />
+            </View>
+            <Text style={st.accordionTitle}>Guardian & Emergency contact</Text>
+            <Ionicons
+              name={expandedSections.guardian ? "chevron-up" : "chevron-down"}
+              size={18}
+              color="#64748B"
+            />
+          </TouchableOpacity>
+
+          {expandedSections.guardian && (
+            <View style={st.accordionContent}>
+              <View style={st.accordionRow}>
+                <Ionicons name="people-outline" size={15} color="#D97706" style={st.rowIcon} />
+                <Text style={st.rowText}>Guardian: <Text style={{ fontWeight: '700' }}>{student.guardian_name || 'Not provided'}</Text> ({student.guardian_relation || 'Parent'})</Text>
+              </View>
+
+              {student.guardian_phone ? (
+                <View style={st.accordionRow}>
+                  <Ionicons name="call-outline" size={15} color="#10B981" style={st.rowIcon} />
+                  <Text style={[st.rowText, { flex: 1 }]}>{student.guardian_phone}</Text>
+                  <TouchableOpacity
+                    style={[st.accordionMiniBtn, { backgroundColor: '#ECFDF5' }]}
+                    onPress={() => Linking.openURL(`tel:${student.guardian_phone}`)}
+                  >
+                    <Ionicons name="call" size={12} color="#10B981" />
+                    <Text style={st.accordionMiniBtnText}>Call</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <Text style={st.rowMutedText}>No guardian contact number recorded.</Text>
+              )}
+            </View>
+          )}
+        </View>
+
+        {/* ── SECTION 4: Payment & Dues History ── */}
+        <View style={st.accordionItem}>
+          <TouchableOpacity
+            style={st.accordionHeader}
+            onPress={() => toggleSection('payments')}
+            activeOpacity={0.7}
+          >
+            <View style={[st.accordionIconCircle, { backgroundColor: '#FEE2E2' }]}>
+              <Ionicons name="cash-outline" size={16} color="#EF4444" />
+            </View>
+            <Text style={st.accordionTitle}>Payment & Dues history</Text>
+            {dues.length > 0 ? (
+              <View style={st.accordionCountBadge}>
+                <Text style={st.accordionCountBadgeText}>{dues.length} Due</Text>
+              </View>
+            ) : payments.length > 0 ? (
+              <View style={[st.accordionCountBadge, { backgroundColor: '#ECFDF5' }]}>
+                <Text style={[st.accordionCountBadgeText, { color: '#10B981' }]}>{payments.length} Paid</Text>
+              </View>
+            ) : null}
+            <Ionicons
+              name={expandedSections.payments ? "chevron-up" : "chevron-down"}
+              size={18}
+              color="#64748B"
+            />
+          </TouchableOpacity>
+
+          {expandedSections.payments && (
+            <View style={st.accordionContent}>
+              {/* Due summary card */}
+              <View style={[st.accordionSubCard, { backgroundColor: totalDueAmount > 0 ? '#FEF2F2' : '#F0FDF4', borderColor: totalDueAmount > 0 ? '#FECACA' : '#BBF7D0' }]}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Text style={{ fontSize: 12, fontWeight: '600', color: totalDueAmount > 0 ? '#991B1B' : '#166534' }}>
+                    {totalDueAmount > 0 ? 'Pending Outstanding Rent' : 'All Dues Cleared'}
+                  </Text>
+                  <Text style={{ fontSize: 13, fontWeight: '800', color: totalDueAmount > 0 ? '#EF4444' : '#10B981' }}>
+                    {INR(totalDueAmount)}
+                  </Text>
+                </View>
+              </View>
+
+              {/* Payments list */}
+              {payments.length > 0 ? (
+                <View style={{ marginTop: 8 }}>
+                  <Text style={st.sectionSubHeader}>Recent Transactions ({payments.length})</Text>
+                  {payments.slice(0, 4).map((p: any, idx: number) => (
+                    <View key={idx} style={st.paymentRow}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={st.paymentForText}>{p.payment_for_month || 'Monthly Rent Payment'}</Text>
+                        <Text style={st.paymentDateText}>
+                          {p.payment_date ? new Date(p.payment_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Recent'} • {p.payment_mode_name || p.payment_mode || 'Cash'}
+                        </Text>
+                      </View>
+                      <Text style={st.paymentAmountText}>+{INR(p.amount_paid || p.amount || 0)}</Text>
+                    </View>
+                  ))}
+                </View>
+              ) : (
+                <Text style={[st.rowMutedText, { marginTop: 6 }]}>No recent payment records found.</Text>
+              )}
+            </View>
+          )}
+        </View>
+
+        {/* ── SECTION 5: Documents & ID Proofs ── */}
+        <View style={st.accordionItem}>
+          <TouchableOpacity
+            style={st.accordionHeader}
+            onPress={() => toggleSection('documents')}
+            activeOpacity={0.7}
+          >
+            <View style={[st.accordionIconCircle, { backgroundColor: '#F3E8FF' }]}>
+              <Ionicons name="document-text-outline" size={16} color="#9333EA" />
+            </View>
+            <Text style={st.accordionTitle}>Documents & Verification</Text>
+            {documentsCount > 0 ? (
+              <View style={[st.accordionCountBadge, { backgroundColor: '#F3E8FF' }]}>
+                <Text style={[st.accordionCountBadgeText, { color: '#9333EA' }]}>{documentsCount}</Text>
+              </View>
+            ) : null}
+            <Ionicons
+              name={expandedSections.documents ? "chevron-up" : "chevron-down"}
+              size={18}
+              color="#64748B"
+            />
+          </TouchableOpacity>
+
+          {expandedSections.documents && (
+            <View style={st.accordionContent}>
+              <View style={st.accordionRow}>
+                <Ionicons name="card-outline" size={15} color="#9333EA" style={st.rowIcon} />
+                <Text style={st.rowText}>Govt ID / Aadhaar: <Text style={{ fontWeight: '700' }}>{aadhaarNumber || 'Verified'}</Text></Text>
+              </View>
+
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
+                <View style={[st.docPill, { backgroundColor: student.aadhaar_card_photo ? '#ECFDF5' : '#F8FAFC' }]}>
+                  <Ionicons name={student.aadhaar_card_photo ? "checkmark-circle" : "document-attach-outline"} size={13} color={student.aadhaar_card_photo ? "#10B981" : "#94A3B8"} />
+                  <Text style={[st.docPillText, { color: student.aadhaar_card_photo ? "#059669" : "#64748B" }]}>Aadhaar Card</Text>
+                </View>
+
+                <View style={[st.docPill, { backgroundColor: student.student_id_proof_photo ? '#ECFDF5' : '#F8FAFC' }]}>
+                  <Ionicons name={student.student_id_proof_photo ? "checkmark-circle" : "document-attach-outline"} size={13} color={student.student_id_proof_photo ? "#10B981" : "#94A3B8"} />
+                  <Text style={[st.docPillText, { color: student.student_id_proof_photo ? "#059669" : "#64748B" }]}>Student / Org ID</Text>
+                </View>
+
+                <View style={[st.docPill, { backgroundColor: photoUri ? '#ECFDF5' : '#F8FAFC' }]}>
+                  <Ionicons name={photoUri ? "checkmark-circle" : "camera-outline"} size={13} color={photoUri ? "#10B981" : "#94A3B8"} />
+                  <Text style={[st.docPillText, { color: photoUri ? "#059669" : "#64748B" }]}>Profile Photo</Text>
+                </View>
+              </View>
+            </View>
+          )}
+        </View>
+
+        {/* ── SECTION 6: Timeline & Stay Info ── */}
+        <View style={[st.accordionItem, { borderBottomWidth: 0 }]}>
+          <TouchableOpacity
+            style={st.accordionHeader}
+            onPress={() => toggleSection('timeline')}
+            activeOpacity={0.7}
+          >
+            <View style={[st.accordionIconCircle, { backgroundColor: '#E0F2FE' }]}>
+              <Ionicons name="time-outline" size={16} color="#0284C7" />
+            </View>
+            <Text style={st.accordionTitle}>Stay timeline & Plan</Text>
+            <Ionicons
+              name={expandedSections.timeline ? "chevron-up" : "chevron-down"}
+              size={18}
+              color="#64748B"
+            />
+          </TouchableOpacity>
+
+          {expandedSections.timeline && (
+            <View style={st.accordionContent}>
+              <View style={st.accordionRow}>
+                <Ionicons name="log-in-outline" size={15} color="#10B981" style={st.rowIcon} />
+                <Text style={st.rowText}>Check-in Date: <Text style={{ fontWeight: '600' }}>{joiningDateStr}</Text></Text>
+              </View>
+
+              <View style={st.accordionRow}>
+                <Ionicons name="repeat-outline" size={15} color="#6366F1" style={st.rowIcon} />
+                <Text style={st.rowText}>Billing Plan: <Text style={{ fontWeight: '600' }}>{student.fee_plan ? `${student.fee_plan} Months Duration` : 'Monthly Cycle'}</Text></Text>
+              </View>
+
+              {student.plan_end_date ? (
+                <View style={st.accordionRow}>
+                  <Ionicons name="flag-outline" size={15} color="#F59E0B" style={st.rowIcon} />
+                  <Text style={st.rowText}>Plan End / Renewal: <Text style={{ fontWeight: '600' }}>{new Date(student.plan_end_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</Text></Text>
+                </View>
+              ) : null}
+            </View>
+          )}
+        </View>
+
       </View>
     </View>
   );
@@ -1441,21 +1838,35 @@ const StudentListCardBlock = ({ title, students }: { title: string; students: an
         <Text style={{ fontSize: 12, color: '#94A3B8', fontStyle: 'italic', paddingVertical: 6 }}>No records found for this category.</Text>
       ) : (
         <View style={{ gap: 8 }}>
-          {students.slice(0, 6).map((s, idx) => (
-            <View key={idx} style={st.listItem}>
-              <View style={{ flex: 1 }}>
-                <Text style={st.listItemName}>{s.name || `${s.first_name || ''} ${s.last_name || ''}`.trim()}</Text>
-                <Text style={st.listItemSub}>
-                  Room: {s.roomNumber || s.room_number || 'N/A'} {s.paidAmount ? `• Paid: ${INR(s.paidAmount)}` : ''} {s.phone ? `• ${s.phone}` : ''}
-                </Text>
-              </View>
-              {s.badgeText ? (
-                <View style={[st.listItemBadge, { backgroundColor: s.badgeColor || '#EEF2FF' }]}>
-                  <Text style={[st.listItemBadgeText, { color: s.badgeTextColor || '#4F46E5' }]}>{s.badgeText}</Text>
+          {students.slice(0, 6).map((s, idx) => {
+            const studentId = s.student_id || s.studentId || s.id;
+            return (
+              <TouchableOpacity
+                key={idx}
+                style={st.listItem}
+                activeOpacity={0.75}
+                onPress={() => {
+                  if (studentId) {
+                    RootNavigation.navigate('StudentDetails', { studentId });
+                    DeviceEventEmitter.emit('CLOSE_ASSISTANT');
+                  }
+                }}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={st.listItemName}>{s.name || `${s.first_name || ''} ${s.last_name || ''}`.trim()}</Text>
+                  <Text style={st.listItemSub}>
+                    Room: {s.roomNumber || s.room_number || 'N/A'} {s.paidAmount ? `• Paid: ${INR(s.paidAmount)}` : ''} {s.phone ? `• ${s.phone}` : ''}
+                  </Text>
                 </View>
-              ) : null}
-            </View>
-          ))}
+                {s.badgeText ? (
+                  <View style={[st.listItemBadge, { backgroundColor: s.badgeColor || '#EEF2FF', marginRight: 6 }]}>
+                    <Text style={[st.listItemBadgeText, { color: s.badgeTextColor || '#4F46E5' }]}>{s.badgeText}</Text>
+                  </View>
+                ) : null}
+                <Ionicons name="chevron-forward" size={14} color="#94A3B8" />
+              </TouchableOpacity>
+            );
+          })}
         </View>
       )}
     </View>
@@ -2187,7 +2598,258 @@ const st = StyleSheet.create({
     color: '#1E293B',
   },
 
-
+  // ── Accordion Student Profile Card Styles ──
+  accordionCardContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    overflow: 'hidden',
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 3,
+    marginVertical: 4,
+  },
+  accordionProfileHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: '#F8FAFC',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  accordionAvatarWrap: {
+    position: 'relative',
+  },
+  accordionAvatarImg: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#E2E8F0',
+  },
+  accordionAvatarCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  accordionAvatarLetter: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  accordionProfileName: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#0F172A',
+    flex: 1,
+  },
+  accordionProfileSubtitle: {
+    fontSize: 12,
+    color: '#64748B',
+    fontWeight: '500',
+    marginTop: 2,
+  },
+  accordionStatusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+  },
+  accordionStatusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  accordionStatusText: {
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  accordionPillRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 6,
+  },
+  accordionRoomPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#EEF2FF',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  accordionRoomPillText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#4F46E5',
+  },
+  accordionRentText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#10B981',
+  },
+  accordionActionRow: {
+    flexDirection: 'row',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+    backgroundColor: '#FFFFFF',
+  },
+  accordionQuickBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    paddingVertical: 7,
+    paddingHorizontal: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  accordionQuickBtnText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  accordionListWrap: {
+    backgroundColor: '#FFFFFF',
+  },
+  accordionItem: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  accordionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 13,
+  },
+  accordionIconCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  accordionTitle: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1E293B',
+  },
+  accordionCountBadge: {
+    backgroundColor: '#FEE2E2',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 10,
+    marginRight: 8,
+  },
+  accordionCountBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#EF4444',
+  },
+  accordionContent: {
+    paddingHorizontal: 16,
+    paddingBottom: 14,
+    paddingTop: 2,
+    gap: 8,
+  },
+  accordionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  rowIcon: {
+    width: 18,
+  },
+  rowText: {
+    fontSize: 12.5,
+    color: '#334155',
+    lineHeight: 18,
+    fontWeight: '500',
+    flex: 1,
+  },
+  rowMutedText: {
+    fontSize: 11.5,
+    color: '#94A3B8',
+    fontStyle: 'italic',
+  },
+  accordionMiniBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+  },
+  accordionMiniBtnText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#059669',
+  },
+  accordionSubCard: {
+    padding: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    marginTop: 2,
+  },
+  sectionSubHeader: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#64748B',
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+    marginBottom: 4,
+  },
+  paymentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  paymentForText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#1E293B',
+  },
+  paymentDateText: {
+    fontSize: 10.5,
+    color: '#64748B',
+    marginTop: 1,
+  },
+  paymentAmountText: {
+    fontSize: 12.5,
+    fontWeight: '800',
+    color: '#10B981',
+  },
+  docPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  docPillText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
 });
 
 

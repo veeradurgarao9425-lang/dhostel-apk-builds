@@ -907,8 +907,11 @@ export default function PendingPaymentsScreen() {
             });
 
             // Compute dynamic live tab counts from students
-            const overdueCount = pending.filter(s => s.isOverdue).length;
-            const overdueAmount = pending.filter(s => s.isOverdue).reduce((sum, s) => sum + s.dueAmount, 0);
+            // Settled records keep isOverdue === true (the due date is still in
+            // the past), so the balance check keeps them out of the Overdue
+            // count — matching the tab filter below.
+            const overdueCount = pending.filter(s => s.isOverdue && s.dueAmount > 0).length;
+            const overdueAmount = pending.filter(s => s.isOverdue && s.dueAmount > 0).reduce((sum, s) => sum + s.dueAmount, 0);
             const next7Count = pending.filter(s => !s.isOverdue && s.dueAmount > 0 && s.paidAmount === 0).length;
             const next7Amount = pending.filter(s => !s.isOverdue && s.dueAmount > 0 && s.paidAmount === 0).reduce((sum, s) => sum + s.dueAmount, 0);
             const partialCount = pending.filter(s => s.paidAmount > 0 && s.dueAmount > 0 && !s.isOverdue).length;
@@ -1104,7 +1107,12 @@ export default function PendingPaymentsScreen() {
         const diffDays = Math.floor((dueObj.getTime() - now.getTime()) / 86400000);
 
         if (activeTab === 'Overdue') {
-            if (!t.isOverdue) return false;
+            // `isOverdue` only means the due date has passed (or carry-forward
+            // exists) — it stays true after the money is collected. Without the
+            // balance check a settled record kept showing under Overdue *and*
+            // Fully Paid at the same time. Once the balance is cleared the
+            // record belongs to Fully Paid only.
+            if (!t.isOverdue || t.dueAmount <= 0) return false;
         } else if (activeTab === 'Next 7 Days') {
             if (t.isOverdue || diffDays < 0 || diffDays > 7 || t.paidAmount > 0) return false;
         } else if (activeTab === 'Partially Paid') {

@@ -15,6 +15,7 @@ import { AppHeader } from '../components/AppHeader';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { downloadAndSaveFile } from '../utils/fileDownloader';
+import { generateReceiptHtml } from '../utils/receiptHtml';
 
 export const ReceiptScreen = ({ navigation, route }: any) => {
     const { feeData } = route.params || {};
@@ -69,308 +70,27 @@ export const ReceiptScreen = ({ navigation, route }: any) => {
     const amountLabel = isStaff ? 'Wage / Advance Paid' : 'Rent / Fee Paid';
     const recipientLabel = isStaff ? 'Paid To (Staff)' : 'Paid By (Student)';
 
-    const generateHtml = () => {
-        return `
-            <html>
-              <head>
-                <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-                <style>
-                  @page { margin: 20px; size: auto; }
-                  body {
-                    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-                    background-color: #ffffff;
-                    margin: 0;
-                    padding: 24px;
-                    color: #1e293b;
-                  }
-                  .receipt-container {
-                    width: 100%;
-                    max-width: 100%;
-                    background-color: #ffffff;
-                  }
-                  .document-title {
-                    text-align: center;
-                    font-size: 24px;
-                    font-weight: 900;
-                    color: #0f172a;
-                    margin-bottom: 24px;
-                    text-transform: uppercase;
-                    letter-spacing: 2px;
-                    border-bottom: 2px dashed #e2e8f0;
-                    padding-bottom: 16px;
-                  }
-                  .status-header {
-                    display: flex;
-                    align-items: center;
-                    gap: 16px;
-                    margin-bottom: 20px;
-                    padding-left: 8px;
-                  }
-                  .status-icon-circle {
-                    width: 48px;
-                    height: 48px;
-                    border-radius: 50%;
-                    background-color: #10B981;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    color: white;
-                    font-size: 24px;
-                    font-weight: bold;
-                  }
-                  .status-text-container {
-                    display: flex;
-                    flex-direction: column;
-                  }
-                  .status-title {
-                    font-size: 18px;
-                    font-weight: 700;
-                    color: #0f172a;
-                    margin: 0;
-                  }
-                  .status-time {
-                    font-size: 13px;
-                    color: #64748b;
-                    margin: 4px 0 0 0;
-                  }
-                  .receipt-card {
-                    background-color: #ffffff;
-                    border-radius: 16px;
-                    padding: 24px;
-                    border: 2px solid #e2e8f0;
-                  }
-                  .card-label {
-                    font-size: 12px;
-                    font-weight: 600;
-                    color: #64748b;
-                    text-transform: uppercase;
-                    letter-spacing: 0.5px;
-                    margin: 0 0 12px 0;
-                  }
-                  .paid-to-row {
-                    display: flex;
-                    align-items: center;
-                    justify-content: space-between;
-                    margin-bottom: 16px;
-                  }
-                  .avatar-info {
-                    display: flex;
-                    align-items: center;
-                    gap: 12px;
-                  }
-                  .avatar {
-                    width: 48px;
-                    height: 48px;
-                    border-radius: 50%;
-                    background-color: #00bcd4;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    color: white;
-                    font-size: 18px;
-                    font-weight: 700;
-                  }
-                  .info-text {
-                    display: flex;
-                    flex-direction: column;
-                  }
-                  .hostel-name {
-                    font-size: 15px;
-                    font-weight: 700;
-                    color: #0f172a;
-                    margin: 0;
-                    text-transform: uppercase;
-                  }
-                  .upi-id {
-                    font-size: 12px;
-                    color: #64748b;
-                    margin: 4px 0 0 0;
-                  }
-                  .amount {
-                    font-size: 24px;
-                    font-weight: 800;
-                    color: #0f172a;
-                  }
-                  .divider {
-                    height: 1px;
-                    background-color: #e2e8f0;
-                    margin: 16px 0;
-                  }
-                  .transfer-header {
-                    display: flex;
-                    align-items: center;
-                    justify-content: space-between;
-                    margin-bottom: 16px;
-                  }
-                  .transfer-title {
-                    font-size: 14px;
-                    font-weight: 700;
-                    color: #334155;
-                    margin: 0;
-                  }
-                  .chevron-icon {
-                    border: solid #64748b;
-                    border-width: 0 2px 2px 0;
-                    display: inline-block;
-                    padding: 3px;
-                    transform: rotate(-135deg);
-                  }
-                  .details-list {
-                    display: flex;
-                    flex-direction: column;
-                    gap: 12px;
-                  }
-                  .detail-group {
-                    display: flex;
-                    flex-direction: column;
-                  }
-                  .detail-label {
-                    font-size: 11px;
-                    color: #94a3b8;
-                    text-transform: uppercase;
-                    letter-spacing: 0.5px;
-                    margin-bottom: 4px;
-                  }
-                  .detail-value {
-                    font-size: 14px;
-                    font-weight: 600;
-                    color: #1e293b;
-                    margin: 0;
-                  }
-                  .debited-row {
-                    display: flex;
-                    align-items: center;
-                    justify-content: space-between;
-                  }
-                  .debited-left {
-                    display: flex;
-                    align-items: center;
-                    gap: 10px;
-                  }
-                  .bank-logo {
-                    width: 24px;
-                    height: 24px;
-                    border-radius: 50%;
-                    background-color: #10B981;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    color: white;
-                    font-size: 10px;
-                    font-weight: bold;
-                  }
-                  .footer {
-                    text-align: center;
-                    margin-top: 30px;
-                    display: flex;
-                    flex-direction: column;
-                    align-items: center;
-                    gap: 8px;
-                  }
-                  .powered-by {
-                    font-size: 12px;
-                    color: #94a3b8;
-                    margin: 0;
-                  }
-                  .logo-container {
-                    display: flex;
-                    align-items: center;
-                    gap: 6px;
-                  }
-                  .logo-hostix {
-                    font-weight: 800;
-                    color: #5f259f;
-                    font-size: 14px;
-                    letter-spacing: 1px;
-                  }
-                  .logo-dot {
-                    color: #10b981;
-                  }
-                </style>
-              </head>
-              <body>
-                <div class="receipt-container">
-                  <div class="document-title">${documentTitle}</div>
-                  <div class="status-header">
-                    <div class="status-icon-circle">
-                      <span style="font-size: 20px; line-height: 48px;">✓</span>
-                    </div>
-                    <div class="status-text-container">
-                      <h2 class="status-title">Payment Successful</h2>
-                      <p class="status-time">${transactionTime}</p>
-                    </div>
-                  </div>
-
-                  <div class="receipt-card">
-                    <h3 class="card-label">Paid to</h3>
-                    <div class="paid-to-row">
-                      <div class="avatar-info">
-                        <div class="avatar">${avatarInitials}</div>
-                        <div class="info-text">
-                          <h4 class="hostel-name">${hostelName}</h4>
-                          <p class="upi-id">${upiId}</p>
-                        </div>
-                      </div>
-                      <div class="amount">₹${amountPaid.toLocaleString('en-IN')}</div>
-                    </div>
-
-                    <div class="divider"></div>
-
-                    <div class="transfer-header">
-                      <h4 class="transfer-title">${recipientLabel}</h4>
-                    </div>
-
-                    <div class="details-list">
-                      <div class="detail-group">
-                        <span class="detail-label">Name</span>
-                        <span class="detail-value">${studentName}</span>
-                      </div>
-
-                      ${!isStaff ? `
-                      <div class="detail-group">
-                        <span class="detail-label">Room No.</span>
-                        <span class="detail-value">${roomNo}</span>
-                      </div>
-                      ` : ''}
-
-                      <div class="detail-group">
-                        <span class="detail-label">Message / Fee Month</span>
-                        <span class="detail-value">Rent for ${feeMonth}</span>
-                      </div>
-
-                      <div class="detail-group">
-                        <span class="detail-label">Receipt / Invoice No</span>
-                        <span class="detail-value">${receiptNo}</span>
-                      </div>
-
-                      <div class="detail-group">
-                        <span class="detail-label">Debited from</span>
-                        <div class="debited-row">
-                          <div class="debited-left">
-                            <div class="bank-logo">${paymentMode[0].toUpperCase()}</div>
-                            <span class="detail-value" style="font-weight: 500;">${paymentMode}</span>
-                          </div>
-                          <span class="amount" style="font-size: 14px; font-weight: 600;">₹${amountPaid.toLocaleString('en-IN')}</span>
-                        </div>
-                        ${transactionId && transactionId !== 'N/A' ? `
-                        <span class="detail-label" style="margin-top: 6px;">UTR / Reference ID</span>
-                        <span class="detail-value" style="font-size: 13px; color: #475569;">${transactionId}</span>
-                        ` : ''}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div class="footer">
-                    <p class="powered-by">Powered by</p>
-                    <div class="logo-container">
-                      <span class="logo-hostix">HOSTIX<span class="logo-dot">•</span>PG OS</span>
-                    </div>
-                  </div>
-                </div>
-              </body>
-            </html>
-        `;
-    };
+    const generateHtml = () => generateReceiptHtml({
+        documentTitle,
+        hostelName,
+        hostelAddress: (user as any)?.hostel_address || undefined,
+        ownerName: user?.full_name || user?.name || undefined,
+        ownerContact: user?.phone || undefined,
+        payerLabel: recipientLabel,
+        payerName: studentName,
+        payerContact: mobileNo,
+        roomNo,
+        isStaff,
+        receiptNo,
+        transactionTime,
+        paymentMode,
+        transactionId,
+        periodLabel: feeMonth,
+        amountPaid: parseFloat(String(amountPaid)) || 0,
+        duesAmount: parseFloat(String(feeData.total_due ?? feeData.dues_amount ?? amountPaid)) || 0,
+        netBalance: parseFloat(String(feeData.balance ?? 0)) || 0,
+        recordedBy: user?.full_name || user?.name || undefined,
+    });
 
     const sharePdf = async () => {
         try {

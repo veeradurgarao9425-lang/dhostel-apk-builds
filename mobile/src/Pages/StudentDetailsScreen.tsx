@@ -41,6 +41,7 @@ import { AppHeader } from '../components/AppHeader';
 import { useFocusEffect } from '@react-navigation/native';
 import { useConfirmation } from '../../contexts/ConfirmationContext';
 import { PaymentDrawer } from '../components/PaymentDrawer';
+import { PaymentSuccessSheet } from '../components/PaymentSuccessSheet';
 import { useRefresh } from '../../contexts/RefreshContext';
 import { ModalSheet } from '../components/FormComponents';
 
@@ -328,6 +329,51 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
         return isOverdue ? maxDays : null;
     }, [student]);
 
+    /**
+     * Shape the payment drawer expects.
+     *
+     * This screen used to hand PaymentDrawer `{ first_name, last_name,
+     * room_number, pending_dues }` — but the drawer reads `dueAmount /
+     * monthlyRent / carryForward / paidAmount`, and `pending_dues` is an ARRAY
+     * of monthly_fees rows. None of the aliases matched, so every figure in the
+     * breakdown silently fell back to 0. That's the "all 0 and 0" screen.
+     *
+     * Each pending_dues row is a monthly_fees record and already carries
+     * monthly_rent / carry_forward / paid_amount / balance, so the real numbers
+     * were there all along — they just needed mapping, the same way the Money
+     * tab's Pending Dues flow does it.
+     */
+    // Confirmation sheet shown after a payment is recorded (replaces the toast,
+    // which disappeared before the owner could read it).
+    const [successVisible, setSuccessVisible] = useState(false);
+    const [lastPayment, setLastPayment] = useState<any>(null);
+
+    const drawerFee = useMemo(() => {
+        if (!student) return null;
+        const now = new Date();
+        const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        // Latest due at or before the current month — same row `outstandingBalance` uses.
+        const current = (student.pending_dues || [])
+            .filter((d: any) => !d.fee_month || d.fee_month <= currentMonth)
+            .sort((a: any, b: any) => (b.fee_month || '').localeCompare(a.fee_month || ''))[0] || null;
+
+        return {
+            id: student.student_id,
+            hostel_id: student.hostel_id,
+            name: `${student.first_name || ''} ${student.last_name || ''}`.trim(),
+            first_name: student.first_name,
+            last_name: student.last_name,
+            room: student.room_number || 'N/A',
+            room_number: student.room_number || 'N/A',
+            dueAmount: outstandingBalance,
+            paidAmount: parseFloat(current?.paid_amount || '0') || 0,
+            monthlyRent: parseFloat(current?.monthly_rent ?? student.monthly_rent ?? '0') || 0,
+            carryForward: parseFloat(current?.carry_forward || '0') || 0,
+            feeMonth: current?.fee_month || currentMonth,
+            rawDueDate: current?.due_date || null,
+        };
+    }, [student, outstandingBalance]);
+
     // ── Open payment modal ─────────────────────────────────────────────────
     const openPayModal = useCallback(() => {
         const monthlyRent = parseFloat(student?.monthly_rent || '0');
@@ -537,8 +583,19 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
 
             const response = await api.post('/monthly-fees/record-payment', payload);
             if (response.data.success) {
-                showSuccess('Payment recorded successfully!');
+                // Snapshot what was saved before the inputs are cleared, so the
+                // confirmation sheet can show the real figures.
+                setLastPayment({
+                    amount: parseFloat(payAmount) || 0,
+                    payerName: `${student.first_name || ''} ${student.last_name || ''}`.trim(),
+                    roomLabel: student.room_number ? `Room ${student.room_number}` : undefined,
+                    periodLabel: feeMonth,
+                    paymentMode: paymentModes.find((m: any) => String(m.payment_mode_id) === String(payModeId))?.payment_mode_name,
+                    receiptNo: payReceiptNumber || undefined,
+                    remainingBalance: Math.max(0, outstandingBalance - (parseFloat(payAmount) || 0)),
+                });
                 setPayModalVisible(false);
+                setSuccessVisible(true);
                 setPayAmount('');
                 setPayNotes('');
                 setPayTransactionId('');
@@ -1434,12 +1491,8 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
             <PaymentDrawer
                 visible={payModalVisible}
                 onClose={() => setPayModalVisible(false)}
-                selectedFee={student ? {
-                    first_name: student.first_name,
-                    last_name: student.last_name,
-                    room_number: student.room_number || 'N/A',
-                    pending_dues: student.pending_dues
-                } : null}
+                selectedFee={drawerFee}
+
                 paymentModes={paymentModes}
                 payAmount={payAmount}
                 setPayAmount={setPayAmount}
@@ -1460,6 +1513,38 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                 payLoading={payLoading}
                 onConfirm={handleRecordPayment}
                 themeColor={theme.primary}
+            />
+
+            {/* ── Payment recorded confirmation ─────────────────────────────── */}
+            <PaymentSuccessSheet
+                visible={successVisible}
+                onClose={() => setSuccessVisible(false)}
+                isDark={isDark}
+                amount={lastPayment?.amount ?? 0}
+                payerName={lastPayment?.payerName}
+                roomLabel={lastPayment?.roomLabel}
+                periodLabel={lastPayment?.periodLabel}
+                paymentMode={lastPayment?.paymentMode}
+                receiptNo={lastPayment?.receiptNo}
+                remainingBalance={lastPayment?.remainingBalance}
+                onViewReceipt={() => {
+                    setSuccessVisible(false);
+                    navigation.navigate('Receipt', {
+                        feeData: {
+                            first_name: student?.first_name,
+                            last_name: student?.last_name,
+                            room_number: student?.room_number,
+                            phone: student?.phone,
+                            amount: lastPayment?.amount,
+                            paid_amount: lastPayment?.amount,
+                            payment_mode_name: lastPayment?.paymentMode,
+                            receipt_number: lastPayment?.receiptNo,
+                            fee_month: lastPayment?.periodLabel,
+                            balance: lastPayment?.remainingBalance,
+                            payment_date: new Date().toISOString(),
+                        },
+                    });
+                }}
             />
 
             {/* ── Vacate Settlement Modal ─────────────────────────────────────── */}
