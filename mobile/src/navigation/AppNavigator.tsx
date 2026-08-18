@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { DeviceEventEmitter } from 'react-native';
 import { NavigationContainer, useNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -198,8 +199,11 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
                 ref={navigationRef}
                 onStateChange={() => {
                     const route = navigationRef.current?.getCurrentRoute();
-                    if (route?.name && onRouteChange) {
-                        onRouteChange(route.name);
+                    if (route?.name) {
+                        DeviceEventEmitter.emit('ROUTE_CHANGED', route.name);
+                        if (onRouteChange) {
+                            onRouteChange(route.name);
+                        }
                     }
                 }}
             >
@@ -234,7 +238,7 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
                     <Stack.Screen
                         name="AddStudent"
                         component={AddStudentScreen}
-                        options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }}
+                        options={{ animation: 'slide_from_bottom' }}
                     />
 
                     {/* Rooms */}
@@ -242,12 +246,12 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
                     <Stack.Screen
                         name="AddRoom"
                         component={AddRoomScreen}
-                        options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }}
+                        options={{ animation: 'slide_from_bottom' }}
                     />
                     <Stack.Screen
                         name="BulkRoomSetup"
                         component={BulkRoomSetupScreen}
-                        options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }}
+                        options={{ animation: 'slide_from_bottom' }}
                     />
                     <Stack.Screen name="BulkDelete" component={BulkDeleteScreen} />
                     <Stack.Screen name="Rooms" component={RoomsScreen} />
@@ -258,7 +262,7 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
                     <Stack.Screen
                         name="AddStaff"
                         component={AddStaffScreen}
-                        options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }}
+                        options={{ animation: 'slide_from_bottom' }}
                     />
                     <Stack.Screen name="StaffPayments" component={StaffPaymentsScreen} />
 
@@ -267,7 +271,7 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
                     <Stack.Screen
                         name="AddGuest"
                         component={AddGuestScreen}
-                        options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }}
+                        options={{ animation: 'slide_from_bottom' }}
                     />
 
                     {/* Reminders & Transactions */}
@@ -289,7 +293,7 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
                     <Stack.Screen
                         name="AddIncome"
                         component={AddIncomeScreen}
-                        options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }}
+                        options={{ animation: 'slide_from_bottom' }}
                     />
                     <Stack.Screen name="Overview" component={OverviewScreen} />
 
@@ -298,7 +302,7 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
                     <Stack.Screen
                         name="AddExpense"
                         component={user?.role === 'TENANT' ? TenantAddExpenseScreen : AddExpenseScreen}
-                        options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }}
+                        options={{ animation: 'slide_from_bottom' }}
                     />
                     <Stack.Screen name="ExpenseDetails" component={ExpenseDetailsScreen} />
                     {/* Consolidated into BulkDelete screen */}
@@ -314,7 +318,7 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
                     <Stack.Screen
                         name="AddHostel"
                         component={AddHostelScreen}
-                        options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }}
+                        options={{ animation: 'slide_from_bottom' }}
                     />
                     <Stack.Screen name="Hostels" component={HostelsScreen} />
                     <Stack.Screen name="HostelDetails" component={HostelDetailsScreen} />
@@ -374,7 +378,7 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
                     <Stack.Screen
                         name="AddNotice"
                         component={AddNoticeScreen}
-                        options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }}
+                        options={{ animation: 'slide_from_bottom' }}
                     />
                     <Stack.Screen name="NoticeDetails" component={NoticeDetailsScreen} />
                     <Stack.Screen name="RatingsManagement" component={RatingsManagementScreen} />

@@ -325,10 +325,14 @@ export const OwnerAssistant: React.FC = () => {
     const openSub = DeviceEventEmitter.addListener('OPEN_ASSISTANT', () => {
       setIsOpen(true);
     });
+    const routeSub = DeviceEventEmitter.addListener('ROUTE_CHANGED', (routeName: string) => {
+      setCurrentRoute(routeName);
+    });
     return () => {
       sub.remove();
       closeSub.remove();
       openSub.remove();
+      routeSub.remove();
     };
   }, []);
 
@@ -391,33 +395,43 @@ export const OwnerAssistant: React.FC = () => {
     finally { setSnapLoading(false); }
   };
 
-  // ── Position ───────────────────────────────────────────────────────────
-  const isFormPage = useMemo(() => {
-    if (!currentRoute) return false;
-    const hideOnRoutes = [
-      'Login', 'Register', 'ForgotPassword', 'Splash', 'Onboarding', 
-      'RoleSelect', 'QRSignup', 'TenantLogin', 'TenantRegister'
-    ];
-    return hideOnRoutes.includes(currentRoute);
-  }, [currentRoute]);
-
+  // ── Position & Screen Visibility ──
   const fabPos = useMemo(() => {
-    const listPagesWithFab = [
-      'Students', 'StudentsTab', 'Student',
-      'Rooms', 'RoomsTab', 'Room',
-      'Expenses', 'ExpensesTab', 'Expense',
+    const activeRoute = currentRoute || (RootNavigation.navigationRef.isReady() ? RootNavigation.navigationRef.getCurrentRoute()?.name : '') || '';
+
+    // Screens with bottom tab bar
+    const tabScreens = [
+      'HomeTab', 'Home', 'Main',
+      'PendingDuesTab', 'PendingPayments', 'PendingTab',
+      'OverviewTab', 'Overview',
+      'StudentsTab', 'Students'
+    ];
+    const isTabScreen = tabScreens.includes(activeRoute);
+
+    // Screens that have their own '+' Add FAB button
+    const pagesWithAddFab = [
+      'Students', 'StudentsTab',
       'Staff', 'StaffTab',
       'Guests', 'GuestsTab',
       'Notices', 'NoticesTab', 'NoticesManagement',
       'Hostels', 'HostelsTab',
-      'Reminders', 'InCome'
+      'Reminders',
+      'Expense', 'Expenses',
+      'Income', 'InCome'
     ];
-    const hasPlusFab = currentRoute && listPagesWithFab.includes(currentRoute);
-    // Add generous bottom spacing so it doesn't look too low or stuck to the bottom
-    return hasPlusFab
-      ? { bottom: 215, right: 20 }
-      : { bottom: 115, right: 20 };
-  }, [currentRoute]);
+    const hasAddFab = pagesWithAddFab.includes(activeRoute);
+
+    if (hasAddFab) {
+      // Stack directly above the '+' FAB
+      return { bottom: 204, right: 20 };
+    }
+    if (isTabScreen) {
+      // Dashboard, Finance, Pending Dues: give generous clearance above the bottom tab bar
+      return { bottom: Math.max(insets.bottom + 95, 120), right: 20 };
+    }
+    // Inside pages / detail / form screens without bottom tabs
+    return { bottom: Math.max(insets.bottom + 30, 40), right: 20 };
+  }, [currentRoute, insets.bottom]);
 
   // ── Message helpers ────────────────────────────────────────────────────
   const nid = () => `m${++msgId.current}`;
