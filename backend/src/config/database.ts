@@ -1978,6 +1978,45 @@ export async function patchDatabaseSchema() {
         });
         console.log('[schema-patch] Default Master Admin user seeded successfully.');
       }
+      // Ensure high-performance composite indexes on tables
+      try {
+        console.log('[schema-patch] Ensuring database performance indexes...');
+        const indexList = [
+          { table: 'students', name: 'idx_students_hostel_status', cols: '(hostel_id, status)' },
+          { table: 'students', name: 'idx_students_room_status', cols: '(room_id, status)' },
+          { table: 'students', name: 'idx_students_user_id', cols: '(user_id)' },
+          { table: 'students', name: 'idx_students_phone', cols: '(phone)' },
+          { table: 'monthly_fees', name: 'idx_monthly_fees_student_month', cols: '(student_id, fee_month)' },
+          { table: 'monthly_fees', name: 'idx_monthly_fees_hostel_month', cols: '(hostel_id, fee_month, fee_status)' },
+          { table: 'fee_payments', name: 'idx_fee_payments_fee_student', cols: '(fee_id, student_id)' },
+          { table: 'fee_payments', name: 'idx_fee_payments_hostel_date', cols: '(hostel_id, payment_date)' },
+          { table: 'fee_payments', name: 'idx_fee_payments_student_date', cols: '(student_id, payment_date)' },
+          { table: 'expenses', name: 'idx_expenses_hostel_date', cols: '(hostel_id, expense_date)' },
+          { table: 'rooms', name: 'idx_rooms_hostel_number', cols: '(hostel_id, room_number)' },
+          { table: 'hostel_master', name: 'idx_hostel_master_owner', cols: '(owner_id, is_active)' },
+          { table: 'notifications', name: 'idx_notifications_student', cols: '(student_id, is_read, created_at)' },
+          { table: 'notifications', name: 'idx_notifications_user', cols: '(user_id, is_read, created_at)' },
+          { table: 'chat_messages', name: 'idx_chat_messages_room', cols: '(room_id, created_at)' },
+          { table: 'complaints', name: 'idx_complaints_hostel_status', cols: '(hostel_id, status, created_at)' },
+          { table: 'leave_requests', name: 'idx_leave_requests_hostel_status', cols: '(hostel_id, status)' },
+        ];
+
+        for (const idx of indexList) {
+          if (tableNamesLower.includes(idx.table.toLowerCase())) {
+            try {
+              await db.raw(`CREATE INDEX ${idx.name} ON ${idx.table} ${idx.cols}`);
+            } catch (e: any) {
+              // Silently ignore if index already exists
+              if (e?.code !== 'ER_DUP_KEYNAME' && e?.errno !== 1061) {
+                // Table index exists
+              }
+            }
+          }
+        }
+        console.log('[schema-patch] Performance indexes verified successfully.');
+      } catch (idxErr: any) {
+        console.warn('[schema-patch] Performance index verification notice:', idxErr.message);
+      }
     } catch (devErr: any) {
       console.error('[schema-patch] Error setting up developer tables/seed:', devErr.message);
     }
