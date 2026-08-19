@@ -130,7 +130,6 @@ import NoticeDetailsScreen from '../Pages/NoticeDetailsScreen';
 import RatingsManagementScreen from '../Pages/RatingsManagementScreen';
 
 // ── Developer / Master Admin Screens ──────────────────────────────────────────
-import DeveloperLoginScreen from '../Pages/developer/DeveloperLoginScreen';
 import DeveloperDashboardScreen from '../Pages/developer/DeveloperDashboardScreen';
 import DeveloperHostelsScreen from '../Pages/developer/DeveloperHostelsScreen';
 import DeveloperHostelDetailsScreen from '../Pages/developer/DeveloperHostelDetailsScreen';
@@ -418,7 +417,6 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
                     <Stack.Screen name="ComingSoon" component={ComingSoonScreen} />
 
                     {/* Developer / Master Admin Stack */}
-                    <Stack.Screen name="DeveloperLogin" component={DeveloperLoginScreen} />
                     <Stack.Screen name="DeveloperDashboard" component={DeveloperDashboardScreen} />
                     <Stack.Screen name="DeveloperHostels" component={DeveloperHostelsScreen} />
                     <Stack.Screen name="DeveloperHostelDetails" component={DeveloperHostelDetailsScreen} />
