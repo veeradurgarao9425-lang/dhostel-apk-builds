@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { DeviceEventEmitter } from 'react-native';
 import { OwnerAssistant } from './assistant/OwnerAssistant';
+import { DeveloperAssistant } from './developer/DeveloperAssistant';
 import { navigationRef } from '../navigation/navigationRef';
 
 // Explicitly hidden screens: only input forms, edit forms, details view pages, and auth screens
@@ -71,6 +72,12 @@ export const AssistantGate: React.FC = () => {
 
   if (!currentRoute) return <OwnerAssistant />;
 
+  const isDevRoute = currentRoute.startsWith('Dev') || currentRoute.startsWith('Developer');
+
+  if (isDevRoute) {
+    return <DeveloperAssistant />;
+  }
+
   // Hide only on forms, detail/receipt views, and auth screens
   const isFormOrDetail = (
     EXPLICITLY_HIDDEN_ROUTES.includes(currentRoute) ||
@@ -85,7 +92,7 @@ export const AssistantGate: React.FC = () => {
     return null;
   }
 
-  // Render on all list & dashboard screens (Home, Students, Rooms, Guests, Staff, Expense, Income, Finance, More, etc.)
+  // Render on all list & dashboard screens for owners
   return <OwnerAssistant />;
 };
 

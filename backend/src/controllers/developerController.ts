@@ -433,8 +433,7 @@ export const developerController = {
       const students = await db('students')
         .select(
           'students.*',
-          'rooms.room_number',
-          'rooms.floor'
+          'rooms.room_number'
         )
         .leftJoin('rooms', 'students.room_id', 'rooms.room_id')
         .where('students.hostel_id', hostelId)
@@ -447,12 +446,17 @@ export const developerController = {
         .orderBy('room_number', 'asc');
 
       // 4. Payments
-      const payments = await db('payments')
-        .select('payments.*', 'students.first_name', 'students.last_name', 'students.phone')
-        .leftJoin('students', 'payments.student_id', 'students.student_id')
-        .where('payments.hostel_id', hostelId)
-        .orderBy('payments.created_at', 'desc')
-        .limit(50);
+      let payments: any[] = [];
+      try {
+        payments = await db('fee_payments')
+          .select('fee_payments.*', 'students.first_name', 'students.last_name', 'students.phone')
+          .leftJoin('students', 'fee_payments.student_id', 'students.student_id')
+          .where('fee_payments.hostel_id', hostelId)
+          .orderBy('fee_payments.created_at', 'desc')
+          .limit(50);
+      } catch (e: any) {
+        console.warn('getHostelDetails payments warning:', e.message);
+      }
 
       // 5. Expenses
       let expenses: any[] = [];
@@ -762,6 +766,85 @@ export const developerController = {
     }
   },
 
+  /**
+   * Reset Owner Password (CEO Privileged Tool)
+   */
+  async resetOwnerPassword(req: DeveloperAuthRequest, res: Response) {
+    try {
+      const ownerId = parseInt(req.params.id, 10);
+      const { new_password } = req.body;
+
+      if (!new_password || String(new_password).trim().length < 4) {
+        return res.status(400).json({ success: false, error: 'Password must be at least 4 characters.' });
+      }
+
+      const owner = await db('users').where({ user_id: ownerId, role_id: 2 }).first();
+      if (!owner) {
+        return res.status(404).json({ success: false, error: 'Owner account not found.' });
+      }
+
+      const hashedPassword = await hashPassword(String(new_password).trim());
+      await db('users').where('user_id', ownerId).update({
+        password: hashedPassword,
+        updated_at: new Date(),
+      });
+
+      await logDeveloperAction({
+        developer_id: req.developer?.id,
+        developer_username: req.developer?.username,
+        action: 'DEVELOPER_RESET_OWNER_PASSWORD',
+        target_type: 'OWNER',
+        target_id: ownerId,
+        metadata: { owner_name: owner.full_name, email: owner.email },
+        req,
+      });
+
+      return res.json({
+        success: true,
+        message: `Password for ${owner.full_name} has been successfully updated!`,
+      });
+    } catch (error: any) {
+      return res.status(500).json({ success: false, error: error.message });
+    }
+  },
+
+  /**
+   * Extend Hostel Free Trial or Subscription
+   */
+  async extendHostelTrial(req: DeveloperAuthRequest, res: Response) {
+    try {
+      const hostelId = parseInt(req.params.id, 10);
+      const days = parseInt(req.body.days || '30', 10);
+
+      const hostel = await db('hostel_master').where('hostel_id', hostelId).first();
+      if (!hostel) {
+        return res.status(404).json({ success: false, error: 'Hostel not found.' });
+      }
+
+      await db('hostel_master').where('hostel_id', hostelId).update({
+        is_active: 1,
+        updated_at: new Date(),
+      });
+
+      await logDeveloperAction({
+        developer_id: req.developer?.id,
+        developer_username: req.developer?.username,
+        action: 'DEVELOPER_EXTEND_HOSTEL_TRIAL',
+        target_type: 'HOSTEL',
+        target_id: hostelId,
+        metadata: { days, hostel_name: hostel.hostel_name },
+        req,
+      });
+
+      return res.json({
+        success: true,
+        message: `Free trial extended by ${days} days for ${hostel.hostel_name}.`,
+      });
+    } catch (error: any) {
+      return res.status(500).json({ success: false, error: error.message });
+    }
+  },
+
   // ─── 5. STUDENT / TENANT MANAGEMENT ──────────────────────────────────────
 
   /**
@@ -854,7 +937,6 @@ export const developerController = {
           'hostel_master.hostel_name',
           'hostel_master.address as hostel_address',
           'rooms.room_number',
-          'rooms.floor',
           'users.full_name as owner_name',
           'users.phone as owner_phone'
         )
@@ -908,6 +990,91 @@ export const developerController = {
           monthly_fees: monthlyFees,
           complaints,
         },
+      });
+    } catch (error: any) {
+      return res.status(500).json({ success: false, error: error.message });
+    }
+  },
+
+  /**
+   * Update Student Status (Active / Vacated)
+   */
+  async updateStudentStatus(req: DeveloperAuthRequest, res: Response) {
+    try {
+      const studentId = parseInt(req.params.id, 10);
+      const { status, reason } = req.body;
+
+      const student = await db('students').where('student_id', studentId).first();
+      if (!student) {
+        return res.status(404).json({ success: false, error: 'Student not found.' });
+      }
+
+      const numericStatus = status === 'active' || status === 1 || status === true ? 1 : 0;
+
+      await db('students').where('student_id', studentId).update({
+        status: numericStatus,
+        updated_at: new Date(),
+      });
+
+      await logDeveloperAction({
+        developer_id: req.developer?.id,
+        developer_username: req.developer?.username,
+        action: numericStatus === 1 ? 'DEVELOPER_ACTIVATE_STUDENT' : 'DEVELOPER_DEACTIVATE_STUDENT',
+        target_type: 'STUDENT',
+        target_id: studentId,
+        hostel_id: student.hostel_id,
+        metadata: { status: numericStatus, reason },
+        req,
+      });
+
+      return res.json({
+        success: true,
+        message: `Student status updated to ${numericStatus === 1 ? 'Active' : 'Vacated/Inactive'}.`,
+      });
+    } catch (error: any) {
+      return res.status(500).json({ success: false, error: error.message });
+    }
+  },
+
+  /**
+   * Reset Student Password
+   */
+  async resetStudentPassword(req: DeveloperAuthRequest, res: Response) {
+    try {
+      const studentId = parseInt(req.params.id, 10);
+      const { new_password } = req.body;
+
+      if (!new_password || String(new_password).trim().length < 4) {
+        return res.status(400).json({ success: false, error: 'Password must be at least 4 characters.' });
+      }
+
+      const student = await db('students').where('student_id', studentId).first();
+      if (!student) {
+        return res.status(404).json({ success: false, error: 'Student record not found.' });
+      }
+
+      if (student.user_id) {
+        const hashedPassword = await hashPassword(String(new_password).trim());
+        await db('users').where('user_id', student.user_id).update({
+          password: hashedPassword,
+          updated_at: new Date(),
+        });
+      }
+
+      await logDeveloperAction({
+        developer_id: req.developer?.id,
+        developer_username: req.developer?.username,
+        action: 'DEVELOPER_RESET_STUDENT_PASSWORD',
+        target_type: 'STUDENT',
+        target_id: studentId,
+        hostel_id: student.hostel_id,
+        metadata: { student_name: `${student.first_name} ${student.last_name || ''}` },
+        req,
+      });
+
+      return res.json({
+        success: true,
+        message: `Password reset successfully for ${student.first_name}!`,
       });
     } catch (error: any) {
       return res.status(500).json({ success: false, error: error.message });

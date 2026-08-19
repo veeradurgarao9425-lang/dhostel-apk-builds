@@ -141,6 +141,22 @@ export const developerService = {
     return res.data;
   },
 
+  async resetOwnerPassword(id: number, newPassword: string) {
+    const token = await getSecureItem('developer_token');
+    const res = await api.post(`/developer/owners/${id}/reset-password`, { new_password: newPassword }, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+  },
+
+  async extendHostelTrial(id: number, days = 30) {
+    const token = await getSecureItem('developer_token');
+    const res = await api.post(`/developer/hostels/${id}/extend-trial`, { days }, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+  },
+
   // ─── STUDENTS ────────────────────────────────────────────────────────────
   async getStudents(params: { page?: number; limit?: number; search?: string; hostel_id?: number; status?: string }) {
     const token = await getSecureItem('developer_token');
@@ -165,6 +181,22 @@ export const developerService = {
   async getStudentDetails(id: number) {
     const token = await getSecureItem('developer_token');
     const res = await api.get(`/developer/students/${id}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+  },
+
+  async updateStudentStatus(id: number, status: 'active' | 'inactive') {
+    const token = await getSecureItem('developer_token');
+    const res = await api.put(`/developer/students/${id}/status`, { status }, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+  },
+
+  async resetStudentPassword(id: number, newPassword: string) {
+    const token = await getSecureItem('developer_token');
+    const res = await api.post(`/developer/students/${id}/reset-password`, { new_password: newPassword }, {
       headers: { Authorization: `Bearer ${token}` },
     });
     return res.data;

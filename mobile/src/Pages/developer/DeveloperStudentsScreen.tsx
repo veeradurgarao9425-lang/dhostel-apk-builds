@@ -5,6 +5,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   FlatList,
+  ScrollView,
   TextInput,
   RefreshControl,
   ActivityIndicator,
@@ -12,6 +13,7 @@ import {
   StatusBar,
   Platform,
   Alert,
+  Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { developerService } from '../../services/developerService';
@@ -25,13 +27,69 @@ export default function DeveloperStudentsScreen() {
   const { enterSupportMode } = useDeveloper();
 
   const [students, setStudents] = useState<any[]>([]);
+  const [hostels, setHostels] = useState<any[]>([]);
+  const [owners, setOwners] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL');
+  const [selectedHostelId, setSelectedHostelId] = useState<number | null>(null);
+  const [selectedOwnerId, setSelectedOwnerId] = useState<number | null>(null);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [impersonatingId, setImpersonatingId] = useState<number | null>(null);
+
+  // Reset Password Modal State
+  const [passwordModalVisible, setPasswordModalVisible] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState<any>(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [resettingPassword, setResettingPassword] = useState(false);
+
+  // Load Hostels and Owners lists for top tabs
+  useEffect(() => {
+    developerService.getHostels({ page: 1, limit: 50 }).then((res) => {
+      if (res?.success && res.data) setHostels(res.data);
+    }).catch(() => {});
+
+    developerService.getOwners({ page: 1, limit: 50 }).then((res) => {
+      if (res?.success && res.data) setOwners(res.data);
+    }).catch(() => {});
+  }, []);
+
+  // Cascading Visible Hostels based on Selected Owner
+  const visibleHostels = selectedOwnerId
+    ? hostels.filter((h) => h.owner_id === selectedOwnerId)
+    : hostels;
+
+  // Cascading Visible Owners based on Selected Hostel
+  const selectedHostelObj = selectedHostelId ? hostels.find((h) => h.hostel_id === selectedHostelId) : null;
+  const visibleOwners = selectedHostelObj
+    ? owners.filter((o) => o.user_id === selectedHostelObj.owner_id || o.full_name === selectedHostelObj.owner_name)
+    : owners;
+
+  const handleSelectHostel = (hostelId: number | null) => {
+    setSelectedHostelId(hostelId);
+    if (hostelId) {
+      const h = hostels.find((x) => x.hostel_id === hostelId);
+      if (h?.owner_id) {
+        setSelectedOwnerId(h.owner_id);
+      }
+    } else {
+      setSelectedOwnerId(null);
+    }
+  };
+
+  const handleSelectOwner = (ownerId: number | null) => {
+    setSelectedOwnerId(ownerId);
+    if (ownerId) {
+      const ownerHostels = hostels.filter((x) => x.owner_id === ownerId);
+      if (selectedHostelId && !ownerHostels.some((x) => x.hostel_id === selectedHostelId)) {
+        setSelectedHostelId(null);
+      }
+    } else {
+      setSelectedHostelId(null);
+    }
+  };
 
   const fetchStudents = useCallback(
     async (pageNum = 1, isRefresh = false) => {
@@ -39,12 +97,13 @@ export default function DeveloperStudentsScreen() {
         if (isRefresh) setRefreshing(true);
         else if (pageNum === 1) setLoading(true);
 
-        const statusParam = statusFilter === 'ALL' ? undefined : statusFilter === 'ACTIVE' ? 'active' : 'inactive';
+        const statusParam = statusFilter === 'ALL' ? undefined : statusFilter === 'ACTIVE' ? '1' : '0';
         const res = await developerService.getStudents({
           page: pageNum,
-          limit: 15,
+          limit: 20,
           search: search.trim() || undefined,
           status: statusParam,
+          hostel_id: selectedHostelId || undefined,
         });
 
         if (res.success && res.data) {
@@ -65,7 +124,7 @@ export default function DeveloperStudentsScreen() {
         setRefreshing(false);
       }
     },
-    [search, statusFilter]
+    [search, statusFilter, selectedHostelId]
   );
 
   useEffect(() => {
@@ -81,6 +140,81 @@ export default function DeveloperStudentsScreen() {
     if (page < totalPages && !loading) {
       fetchStudents(page + 1);
     }
+  };
+
+  // Client-side owner filter filtering
+  const filteredStudents = students.filter((s) => {
+    if (selectedOwnerId !== null) {
+      const matchedOwner = owners.find((o) => o.user_id === selectedOwnerId);
+      if (matchedOwner && s.owner_name && !s.owner_name.toLowerCase().includes(matchedOwner.full_name.toLowerCase())) {
+        return false;
+      }
+    }
+    return true;
+  });
+
+  const handleToggleStatus = async (student: any) => {
+    const isCurrentlyActive = String(student.status).toLowerCase() === 'active' || student.status === 1 || student.status === true;
+    const nextStatus = isCurrentlyActive ? 'inactive' : 'active';
+
+    Alert.alert(
+      isCurrentlyActive ? 'Deactivate / Vacate Student' : 'Activate Student',
+      `Are you sure you want to mark ${student.first_name} as ${nextStatus.toUpperCase()}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: isCurrentlyActive ? 'Deactivate' : 'Activate',
+          style: isCurrentlyActive ? 'destructive' : 'default',
+          onPress: async () => {
+            try {
+              await developerService.updateStudentStatus(student.student_id, nextStatus);
+              setStudents((prev) =>
+                prev.map((s) =>
+                  s.student_id === student.student_id
+                    ? { ...s, status: nextStatus === 'active' ? 1 : 0 }
+                    : s
+                )
+              );
+              Alert.alert('Status Updated', `Student status is now ${nextStatus.toUpperCase()}.`);
+            } catch (err: any) {
+              Alert.alert('Update Failed', err.message || 'Could not update student status.');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleOpenResetPassword = (student: any) => {
+    setSelectedStudent(student);
+    setNewPassword('');
+    setPasswordModalVisible(true);
+  };
+
+  const handleSavePassword = async () => {
+    if (!newPassword.trim() || newPassword.trim().length < 4) {
+      Alert.alert('Invalid Password', 'Please enter a password with at least 4 characters.');
+      return;
+    }
+
+    try {
+      setResettingPassword(true);
+      await developerService.resetStudentPassword(selectedStudent.student_id, newPassword.trim());
+      setPasswordModalVisible(false);
+      Alert.alert(
+        'Student Password Updated! 🔑',
+        `New password for ${selectedStudent.first_name}:\n\n${newPassword.trim()}\n\nPlease share this with the tenant so they can log in.`
+      );
+    } catch (err: any) {
+      Alert.alert('Reset Failed', err.message || 'Could not reset student password.');
+    } finally {
+      setResettingPassword(false);
+    }
+  };
+
+  const handleGenerateRandomPassword = () => {
+    const randomPass = Math.floor(100000 + Math.random() * 900000).toString();
+    setNewPassword(randomPass);
   };
 
   const handleImpersonate = (student: any) => {
@@ -117,6 +251,7 @@ export default function DeveloperStudentsScreen() {
 
   const renderStudentCard = ({ item }: { item: any }) => {
     const fullName = `${item.first_name || ''} ${item.last_name || ''}`.trim() || 'Unnamed Student';
+    const isActive = String(item.status).toLowerCase() === 'active' || item.status === 1 || item.status === true;
 
     return (
       <View style={styles.card}>
@@ -129,11 +264,15 @@ export default function DeveloperStudentsScreen() {
             <Text style={styles.studentHostel}>🏠 {item.hostel_name || 'No Hostel Assigned'}</Text>
             <Text style={styles.studentPhone}>📞 {item.phone || item.email || 'No contact'}</Text>
           </View>
-          <View style={[styles.statusBadge, String(item.status).toLowerCase() === 'active' ? styles.statusActive : styles.statusInactive]}>
-            <Text style={[styles.statusBadgeText, { color: String(item.status).toLowerCase() === 'active' ? '#059669' : '#8C7A6B' }]}>
-              {String(item.status || 'ACTIVE').toUpperCase()}
+          <TouchableOpacity
+            onPress={() => handleToggleStatus(item)}
+            style={[styles.statusBadge, isActive ? styles.statusActive : styles.statusInactive]}
+            activeOpacity={0.75}
+          >
+            <Text style={[styles.statusBadgeText, { color: isActive ? '#059669' : '#DC2626' }]}>
+              {isActive ? 'ACTIVE' : 'INACTIVE'}
             </Text>
-          </View>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.divider} />
@@ -151,7 +290,17 @@ export default function DeveloperStudentsScreen() {
           <Text style={styles.rentText}>Rent: ₹{Number(item.monthly_rent || 0).toLocaleString('en-IN')}/mo</Text>
         </View>
 
+        {/* Action Buttons */}
         <View style={styles.cardActions}>
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => handleOpenResetPassword(item)}
+            style={styles.resetPassBtn}
+          >
+            <Ionicons name="key-outline" size={13} color="#D97706" />
+            <Text style={styles.resetPassBtnText}>Reset Password</Text>
+          </TouchableOpacity>
+
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={() => handleImpersonate(item)}
@@ -162,8 +311,8 @@ export default function DeveloperStudentsScreen() {
               <ActivityIndicator size="small" color="#FFF" />
             ) : (
               <>
-                <Ionicons name="shield-half-outline" size={14} color="#FFF" />
-                <Text style={styles.impersonateBtnText}>Open as Student (Support)</Text>
+                <Ionicons name="shield-half-outline" size={13} color="#FFF" />
+                <Text style={styles.impersonateBtnText}>Support Mode</Text>
               </>
             )}
           </TouchableOpacity>
@@ -183,11 +332,11 @@ export default function DeveloperStudentsScreen() {
           <Text style={styles.screenTitle}>Students Directory</Text>
         </View>
         <View style={styles.countBadge}>
-          <Text style={styles.countBadgeText}>{students.length} Loaded</Text>
+          <Text style={styles.countBadgeText}>{filteredStudents.length} Students</Text>
         </View>
       </View>
 
-      {/* Search and Filters */}
+      {/* Search Bar */}
       <View style={styles.searchBoxWrap}>
         <View style={styles.searchBar}>
           <Ionicons name="search" size={18} color="#A89687" />
@@ -205,15 +354,84 @@ export default function DeveloperStudentsScreen() {
             </TouchableOpacity>
           ) : null}
         </View>
+      </View>
 
+      {/* TOP TABS ROW 1: HOSTELS LIST TABS */}
+      <View style={styles.tabSectionRow}>
+        <View style={styles.tabSectionHeader}>
+          <Ionicons name="business" size={13} color="#C2410C" />
+          <Text style={styles.tabSectionTitle}>SELECT HOSTEL PROPERTY</Text>
+        </View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsScroll}>
+          <TouchableOpacity
+            onPress={() => handleSelectHostel(null)}
+            style={[styles.hostelChip, selectedHostelId === null && styles.hostelChipActive]}
+          >
+            <Text style={[styles.hostelChipText, selectedHostelId === null && styles.hostelChipTextActive]}>
+              🏠 All Properties ({hostels.length})
+            </Text>
+          </TouchableOpacity>
+          {visibleHostels.map((h) => {
+            const isSelected = selectedHostelId === h.hostel_id;
+            return (
+              <TouchableOpacity
+                key={h.hostel_id}
+                onPress={() => handleSelectHostel(isSelected ? null : h.hostel_id)}
+                style={[styles.hostelChip, isSelected && styles.hostelChipActive]}
+              >
+                <Text style={[styles.hostelChipText, isSelected && styles.hostelChipTextActive]}>
+                  {h.hostel_name}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      </View>
+
+      {/* TOP TABS ROW 2: OWNERS LIST TABS (CONNECTED & CASCADING) */}
+      <View style={styles.tabSectionRow}>
+        <View style={styles.tabSectionHeader}>
+          <Ionicons name="people" size={13} color="#7C3AED" />
+          <Text style={[styles.tabSectionTitle, { color: '#7C3AED' }]}>
+            {selectedHostelId ? 'HOSTEL OWNER (MATCHED)' : 'FILTER BY OWNER'}
+          </Text>
+        </View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsScroll}>
+          <TouchableOpacity
+            onPress={() => handleSelectOwner(null)}
+            style={[styles.ownerChip, selectedOwnerId === null && styles.ownerChipActive]}
+          >
+            <Text style={[styles.ownerChipText, selectedOwnerId === null && styles.ownerChipTextActive]}>
+              👑 All Owners ({visibleOwners.length})
+            </Text>
+          </TouchableOpacity>
+          {visibleOwners.map((o) => {
+            const isSelected = selectedOwnerId === o.user_id;
+            return (
+              <TouchableOpacity
+                key={o.user_id}
+                onPress={() => handleSelectOwner(isSelected ? null : o.user_id)}
+                style={[styles.ownerChip, isSelected && styles.ownerChipActive]}
+              >
+                <Text style={[styles.ownerChipText, isSelected && styles.ownerChipTextActive]}>
+                  👤 {o.full_name}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      </View>
+
+      {/* TOP TABS ROW 3: STATUS SEGREGATION TABS */}
+      <View style={styles.statusTabsSection}>
         <View style={styles.filterRow}>
           {(['ALL', 'ACTIVE', 'INACTIVE'] as const).map((st) => (
             <TouchableOpacity
               key={st}
               onPress={() => setStatusFilter(st)}
-              style={[styles.filterChip, statusFilter === st && styles.filterChipActive]}
+              style={[styles.statusFilterChip, statusFilter === st && styles.statusFilterChipActive]}
             >
-              <Text style={[styles.filterChipText, statusFilter === st && styles.filterChipTextActive]}>
+              <Text style={[styles.statusFilterChipText, statusFilter === st && styles.statusFilterChipTextActive]}>
                 {st}
               </Text>
             </TouchableOpacity>
@@ -224,17 +442,17 @@ export default function DeveloperStudentsScreen() {
       {/* List */}
       {loading && !refreshing ? (
         <View style={styles.centerBox}>
-          <ActivityIndicator size="large" color="#C2410C" />
+          <ActivityIndicator size="large" color="#059669" />
           <Text style={styles.loadingText}>Loading students directory...</Text>
         </View>
       ) : (
         <FlatList
-          data={students}
+          data={filteredStudents}
           keyExtractor={(item) => String(item.student_id)}
           renderItem={renderStudentCard}
           contentContainerStyle={styles.listContent}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#C2410C" />
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#059669" />
           }
           onEndReached={loadMore}
           onEndReachedThreshold={0.3}
@@ -243,11 +461,76 @@ export default function DeveloperStudentsScreen() {
             <View style={styles.emptyCard}>
               <Ionicons name="school-outline" size={40} color="#C4B5A5" />
               <Text style={styles.emptyTitle}>No Students Found</Text>
-              <Text style={styles.emptySub}>No students match the active filters or search query.</Text>
+              <Text style={styles.emptySub}>No students match the selected hostel property, owner, or status filter.</Text>
             </View>
           }
         />
       )}
+
+      {/* Reset Password Modal */}
+      <Modal
+        visible={passwordModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setPasswordModalVisible(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalHeader}>
+              <View style={styles.modalIconWrap}>
+                <Ionicons name="key" size={20} color="#D97706" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.modalTitle}>Set Student Password</Text>
+                <Text style={styles.modalSub}>{selectedStudent?.first_name} {selectedStudent?.last_name || ''}</Text>
+              </View>
+              <TouchableOpacity onPress={() => setPasswordModalVisible(false)}>
+                <Ionicons name="close" size={22} color="#78716C" />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.inputLabel}>Enter or Generate New Password</Text>
+            <View style={styles.passInputRow}>
+              <TextInput
+                placeholder="e.g. 123456 or studentpass"
+                placeholderTextColor="#A89687"
+                value={newPassword}
+                onChangeText={setNewPassword}
+                style={styles.passTextInput}
+                autoCapitalize="none"
+              />
+              <TouchableOpacity
+                onPress={handleGenerateRandomPassword}
+                style={styles.generateBtn}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.generateBtnText}>🎲 6-Digit</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.modalBtnRow}>
+              <TouchableOpacity
+                onPress={() => setPasswordModalVisible(false)}
+                style={styles.cancelBtn}
+              >
+                <Text style={styles.cancelBtnText}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={handleSavePassword}
+                disabled={resettingPassword}
+                style={styles.confirmSaveBtn}
+              >
+                {resettingPassword ? (
+                  <ActivityIndicator size="small" color="#FFF" />
+                ) : (
+                  <Text style={styles.confirmSaveBtnText}>Save Password</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -268,7 +551,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FAF6F0',
   },
   topTag: {
-    color: '#C2410C',
+    color: '#059669',
     fontSize: 10,
     fontWeight: '800',
     letterSpacing: 0.8,
@@ -293,8 +576,7 @@ const styles = StyleSheet.create({
   },
   searchBoxWrap: {
     paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 8,
+    paddingTop: 10,
     backgroundColor: '#FAF6F0',
   },
   searchBar: {
@@ -303,7 +585,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
     paddingHorizontal: 12,
-    paddingVertical: 9,
+    paddingVertical: 8,
     borderWidth: 1,
     borderColor: '#EFE7DC',
     gap: 8,
@@ -319,29 +601,99 @@ const styles = StyleSheet.create({
     color: '#1C1917',
     padding: 0,
   },
+  tabSectionRow: {
+    paddingTop: 8,
+    paddingBottom: 2,
+    backgroundColor: '#FAF6F0',
+  },
+  tabSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 16,
+    marginBottom: 4,
+  },
+  tabSectionTitle: {
+    fontSize: 9.5,
+    fontWeight: '800',
+    color: '#C2410C',
+    letterSpacing: 0.6,
+  },
+  tabsScroll: {
+    paddingHorizontal: 16,
+    gap: 6,
+  },
+  hostelChip: {
+    paddingHorizontal: 11,
+    paddingVertical: 5,
+    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#EFE7DC',
+  },
+  hostelChipActive: {
+    backgroundColor: '#C2410C',
+    borderColor: '#C2410C',
+  },
+  hostelChipText: {
+    color: '#C2410C',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  hostelChipTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+  },
+  ownerChip: {
+    paddingHorizontal: 11,
+    paddingVertical: 5,
+    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#EFE7DC',
+  },
+  ownerChipActive: {
+    backgroundColor: '#7C3AED',
+    borderColor: '#7C3AED',
+  },
+  ownerChipText: {
+    color: '#7C3AED',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  ownerChipTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+  },
+  statusTabsSection: {
+    paddingHorizontal: 16,
+    paddingTop: 6,
+    paddingBottom: 8,
+    backgroundColor: '#FAF6F0',
+  },
   filterRow: {
     flexDirection: 'row',
     gap: 8,
-    marginTop: 10,
   },
-  filterChip: {
-    paddingHorizontal: 12,
+  statusFilterChip: {
+    flex: 1,
+    alignItems: 'center',
     paddingVertical: 6,
     borderRadius: 8,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#EFE7DC',
   },
-  filterChipActive: {
-    backgroundColor: '#C2410C',
-    borderColor: '#C2410C',
+  statusFilterChipActive: {
+    backgroundColor: '#059669',
+    borderColor: '#059669',
   },
-  filterChipText: {
+  statusFilterChipText: {
     color: '#78716C',
     fontSize: 11,
     fontWeight: '700',
   },
-  filterChipTextActive: {
+  statusFilterChipTextActive: {
     color: '#FFFFFF',
     fontWeight: '800',
   },
@@ -406,17 +758,17 @@ const styles = StyleSheet.create({
   },
   statusBadge: {
     paddingHorizontal: 8,
-    paddingVertical: 3,
+    paddingVertical: 4,
     borderRadius: 6,
   },
   statusActive: {
     backgroundColor: '#ECFDF5',
   },
   statusInactive: {
-    backgroundColor: '#F5F5F4',
+    backgroundColor: '#FEE2E2',
   },
   statusBadgeText: {
-    fontSize: 9,
+    fontSize: 9.5,
     fontWeight: '800',
   },
   divider: {
@@ -454,6 +806,24 @@ const styles = StyleSheet.create({
   },
   cardActions: {
     flexDirection: 'row',
+    gap: 8,
+  },
+  resetPassBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#FEF3C7',
+    paddingVertical: 9,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+  },
+  resetPassBtnText: {
+    color: '#B45309',
+    fontSize: 11.5,
+    fontWeight: '800',
   },
   impersonateBtn: {
     flex: 1,
@@ -462,17 +832,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 6,
     backgroundColor: '#059669',
-    paddingVertical: 10,
+    paddingVertical: 9,
     borderRadius: 10,
-    shadowColor: '#059669',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 2,
   },
   impersonateBtnText: {
     color: '#FFFFFF',
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: '800',
   },
   emptyCard: {
@@ -495,5 +860,109 @@ const styles = StyleSheet.create({
     fontSize: 12,
     textAlign: 'center',
     marginTop: 4,
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  modalCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 8,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 16,
+  },
+  modalIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#FEF3C7',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalTitle: {
+    color: '#1C1917',
+    fontSize: 15,
+    fontWeight: '900',
+  },
+  modalSub: {
+    color: '#78716C',
+    fontSize: 11.5,
+    marginTop: 2,
+  },
+  inputLabel: {
+    color: '#44403C',
+    fontSize: 12,
+    fontWeight: '700',
+    marginBottom: 6,
+  },
+  passInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 20,
+  },
+  passTextInput: {
+    flex: 1,
+    backgroundColor: '#FAF6F0',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: '#1C1917',
+    borderWidth: 1,
+    borderColor: '#EFE7DC',
+  },
+  generateBtn: {
+    backgroundColor: '#ECFDF5',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+  },
+  generateBtnText: {
+    color: '#059669',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  modalBtnRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  cancelBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 10,
+    backgroundColor: '#F5F5F4',
+    alignItems: 'center',
+  },
+  cancelBtnText: {
+    color: '#78716C',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  confirmSaveBtn: {
+    flex: 1.5,
+    paddingVertical: 12,
+    borderRadius: 10,
+    backgroundColor: '#059669',
+    alignItems: 'center',
+  },
+  confirmSaveBtnText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '800',
   },
 });

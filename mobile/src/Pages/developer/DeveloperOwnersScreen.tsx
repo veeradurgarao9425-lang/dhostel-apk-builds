@@ -5,6 +5,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   FlatList,
+  ScrollView,
   TextInput,
   RefreshControl,
   ActivityIndicator,
@@ -12,6 +13,7 @@ import {
   StatusBar,
   Platform,
   Alert,
+  Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { developerService } from '../../services/developerService';
@@ -25,12 +27,30 @@ export default function DeveloperOwnersScreen() {
   const { enterSupportMode } = useDeveloper();
 
   const [owners, setOwners] = useState<any[]>([]);
+  const [hostels, setHostels] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL');
+  const [selectedHostelId, setSelectedHostelId] = useState<number | null>(null);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [impersonatingId, setImpersonatingId] = useState<number | null>(null);
+
+  // Reset Password Modal State
+  const [passwordModalVisible, setPasswordModalVisible] = useState(false);
+  const [selectedOwner, setSelectedOwner] = useState<any>(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [resettingPassword, setResettingPassword] = useState(false);
+
+  // Load hostels list for top tabs
+  useEffect(() => {
+    developerService.getHostels({ page: 1, limit: 50 }).then((res) => {
+      if (res?.success && res.data) {
+        setHostels(res.data);
+      }
+    }).catch(() => {});
+  }, []);
 
   const fetchOwners = useCallback(
     async (pageNum = 1, isRefresh = false) => {
@@ -40,7 +60,7 @@ export default function DeveloperOwnersScreen() {
 
         const res = await developerService.getOwners({
           page: pageNum,
-          limit: 15,
+          limit: 20,
           search: search.trim() || undefined,
         });
 
@@ -80,14 +100,89 @@ export default function DeveloperOwnersScreen() {
     }
   };
 
-  const handleImpersonate = (owner: any) => {
+  // Filter list by status tab and selected hostel tab
+  const filteredOwners = owners.filter((o) => {
+    if (statusFilter === 'ACTIVE' && !o.is_active) return false;
+    if (statusFilter === 'INACTIVE' && !!o.is_active) return false;
+
+    if (selectedHostelId !== null) {
+      // Check if this owner matches the selected hostel
+      const matchedHostel = hostels.find((h) => h.hostel_id === selectedHostelId);
+      if (matchedHostel && matchedHostel.owner_id !== o.user_id && matchedHostel.owner_name !== o.full_name) {
+        return false;
+      }
+    }
+    return true;
+  });
+
+  const handleToggleStatus = async (owner: any) => {
+    const nextStatus = !owner.is_active;
     Alert.alert(
-      'Enter Support Impersonation',
-      `You are entering ${owner.full_name}'s owner dashboard in controlled support mode.\n\nA top support banner with a live countdown timer will be displayed.`,
+      nextStatus ? 'Activate Owner Account' : 'Deactivate Owner Account',
+      `Are you sure you want to ${nextStatus ? 'activate' : 'deactivate'} ${owner.full_name}'s account?`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Enter Support Mode',
+          text: nextStatus ? 'Activate' : 'Deactivate',
+          style: nextStatus ? 'default' : 'destructive',
+          onPress: async () => {
+            try {
+              await developerService.updateOwnerStatus(owner.user_id, nextStatus);
+              setOwners((prev) =>
+                prev.map((item) =>
+                  item.user_id === owner.user_id ? { ...item, is_active: nextStatus ? 1 : 0 } : item
+                )
+              );
+              Alert.alert('Success', `Owner account has been ${nextStatus ? 'activated' : 'deactivated'}.`);
+            } catch (err: any) {
+              Alert.alert('Error', err.message || 'Failed to update owner status.');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleOpenResetPassword = (owner: any) => {
+    setSelectedOwner(owner);
+    setNewPassword('');
+    setPasswordModalVisible(true);
+  };
+
+  const handleSavePassword = async () => {
+    if (!newPassword.trim() || newPassword.trim().length < 4) {
+      Alert.alert('Invalid Password', 'Please enter a password with at least 4 characters.');
+      return;
+    }
+
+    try {
+      setResettingPassword(true);
+      await developerService.resetOwnerPassword(selectedOwner.user_id, newPassword.trim());
+      setPasswordModalVisible(false);
+      Alert.alert(
+        'Password Updated Successfully! 🔑',
+        `New password for ${selectedOwner.full_name}:\n\n${newPassword.trim()}\n\nPlease share this with the owner so they can log in.`
+      );
+    } catch (err: any) {
+      Alert.alert('Reset Failed', err.message || 'Could not reset owner password.');
+    } finally {
+      setResettingPassword(false);
+    }
+  };
+
+  const handleGenerateRandomPassword = () => {
+    const randomPass = Math.floor(100000 + Math.random() * 900000).toString();
+    setNewPassword(randomPass);
+  };
+
+  const handleImpersonate = (owner: any) => {
+    Alert.alert(
+      'Enter Support Mode (CEO)',
+      `You are opening ${owner.full_name}'s owner dashboard in controlled support mode.\n\nA top support banner with a live countdown timer will be displayed.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Open Account',
           onPress: async () => {
             try {
               setImpersonatingId(owner.user_id);
@@ -118,11 +213,15 @@ export default function DeveloperOwnersScreen() {
           <Text style={styles.ownerEmail}>{item.email}</Text>
           {item.phone ? <Text style={styles.ownerPhone}>📞 {item.phone}</Text> : null}
         </View>
-        <View style={[styles.statusBadge, item.is_active ? styles.statusActive : styles.statusInactive]}>
-          <Text style={[styles.statusBadgeText, { color: item.is_active ? '#059669' : '#8C7A6B' }]}>
+        <TouchableOpacity
+          onPress={() => handleToggleStatus(item)}
+          style={[styles.statusBadge, item.is_active ? styles.statusActive : styles.statusInactive]}
+          activeOpacity={0.75}
+        >
+          <Text style={[styles.statusBadgeText, { color: item.is_active ? '#059669' : '#DC2626' }]}>
             {item.is_active ? 'ACTIVE' : 'INACTIVE'}
           </Text>
-        </View>
+        </TouchableOpacity>
       </View>
 
       <View style={styles.divider} />
@@ -139,7 +238,17 @@ export default function DeveloperOwnersScreen() {
         <Text style={styles.ownerIdText}>User #{item.user_id}</Text>
       </View>
 
+      {/* CEO Actions Toolbar */}
       <View style={styles.cardActions}>
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onPress={() => handleOpenResetPassword(item)}
+          style={styles.resetPassBtn}
+        >
+          <Ionicons name="key-outline" size={13} color="#D97706" />
+          <Text style={styles.resetPassBtnText}>Reset Password</Text>
+        </TouchableOpacity>
+
         <TouchableOpacity
           activeOpacity={0.8}
           onPress={() => handleImpersonate(item)}
@@ -150,8 +259,8 @@ export default function DeveloperOwnersScreen() {
             <ActivityIndicator size="small" color="#FFF" />
           ) : (
             <>
-              <Ionicons name="shield-half-outline" size={14} color="#FFF" />
-              <Text style={styles.impersonateBtnText}>Open Account (Support)</Text>
+              <Ionicons name="shield-half-outline" size={13} color="#FFF" />
+              <Text style={styles.impersonateBtnText}>Support Mode</Text>
             </>
           )}
         </TouchableOpacity>
@@ -166,15 +275,15 @@ export default function DeveloperOwnersScreen() {
       {/* Top Header */}
       <View style={[styles.topBar, { paddingTop: Platform.OS === 'android' ? insets.top + 8 : 8 }]}>
         <View>
-          <Text style={styles.topTag}>PLATFORM OWNERS</Text>
+          <Text style={styles.topTag}>PLATFORM GOVERNANCE</Text>
           <Text style={styles.screenTitle}>Hostel Owners Directory</Text>
         </View>
         <View style={styles.countBadge}>
-          <Text style={styles.countBadgeText}>{owners.length} Loaded</Text>
+          <Text style={styles.countBadgeText}>{filteredOwners.length} Owners</Text>
         </View>
       </View>
 
-      {/* Search */}
+      {/* Search Bar */}
       <View style={styles.searchBoxWrap}>
         <View style={styles.searchBar}>
           <Ionicons name="search" size={18} color="#A89687" />
@@ -194,6 +303,59 @@ export default function DeveloperOwnersScreen() {
         </View>
       </View>
 
+      {/* TOP TABS ROW 1: HOSTELS LIST SEGREGATION */}
+      <View style={styles.hostelTabsSection}>
+        <View style={styles.tabSectionHeader}>
+          <Ionicons name="business" size={13} color="#C2410C" />
+          <Text style={styles.tabSectionTitle}>FILTER BY HOSTEL PROPERTY</Text>
+        </View>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.tabsScroll}
+        >
+          <TouchableOpacity
+            onPress={() => setSelectedHostelId(null)}
+            style={[styles.hostelTabChip, selectedHostelId === null && styles.hostelTabChipActive]}
+          >
+            <Text style={[styles.hostelTabChipText, selectedHostelId === null && styles.hostelTabChipTextActive]}>
+              🏢 All Properties ({hostels.length})
+            </Text>
+          </TouchableOpacity>
+          {hostels.map((hostel) => {
+            const isSelected = selectedHostelId === hostel.hostel_id;
+            return (
+              <TouchableOpacity
+                key={hostel.hostel_id}
+                onPress={() => setSelectedHostelId(isSelected ? null : hostel.hostel_id)}
+                style={[styles.hostelTabChip, isSelected && styles.hostelTabChipActive]}
+              >
+                <Text style={[styles.hostelTabChipText, isSelected && styles.hostelTabChipTextActive]}>
+                  🏠 {hostel.hostel_name}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      </View>
+
+      {/* TOP TABS ROW 2: STATUS SEGREGATION */}
+      <View style={styles.statusTabsSection}>
+        <View style={styles.filterRow}>
+          {(['ALL', 'ACTIVE', 'INACTIVE'] as const).map((st) => (
+            <TouchableOpacity
+              key={st}
+              onPress={() => setStatusFilter(st)}
+              style={[styles.statusFilterChip, statusFilter === st && styles.statusFilterChipActive]}
+            >
+              <Text style={[styles.statusFilterChipText, statusFilter === st && styles.statusFilterChipTextActive]}>
+                {st}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+
       {/* List */}
       {loading && !refreshing ? (
         <View style={styles.centerBox}>
@@ -202,7 +364,7 @@ export default function DeveloperOwnersScreen() {
         </View>
       ) : (
         <FlatList
-          data={owners}
+          data={filteredOwners}
           keyExtractor={(item) => String(item.user_id)}
           renderItem={renderOwnerCard}
           contentContainerStyle={styles.listContent}
@@ -216,11 +378,76 @@ export default function DeveloperOwnersScreen() {
             <View style={styles.emptyCard}>
               <Ionicons name="people-outline" size={40} color="#C4B5A5" />
               <Text style={styles.emptyTitle}>No Owners Found</Text>
-              <Text style={styles.emptySub}>No owners match your search query.</Text>
+              <Text style={styles.emptySub}>No owners match the selected property or status filter.</Text>
             </View>
           }
         />
       )}
+
+      {/* Reset Password Modal */}
+      <Modal
+        visible={passwordModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setPasswordModalVisible(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalHeader}>
+              <View style={styles.modalIconWrap}>
+                <Ionicons name="key" size={20} color="#D97706" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.modalTitle}>Set New Owner Password</Text>
+                <Text style={styles.modalSub}>{selectedOwner?.full_name} ({selectedOwner?.email})</Text>
+              </View>
+              <TouchableOpacity onPress={() => setPasswordModalVisible(false)}>
+                <Ionicons name="close" size={22} color="#78716C" />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.inputLabel}>Enter or Generate New Password</Text>
+            <View style={styles.passInputRow}>
+              <TextInput
+                placeholder="e.g. 123456 or securepass"
+                placeholderTextColor="#A89687"
+                value={newPassword}
+                onChangeText={setNewPassword}
+                style={styles.passTextInput}
+                autoCapitalize="none"
+              />
+              <TouchableOpacity
+                onPress={handleGenerateRandomPassword}
+                style={styles.generateBtn}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.generateBtnText}>🎲 6-Digit</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.modalBtnRow}>
+              <TouchableOpacity
+                onPress={() => setPasswordModalVisible(false)}
+                style={styles.cancelBtn}
+              >
+                <Text style={styles.cancelBtnText}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={handleSavePassword}
+                disabled={resettingPassword}
+                style={styles.confirmSaveBtn}
+              >
+                {resettingPassword ? (
+                  <ActivityIndicator size="small" color="#FFF" />
+                ) : (
+                  <Text style={styles.confirmSaveBtnText}>Save Password</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -257,7 +484,7 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#E9D5FF',
+    borderColor: '#DDD6FE',
   },
   countBadgeText: {
     color: '#7C3AED',
@@ -266,7 +493,7 @@ const styles = StyleSheet.create({
   },
   searchBoxWrap: {
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingTop: 10,
     backgroundColor: '#FAF6F0',
   },
   searchBar: {
@@ -275,7 +502,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
     paddingHorizontal: 12,
-    paddingVertical: 9,
+    paddingVertical: 8,
     borderWidth: 1,
     borderColor: '#EFE7DC',
     gap: 8,
@@ -290,6 +517,81 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#1C1917',
     padding: 0,
+  },
+  hostelTabsSection: {
+    paddingTop: 10,
+    paddingBottom: 4,
+    backgroundColor: '#FAF6F0',
+  },
+  tabSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 16,
+    marginBottom: 6,
+  },
+  tabSectionTitle: {
+    fontSize: 9.5,
+    fontWeight: '800',
+    color: '#C2410C',
+    letterSpacing: 0.6,
+  },
+  tabsScroll: {
+    paddingHorizontal: 16,
+    gap: 8,
+  },
+  hostelTabChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#EFE7DC',
+  },
+  hostelTabChipActive: {
+    backgroundColor: '#C2410C',
+    borderColor: '#C2410C',
+  },
+  hostelTabChipText: {
+    color: '#C2410C',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  hostelTabChipTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+  },
+  statusTabsSection: {
+    paddingHorizontal: 16,
+    paddingTop: 6,
+    paddingBottom: 8,
+    backgroundColor: '#FAF6F0',
+  },
+  filterRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  statusFilterChip: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#EFE7DC',
+  },
+  statusFilterChipActive: {
+    backgroundColor: '#7C3AED',
+    borderColor: '#7C3AED',
+  },
+  statusFilterChipText: {
+    color: '#78716C',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  statusFilterChipTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '800',
   },
   listContent: {
     padding: 16,
@@ -333,7 +635,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#E9D5FF',
+    borderColor: '#DDD6FE',
   },
   ownerName: {
     color: '#1C1917',
@@ -352,17 +654,17 @@ const styles = StyleSheet.create({
   },
   statusBadge: {
     paddingHorizontal: 8,
-    paddingVertical: 3,
+    paddingVertical: 4,
     borderRadius: 6,
   },
   statusActive: {
     backgroundColor: '#ECFDF5',
   },
   statusInactive: {
-    backgroundColor: '#F5F5F4',
+    backgroundColor: '#FEE2E2',
   },
   statusBadgeText: {
-    fontSize: 9,
+    fontSize: 9.5,
     fontWeight: '800',
   },
   divider: {
@@ -395,11 +697,29 @@ const styles = StyleSheet.create({
   ownerIdText: {
     marginLeft: 'auto',
     color: '#A89687',
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '600',
   },
   cardActions: {
     flexDirection: 'row',
+    gap: 8,
+  },
+  resetPassBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#FEF3C7',
+    paddingVertical: 9,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+  },
+  resetPassBtnText: {
+    color: '#B45309',
+    fontSize: 11.5,
+    fontWeight: '800',
   },
   impersonateBtn: {
     flex: 1,
@@ -407,18 +727,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    backgroundColor: '#C2410C',
-    paddingVertical: 10,
+    backgroundColor: '#7C3AED',
+    paddingVertical: 9,
     borderRadius: 10,
-    shadowColor: '#C2410C',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 2,
   },
   impersonateBtnText: {
     color: '#FFFFFF',
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: '800',
   },
   emptyCard: {
@@ -441,5 +756,109 @@ const styles = StyleSheet.create({
     fontSize: 12,
     textAlign: 'center',
     marginTop: 4,
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  modalCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 8,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 16,
+  },
+  modalIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#FEF3C7',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalTitle: {
+    color: '#1C1917',
+    fontSize: 15,
+    fontWeight: '900',
+  },
+  modalSub: {
+    color: '#78716C',
+    fontSize: 11.5,
+    marginTop: 2,
+  },
+  inputLabel: {
+    color: '#44403C',
+    fontSize: 12,
+    fontWeight: '700',
+    marginBottom: 6,
+  },
+  passInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 20,
+  },
+  passTextInput: {
+    flex: 1,
+    backgroundColor: '#FAF6F0',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: '#1C1917',
+    borderWidth: 1,
+    borderColor: '#EFE7DC',
+  },
+  generateBtn: {
+    backgroundColor: '#F3E8FF',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#DDD6FE',
+  },
+  generateBtnText: {
+    color: '#7C3AED',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  modalBtnRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  cancelBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 10,
+    backgroundColor: '#F5F5F4',
+    alignItems: 'center',
+  },
+  cancelBtnText: {
+    color: '#78716C',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  confirmSaveBtn: {
+    flex: 1.5,
+    paddingVertical: 12,
+    borderRadius: 10,
+    backgroundColor: '#D97706',
+    alignItems: 'center',
+  },
+  confirmSaveBtnText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '800',
   },
 });

@@ -42,7 +42,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { useAuth } from '../../../contexts/AuthContext';
-import { useDeveloper } from '../../../contexts/DeveloperContext';
 import * as RootNavigation from '../../navigation/navigationRef';
 import { useKeyboardInset } from '../../hooks/useKeyboardInset';
 import { KeyboardInsetDebugOverlay } from '../KeyboardInsetDebugOverlay';
@@ -151,7 +150,6 @@ const WELCOME_CHIPS: Array<{ icon: string; label: string; q: string }> = [
 // ─── Main Component ────────────────────────────────────────────────────────
 export const OwnerAssistant: React.FC = () => {
   const { user, updateTokenAndUser } = useAuth();
-  const { developer, isDeveloperLoggedIn } = useDeveloper();
   const insets = useSafeAreaInsets();
   const [isOpen, setIsOpen] = useState(false);
   const [isTourActive, setIsTourActive] = useState(false);
@@ -1507,10 +1505,9 @@ export const OwnerAssistant: React.FC = () => {
     loadSnap();
   };
 
-  // Only owners & developers (exclude tenants)
+  // Only owners (exclude tenants)
   const isTenant = user?.role?.toUpperCase() === 'TENANT' || user?.role_id === 3;
-  const isAuthenticated = !!user || !!developer || isDeveloperLoggedIn;
-  if (!isAuthenticated || isTenant || isTourActive || isAssistantHidden) return null;
+  if (!user || isTenant || isTourActive || isAssistantHidden) return null;
 
   return (
     <>
@@ -1521,25 +1518,14 @@ export const OwnerAssistant: React.FC = () => {
           onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => { }); setIsOpen(true); }}
           activeOpacity={0.85}
         >
-          <LinearGradient colors={['#F97316', '#EA580C', '#C2410C']} style={s.fabGrad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+          <LinearGradient colors={['#7C3AED', '#6D28D9']} style={s.fabGrad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
             <Ionicons name="chatbubble-ellipses" size={22} color="#FFF" />
           </LinearGradient>
         </TouchableOpacity>
       )}
 
       <Modal visible={isOpen} transparent={false} animationType="slide" onRequestClose={() => setIsOpen(false)} statusBarTranslucent={false}>
-        {/* SafeAreaView handles top inset (status bar). Bottom inset is handled seamlessly inside inputBarWrapper */}
-        {/* iOS: handle both top & bottom inset via SafeAreaView so the
-            input bar clears the home indicator. Android: non-transparent
-            Modal dialogs don't expose the gesture nav bar to SafeAreaView,
-            so we only claim the top inset there and handle the bottom
-            manually in inputBarWrapper. */}
         <SafeAreaView style={s.safe} edges={Platform.OS === 'ios' ? ['top', 'bottom'] : ['top']}>
-          {/* Chat column: header (fixed) → message list (flex) → composer
-              (bottom). The only thing the keyboard changes is this column's
-              bottom padding, so the composer is always the last thing above
-              the keyboard and the list absorbs the space change. See
-              syncKeyboardInset() for why this replaces KeyboardAvoidingView. */}
           <View
             style={[s.body, keyboardInset > 0 && { paddingBottom: keyboardInset }]}
             onLayout={handleBodyLayout}
@@ -1579,7 +1565,7 @@ export const OwnerAssistant: React.FC = () => {
                 <View style={{ flex: 1 }}>
                   {/* Greeting line */}
                   <Text style={s.headerGreeting} numberOfLines={1}>
-                    {getGreeting(user?.full_name || developer?.full_name || developer?.username)}
+                    {getGreeting(user?.full_name)}
                   </Text>
                   <Text style={s.headerTitle}>HOSTIX Assistant</Text>
                   {/* Welcome + hostel pill */}
@@ -1587,9 +1573,7 @@ export const OwnerAssistant: React.FC = () => {
                     <Text style={s.aiBadgeText}>Welcome</Text>
                     <Text style={s.aiBadgeSep}>·</Text>
                     <Ionicons name="business-outline" size={10} color="#C4B5FD" />
-                    <Text style={s.aiBadgeText} numberOfLines={1}>
-                      {user?.hostel_name || (developer ? 'Master Platform' : 'Your Hostel')}
-                    </Text>
+                    <Text style={s.aiBadgeText} numberOfLines={1}>{user?.hostel_name || 'Your Hostel'}</Text>
                   </View>
                 </View>
               </Pressable>

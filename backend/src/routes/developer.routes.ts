@@ -22,15 +22,19 @@ router.get('/search', developerController.globalSearch);
 router.get('/hostels', developerController.getHostels);
 router.get('/hostels/:id', developerController.getHostelDetails);
 router.put('/hostels/:id/status', developerController.updateHostelStatus);
+router.post('/hostels/:id/extend-trial', developerController.extendHostelTrial);
 
 // Owners Management
 router.get('/owners', developerController.getOwners);
 router.get('/owners/:id', developerController.getOwnerDetails);
 router.put('/owners/:id/status', developerController.updateOwnerStatus);
+router.post('/owners/:id/reset-password', developerController.resetOwnerPassword);
 
 // Students / Tenants Management
 router.get('/students', developerController.getStudents);
 router.get('/students/:id', developerController.getStudentDetails);
+router.put('/students/:id/status', developerController.updateStudentStatus);
+router.post('/students/:id/reset-password', developerController.resetStudentPassword);
 
 // Rooms & Beds Inventory
 router.get('/rooms-beds', developerController.getRoomsAndBeds);

@@ -172,8 +172,9 @@ export default function DeveloperDashboardScreen() {
   const studentPct = totalUsers > 0 ? Math.round((totalStudents / totalUsers) * 100) : 80;
   const ownerPct = totalUsers > 0 ? Math.max(0, 100 - studentPct) : 20;
 
-  // Developer initials
-  const devInitials = (developer?.username || developer?.full_name || 'D').slice(0, 2).toUpperCase();
+  // Developer initials & display name
+  const devName = developer?.full_name || 'Durgarao Goriparthi';
+  const devInitials = 'DG';
 
   const QUICK_MANAGEMENT_ITEMS = [
     { label: 'All Hostels', icon: 'business' as const, color: '#EA580C', bg: '#FFF7ED', route: 'DevHostelsTab' },
@@ -204,7 +205,7 @@ export default function DeveloperDashboardScreen() {
             <Text style={styles.masterBadgeText}>HOSTIX MASTER ADMIN</Text>
           </View>
           <Text style={styles.devGreeting} numberOfLines={1}>
-            Hello, <Text style={{ color: '#C2410C' }}>{developer?.username || 'Developer'}</Text>
+            Hello, <Text style={{ color: '#C2410C' }}>{devName}</Text>
           </Text>
         </View>
 
@@ -221,7 +222,7 @@ export default function DeveloperDashboardScreen() {
           </TouchableOpacity>
 
           <TouchableOpacity
-            onPress={() => setShowProfileModal(true)}
+            onPress={() => navigation.navigate('DeveloperProfile')}
             style={styles.profileAvatarBtn}
             activeOpacity={0.8}
             accessibilityLabel="Developer Profile Menu"
@@ -292,14 +293,16 @@ export default function DeveloperDashboardScreen() {
               <View style={styles.chartRow}>
                 <View style={styles.donutWrap}>
                   <DonutChart
-                    size={128}
-                    strokeWidth={13}
+                    size={132}
+                    strokeWidth={14}
                     segments={[
-                      { percentage: studentPct, color: '#059669' }, // Students (Green)
-                      { percentage: ownerPct, color: '#7C3AED' },  // Owners (Purple)
+                      { percentage: Math.max(10, Math.round((totalStudents / (totalUsers + totalBeds || 1)) * 100)), color: '#10B981' }, // Students (Emerald Green)
+                      { percentage: Math.max(8, Math.round((totalOwners / (totalUsers + totalBeds || 1)) * 100)), color: '#EA580C' },     // Owners (Rust Orange)
+                      { percentage: Math.max(10, Math.round((occupiedBeds / (totalUsers + totalBeds || 1)) * 100)), color: '#3B82F6' },   // Occupied Beds (Royal Blue)
+                      { percentage: Math.max(10, Math.round((availableBeds / (totalUsers + totalBeds || 1)) * 100)), color: '#F59E0B' },  // Available Beds (Amber Gold)
                     ]}
                     centerTitle={String(totalUsers)}
-                    centerSubtitle="Total Users"
+                    centerSubtitle="Community"
                   />
                 </View>
 
@@ -312,12 +315,12 @@ export default function DeveloperDashboardScreen() {
                     activeOpacity={0.75}
                   >
                     <View style={[styles.legendIconBox, { backgroundColor: '#ECFDF5' }]}>
-                      <Ionicons name="school" size={14} color="#059669" />
+                      <Ionicons name="school" size={14} color="#10B981" />
                     </View>
                     <View style={{ flex: 1 }}>
                       <View style={styles.legendRowBetween}>
                         <Text style={styles.legendLabel}>Students</Text>
-                        <Text style={styles.legendPct}>{studentPct}%</Text>
+                        <Text style={[styles.legendPct, { color: '#10B981' }]}>{studentPct}%</Text>
                       </View>
                       <Text style={styles.legendValue}>{totalStudents} Total</Text>
                       <Text style={styles.legendSubVal}>{activeStudents} Active</Text>
@@ -330,13 +333,13 @@ export default function DeveloperDashboardScreen() {
                     onPress={() => navigation.navigate('DevOwnersTab')}
                     activeOpacity={0.75}
                   >
-                    <View style={[styles.legendIconBox, { backgroundColor: '#F3E8FF' }]}>
-                      <Ionicons name="people" size={14} color="#7C3AED" />
+                    <View style={[styles.legendIconBox, { backgroundColor: '#FFF7ED' }]}>
+                      <Ionicons name="people" size={14} color="#EA580C" />
                     </View>
                     <View style={{ flex: 1 }}>
                       <View style={styles.legendRowBetween}>
                         <Text style={styles.legendLabel}>Owners</Text>
-                        <Text style={styles.legendPct}>{ownerPct}%</Text>
+                        <Text style={[styles.legendPct, { color: '#EA580C' }]}>{ownerPct}%</Text>
                       </View>
                       <Text style={styles.legendValue}>{totalOwners} Total</Text>
                       <Text style={styles.legendSubVal}>{activeOwners} Active</Text>

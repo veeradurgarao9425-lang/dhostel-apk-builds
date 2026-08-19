@@ -140,6 +140,7 @@ import DeveloperPaymentsScreen from '../Pages/developer/DeveloperPaymentsScreen'
 import DeveloperAuditLogsScreen from '../Pages/developer/DeveloperAuditLogsScreen';
 import DeveloperSystemScreen from '../Pages/developer/DeveloperSystemScreen';
 import DeveloperControlHubScreen from '../Pages/developer/DeveloperControlHubScreen';
+import DeveloperProfileScreen from '../Pages/developer/DeveloperProfileScreen';
 
 // ── Navigators ────────────────────────────────────────────────────────────────
 import BottomTabNavigator from '../components/BottomTabNavigator';
@@ -451,6 +452,7 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
                     <Stack.Screen name="DeveloperPayments" component={DeveloperPaymentsScreen} />
                     <Stack.Screen name="DeveloperAuditLogs" component={DeveloperAuditLogsScreen} />
                     <Stack.Screen name="DeveloperSystem" component={DeveloperSystemScreen} />
+                    <Stack.Screen name="DeveloperProfile" component={DeveloperProfileScreen} />
                 </Stack.Navigator>
             </NavigationContainer>
             <FullScreenLoader visible={logoutLoading} />

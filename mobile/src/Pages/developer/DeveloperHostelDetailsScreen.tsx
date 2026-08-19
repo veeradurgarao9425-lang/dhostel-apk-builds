@@ -5,6 +5,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
+  RefreshControl,
   ActivityIndicator,
   SafeAreaView,
   StatusBar,
@@ -24,9 +25,11 @@ export default function DeveloperHostelDetailsScreen() {
   const { enterSupportMode } = useDeveloper();
 
   const hostelId = route.params?.hostelId;
+
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('OVERVIEW');
+  const [refreshing, setRefreshing] = useState(false);
+  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'ROOMS' | 'STUDENTS' | 'FINANCE' | 'COMPLAINTS' | 'NOTICES' | 'STAFF' | 'SETTINGS'>('OVERVIEW');
   const [impersonating, setImpersonating] = useState(false);
 
   const fetchDetails = useCallback(async () => {
@@ -37,10 +40,12 @@ export default function DeveloperHostelDetailsScreen() {
       if (res.success && res.data) {
         setData(res.data);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error fetching hostel details:', err);
+      Alert.alert('Load Notice', err.message || 'Could not fetch full hostel details.');
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, [hostelId]);
 
@@ -48,24 +53,31 @@ export default function DeveloperHostelDetailsScreen() {
     fetchDetails();
   }, [fetchDetails]);
 
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchDetails();
+  };
+
   const handleOpenAsOwner = () => {
-    if (!data?.owner?.user_id) {
+    if (!data?.owner?.user_id && !data?.hostel?.owner_id) {
       Alert.alert('No Owner Found', 'This hostel does not have an owner user account associated.');
       return;
     }
 
+    const targetUserId = data?.owner?.user_id || data?.hostel?.owner_id;
+
     Alert.alert(
-      'Enter Owner Support Mode',
-      `You are entering the owner dashboard for ${data.hostel?.hostel_name || 'this hostel'} in controlled support mode.\n\nA top support banner with a live countdown timer will be displayed.`,
+      'Enter Owner Support Mode (CEO)',
+      `You are entering the owner dashboard for ${data.hostel?.hostel_name || 'this property'} in controlled support mode.\n\nA top support banner with a live countdown timer will be displayed.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Enter Support Mode',
+          text: 'Open Account',
           onPress: async () => {
             try {
               setImpersonating(true);
               await enterSupportMode({
-                target_user_id: data.owner.user_id,
+                target_user_id: targetUserId,
                 target_role: 'OWNER',
                 hostel_id: data.hostel?.hostel_id,
               });
@@ -88,27 +100,24 @@ export default function DeveloperHostelDetailsScreen() {
     { id: 'COMPLAINTS', label: `Complaints (${data?.complaints?.length || 0})`, icon: 'alert-circle-outline' as const },
     { id: 'NOTICES', label: `Notices (${data?.notices?.length || 0})`, icon: 'megaphone-outline' as const },
     { id: 'STAFF', label: `Staff (${data?.staff?.length || 0})`, icon: 'people-outline' as const },
-    { id: 'SETTINGS', label: 'Rules & Info', icon: 'settings-outline' as const },
   ];
 
   const hostel = data?.hostel || {};
   const owner = data?.owner || {};
-  const financial = data?.financial_summary || {};
+  const financial = data?.financial || {};
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#FAF6F0" />
 
-      {/* Top Bar */}
+      {/* Top Header */}
       <View style={[styles.topBar, { paddingTop: Platform.OS === 'android' ? insets.top + 8 : 8 }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
           <Ionicons name="arrow-back" size={22} color="#1C1917" />
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
-          <Text style={styles.topTag}>HOSTEL INSPECTOR</Text>
-          <Text style={styles.screenTitle} numberOfLines={1}>
-            {hostel.hostel_name || 'Hostel Details'}
-          </Text>
+          <Text style={styles.topTag}>HOSTEL INSPECTOR (CEO)</Text>
+          <Text style={styles.screenTitle} numberOfLines={1}>{hostel.hostel_name || 'Hostel Details'}</Text>
         </View>
         <TouchableOpacity
           onPress={handleOpenAsOwner}
@@ -121,88 +130,69 @@ export default function DeveloperHostelDetailsScreen() {
           ) : (
             <>
               <Ionicons name="shield-half-outline" size={13} color="#FFF" />
-              <Text style={styles.supportModeBtnText}>Open as Owner</Text>
+              <Text style={styles.supportModeBtnText}>Support Mode</Text>
             </>
           )}
         </TouchableOpacity>
       </View>
 
-      {loading ? (
+      {loading && !refreshing ? (
         <View style={styles.centerBox}>
           <ActivityIndicator size="large" color="#C2410C" />
           <Text style={styles.loadingText}>Loading hostel data...</Text>
         </View>
       ) : (
         <>
-          {/* Horizontal Tabs */}
-          <View style={styles.tabScrollWrap}>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabScroll}>
-              {TABS.map((tab) => (
+          {/* Horizontal Sub-Tabs Bar */}
+          <View style={styles.tabsContainer}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsScroll}>
+              {TABS.map((t) => (
                 <TouchableOpacity
-                  key={tab.id}
-                  onPress={() => setActiveTab(tab.id)}
-                  style={[styles.tabPill, activeTab === tab.id && styles.tabPillActive]}
+                  key={t.id}
+                  onPress={() => setActiveTab(t.id as any)}
+                  style={[styles.tabItem, activeTab === t.id && styles.tabItemActive]}
+                  activeOpacity={0.75}
                 >
                   <Ionicons
-                    name={tab.icon}
+                    name={t.icon}
                     size={14}
-                    color={activeTab === tab.id ? '#FFFFFF' : '#8C7A6B'}
+                    color={activeTab === t.id ? '#FFFFFF' : '#78716C'}
                   />
-                  <Text style={[styles.tabPillText, activeTab === tab.id && styles.tabPillTextActive]}>
-                    {tab.label}
+                  <Text style={[styles.tabItemText, activeTab === t.id && styles.tabItemTextActive]}>
+                    {t.label}
                   </Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>
           </View>
 
-          {/* Tab Content */}
-          <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+          {/* Sub-Tab Content View */}
+          <ScrollView
+            style={styles.contentArea}
+            contentContainerStyle={styles.contentPadding}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#C2410C" />}
+            showsVerticalScrollIndicator={false}
+          >
+            {/* OVERVIEW TAB */}
             {activeTab === 'OVERVIEW' && (
               <>
-                {/* Header Summary Card */}
                 <View style={styles.card}>
-                  <View style={styles.hostelHeaderRow}>
-                    <View style={styles.hostelIconBox}>
-                      <Ionicons name="business" size={24} color="#C2410C" />
+                  <Text style={styles.cardHeading}>HOSTEL SUMMARY</Text>
+                  <Text style={styles.hostelNameLg}>{hostel.hostel_name}</Text>
+                  <Text style={styles.hostelAddress}>📍 {hostel.address || 'Address not listed'}, {hostel.city || ''} {hostel.state || ''}</Text>
+                  <View style={styles.miniMetaRow}>
+                    <View style={styles.miniPill}>
+                      <Text style={styles.miniPillText}>Code: {hostel.hostel_code || 'N/A'}</Text>
                     </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.hostelBigName}>{hostel.hostel_name}</Text>
-                      <Text style={styles.hostelAddress}>
-                        {hostel.address ? `${hostel.address}, ` : ''}{hostel.city || ''}{hostel.state ? `, ${hostel.state}` : ''}
-                      </Text>
-                    </View>
-                  </View>
-
-                  <View style={styles.divider} />
-
-                  <View style={styles.metaGrid}>
-                    <View style={styles.metaItem}>
-                      <Text style={styles.metaLabel}>Hostel ID</Text>
-                      <Text style={styles.metaVal}>#{hostel.hostel_id}</Text>
-                    </View>
-                    <View style={styles.metaItem}>
-                      <Text style={styles.metaLabel}>Type</Text>
-                      <Text style={styles.metaVal}>{hostel.hostel_type || 'Co-Living'}</Text>
-                    </View>
-                    <View style={styles.metaItem}>
-                      <Text style={styles.metaLabel}>Occupancy</Text>
-                      <Text style={[styles.metaVal, { color: '#C2410C' }]}>
-                        {hostel.total_beds > 0
-                          ? `${Math.round((Number(hostel.occupied_beds || 0) / Number(hostel.total_beds)) * 100)}%`
-                          : '0%'}
-                      </Text>
-                    </View>
-                    <View style={styles.metaItem}>
-                      <Text style={styles.metaLabel}>Status</Text>
-                      <Text style={[styles.metaVal, { color: hostel.is_active ? '#059669' : '#DC2626' }]}>
+                    <View style={[styles.miniPill, hostel.is_active ? styles.miniPillGreen : styles.miniPillRed]}>
+                      <Text style={[styles.miniPillText, { color: hostel.is_active ? '#059669' : '#DC2626' }]}>
                         {hostel.is_active ? 'ACTIVE' : 'INACTIVE'}
                       </Text>
                     </View>
                   </View>
                 </View>
 
-                {/* Owner Card */}
+                {/* Owner Information */}
                 <View style={styles.card}>
                   <Text style={styles.cardHeading}>OWNER INFORMATION</Text>
                   <View style={styles.ownerRow}>
@@ -210,8 +200,8 @@ export default function DeveloperHostelDetailsScreen() {
                       <Ionicons name="person" size={18} color="#7C3AED" />
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text style={styles.ownerNameText}>{owner.full_name || 'No Owner Name'}</Text>
-                      <Text style={styles.ownerEmailText}>{owner.email}</Text>
+                      <Text style={styles.ownerNameText}>{owner.full_name || hostel.owner_name || 'No Owner Listed'}</Text>
+                      <Text style={styles.ownerEmailText}>{owner.email || 'Email not listed'}</Text>
                       {owner.phone ? <Text style={styles.ownerPhoneText}>📞 {owner.phone}</Text> : null}
                     </View>
                     <TouchableOpacity onPress={handleOpenAsOwner} style={styles.miniSupportBtn}>
@@ -222,11 +212,11 @@ export default function DeveloperHostelDetailsScreen() {
 
                 {/* Capacity & Finances */}
                 <View style={styles.card}>
-                  <Text style={styles.cardHeading}>CAPACITY & FINANCIAL SNAPSHOT</Text>
+                  <Text style={styles.cardHeading}>CAPACITY & STATS</Text>
                   <View style={styles.statsGrid}>
                     <View style={styles.statBox}>
                       <Text style={styles.statVal}>{data?.rooms?.length || 0}</Text>
-                      <Text style={styles.statLbl}>Total Rooms</Text>
+                      <Text style={styles.statLbl}>Rooms</Text>
                     </View>
                     <View style={styles.statBox}>
                       <Text style={styles.statVal}>{hostel.total_beds || 0}</Text>
@@ -241,67 +231,103 @@ export default function DeveloperHostelDetailsScreen() {
                       <Text style={styles.statLbl}>Students</Text>
                     </View>
                   </View>
-
-                  <View style={styles.divider} />
-
-                  <View style={styles.financialRow}>
-                    <View>
-                      <Text style={styles.finLabel}>Total Collected</Text>
-                      <Text style={styles.finValGreen}>₹{Number(financial.total_collected || 0).toLocaleString('en-IN')}</Text>
-                    </View>
-                    <View>
-                      <Text style={styles.finLabel}>Pending Dues</Text>
-                      <Text style={styles.finValAmber}>₹{Number(financial.total_pending || 0).toLocaleString('en-IN')}</Text>
-                    </View>
-                  </View>
                 </View>
               </>
             )}
 
+            {/* ROOMS TAB */}
             {activeTab === 'ROOMS' && (
               <View>
-                {(data?.rooms || []).map((r: any) => (
-                  <View key={r.room_id} style={styles.roomItem}>
-                    <View style={styles.roomLeft}>
-                      <View style={styles.roomBadge}>
-                        <Text style={styles.roomNumber}>R-{r.room_number}</Text>
-                      </View>
-                      <View>
-                        <Text style={styles.roomFloor}>Floor: {r.floor_number || 1} • {r.room_type || 'Standard'}</Text>
-                        <Text style={styles.roomCapacity}>Beds: {r.occupied_beds || 0} / {r.capacity || r.total_beds || 1}</Text>
-                      </View>
-                    </View>
-                    <Text style={styles.roomRent}>₹{Number(r.price_per_bed || r.monthly_rent || 0).toLocaleString('en-IN')}/mo</Text>
+                <View style={styles.tabActionHeader}>
+                  <Text style={styles.sectionHeaderTitle}>Rooms & Beds Inventory</Text>
+                  <TouchableOpacity
+                    onPress={handleOpenAsOwner}
+                    style={styles.addActionButton}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons name="add" size={16} color="#FFFFFF" />
+                    <Text style={styles.addActionButtonText}>Add Room</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {(!data?.rooms || data.rooms.length === 0) ? (
+                  <View style={styles.emptyCard}>
+                    <Ionicons name="bed-outline" size={40} color="#C4B5A5" />
+                    <Text style={styles.emptyTitle}>No Rooms Configured</Text>
+                    <Text style={styles.emptySub}>No rooms have been added to this hostel property yet.</Text>
+                    <TouchableOpacity onPress={handleOpenAsOwner} style={styles.emptyActionBtn}>
+                      <Text style={styles.emptyActionBtnText}>+ Add First Room</Text>
+                    </TouchableOpacity>
                   </View>
-                ))}
+                ) : (
+                  data.rooms.map((r: any) => (
+                    <View key={r.room_id} style={styles.roomItem}>
+                      <View style={styles.roomLeft}>
+                        <View style={styles.roomBadge}>
+                          <Text style={styles.roomNumber}>R-{r.room_number}</Text>
+                        </View>
+                        <View>
+                          <Text style={styles.roomFloor}>Floor {r.floor_number || 1} • {r.room_type || 'Standard'}</Text>
+                          <Text style={styles.roomCapacity}>Beds: {r.occupied_beds || 0} / {r.capacity || r.total_beds || 1}</Text>
+                        </View>
+                      </View>
+                      <Text style={styles.roomRent}>₹{Number(r.price_per_bed || r.monthly_rent || 0).toLocaleString('en-IN')}/mo</Text>
+                    </View>
+                  ))
+                )}
               </View>
             )}
 
+            {/* STUDENTS TAB */}
             {activeTab === 'STUDENTS' && (
               <View>
-                {(data?.students || []).map((s: any) => (
-                  <View key={s.student_id} style={styles.studentItem}>
-                    <View style={styles.studentAvatar}>
-                      <Ionicons name="school" size={16} color="#059669" />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.studentNameText}>{s.first_name} {s.last_name || ''}</Text>
-                      <Text style={styles.studentRoomText}>Room {s.room_number || 'N/A'} • Bed {s.bed_number || 'N/A'}</Text>
-                      <Text style={styles.studentContactText}>📞 {s.phone || s.email || 'N/A'}</Text>
-                    </View>
-                    <View style={[styles.statusBadge, String(s.status).toLowerCase() === 'active' ? styles.statusActive : styles.statusInactive]}>
-                      <Text style={[styles.statusBadgeText, { color: String(s.status).toLowerCase() === 'active' ? '#059669' : '#8C7A6B' }]}>
-                        {String(s.status || 'ACTIVE').toUpperCase()}
-                      </Text>
-                    </View>
+                <View style={styles.tabActionHeader}>
+                  <Text style={styles.sectionHeaderTitle}>Registered Students</Text>
+                  <TouchableOpacity
+                    onPress={handleOpenAsOwner}
+                    style={[styles.addActionButton, { backgroundColor: '#059669' }]}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons name="add" size={16} color="#FFFFFF" />
+                    <Text style={styles.addActionButtonText}>Add Student</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {(!data?.students || data.students.length === 0) ? (
+                  <View style={styles.emptyCard}>
+                    <Ionicons name="school-outline" size={40} color="#C4B5A5" />
+                    <Text style={styles.emptyTitle}>No Students in this Hostel</Text>
+                    <Text style={styles.emptySub}>Currently there are no active students enrolled in this property.</Text>
+                    <TouchableOpacity onPress={handleOpenAsOwner} style={[styles.emptyActionBtn, { backgroundColor: '#059669' }]}>
+                      <Text style={styles.emptyActionBtnText}>+ Register Student</Text>
+                    </TouchableOpacity>
                   </View>
-                ))}
+                ) : (
+                  data.students.map((s: any) => (
+                    <View key={s.student_id} style={styles.studentItem}>
+                      <View style={styles.studentAvatar}>
+                        <Ionicons name="school" size={16} color="#059669" />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.studentNameText}>{s.first_name} {s.last_name || ''}</Text>
+                        <Text style={styles.studentRoomText}>Room {s.room_number || 'N/A'} • Bed {s.bed_number || 'N/A'}</Text>
+                        <Text style={styles.studentContactText}>📞 {s.phone || s.email || 'N/A'}</Text>
+                      </View>
+                      <View style={[styles.statusBadge, String(s.status).toLowerCase() === 'active' || s.status === 1 ? styles.statusActive : styles.statusInactive]}>
+                        <Text style={[styles.statusBadgeText, { color: String(s.status).toLowerCase() === 'active' || s.status === 1 ? '#059669' : '#DC2626' }]}>
+                          {String(s.status).toLowerCase() === 'active' || s.status === 1 ? 'ACTIVE' : 'INACTIVE'}
+                        </Text>
+                      </View>
+                    </View>
+                  ))
+                )}
               </View>
             )}
 
+            {/* FINANCE TAB */}
             {activeTab === 'FINANCE' && (
               <View style={styles.card}>
-                <Text style={styles.cardHeading}>FINANCIAL SUMMARY</Text>
+                <Text style={styles.cardHeading}>FINANCIAL OVERVIEW</Text>
                 <View style={styles.finBlock}>
                   <Text style={styles.finBlockLbl}>Total Revenue Collected</Text>
                   <Text style={styles.finBlockValGreen}>₹{Number(financial.total_collected || 0).toLocaleString('en-IN')}</Text>
@@ -317,21 +343,23 @@ export default function DeveloperHostelDetailsScreen() {
               </View>
             )}
 
+            {/* COMPLAINTS TAB */}
             {activeTab === 'COMPLAINTS' && (
               <View>
-                {(data?.complaints || []).length === 0 ? (
+                {(!data?.complaints || data.complaints.length === 0) ? (
                   <View style={styles.emptyCard}>
-                    <Ionicons name="checkmark-circle-outline" size={36} color="#059669" />
+                    <Ionicons name="checkmark-circle-outline" size={40} color="#059669" />
                     <Text style={styles.emptyTitle}>No Complaints Logged</Text>
+                    <Text style={styles.emptySub}>All student complaints for this property have been resolved.</Text>
                   </View>
                 ) : (
-                  (data?.complaints || []).map((c: any) => (
+                  data.complaints.map((c: any) => (
                     <View key={c.complaint_id} style={styles.card}>
                       <Text style={styles.complaintTitle}>{c.title || c.category || 'Complaint'}</Text>
                       <Text style={styles.complaintDesc}>{c.description}</Text>
                       <View style={styles.complaintMeta}>
                         <Text style={styles.complaintStatus}>Status: {c.status}</Text>
-                        <Text style={styles.complaintDate}>{new Date(c.created_at).toLocaleDateString()}</Text>
+                        <Text style={styles.complaintDate}>{c.created_at ? new Date(c.created_at).toLocaleDateString() : 'Recent'}</Text>
                       </View>
                     </View>
                   ))
@@ -339,34 +367,53 @@ export default function DeveloperHostelDetailsScreen() {
               </View>
             )}
 
+            {/* NOTICES TAB */}
             {activeTab === 'NOTICES' && (
               <View>
-                {(data?.notices || []).length === 0 ? (
+                <View style={styles.tabActionHeader}>
+                  <Text style={styles.sectionHeaderTitle}>Hostel Notice Board</Text>
+                  <TouchableOpacity
+                    onPress={handleOpenAsOwner}
+                    style={[styles.addActionButton, { backgroundColor: '#7C3AED' }]}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons name="add" size={16} color="#FFFFFF" />
+                    <Text style={styles.addActionButtonText}>Post Notice</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {(!data?.notices || data.notices.length === 0) ? (
                   <View style={styles.emptyCard}>
-                    <Ionicons name="megaphone-outline" size={36} color="#A89687" />
+                    <Ionicons name="megaphone-outline" size={40} color="#C4B5A5" />
                     <Text style={styles.emptyTitle}>No Notices Published</Text>
+                    <Text style={styles.emptySub}>No announcements or notices have been posted on this board.</Text>
+                    <TouchableOpacity onPress={handleOpenAsOwner} style={[styles.emptyActionBtn, { backgroundColor: '#7C3AED' }]}>
+                      <Text style={styles.emptyActionBtnText}>+ Post Notice</Text>
+                    </TouchableOpacity>
                   </View>
                 ) : (
-                  (data?.notices || []).map((n: any) => (
+                  data.notices.map((n: any) => (
                     <View key={n.notice_id} style={styles.card}>
                       <Text style={styles.noticeTitle}>{n.title}</Text>
                       <Text style={styles.noticeBody}>{n.message || n.description}</Text>
-                      <Text style={styles.noticeDate}>{new Date(n.created_at).toLocaleDateString()}</Text>
+                      <Text style={styles.noticeDate}>{n.created_at ? new Date(n.created_at).toLocaleDateString() : 'Recent'}</Text>
                     </View>
                   ))
                 )}
               </View>
             )}
 
+            {/* STAFF TAB */}
             {activeTab === 'STAFF' && (
               <View>
-                {(data?.staff || []).length === 0 ? (
+                {(!data?.staff || data.staff.length === 0) ? (
                   <View style={styles.emptyCard}>
-                    <Ionicons name="people-outline" size={36} color="#A89687" />
+                    <Ionicons name="people-outline" size={40} color="#C4B5A5" />
                     <Text style={styles.emptyTitle}>No Staff Members Registered</Text>
+                    <Text style={styles.emptySub}>No wardens, cooks, or cleaners have been assigned yet.</Text>
                   </View>
                 ) : (
-                  (data?.staff || []).map((st: any) => (
+                  data.staff.map((st: any) => (
                     <View key={st.staff_id} style={styles.studentItem}>
                       <View style={styles.ownerAvatar}>
                         <Ionicons name="person" size={16} color="#7C3AED" />
@@ -378,16 +425,6 @@ export default function DeveloperHostelDetailsScreen() {
                     </View>
                   ))
                 )}
-              </View>
-            )}
-
-            {activeTab === 'SETTINGS' && (
-              <View style={styles.card}>
-                <Text style={styles.cardHeading}>HOSTEL RULES & DETAILS</Text>
-                <Text style={styles.settingText}>• Gate Closing Time: {hostel.gate_closing_time || '10:00 PM'}</Text>
-                <Text style={styles.settingText}>• Wifi Password: {hostel.wifi_password || 'Not provided'}</Text>
-                <Text style={styles.settingText}>• Notice Period: {hostel.notice_period_days || 30} days</Text>
-                <Text style={styles.settingText}>• Food / Mess Included: {hostel.food_included ? 'Yes' : 'No'}</Text>
               </View>
             )}
           </ScrollView>
@@ -405,12 +442,12 @@ const styles = StyleSheet.create({
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
     paddingHorizontal: 16,
     paddingBottom: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#EFE7DC',
     backgroundColor: '#FAF6F0',
+    gap: 10,
   },
   backBtn: {
     width: 36,
@@ -430,26 +467,63 @@ const styles = StyleSheet.create({
   },
   screenTitle: {
     color: '#1C1917',
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '900',
   },
   supportModeBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#C2410C',
+    backgroundColor: '#7C3AED',
     paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingVertical: 7,
     borderRadius: 8,
-    shadowColor: '#C2410C',
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 2,
   },
   supportModeBtnText: {
     color: '#FFFFFF',
     fontSize: 11,
     fontWeight: '800',
+  },
+  tabsContainer: {
+    backgroundColor: '#FAF6F0',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#EFE7DC',
+  },
+  tabsScroll: {
+    paddingHorizontal: 16,
+    gap: 8,
+  },
+  tabItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#EFE7DC',
+  },
+  tabItemActive: {
+    backgroundColor: '#C2410C',
+    borderColor: '#C2410C',
+  },
+  tabItemText: {
+    color: '#78716C',
+    fontSize: 11.5,
+    fontWeight: '700',
+  },
+  tabItemTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+  },
+  contentArea: {
+    flex: 1,
+  },
+  contentPadding: {
+    padding: 16,
+    paddingBottom: 40,
   },
   centerBox: {
     flex: 1,
@@ -463,112 +537,61 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
   },
-  tabScrollWrap: {
-    borderBottomWidth: 1,
-    borderBottomColor: '#EFE7DC',
-    backgroundColor: '#FAF6F0',
-  },
-  tabScroll: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    gap: 8,
-  },
-  tabPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#EFE7DC',
-  },
-  tabPillActive: {
-    backgroundColor: '#C2410C',
-    borderColor: '#C2410C',
-  },
-  tabPillText: {
-    color: '#78716C',
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  tabPillTextActive: {
-    color: '#FFFFFF',
-    fontWeight: '800',
-  },
-  content: {
-    padding: 16,
-    paddingBottom: 40,
-  },
   card: {
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
-    padding: 16,
-    marginBottom: 14,
+    padding: 14,
+    marginBottom: 12,
     borderWidth: 1,
     borderColor: '#EFE7DC',
     shadowColor: '#8C3A00',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
-    shadowRadius: 8,
+    shadowRadius: 6,
     elevation: 2,
   },
-  hostelHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
+  cardHeading: {
+    color: '#A89687',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+    marginBottom: 8,
   },
-  hostelIconBox: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: '#FFF7ED',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#FFEDD5',
-  },
-  hostelBigName: {
+  hostelNameLg: {
     color: '#1C1917',
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '900',
   },
   hostelAddress: {
     color: '#78716C',
     fontSize: 12,
-    marginTop: 2,
+    marginTop: 4,
   },
-  divider: {
-    height: 1,
-    backgroundColor: '#F5EFE6',
-    marginVertical: 12,
-  },
-  metaGrid: {
+  miniMetaRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
+    gap: 8,
+    marginTop: 10,
   },
-  metaItem: {
-    width: '46%',
+  miniPill: {
+    backgroundColor: '#FAF6F0',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#EFE7DC',
   },
-  metaLabel: {
-    color: '#A89687',
-    fontSize: 10,
-    fontWeight: '700',
+  miniPillGreen: {
+    backgroundColor: '#ECFDF5',
+    borderColor: '#A7F3D0',
   },
-  metaVal: {
-    color: '#1C1917',
-    fontSize: 13,
-    fontWeight: '800',
-    marginTop: 2,
+  miniPillRed: {
+    backgroundColor: '#FEE2E2',
+    borderColor: '#FECACA',
   },
-  cardHeading: {
-    color: '#8C7A6B',
+  miniPillText: {
+    color: '#44403C',
     fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 0.8,
-    marginBottom: 10,
+    fontWeight: '700',
   },
   ownerRow: {
     flexDirection: 'row',
@@ -576,9 +599,9 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   ownerAvatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
+    width: 38,
+    height: 38,
+    borderRadius: 12,
     backgroundColor: '#F3E8FF',
     alignItems: 'center',
     justifyContent: 'center',
@@ -590,7 +613,7 @@ const styles = StyleSheet.create({
   },
   ownerEmailText: {
     color: '#78716C',
-    fontSize: 11,
+    fontSize: 11.5,
   },
   ownerPhoneText: {
     color: '#78716C',
@@ -598,25 +621,26 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   miniSupportBtn: {
-    backgroundColor: '#FFF7ED',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#FFEDD5',
+    backgroundColor: '#7C3AED',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
   },
   miniSupportBtnText: {
-    color: '#C2410C',
+    color: '#FFFFFF',
     fontSize: 11,
     fontWeight: '800',
   },
   statsGrid: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    backgroundColor: '#FAF6F0',
+    borderRadius: 12,
+    padding: 10,
   },
   statBox: {
-    alignItems: 'center',
     flex: 1,
+    alignItems: 'center',
   },
   statVal: {
     color: '#1C1917',
@@ -624,37 +648,42 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
   statLbl: {
-    color: '#A89687',
-    fontSize: 10,
-    marginTop: 1,
-  },
-  financialRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  finLabel: {
     color: '#78716C',
-    fontSize: 11,
+    fontSize: 10,
+    marginTop: 2,
     fontWeight: '600',
   },
-  finValGreen: {
-    color: '#059669',
-    fontSize: 16,
-    fontWeight: '900',
-    marginTop: 2,
+  tabActionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
   },
-  finValAmber: {
-    color: '#D97706',
-    fontSize: 16,
+  sectionHeaderTitle: {
+    color: '#1C1917',
+    fontSize: 15,
     fontWeight: '900',
-    marginTop: 2,
+  },
+  addActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#C2410C',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  addActionButtonText: {
+    color: '#FFFFFF',
+    fontSize: 11.5,
+    fontWeight: '800',
   },
   roomItem: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    borderRadius: 14,
     padding: 12,
     marginBottom: 8,
     borderWidth: 1,
@@ -667,41 +696,42 @@ const styles = StyleSheet.create({
   },
   roomBadge: {
     backgroundColor: '#FFF7ED',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#FFEDD5',
+    borderColor: '#FED7AA',
   },
   roomNumber: {
     color: '#C2410C',
     fontSize: 12,
-    fontWeight: '800',
+    fontWeight: '900',
   },
   roomFloor: {
     color: '#1C1917',
-    fontSize: 12,
+    fontSize: 12.5,
     fontWeight: '700',
   },
   roomCapacity: {
     color: '#78716C',
     fontSize: 11,
+    marginTop: 2,
   },
   roomRent: {
     color: '#059669',
-    fontSize: 13,
-    fontWeight: '800',
+    fontSize: 12.5,
+    fontWeight: '900',
   },
   studentItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    borderRadius: 14,
     padding: 12,
     marginBottom: 8,
     borderWidth: 1,
     borderColor: '#EFE7DC',
+    gap: 10,
   },
   studentAvatar: {
     width: 36,
@@ -713,36 +743,36 @@ const styles = StyleSheet.create({
   },
   studentNameText: {
     color: '#1C1917',
-    fontSize: 13,
+    fontSize: 13.5,
     fontWeight: '800',
   },
   studentRoomText: {
     color: '#78716C',
-    fontSize: 11,
+    fontSize: 11.5,
     marginTop: 1,
   },
   studentContactText: {
-    color: '#A89687',
-    fontSize: 10,
-    marginTop: 1,
+    color: '#78716C',
+    fontSize: 11,
+    marginTop: 2,
   },
   statusBadge: {
     paddingHorizontal: 8,
-    paddingVertical: 3,
+    paddingVertical: 4,
     borderRadius: 6,
   },
   statusActive: {
     backgroundColor: '#ECFDF5',
   },
   statusInactive: {
-    backgroundColor: '#F5F5F4',
+    backgroundColor: '#FEE2E2',
   },
   statusBadgeText: {
-    fontSize: 9,
+    fontSize: 9.5,
     fontWeight: '800',
   },
   finBlock: {
-    marginBottom: 12,
+    marginBottom: 10,
   },
   finBlockLbl: {
     color: '#78716C',
@@ -762,29 +792,14 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   finBlockValMuted: {
-    color: '#57534E',
+    color: '#1C1917',
     fontSize: 18,
     fontWeight: '900',
     marginTop: 2,
   },
-  emptyCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 30,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#EFE7DC',
-    marginTop: 10,
-  },
-  emptyTitle: {
-    color: '#1C1917',
-    fontSize: 15,
-    fontWeight: '800',
-    marginTop: 10,
-  },
   complaintTitle: {
     color: '#1C1917',
-    fontSize: 14,
+    fontSize: 13.5,
     fontWeight: '800',
   },
   complaintDesc: {
@@ -801,7 +816,7 @@ const styles = StyleSheet.create({
     borderTopColor: '#F5EFE6',
   },
   complaintStatus: {
-    color: '#C2410C',
+    color: '#D97706',
     fontSize: 11,
     fontWeight: '700',
   },
@@ -821,13 +836,40 @@ const styles = StyleSheet.create({
   },
   noticeDate: {
     color: '#A89687',
-    fontSize: 10,
+    fontSize: 10.5,
     marginTop: 8,
   },
-  settingText: {
-    color: '#44403C',
-    fontSize: 13,
-    marginBottom: 8,
-    lineHeight: 18,
+  emptyCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 30,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#EFE7DC',
+    marginTop: 10,
+  },
+  emptyTitle: {
+    color: '#1C1917',
+    fontSize: 15,
+    fontWeight: '800',
+    marginTop: 8,
+  },
+  emptySub: {
+    color: '#78716C',
+    fontSize: 11.5,
+    textAlign: 'center',
+    marginTop: 4,
+  },
+  emptyActionBtn: {
+    backgroundColor: '#C2410C',
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+    borderRadius: 10,
+    marginTop: 14,
+  },
+  emptyActionBtnText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '800',
   },
 });

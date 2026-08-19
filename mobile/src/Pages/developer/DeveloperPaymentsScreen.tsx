@@ -88,7 +88,7 @@ export default function DeveloperPaymentsScreen() {
       <View style={styles.divider} />
 
       <View style={styles.metaRow}>
-        <Text style={styles.metaText}>Mode: {(item.payment_mode || 'ONLINE').toUpperCase()}</Text>
+        <Text style={styles.metaText}>Mode: {String(item.payment_mode || 'ONLINE').toUpperCase()}</Text>
         <Text style={styles.metaDate}>
           {item.payment_date ? new Date(item.payment_date).toLocaleDateString() : 'N/A'}
         </Text>
