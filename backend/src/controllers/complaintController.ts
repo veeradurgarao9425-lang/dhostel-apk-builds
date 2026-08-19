@@ -4,6 +4,7 @@ import db from '../config/database.js';
 import { processFileUpload } from '../utils/fileUpload.js';
 import { sendNotificationToHostelOwner, sendNotificationToStudent } from '../utils/notification.js';
 import { io } from '../socket/index.js';
+import { getAuthenticatedStudent, getAuthenticatedStudentId } from '../utils/scope.js';
 
 // =======================
 // TENANT ENDPOINTS
@@ -11,10 +12,15 @@ import { io } from '../socket/index.js';
 
 export const createComplaint = async (req: AuthRequest, res: Response) => {
   try {
-    const { hostel_id, category, title, description } = req.body;
-    const student_id = req.user?.user_id; // Assuming auth middleware sets req.user.user_id for tenant
+    const { category, title, description } = req.body;
+    const student = await getAuthenticatedStudent(req.user);
+    if (!student) {
+      return res.status(401).json({ success: false, message: 'Tenant profile not found' });
+    }
+    const student_id = student.student_id;
+    const hostel_id = student.hostel_id || req.body.hostel_id;
 
-    if (!hostel_id || !student_id || !category || !title) {
+    if (!hostel_id || !category || !title) {
       return res.status(400).json({ success: false, message: 'Missing required fields' });
     }
 
@@ -69,12 +75,12 @@ export const createComplaint = async (req: AuthRequest, res: Response) => {
 
 export const getTenantComplaints = async (req: AuthRequest, res: Response) => {
   try {
-    const student_id = req.user?.user_id;
-    const { hostel_id } = req.query;
-
-    if (!student_id) {
-      return res.status(400).json({ success: false, message: 'Missing student ID' });
+    const student = await getAuthenticatedStudent(req.user);
+    if (!student) {
+      return res.status(401).json({ success: false, message: 'Tenant profile not found' });
     }
+    const student_id = student.student_id;
+    const { hostel_id } = req.query;
 
     let query = db('complaints').where('student_id', student_id);
     if (hostel_id) {

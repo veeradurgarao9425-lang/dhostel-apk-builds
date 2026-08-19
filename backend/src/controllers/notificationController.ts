@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import db from '../config/database.js';
 import { AuthRequest } from '../middleware/auth.js';
+import { getAuthenticatedStudentId } from '../utils/scope.js';
 
 // Register push token for user device
 export const registerToken = async (req: AuthRequest, res: Response) => {
@@ -26,7 +27,8 @@ export const registerToken = async (req: AuthRequest, res: Response) => {
     };
 
     if (isTenant) {
-      upsertData.student_id = user.user_id;  // for tenants, user_id IS the student_id in JWT
+      const realStudentId = await getAuthenticatedStudentId(user) || user.user_id;
+      upsertData.student_id = realStudentId;
       upsertData.user_id = null;
     } else {
       upsertData.user_id = user.user_id;
@@ -93,7 +95,11 @@ export const getNotifications = async (req: AuthRequest, res: Response) => {
     }
 
     const isTenant = user.role_id === 3;
-    const condition = isTenant ? { student_id: user.user_id } : { user_id: user.user_id };
+    let condition: any = { user_id: user.user_id };
+    if (isTenant) {
+      const realStudentId = await getAuthenticatedStudentId(user) || user.user_id;
+      condition = { student_id: realStudentId };
+    }
 
     const notifications = await db('notifications')
       .where(condition)
@@ -127,9 +133,11 @@ export const markAsRead = async (req: AuthRequest, res: Response) => {
     }
 
     const isTenant = user.role_id === 3;
-    const condition = isTenant 
-      ? { notification_id: id, student_id: user.user_id } 
-      : { notification_id: id, user_id: user.user_id };
+    let condition: any = { notification_id: id, user_id: user.user_id };
+    if (isTenant) {
+      const realStudentId = await getAuthenticatedStudentId(user) || user.user_id;
+      condition = { notification_id: id, student_id: realStudentId };
+    }
 
     await db('notifications')
       .where(condition)
@@ -161,7 +169,11 @@ export const markAllAsRead = async (req: AuthRequest, res: Response) => {
     }
 
     const isTenant = user.role_id === 3;
-    const condition = isTenant ? { student_id: user.user_id } : { user_id: user.user_id };
+    let condition: any = { user_id: user.user_id };
+    if (isTenant) {
+      const realStudentId = await getAuthenticatedStudentId(user) || user.user_id;
+      condition = { student_id: realStudentId };
+    }
 
     await db('notifications')
       .where(condition)

@@ -105,3 +105,37 @@ export const canAccessHostel = (
   if (resourceHostelId === null || resourceHostelId === undefined) return false;
   return user?.hostel_id != null && Number(user.hostel_id) === Number(resourceHostelId);
 };
+
+/**
+ * Resolves the authenticated student record for a tenant user.
+ * 1. Checks students WHERE user_id = user.user_id
+ * 2. Fallback: checks students WHERE student_id = user.user_id (for direct student tokens)
+ * Returns the student record, or null if not found.
+ */
+export const getAuthenticatedStudent = async (
+  user?: TokenPayload
+): Promise<any | null> => {
+  if (!user || !user.user_id) return null;
+
+  let student = await db('students')
+    .where('user_id', user.user_id)
+    .first();
+
+  if (!student) {
+    student = await db('students')
+      .where('student_id', user.user_id)
+      .first();
+  }
+
+  return student || null;
+};
+
+/**
+ * Returns the real student_id (integer) for the authenticated tenant user, or null if not found.
+ */
+export const getAuthenticatedStudentId = async (
+  user?: TokenPayload
+): Promise<number | null> => {
+  const student = await getAuthenticatedStudent(user);
+  return student?.student_id ? Number(student.student_id) : null;
+};

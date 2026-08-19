@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import db from '../config/database.js';
 import { AuthRequest } from '../middleware/auth.js';
+import { getAuthenticatedStudentId } from '../utils/scope.js';
 
 export const getTenantExpenses = async (req: AuthRequest, res: Response) => {
   try {
@@ -9,8 +10,9 @@ export const getTenantExpenses = async (req: AuthRequest, res: Response) => {
       return res.status(403).json({ success: false, error: 'Unauthorized. Only tenants can access personal expenses.' });
     }
 
+    const student_id = await getAuthenticatedStudentId(user) || user.user_id;
     const expenses = await db('tenant_expenses')
-      .where('student_id', user.user_id)
+      .where('student_id', student_id)
       .orderBy('date', 'desc')
       .orderBy('created_at', 'desc');
 
@@ -37,8 +39,9 @@ export const createTenantExpense = async (req: AuthRequest, res: Response) => {
     // Ensure the date is formatted as YYYY-MM-DD to avoid MySQL strict mode parsing errors with full ISO 8601 strings
     const formattedDate = typeof date === 'string' ? date.split('T')[0] : date;
 
+    const student_id = await getAuthenticatedStudentId(user) || user.user_id;
     const [expense_id] = await db('tenant_expenses').insert({
-      student_id: user.user_id,
+      student_id,
       title,
       amount: parseFloat(amount),
       category,
@@ -64,11 +67,12 @@ export const getSavingGoal = async (req: AuthRequest, res: Response) => {
       return res.status(403).json({ success: false, error: 'Unauthorized.' });
     }
 
-    let goal = await db('tenant_saving_goals').where('student_id', user.user_id).first();
+    const student_id = await getAuthenticatedStudentId(user) || user.user_id;
+    let goal = await db('tenant_saving_goals').where('student_id', student_id).first();
     
     // Default fallback if not found
     if (!goal) {
-      goal = { student_id: user.user_id, name: 'Savings Goal', amount: 0, saved_amount: 0 };
+      goal = { student_id, name: 'Savings Goal', amount: 0, saved_amount: 0 };
     }
 
     return res.json({ success: true, data: goal });
@@ -91,11 +95,12 @@ export const updateSavingGoal = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ success: false, error: 'Amount is required' });
     }
 
-    const existing = await db('tenant_saving_goals').where('student_id', user.user_id).first();
+    const student_id = await getAuthenticatedStudentId(user) || user.user_id;
+    const existing = await db('tenant_saving_goals').where('student_id', student_id).first();
 
     if (existing) {
       await db('tenant_saving_goals')
-        .where('student_id', user.user_id)
+        .where('student_id', student_id)
         .update({ 
           amount: parseFloat(amount), 
           name: name || existing.name, 
@@ -104,7 +109,7 @@ export const updateSavingGoal = async (req: AuthRequest, res: Response) => {
         });
     } else {
       await db('tenant_saving_goals').insert({
-        student_id: user.user_id,
+        student_id,
         name: name || 'Savings Goal',
         amount: parseFloat(amount),
         saved_amount: saved_amount !== undefined ? parseFloat(saved_amount) : 0,
@@ -113,7 +118,7 @@ export const updateSavingGoal = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    const updated = await db('tenant_saving_goals').where('student_id', user.user_id).first();
+    const updated = await db('tenant_saving_goals').where('student_id', student_id).first();
     return res.json({ success: true, data: updated, message: 'Saving goal updated successfully' });
   } catch (error: any) {
     console.error('Error updating saving goal:', error);
@@ -128,11 +133,12 @@ export const getTenantBudget = async (req: AuthRequest, res: Response) => {
       return res.status(403).json({ success: false, error: 'Unauthorized.' });
     }
 
-    let budget = await db('tenant_budgets').where('student_id', user.user_id).first();
+    const student_id = await getAuthenticatedStudentId(user) || user.user_id;
+    let budget = await db('tenant_budgets').where('student_id', student_id).first();
     
     // Default fallback if not found
     if (!budget) {
-      budget = { student_id: user.user_id, amount: 0 };
+      budget = { student_id, amount: 0 };
     }
 
     return res.json({ success: true, data: budget });
@@ -155,22 +161,23 @@ export const updateTenantBudget = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ success: false, error: 'Amount is required' });
     }
 
-    const existing = await db('tenant_budgets').where('student_id', user.user_id).first();
+    const student_id = await getAuthenticatedStudentId(user) || user.user_id;
+    const existing = await db('tenant_budgets').where('student_id', student_id).first();
 
     if (existing) {
       await db('tenant_budgets')
-        .where('student_id', user.user_id)
+        .where('student_id', student_id)
         .update({ amount: parseFloat(amount), updated_at: new Date() });
     } else {
       await db('tenant_budgets').insert({
-        student_id: user.user_id,
+        student_id,
         amount: parseFloat(amount),
         created_at: new Date(),
         updated_at: new Date()
       });
     }
 
-    const updated = await db('tenant_budgets').where('student_id', user.user_id).first();
+    const updated = await db('tenant_budgets').where('student_id', student_id).first();
     return res.json({ success: true, data: updated, message: 'Tenant budget updated successfully' });
   } catch (error: any) {
     console.error('Error updating tenant budget:', error);

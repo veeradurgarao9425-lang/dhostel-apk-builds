@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import db from '../config/database.js';
 import { AuthRequest } from '../middleware/auth.js';
+import { getAuthenticatedStudent } from '../utils/scope.js';
 
 export const getRoomChatDetails = async (req: AuthRequest, res: Response) => {
   try {
@@ -12,11 +13,8 @@ export const getRoomChatDetails = async (req: AuthRequest, res: Response) => {
     const { roomId } = req.params;
 
     // Validate if the tenant is actually assigned to this room
-    const tenant = await db('students')
-      .where({ student_id: user.user_id, room_id: roomId, status: 1 })
-      .first();
-
-    if (!tenant) {
+    const student = await getAuthenticatedStudent(user);
+    if (!student || Number(student.room_id) !== Number(roomId) || student.status !== 1) {
       return res.status(403).json({ success: false, error: 'You do not have access to this room chat.' });
     }
 
@@ -49,11 +47,8 @@ export const getMessages = async (req: AuthRequest, res: Response) => {
     const offset = (Number(page) - 1) * Number(limit);
 
     // Validate access
-    const tenant = await db('students')
-      .where({ student_id: user.user_id, room_id: roomId, status: 1 })
-      .first();
-
-    if (!tenant) {
+    const student = await getAuthenticatedStudent(user);
+    if (!student || Number(student.room_id) !== Number(roomId) || student.status !== 1) {
       return res.status(403).json({ success: false, error: 'You do not have access to this room chat.' });
     }
 
@@ -67,7 +62,7 @@ export const getMessages = async (req: AuthRequest, res: Response) => {
       .join('students', 'students.student_id', 'chat_messages.sender_id')
       .leftJoin('chat_reads', function() {
         this.on('chat_reads.message_id', '=', 'chat_messages.id')
-          .andOn('chat_reads.student_id', '=', db.raw('?', [user.user_id]));
+          .andOn('chat_reads.student_id', '=', db.raw('?', [student.student_id]));
       })
       .where('chat_messages.room_id', roomId)
       .orderBy('chat_messages.created_at', 'desc')

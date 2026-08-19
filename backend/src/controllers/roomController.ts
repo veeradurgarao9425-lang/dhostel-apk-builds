@@ -2,7 +2,7 @@ import { Response } from 'express';
 import db from '../config/database.js';
 import { AuthRequest } from '../middleware/auth.js';
 import { sendNotificationToHostelOwner } from '../utils/notification.js';
-import { resolveScopedHostelId, resolveOwnerHostelId, canAccessHostel } from '../utils/scope.js';
+import { resolveScopedHostelId, resolveOwnerHostelId, canAccessHostel, getAuthenticatedStudentId } from '../utils/scope.js';
 
 // Shared helper: derive bed capacity from room_type_name / description
 const getCapacityFromRoomTypeName = (roomTypeName: string, description: string | null): number => {
@@ -362,7 +362,8 @@ export const getRoomBeds = async (req: AuthRequest, res: Response) => {
       .select('student_id', 'bed_number');
 
     const occupantByBed = new Map(occupants.map(o => [o.bed_number, o.student_id]));
-    const capacity = parseInt(String(room.capacity)) || 1;
+    const isOwnerOrAdminUser = req.user?.role_id === 1 || req.user?.role_id === 2;
+    const authenticatedStudentId = req.user?.role_id === 3 ? await getAuthenticatedStudentId(req.user) : null;
 
     const beds = Array.from({ length: capacity }, (_, i) => {
       const bedLetter = String.fromCharCode(65 + i);
@@ -372,7 +373,11 @@ export const getRoomBeds = async (req: AuthRequest, res: Response) => {
         bed_number: bedLetter,
         bed_name: `${room.room_number}${bedLetter}`,
         status: student_id ? 'occupied' : 'available',
-        student_id
+        ...(isOwnerOrAdminUser
+          ? { student_id }
+          : student_id && authenticatedStudentId && Number(student_id) === Number(authenticatedStudentId)
+          ? { student_id, is_my_bed: true }
+          : {})
       };
     });
 

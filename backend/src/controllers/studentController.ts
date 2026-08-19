@@ -1294,10 +1294,13 @@ export const submitVacateNotice = async (req: AuthRequest, res: Response) => {
     // If date is null, it means cancelling the vacate notice
     const formattedDate = date ? (typeof date === 'string' ? date.split('T')[0] : date) : null;
 
-    const student = await db('students').where('student_id', user.user_id).first();
+    const student = await getAuthenticatedStudent(user);
+    if (!student) {
+      return res.status(401).json({ success: false, error: 'Tenant profile not found' });
+    }
 
     await db('students')
-      .where('student_id', user.user_id)
+      .where('student_id', student.student_id)
       .update({
         vacate_notice_date: formattedDate,
         vacate_notice_reason: reason || null,
@@ -1315,7 +1318,7 @@ export const submitVacateNotice = async (req: AuthRequest, res: Response) => {
           ? `${name} has given notice to vacate on ${formattedDate}.${reason ? ` Reason: ${reason}` : ''}`
           : `${name} has cancelled their vacate notice.`,
         'Medium',
-        { student_id: user.user_id }
+        { student_id: student.student_id }
       ).catch(err => console.error('Failed to send vacate-notice owner notification:', err));
     }
 

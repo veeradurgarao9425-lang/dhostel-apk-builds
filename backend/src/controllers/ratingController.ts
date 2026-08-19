@@ -3,14 +3,17 @@ import { AuthRequest } from '../middleware/auth.js';
 import db from '../config/database.js';
 import { sendEmail } from '../utils/email.js';
 import { sendNotificationToHostelOwner } from '../utils/notification.js';
+import { getAuthenticatedStudent } from '../utils/scope.js';
 
 export const submitRating = async (req: AuthRequest, res: Response) => {
   try {
-    const student_id = req.user?.user_id;
-    const { hostel_id, rating, comment, categories } = req.body;
-    // rating: 1-5, comment: string, categories: { cleanliness, food, staff, facilities, value } each 1-5
+    const student = await getAuthenticatedStudent(req.user);
+    if (!student) return res.status(401).json({ success: false, message: 'Tenant profile not found' });
+    const student_id = student.student_id;
+    const hostel_id = student.hostel_id || req.body.hostel_id;
+    const { rating, comment, categories } = req.body;
 
-    if (!student_id || !hostel_id || !rating) {
+    if (!hostel_id || !rating) {
       return res.status(400).json({ success: false, message: 'Missing required fields' });
     }
     if (rating < 1 || rating > 5) {

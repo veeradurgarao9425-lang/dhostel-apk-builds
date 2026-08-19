@@ -3,8 +3,7 @@ import db from '../config/database.js';
 import { AuthRequest } from '../middleware/auth.js';
 import { processFileUpload } from '../utils/fileUpload.js';
 import { sendNotificationToStudent, sendNotificationToHostelOwner } from '../utils/notification.js';
-import { io } from '../socket/index.js';
-import { resolveScopedHostelId } from '../utils/scope.js';
+import { resolveScopedHostelId, getAuthenticatedStudent, getAuthenticatedStudentId } from '../utils/scope.js';
 
 // Get all fee payments
 export const getFeePayments = async (req: AuthRequest, res: Response) => {
@@ -380,8 +379,11 @@ export const getReceipt = async (req: AuthRequest, res: Response) => {
       return res.status(403).json({ success: false, error: 'Access denied.' });
     }
     // Tenant (role 3) may only view their own receipts.
-    if (req.user?.role_id === 3 && payment.student_id !== req.user.user_id) {
-      return res.status(403).json({ success: false, error: 'Access denied.' });
+    if (req.user?.role_id === 3) {
+      const student = await getAuthenticatedStudent(req.user);
+      if (!student || Number(payment.student_id) !== Number(student.student_id)) {
+        return res.status(403).json({ success: false, error: 'Access denied: You may only view your own receipts.' });
+      }
     }
 
     res.json({
@@ -437,10 +439,9 @@ export const getAvailableMonths = async (req: AuthRequest, res: Response) => {
 // Upload Payment Proof (Tenant)
 export const uploadPaymentProof = async (req: AuthRequest, res: Response) => {
   try {
-    const student_id = req.user?.user_id;
-    const { amount_paid, payment_mode_id, transaction_reference, proof, proof_url: body_proof_url } = req.body;
-    
-    if (!student_id) return res.status(401).json({ success: false, message: 'Unauthorized' });
+    const student = await getAuthenticatedStudent(req.user);
+    if (!student) return res.status(401).json({ success: false, message: 'Unauthorized: Tenant profile not found.' });
+    const student_id = student.student_id;
 
     let proof_url: string | null = null;
     if (req.file) {
@@ -523,8 +524,9 @@ export const uploadPaymentProof = async (req: AuthRequest, res: Response) => {
 // ─── GET Tenant's own fee history (called by mobile app) ─────────────────────
 export const getTenantFeeHistory = async (req: AuthRequest, res: Response) => {
   try {
-    const studentId = req.user?.user_id;
-    if (!studentId) return res.status(401).json({ success: false, error: 'Unauthorized' });
+    const student = await getAuthenticatedStudent(req.user);
+    if (!student) return res.status(401).json({ success: false, error: 'Unauthorized: Tenant profile not found.' });
+    const studentId = student.student_id;
 
     // Monthly fee records for this tenant
     const fees = await db('monthly_fees as mf')

@@ -2,6 +2,7 @@ import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth.js';
 import db from '../config/database.js';
 import { sendNotificationToHostelOwner, sendNotificationToStudent } from '../utils/notification.js';
+import { getAuthenticatedStudent } from '../utils/scope.js';
 
 // =======================
 // LEAVE REQUESTS
@@ -9,10 +10,13 @@ import { sendNotificationToHostelOwner, sendNotificationToStudent } from '../uti
 
 export const createLeaveRequest = async (req: AuthRequest, res: Response) => {
   try {
-    const { hostel_id, start_date, end_date, reason } = req.body;
-    const student_id = req.user?.user_id; 
+    const { start_date, end_date, reason } = req.body;
+    const student = await getAuthenticatedStudent(req.user);
+    if (!student) return res.status(401).json({ success: false, message: 'Tenant profile not found' });
+    const student_id = student.student_id;
+    const hostel_id = student.hostel_id || req.body.hostel_id;
 
-    if (!hostel_id || !student_id || !start_date || !end_date) {
+    if (!hostel_id || !start_date || !end_date) {
       return res.status(400).json({ success: false, message: 'Missing required fields' });
     }
 
@@ -46,8 +50,9 @@ export const createLeaveRequest = async (req: AuthRequest, res: Response) => {
 
 export const getTenantLeaves = async (req: AuthRequest, res: Response) => {
   try {
-    const student_id = req.user?.user_id;
-    if (!student_id) return res.status(400).json({ success: false, message: 'Missing student ID' });
+    const student = await getAuthenticatedStudent(req.user);
+    if (!student) return res.status(401).json({ success: false, message: 'Tenant profile not found' });
+    const student_id = student.student_id;
 
     const leaves = await db('leave_requests')
       .where('student_id', student_id)
@@ -125,10 +130,13 @@ export const updateLeaveStatus = async (req: AuthRequest, res: Response) => {
 
 export const createVisitorRequest = async (req: AuthRequest, res: Response) => {
   try {
-    const { hostel_id, visitor_name, relation, visit_date, visit_time } = req.body;
-    const student_id = req.user?.user_id;
+    const { visitor_name, relation, visit_date, visit_time } = req.body;
+    const student = await getAuthenticatedStudent(req.user);
+    if (!student) return res.status(401).json({ success: false, message: 'Tenant profile not found' });
+    const student_id = student.student_id;
+    const hostel_id = student.hostel_id || req.body.hostel_id;
 
-    if (!hostel_id || !student_id || !visitor_name || !visit_date || !visit_time) {
+    if (!hostel_id || !visitor_name || !visit_date || !visit_time) {
       return res.status(400).json({ success: false, message: 'Missing required fields' });
     }
 
@@ -163,8 +171,9 @@ export const createVisitorRequest = async (req: AuthRequest, res: Response) => {
 
 export const getTenantVisitors = async (req: AuthRequest, res: Response) => {
   try {
-    const student_id = req.user?.user_id;
-    if (!student_id) return res.status(400).json({ success: false, message: 'Missing student ID' });
+    const student = await getAuthenticatedStudent(req.user);
+    if (!student) return res.status(401).json({ success: false, message: 'Tenant profile not found' });
+    const student_id = student.student_id;
 
     const visitors = await db('visitor_requests')
       .where('student_id', student_id)

@@ -1,7 +1,7 @@
 import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth.js';
 import db from '../config/database.js';
-import { resolveScopedHostelId } from '../utils/scope.js';
+import { resolveScopedHostelId, getAuthenticatedStudentId } from '../utils/scope.js';
 
 // GET /api/mess/analytics — Owner sees skip percentages per meal per day
 export const getMessAnalytics = async (req: AuthRequest, res: Response) => {
@@ -92,7 +92,7 @@ export const getMessAnalytics = async (req: AuthRequest, res: Response) => {
 
 export const skipMeal = async (req: AuthRequest, res: Response) => {
   try {
-    const student_id = req.user?.user_id;
+    const student_id = await getAuthenticatedStudentId(req.user) || req.user?.user_id;
     const { meal, skipped } = req.body;  // meal: 'morning'|'lunch'|'dinner', skipped: boolean
     if (!student_id || !meal) return res.status(400).json({ success: false, message: 'Missing fields' });
 
@@ -118,7 +118,7 @@ export const skipMeal = async (req: AuthRequest, res: Response) => {
 
 export const getMySkips = async (req: AuthRequest, res: Response) => {
   try {
-    const student_id = req.user?.user_id;
+    const student_id = await getAuthenticatedStudentId(req.user) || req.user?.user_id;
     const { month } = req.query; // optional 'YYYY-MM'
 
     let query = db('mess_skips').where({ student_id });
