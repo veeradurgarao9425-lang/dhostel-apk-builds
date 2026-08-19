@@ -39,6 +39,10 @@ export default function DeveloperStudentsScreen() {
   const [totalPages, setTotalPages] = useState(1);
   const [impersonatingId, setImpersonatingId] = useState<number | null>(null);
 
+  // View Student Details Modal State
+  const [viewDetailsModalVisible, setViewDetailsModalVisible] = useState(false);
+  const [detailStudent, setDetailStudent] = useState<any>(null);
+
   // Reset Password Modal State
   const [passwordModalVisible, setPasswordModalVisible] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
@@ -185,6 +189,11 @@ export default function DeveloperStudentsScreen() {
     );
   };
 
+  const handleOpenDetails = (student: any) => {
+    setDetailStudent(student);
+    setViewDetailsModalVisible(true);
+  };
+
   const handleOpenResetPassword = (student: any) => {
     setSelectedStudent(student);
     setNewPassword('');
@@ -294,6 +303,15 @@ export default function DeveloperStudentsScreen() {
         <View style={styles.cardActions}>
           <TouchableOpacity
             activeOpacity={0.8}
+            onPress={() => handleOpenDetails(item)}
+            style={styles.viewProfileBtn}
+          >
+            <Ionicons name="eye-outline" size={13} color="#059669" />
+            <Text style={styles.viewProfileBtnText}>View Details</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            activeOpacity={0.8}
             onPress={() => handleOpenResetPassword(item)}
             style={styles.resetPassBtn}
           >
@@ -312,7 +330,7 @@ export default function DeveloperStudentsScreen() {
             ) : (
               <>
                 <Ionicons name="shield-half-outline" size={13} color="#FFF" />
-                <Text style={styles.impersonateBtnText}>Support Mode</Text>
+                <Text style={styles.impersonateBtnText}>Support</Text>
               </>
             )}
           </TouchableOpacity>
@@ -466,6 +484,99 @@ export default function DeveloperStudentsScreen() {
           }
         />
       )}
+
+      {/* VIEW FULL STUDENT DETAILS MODAL */}
+      <Modal
+        visible={viewDetailsModalVisible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setViewDetailsModalVisible(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.detailModalCard}>
+            <View style={styles.detailModalHeader}>
+              <View style={styles.detailAvatarWrap}>
+                <Ionicons name="school" size={22} color="#059669" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.detailNameText}>{detailStudent?.first_name} {detailStudent?.last_name || ''}</Text>
+                <Text style={styles.detailSubText}>Tenant ID: #{detailStudent?.student_id}</Text>
+              </View>
+              <TouchableOpacity onPress={() => setViewDetailsModalVisible(false)}>
+                <Ionicons name="close" size={24} color="#78716C" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={{ maxHeight: 380 }} showsVerticalScrollIndicator={false}>
+              <View style={styles.detailSection}>
+                <Text style={styles.detailSectionTitle}>PROPERTY & ROOM DETAILS</Text>
+                <View style={styles.detailItemRow}>
+                  <Text style={styles.detailItemLabel}>Hostel:</Text>
+                  <Text style={styles.detailItemValue}>{detailStudent?.hostel_name || 'N/A'}</Text>
+                </View>
+                <View style={styles.detailItemRow}>
+                  <Text style={styles.detailItemLabel}>Room Number:</Text>
+                  <Text style={styles.detailItemValue}>Room {detailStudent?.room_number || 'N/A'}</Text>
+                </View>
+                <View style={styles.detailItemRow}>
+                  <Text style={styles.detailItemLabel}>Bed Number:</Text>
+                  <Text style={styles.detailItemValue}>{detailStudent?.bed_number || 'N/A'}</Text>
+                </View>
+                <View style={styles.detailItemRow}>
+                  <Text style={styles.detailItemLabel}>Monthly Rent:</Text>
+                  <Text style={[styles.detailItemValue, { color: '#059669', fontWeight: '900' }]}>
+                    ₹{Number(detailStudent?.monthly_rent || 0).toLocaleString('en-IN')}/mo
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.detailSection}>
+                <Text style={styles.detailSectionTitle}>CONTACT & PERSONAL INFO</Text>
+                <View style={styles.detailItemRow}>
+                  <Text style={styles.detailItemLabel}>Phone Number:</Text>
+                  <Text style={styles.detailItemValue}>{detailStudent?.phone || 'Not provided'}</Text>
+                </View>
+                <View style={styles.detailItemRow}>
+                  <Text style={styles.detailItemLabel}>Email Address:</Text>
+                  <Text style={styles.detailItemValue}>{detailStudent?.email || 'Not provided'}</Text>
+                </View>
+                <View style={styles.detailItemRow}>
+                  <Text style={styles.detailItemLabel}>Emergency Contact:</Text>
+                  <Text style={styles.detailItemValue}>{detailStudent?.emergency_contact || detailStudent?.guardian_phone || 'N/A'}</Text>
+                </View>
+                <View style={styles.detailItemRow}>
+                  <Text style={styles.detailItemLabel}>Join Date:</Text>
+                  <Text style={styles.detailItemValue}>{detailStudent?.join_date ? new Date(detailStudent.join_date).toLocaleDateString() : 'N/A'}</Text>
+                </View>
+              </View>
+            </ScrollView>
+
+            <View style={styles.detailBtnRow}>
+              <TouchableOpacity
+                onPress={() => {
+                  setViewDetailsModalVisible(false);
+                  handleOpenResetPassword(detailStudent);
+                }}
+                style={styles.detailResetBtn}
+              >
+                <Ionicons name="key-outline" size={13} color="#D97706" />
+                <Text style={styles.detailResetBtnText}>Reset Password</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => {
+                  setViewDetailsModalVisible(false);
+                  handleImpersonate(detailStudent);
+                }}
+                style={styles.detailSupportBtn}
+              >
+                <Ionicons name="shield-half-outline" size={13} color="#FFF" />
+                <Text style={styles.detailSupportBtnText}>Support Mode</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* Reset Password Modal */}
       <Modal
@@ -806,14 +917,31 @@ const styles = StyleSheet.create({
   },
   cardActions: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 6,
+  },
+  viewProfileBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    backgroundColor: '#ECFDF5',
+    paddingVertical: 9,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+  },
+  viewProfileBtnText: {
+    color: '#059669',
+    fontSize: 11,
+    fontWeight: '800',
   },
   resetPassBtn: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
+    gap: 4,
     backgroundColor: '#FEF3C7',
     paddingVertical: 9,
     borderRadius: 10,
@@ -822,22 +950,22 @@ const styles = StyleSheet.create({
   },
   resetPassBtnText: {
     color: '#B45309',
-    fontSize: 11.5,
+    fontSize: 11,
     fontWeight: '800',
   },
   impersonateBtn: {
-    flex: 1,
+    flex: 0.9,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
+    gap: 4,
     backgroundColor: '#059669',
     paddingVertical: 9,
     borderRadius: 10,
   },
   impersonateBtnText: {
     color: '#FFFFFF',
-    fontSize: 11.5,
+    fontSize: 11,
     fontWeight: '800',
   },
   emptyCard: {
@@ -963,6 +1091,108 @@ const styles = StyleSheet.create({
   confirmSaveBtnText: {
     color: '#FFFFFF',
     fontSize: 13,
+    fontWeight: '800',
+  },
+  detailModalCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 20,
+    maxHeight: 520,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 10,
+  },
+  detailModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 16,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F5EFE6',
+  },
+  detailAvatarWrap: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    backgroundColor: '#ECFDF5',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  detailNameText: {
+    color: '#1C1917',
+    fontSize: 16,
+    fontWeight: '900',
+  },
+  detailSubText: {
+    color: '#78716C',
+    fontSize: 11.5,
+    marginTop: 2,
+  },
+  detailSection: {
+    backgroundColor: '#FAF6F0',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#EFE7DC',
+  },
+  detailSectionTitle: {
+    color: '#A89687',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.6,
+    marginBottom: 8,
+  },
+  detailItemRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 3,
+  },
+  detailItemLabel: {
+    color: '#78716C',
+    fontSize: 12,
+  },
+  detailItemValue: {
+    color: '#1C1917',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  detailBtnRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 12,
+  },
+  detailResetBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#FEF3C7',
+    paddingVertical: 10,
+    borderRadius: 10,
+  },
+  detailResetBtnText: {
+    color: '#B45309',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  detailSupportBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#059669',
+    paddingVertical: 10,
+    borderRadius: 10,
+  },
+  detailSupportBtnText: {
+    color: '#FFFFFF',
+    fontSize: 12,
     fontWeight: '800',
   },
 });
