@@ -279,21 +279,13 @@ export const DeveloperAssistant: React.FC = () => {
           }}
           activeOpacity={0.85}
         >
-          <LinearGradient
-            colors={['#F97316', '#EA580C', '#C2410C']}
-            style={styles.fabGrad}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          >
-            <View style={styles.fabInnerAvatar}>
-              <Image
-                source={require('../../../assets/chatbot.jpeg')}
-                style={styles.fabAvatarImg}
-                resizeMode="cover"
-              />
-            </View>
-            <View style={styles.fabGlowDot} />
-          </LinearGradient>
+          <View style={styles.fabInnerAvatar}>
+            <Image
+              source={require('../../../assets/chatbot.jpeg')}
+              style={styles.fabAvatarImg}
+              resizeMode="cover"
+            />
+          </View>
         </TouchableOpacity>
       )}
 
@@ -319,7 +311,6 @@ export const DeveloperAssistant: React.FC = () => {
                   style={styles.headerAvatar}
                   resizeMode="cover"
                 />
-                <View style={styles.onlineDot} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.headerTag}>HOSTIX CEO COPILOT</Text>
@@ -576,45 +567,32 @@ const styles = StyleSheet.create({
   fab: {
     position: 'absolute',
     right: 18,
-    width: 54,
-    height: 54,
-    borderRadius: 27,
-    overflow: 'hidden',
-    elevation: 20,
-    shadowColor: '#EA580C',
-    shadowOpacity: 0.5,
-    shadowRadius: 10,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    elevation: 10,
+    shadowColor: '#000000',
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
     shadowOffset: { width: 0, height: 4 },
     zIndex: 999999,
-  },
-  fabGrad: {
-    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#EFE7DC',
     alignItems: 'center',
     justifyContent: 'center',
-    position: 'relative',
   },
   fabInnerAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 62,
+    height: 62,
+    borderRadius: 31,
     overflow: 'hidden',
-    borderWidth: 2,
-    borderColor: '#FFF',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   fabAvatarImg: {
-    width: '100%',
-    height: '100%',
-  },
-  fabGlowDot: {
-    position: 'absolute',
-    top: 3,
-    right: 3,
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#10B981',
-    borderWidth: 1.5,
-    borderColor: '#FFF',
+    width: 62,
+    height: 62,
   },
   safeContainer: {
     flex: 1,
@@ -634,28 +612,14 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   avatarRing: {
-    width: 40,
-    height: 40,
-    borderRadius: 14,
-    position: 'relative',
-    borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.4)',
+    width: 38,
+    height: 38,
+    borderRadius: 12,
     overflow: 'hidden',
   },
   headerAvatar: {
     width: '100%',
     height: '100%',
-  },
-  onlineDot: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#10B981',
-    borderWidth: 1.5,
-    borderColor: '#FFF',
   },
   headerTag: {
     color: '#FED7AA',
