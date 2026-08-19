@@ -139,10 +139,12 @@ import DeveloperRoomsBedsScreen from '../Pages/developer/DeveloperRoomsBedsScree
 import DeveloperPaymentsScreen from '../Pages/developer/DeveloperPaymentsScreen';
 import DeveloperAuditLogsScreen from '../Pages/developer/DeveloperAuditLogsScreen';
 import DeveloperSystemScreen from '../Pages/developer/DeveloperSystemScreen';
+import DeveloperControlHubScreen from '../Pages/developer/DeveloperControlHubScreen';
 
 // ── Navigators ────────────────────────────────────────────────────────────────
 import BottomTabNavigator from '../components/BottomTabNavigator';
 import TenantBottomTabNavigator from '../components/tenant/BottomTabNavigator';
+import { DeveloperBottomTabNavigator } from '../components/developer/DeveloperBottomTabNavigator';
 
 // ── Navigation Ref ────────────────────────────────────────────────────────────
 import { navigationRef } from './navigationRef';
@@ -176,6 +178,20 @@ const TenantTabNavigator = () => (
     </Tab.Navigator>
 );
 
+// ── Tab Navigator (Developer Master Admin) — 5 tabs ───────────────────────────
+const DeveloperTabNavigator = () => (
+    <Tab.Navigator
+        tabBar={props => <DeveloperBottomTabNavigator {...props} />}
+        screenOptions={{ headerShown: false }}
+    >
+        <Tab.Screen name="DevDashboardTab" component={DeveloperDashboardScreen} />
+        <Tab.Screen name="DevHostelsTab" component={DeveloperHostelsScreen} />
+        <Tab.Screen name="DevOwnersTab" component={DeveloperOwnersScreen} />
+        <Tab.Screen name="DevStudentsTab" component={DeveloperStudentsScreen} />
+        <Tab.Screen name="DevControlTab" component={DeveloperControlHubScreen} />
+    </Tab.Navigator>
+);
+
 
 // ── Props ─────────────────────────────────────────────────────────────────────
 interface AppNavigatorProps {
@@ -206,7 +222,6 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
     return (
         <>
             <NavigationContainer
-                key={navigationKey}
                 ref={navigationRef}
                 onStateChange={() => {
                     const route = navigationRef.current?.getCurrentRoute();
@@ -238,7 +253,16 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
                     <Stack.Screen name="TenantRegister" component={RegistrationScreen} />
 
                     {/* Main tab container */}
-                    <Stack.Screen name="Main" component={user?.role === 'TENANT' ? (user?.is_allocated ? TenantTabNavigator : PendingApprovalScreen) : OwnerTabNavigator} />
+                    <Stack.Screen
+                        name="Main"
+                        component={
+                            user?.role === 'DEVELOPER'
+                                ? DeveloperTabNavigator
+                                : user?.role === 'TENANT'
+                                ? (user?.is_allocated ? TenantTabNavigator : PendingApprovalScreen)
+                                : OwnerTabNavigator
+                        }
+                    />
 
                     {/* Notifications */}
                     <Stack.Screen name="Notifications" component={NotificationScreen} />
@@ -417,6 +441,7 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
                     <Stack.Screen name="ComingSoon" component={ComingSoonScreen} />
 
                     {/* Developer / Master Admin Stack */}
+                    <Stack.Screen name="DeveloperMain" component={DeveloperTabNavigator} />
                     <Stack.Screen name="DeveloperDashboard" component={DeveloperDashboardScreen} />
                     <Stack.Screen name="DeveloperHostels" component={DeveloperHostelsScreen} />
                     <Stack.Screen name="DeveloperHostelDetails" component={DeveloperHostelDetailsScreen} />

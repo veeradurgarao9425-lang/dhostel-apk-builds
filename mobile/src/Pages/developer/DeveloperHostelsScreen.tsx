@@ -3,14 +3,14 @@ import {
   View,
   Text,
   StyleSheet,
-  TextInput,
   TouchableOpacity,
   FlatList,
-  ActivityIndicator,
-  StatusBar,
-  SafeAreaView,
-  Platform,
+  TextInput,
   RefreshControl,
+  ActivityIndicator,
+  SafeAreaView,
+  StatusBar,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { developerService } from '../../services/developerService';
@@ -27,26 +27,35 @@ export default function DeveloperHostelsScreen() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL');
   const [page, setPage] = useState(1);
-  const [pagination, setPagination] = useState({ total: 0, totalPages: 1, limit: 15 });
+  const [totalPages, setTotalPages] = useState(1);
 
   const fetchHostels = useCallback(
-    async (currentPage = 1, query = search, status = statusFilter) => {
+    async (pageNum = 1, isRefresh = false) => {
       try {
-        setLoading(true);
+        if (isRefresh) setRefreshing(true);
+        else if (pageNum === 1) setLoading(true);
+
+        const statusParam = statusFilter === 'ALL' ? undefined : statusFilter === 'ACTIVE' ? 'active' : 'inactive';
         const res = await developerService.getHostels({
-          page: currentPage,
+          page: pageNum,
           limit: 15,
-          search: query.trim(),
-          status: status === 'ALL' ? undefined : status,
+          search: search.trim() || undefined,
+          status: statusParam,
         });
 
-        if (res?.success && res.data) {
-          setHostels(res.data.hostels || []);
-          setPagination(res.data.pagination || { total: 0, totalPages: 1, limit: 15 });
-          setPage(currentPage);
+        if (res.success && res.data) {
+          if (pageNum === 1) {
+            setHostels(res.data);
+          } else {
+            setHostels((prev) => [...prev, ...res.data]);
+          }
+          if (res.pagination) {
+            setTotalPages(res.pagination.total_pages);
+            setPage(res.pagination.page);
+          }
         }
       } catch (err) {
-        console.error('Fetch hostels error:', err);
+        console.error('Error fetching hostels:', err);
       } finally {
         setLoading(false);
         setRefreshing(false);
@@ -56,157 +65,135 @@ export default function DeveloperHostelsScreen() {
   );
 
   useEffect(() => {
-    fetchHostels(1, search, statusFilter);
-  }, [statusFilter]);
-
-  const handleSearchSubmit = () => {
-    fetchHostels(1, search, statusFilter);
-  };
+    fetchHostels(1);
+  }, [fetchHostels]);
 
   const onRefresh = () => {
-    setRefreshing(true);
-    fetchHostels(1, search, statusFilter);
+    setPage(1);
+    fetchHostels(1, true);
   };
 
-  const renderHostelCard = ({ item }: { item: any }) => (
-    <TouchableOpacity
-      activeOpacity={0.88}
-      onPress={() => navigation.navigate('DeveloperHostelDetails', { hostelId: item.hostel_id })}
-      style={styles.card}
-    >
-      <View style={styles.cardHeader}>
-        <View style={styles.headerLeft}>
-          <View style={styles.hostelIcon}>
-            <Ionicons name="business" size={18} color="#3B82F6" />
+  const loadMore = () => {
+    if (page < totalPages && !loading) {
+      fetchHostels(page + 1);
+    }
+  };
+
+  const renderHostelCard = ({ item }: { item: any }) => {
+    const occupancyRate =
+      item.total_beds > 0
+        ? Math.round((Number(item.occupied_beds || 0) / Number(item.total_beds)) * 100)
+        : 0;
+
+    return (
+      <TouchableOpacity
+        activeOpacity={0.8}
+        onPress={() => navigation.navigate('DeveloperHostelDetails', { hostelId: item.hostel_id })}
+        style={styles.card}
+      >
+        <View style={styles.cardHeader}>
+          <View style={styles.hostelAvatar}>
+            <Ionicons name="business" size={18} color="#C2410C" />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.hostelName} numberOfLines={1}>
-              {item.hostel_name}
+            <Text style={styles.cardTitle}>{item.hostel_name}</Text>
+            <Text style={styles.cardSubtitle}>
+              {item.city || 'Unknown City'}{item.state ? `, ${item.state}` : ''} • Owner: {item.owner_name || 'N/A'}
             </Text>
-            <Text style={styles.hostelIdText}>ID: #{item.hostel_id} {item.hostel_code ? `• Code: ${item.hostel_code}` : ''}</Text>
+          </View>
+          <View style={[styles.statusBadge, item.is_active ? styles.statusActive : styles.statusInactive]}>
+            <Text style={[styles.statusBadgeText, { color: item.is_active ? '#059669' : '#8C7A6B' }]}>
+              {item.is_active ? 'ACTIVE' : 'INACTIVE'}
+            </Text>
           </View>
         </View>
 
-        <View style={[styles.statusBadge, item.is_active ? styles.statusActive : styles.statusInactive]}>
-          <Text style={[styles.statusBadgeText, { color: item.is_active ? '#10B981' : '#94A3B8' }]}>
-            {item.is_active ? 'ACTIVE' : 'INACTIVE'}
-          </Text>
-        </View>
-      </View>
+        <View style={styles.divider} />
 
-      {/* Owner Info */}
-      <View style={styles.ownerRow}>
-        <Ionicons name="person-circle-outline" size={16} color="#A855F7" />
-        <Text style={styles.ownerText}>
-          Owner: <Text style={styles.ownerBold}>{item.owner_name || 'Unassigned'}</Text>
-          {item.owner_phone ? ` (${item.owner_phone})` : ''}
-        </Text>
-      </View>
-
-      {/* Location */}
-      <View style={styles.locRow}>
-        <Ionicons name="location-outline" size={15} color="#64748B" />
-        <Text style={styles.locText} numberOfLines={1}>
-          {item.city || 'Unknown City'}{item.state ? `, ${item.state}` : ''} {item.pincode ? `• ${item.pincode}` : ''}
-        </Text>
-      </View>
-
-      {/* Capacity & Occupancy Pills */}
-      <View style={styles.statsPillRow}>
-        <View style={styles.statPill}>
-          <Text style={styles.statPillLabel}>Rooms</Text>
-          <Text style={styles.statPillVal}>{item.total_rooms || 0}</Text>
+        <View style={styles.statsRow}>
+          <View style={styles.statBox}>
+            <Text style={styles.statVal}>{item.total_rooms || 0}</Text>
+            <Text style={styles.statLbl}>Rooms</Text>
+          </View>
+          <View style={styles.statBox}>
+            <Text style={styles.statVal}>{item.total_beds || 0}</Text>
+            <Text style={styles.statLbl}>Beds</Text>
+          </View>
+          <View style={styles.statBox}>
+            <Text style={styles.statVal}>{item.total_students || 0}</Text>
+            <Text style={styles.statLbl}>Students</Text>
+          </View>
+          <View style={styles.statBox}>
+            <Text style={[styles.statVal, { color: '#C2410C' }]}>{occupancyRate}%</Text>
+            <Text style={styles.statLbl}>Occupancy</Text>
+          </View>
         </View>
 
-        <View style={styles.statPill}>
-          <Text style={styles.statPillLabel}>Total Beds</Text>
-          <Text style={styles.statPillVal}>{item.total_beds || 0}</Text>
+        <View style={styles.cardFooter}>
+          <Text style={styles.codeText}>ID: #{item.hostel_id} • Code: {item.hostel_code || 'N/A'}</Text>
+          <View style={styles.viewLink}>
+            <Text style={styles.viewLinkText}>Inspect</Text>
+            <Ionicons name="chevron-forward" size={14} color="#C2410C" />
+          </View>
         </View>
-
-        <View style={[styles.statPill, { backgroundColor: 'rgba(16, 185, 129, 0.12)' }]}>
-          <Text style={[styles.statPillLabel, { color: '#10B981' }]}>Occupied</Text>
-          <Text style={[styles.statPillVal, { color: '#10B981' }]}>{item.occupied_beds || 0}</Text>
-        </View>
-
-        <View style={[styles.statPill, { backgroundColor: 'rgba(59, 130, 246, 0.12)' }]}>
-          <Text style={[styles.statPillLabel, { color: '#60A5FA' }]}>Available</Text>
-          <Text style={[styles.statPillVal, { color: '#60A5FA' }]}>{item.available_beds || 0}</Text>
-        </View>
-      </View>
-
-      {/* Footer Action */}
-      <View style={styles.cardFooter}>
-        <Text style={styles.activeStudentsText}>
-          <Ionicons name="school" size={12} color="#10B981" /> {item.active_students || 0} active students
-        </Text>
-        <View style={styles.inspectBtn}>
-          <Text style={styles.inspectBtnText}>Inspect Details</Text>
-          <Ionicons name="chevron-forward" size={13} color="#3B82F6" />
-        </View>
-      </View>
-    </TouchableOpacity>
-  );
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0B1120" />
+      <StatusBar barStyle="dark-content" backgroundColor="#FAF6F0" />
 
-      {/* Header */}
+      {/* Top Header */}
       <View style={[styles.topBar, { paddingTop: Platform.OS === 'android' ? insets.top + 8 : 8 }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={20} color="#94A3B8" />
-        </TouchableOpacity>
-        <Text style={styles.topBarTitle}>All Hostels ({pagination.total})</Text>
-        <View style={{ width: 32 }} />
+        <View>
+          <Text style={styles.topTag}>PLATFORM DIRECTORY</Text>
+          <Text style={styles.screenTitle}>Hostels Management</Text>
+        </View>
+        <View style={styles.countBadge}>
+          <Text style={styles.countBadgeText}>{hostels.length} Loaded</Text>
+        </View>
       </View>
 
-      {/* Search & Filter Bar */}
-      <View style={styles.searchSection}>
+      {/* Search and Filters */}
+      <View style={styles.searchBoxWrap}>
         <View style={styles.searchBar}>
-          <Ionicons name="search" size={18} color="#64748B" style={{ marginRight: 8 }} />
+          <Ionicons name="search" size={18} color="#A89687" />
           <TextInput
-            style={styles.searchInput}
-            placeholder="Search by name, code, owner, city..."
-            placeholderTextColor="#64748B"
+            placeholder="Search by hostel name, city, code..."
+            placeholderTextColor="#A89687"
             value={search}
             onChangeText={setSearch}
-            onSubmitEditing={handleSearchSubmit}
-            returnKeyType="search"
+            onSubmitEditing={() => fetchHostels(1)}
+            style={styles.searchInput}
           />
           {search ? (
-            <TouchableOpacity onPress={() => { setSearch(''); fetchHostels(1, '', statusFilter); }}>
-              <Ionicons name="close-circle" size={16} color="#64748B" />
+            <TouchableOpacity onPress={() => { setSearch(''); fetchHostels(1); }}>
+              <Ionicons name="close-circle" size={18} color="#A89687" />
             </TouchableOpacity>
           ) : null}
         </View>
 
-        {/* Filter Tabs */}
-        <View style={styles.filterTabs}>
-          {(['ALL', 'ACTIVE', 'INACTIVE'] as const).map((tab) => (
+        <View style={styles.filterRow}>
+          {(['ALL', 'ACTIVE', 'INACTIVE'] as const).map((st) => (
             <TouchableOpacity
-              key={tab}
-              onPress={() => setStatusFilter(tab)}
-              style={[styles.filterTab, statusFilter === tab && styles.filterTabActive]}
+              key={st}
+              onPress={() => setStatusFilter(st)}
+              style={[styles.filterChip, statusFilter === st && styles.filterChipActive]}
             >
-              <Text style={[styles.filterTabText, statusFilter === tab && styles.filterTabTextActive]}>
-                {tab}
+              <Text style={[styles.filterChipText, statusFilter === st && styles.filterChipTextActive]}>
+                {st}
               </Text>
             </TouchableOpacity>
           ))}
         </View>
       </View>
 
-      {/* Hostel List */}
+      {/* List */}
       {loading && !refreshing ? (
         <View style={styles.centerBox}>
-          <ActivityIndicator size="large" color="#3B82F6" />
+          <ActivityIndicator size="large" color="#C2410C" />
           <Text style={styles.loadingText}>Loading platform hostels...</Text>
-        </View>
-      ) : hostels.length === 0 ? (
-        <View style={styles.emptyBox}>
-          <Ionicons name="business-outline" size={48} color="#334155" />
-          <Text style={styles.emptyTitle}>No hostels found</Text>
-          <Text style={styles.emptySub}>Try adjusting your search query or status filter.</Text>
         </View>
       ) : (
         <FlatList
@@ -214,33 +201,18 @@ export default function DeveloperHostelsScreen() {
           keyExtractor={(item) => String(item.hostel_id)}
           renderItem={renderHostelCard}
           contentContainerStyle={styles.listContent}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#60A5FA" />}
-          ListFooterComponent={
-            pagination.totalPages > 1 ? (
-              <View style={styles.paginationRow}>
-                <TouchableOpacity
-                  disabled={page <= 1}
-                  onPress={() => fetchHostels(page - 1)}
-                  style={[styles.pageBtn, page <= 1 && styles.pageBtnDisabled]}
-                >
-                  <Ionicons name="arrow-back" size={14} color={page <= 1 ? '#475569' : '#F8FAFC'} />
-                  <Text style={[styles.pageBtnText, page <= 1 && { color: '#475569' }]}>Previous</Text>
-                </TouchableOpacity>
-
-                <Text style={styles.pageInfo}>
-                  Page <Text style={{ color: '#60A5FA', fontWeight: '800' }}>{page}</Text> of {pagination.totalPages}
-                </Text>
-
-                <TouchableOpacity
-                  disabled={page >= pagination.totalPages}
-                  onPress={() => fetchHostels(page + 1)}
-                  style={[styles.pageBtn, page >= pagination.totalPages && styles.pageBtnDisabled]}
-                >
-                  <Text style={[styles.pageBtnText, page >= pagination.totalPages && { color: '#475569' }]}>Next</Text>
-                  <Ionicons name="arrow-forward" size={14} color={page >= pagination.totalPages ? '#475569' : '#F8FAFC'} />
-                </TouchableOpacity>
-              </View>
-            ) : null
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#C2410C" />
+          }
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.3}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            <View style={styles.emptyCard}>
+              <Ionicons name="business-outline" size={40} color="#C4B5A5" />
+              <Text style={styles.emptyTitle}>No Hostels Found</Text>
+              <Text style={styles.emptySub}>No hostels match the active filters or search criteria.</Text>
+            </View>
           }
         />
       )}
@@ -251,7 +223,7 @@ export default function DeveloperHostelsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0B1120',
+    backgroundColor: '#FAF6F0',
   },
   topBar: {
     flexDirection: 'row',
@@ -260,130 +232,140 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#1E293B',
+    borderBottomColor: '#EFE7DC',
+    backgroundColor: '#FAF6F0',
   },
-  backBtn: {
-    padding: 6,
+  topTag: {
+    color: '#C2410C',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+  },
+  screenTitle: {
+    color: '#1C1917',
+    fontSize: 18,
+    fontWeight: '900',
+  },
+  countBadge: {
+    backgroundColor: '#FFF7ED',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
     borderRadius: 8,
-    backgroundColor: '#1E293B',
+    borderWidth: 1,
+    borderColor: '#FFEDD5',
   },
-  topBarTitle: {
-    color: '#F8FAFC',
-    fontSize: 16,
+  countBadgeText: {
+    color: '#C2410C',
+    fontSize: 11,
     fontWeight: '800',
   },
-  searchSection: {
-    padding: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: '#1E293B',
-    backgroundColor: '#0F172A',
+  searchBoxWrap: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 8,
+    backgroundColor: '#FAF6F0',
   },
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#0B1120',
-    borderRadius: 10,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
     paddingHorizontal: 12,
-    height: 42,
+    paddingVertical: 9,
     borderWidth: 1,
-    borderColor: '#24334C',
-    marginBottom: 10,
+    borderColor: '#EFE7DC',
+    gap: 8,
+    shadowColor: '#8C3A00',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
+    elevation: 1,
   },
   searchInput: {
     flex: 1,
-    color: '#F8FAFC',
     fontSize: 13,
-    fontWeight: '500',
+    color: '#1C1917',
+    padding: 0,
   },
-  filterTabs: {
+  filterRow: {
     flexDirection: 'row',
     gap: 8,
+    marginTop: 10,
   },
-  filterTab: {
+  filterChip: {
     paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: 6,
-    backgroundColor: '#1E293B',
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#EFE7DC',
   },
-  filterTabActive: {
-    backgroundColor: '#2563EB',
+  filterChipActive: {
+    backgroundColor: '#C2410C',
+    borderColor: '#C2410C',
   },
-  filterTabText: {
-    color: '#94A3B8',
+  filterChipText: {
+    color: '#78716C',
     fontSize: 11,
     fontWeight: '700',
   },
-  filterTabTextActive: {
+  filterChipTextActive: {
     color: '#FFFFFF',
+    fontWeight: '800',
   },
   listContent: {
-    padding: 14,
-    paddingBottom: 30,
+    padding: 16,
+    paddingBottom: 90,
   },
   centerBox: {
-    padding: 40,
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    padding: 40,
   },
   loadingText: {
-    color: '#94A3B8',
+    color: '#78716C',
     marginTop: 12,
     fontSize: 13,
-  },
-  emptyBox: {
-    padding: 60,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  emptyTitle: {
-    color: '#F8FAFC',
-    fontSize: 16,
-    fontWeight: '800',
-    marginTop: 12,
-  },
-  emptySub: {
-    color: '#64748B',
-    fontSize: 12,
-    textAlign: 'center',
-    marginTop: 4,
+    fontWeight: '600',
   },
   card: {
-    backgroundColor: '#131D31',
-    borderRadius: 14,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
     padding: 14,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#1E293B',
+    borderColor: '#EFE7DC',
+    shadowColor: '#8C3A00',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
   },
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
     gap: 10,
-    flex: 1,
   },
-  hostelIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
-    backgroundColor: 'rgba(59, 130, 246, 0.15)',
+  hostelAvatar: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    backgroundColor: '#FFF7ED',
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#FFEDD5',
   },
-  hostelName: {
-    color: '#F8FAFC',
-    fontSize: 15,
-    fontWeight: '800',
+  cardTitle: {
+    color: '#1C1917',
+    fontSize: 14,
+    fontWeight: '900',
   },
-  hostelIdText: {
-    color: '#64748B',
+  cardSubtitle: {
+    color: '#78716C',
     fontSize: 11,
-    fontWeight: '600',
+    marginTop: 1,
   },
   statusBadge: {
     paddingHorizontal: 8,
@@ -391,112 +373,82 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   statusActive: {
-    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    backgroundColor: '#ECFDF5',
   },
   statusInactive: {
-    backgroundColor: 'rgba(148, 163, 184, 0.15)',
+    backgroundColor: '#F5F5F4',
   },
   statusBadgeText: {
-    fontSize: 10,
-    fontWeight: '800',
-  },
-  ownerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 4,
-  },
-  ownerText: {
-    color: '#94A3B8',
-    fontSize: 12,
-  },
-  ownerBold: {
-    color: '#E2E8F0',
-    fontWeight: '700',
-  },
-  locRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 12,
-  },
-  locText: {
-    color: '#64748B',
-    fontSize: 11,
-  },
-  statsPillRow: {
-    flexDirection: 'row',
-    gap: 6,
-    marginBottom: 12,
-  },
-  statPill: {
-    flex: 1,
-    backgroundColor: '#1E293B',
-    borderRadius: 8,
-    paddingVertical: 6,
-    alignItems: 'center',
-  },
-  statPillLabel: {
-    color: '#94A3B8',
     fontSize: 9,
-    fontWeight: '600',
-    marginBottom: 2,
-  },
-  statPillVal: {
-    color: '#F8FAFC',
-    fontSize: 13,
     fontWeight: '800',
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#F5EFE6',
+    marginVertical: 10,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  statBox: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  statVal: {
+    color: '#1C1917',
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  statLbl: {
+    color: '#A89687',
+    fontSize: 10,
+    marginTop: 1,
+    fontWeight: '600',
   },
   cardFooter: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    marginTop: 10,
+    paddingTop: 8,
     borderTopWidth: 1,
-    borderTopColor: '#1E293B',
-    paddingTop: 10,
+    borderTopColor: '#F5EFE6',
   },
-  activeStudentsText: {
-    color: '#94A3B8',
-    fontSize: 11,
+  codeText: {
+    color: '#A89687',
+    fontSize: 10,
     fontWeight: '600',
   },
-  inspectBtn: {
+  viewLink: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 2,
   },
-  inspectBtnText: {
-    color: '#3B82F6',
-    fontSize: 12,
-    fontWeight: '700',
+  viewLinkText: {
+    color: '#C2410C',
+    fontSize: 11,
+    fontWeight: '800',
   },
-  paginationRow: {
-    flexDirection: 'row',
+  emptyCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 30,
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 16,
-    marginTop: 8,
+    borderWidth: 1,
+    borderColor: '#EFE7DC',
+    marginTop: 20,
   },
-  pageBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: '#1E293B',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
+  emptyTitle: {
+    color: '#1C1917',
+    fontSize: 16,
+    fontWeight: '800',
+    marginTop: 10,
   },
-  pageBtnDisabled: {
-    opacity: 0.4,
-  },
-  pageBtnText: {
-    color: '#F8FAFC',
+  emptySub: {
+    color: '#78716C',
     fontSize: 12,
-    fontWeight: '700',
-  },
-  pageInfo: {
-    color: '#94A3B8',
-    fontSize: 12,
-    fontWeight: '600',
+    textAlign: 'center',
+    marginTop: 4,
   },
 });

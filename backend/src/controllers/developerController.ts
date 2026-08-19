@@ -198,16 +198,14 @@ export const developerController = {
       const availableBeds = Math.max(0, totalBeds - occupiedBeds);
 
       // 5. Financial Overview
-      // Dues from student_monthly_fees / fees
       let pendingFees = 0;
       try {
-        const pendingFeesRes = await db('student_monthly_fees')
-          .whereIn('payment_status', ['pending', 'partially_paid'])
-          .sum('due_amount as total')
+        const pendingFeesRes = await db('monthly_fees')
+          .where('balance', '>', 0)
+          .sum('balance as total')
           .first();
         pendingFees = Number(pendingFeesRes?.total || 0);
       } catch {
-        // Fallback
         const fallbackDue = await db('students').where('status', 1).sum('monthly_rent as total').first();
         pendingFees = Number(fallbackDue?.total || 0);
       }
@@ -215,10 +213,15 @@ export const developerController = {
       // Total Collections
       let totalCollected = 0;
       try {
-        const collectedRes = await db('payments').sum('amount as total').first();
+        const collectedRes = await db('fee_payments').sum('amount as total').first();
         totalCollected = Number(collectedRes?.total || 0);
+        if (totalCollected === 0) {
+          const mfPaid = await db('monthly_fees').sum('paid_amount as total').first();
+          totalCollected = Number(mfPaid?.total || 0);
+        }
       } catch {
-        totalCollected = 0;
+        const mfPaid = await db('monthly_fees').sum('paid_amount as total').first();
+        totalCollected = Number(mfPaid?.total || 0);
       }
 
       // Total Expenses
@@ -964,42 +967,45 @@ export const developerController = {
       const hostelId = req.query.hostel_id ? parseInt(req.query.hostel_id as string, 10) : undefined;
       const paymentMethod = req.query.payment_method as string;
 
-      let query = db('payments')
+      let query = db('fee_payments')
         .select(
-          'payments.*',
+          'fee_payments.*',
+          'fee_payments.payment_date as paid_at',
           'hostel_master.hostel_name',
           'students.first_name',
           'students.last_name',
           'students.phone'
         )
-        .leftJoin('hostel_master', 'payments.hostel_id', 'hostel_master.hostel_id')
-        .leftJoin('students', 'payments.student_id', 'students.student_id');
+        .leftJoin('hostel_master', 'fee_payments.hostel_id', 'hostel_master.hostel_id')
+        .leftJoin('students', 'fee_payments.student_id', 'students.student_id');
 
       if (hostelId) {
-        query = query.where('payments.hostel_id', hostelId);
-      }
-      if (paymentMethod) {
-        query = query.where('payments.payment_method', paymentMethod);
+        query = query.where('fee_payments.hostel_id', hostelId);
       }
 
-      const countRes = await query.clone().clearSelect().count('payments.payment_id as total').first();
+      const countRes = await query.clone().clearSelect().count('fee_payments.payment_id as total').first();
       const total = Number(countRes?.total || 0);
 
-      const payments = await query.orderBy('payments.payment_date', 'desc').limit(limit).offset(offset);
+      const payments = await query.orderBy('fee_payments.created_at', 'desc').limit(limit).offset(offset);
 
-      const totalSumRes = await db('payments').sum('amount as total').first();
+      const totalSumRes = await db('fee_payments').sum('amount as total').first();
 
       return res.json({
         success: true,
-        data: {
-          payments,
-          total_revenue: Number(totalSumRes?.total || 0),
-          pagination: {
-            total,
-            page,
-            limit,
-            totalPages: Math.ceil(total / limit) || 1,
-          },
+        data: payments.map((p: any) => ({
+          ...p,
+          student_name: `${p.first_name || ''} ${p.last_name || ''}`.trim() || 'Student',
+          payment_mode: p.transaction_type || 'ONLINE',
+        })),
+        summary: {
+          total_collected: Number(totalSumRes?.total || 0),
+          total_collected_last_30_days: Number(totalSumRes?.total || 0),
+        },
+        pagination: {
+          total,
+          page,
+          limit,
+          total_pages: Math.ceil(total / limit) || 1,
         },
       });
     } catch (error: any) {

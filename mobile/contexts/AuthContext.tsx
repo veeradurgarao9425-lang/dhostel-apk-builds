@@ -129,7 +129,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           setUser(parsedUser);
 
           // Background enrichment for Owner or Tenant
-          if (parsedUser.role === 'TENANT' || parsedUser.tenant_id) {
+          if (parsedUser.role === 'DEVELOPER' || (parsedUser as any).is_developer) {
+            // Developer user does not require owner/tenant hostel enrichment
+          } else if (parsedUser.role === 'TENANT' || parsedUser.tenant_id) {
             try {
               const res = await api.get('/auth/tenant/me');
               if (res.data?.data) {
@@ -156,6 +158,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   const enrichUserInBackground = async (parsedUser: User) => {
+    if (parsedUser.role === 'DEVELOPER' || (parsedUser as any).is_developer) return;
+
     const withTimeout = (p: Promise<any>, ms = 4000) =>
       Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))]);
 
@@ -225,13 +229,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         await AsyncStorage.setItem('token', token);
         await AsyncStorage.setItem('user', JSON.stringify(finalUser));
 
-        try {
-          const res = await api.get('/hostels?my_hostels=true');
-          if (res.data?.success) {
-            setHostels(res.data.data || []);
+        if (!isDeveloper) {
+          try {
+            const res = await api.get('/hostels?my_hostels=true');
+            if (res.data?.success) {
+              setHostels(res.data.data || []);
+            }
+          } catch (e) {
+            console.warn('Failed to load hostels list in signIn:', e);
           }
-        } catch (e) {
-          console.warn('Failed to load hostels list in signIn:', e);
         }
 
         try {

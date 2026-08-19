@@ -82,7 +82,12 @@ export const developerService = {
     const res = await api.get(`/developer/hostels?${query.toString()}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
-    return res.data;
+    const d = res.data?.data;
+    return {
+      success: res.data?.success ?? true,
+      data: Array.isArray(d) ? d : d?.hostels || [],
+      pagination: d?.pagination || res.data?.pagination,
+    };
   },
 
   async getHostelDetails(id: number) {
@@ -112,7 +117,12 @@ export const developerService = {
     const res = await api.get(`/developer/owners?${query.toString()}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
-    return res.data;
+    const d = res.data?.data;
+    return {
+      success: res.data?.success ?? true,
+      data: Array.isArray(d) ? d : d?.owners || [],
+      pagination: d?.pagination || res.data?.pagination,
+    };
   },
 
   async getOwnerDetails(id: number) {
@@ -144,7 +154,12 @@ export const developerService = {
     const res = await api.get(`/developer/students?${query.toString()}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
-    return res.data;
+    const d = res.data?.data;
+    return {
+      success: res.data?.success ?? true,
+      data: Array.isArray(d) ? d : d?.students || [],
+      pagination: d?.pagination || res.data?.pagination,
+    };
   },
 
   async getStudentDetails(id: number) {
@@ -165,6 +180,10 @@ export const developerService = {
     return res.data;
   },
 
+  async getRoomsBeds(hostelId?: number) {
+    return this.getRoomsAndBeds(hostelId);
+  },
+
   // ─── PAYMENTS ────────────────────────────────────────────────────────────
   async getPayments(params: { page?: number; limit?: number; hostel_id?: number; payment_method?: string }) {
     const token = await getSecureItem('developer_token');
@@ -177,7 +196,13 @@ export const developerService = {
     const res = await api.get(`/developer/payments?${query.toString()}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
-    return res.data;
+    const d = res.data?.data;
+    return {
+      success: res.data?.success ?? true,
+      data: Array.isArray(d) ? d : d?.payments || [],
+      summary: res.data?.summary || d?.summary,
+      pagination: res.data?.pagination || d?.pagination,
+    };
   },
 
   // ─── SUPPORT SESSIONS ────────────────────────────────────────────────────

@@ -81,6 +81,10 @@ export const notificationService = {
     if (this._lastRegisteredToken === token) {
       return;
     }
+    // Only register when an active authorization header is present
+    if (!api.defaults.headers.common['Authorization']) {
+      return;
+    }
     try {
       const response = await api.post('/notifications/register-token', {
         push_token: token,
@@ -89,8 +93,10 @@ export const notificationService = {
       });
       this._lastRegisteredToken = token;
       console.log('Push token registered on backend successfully:', response.data);
-    } catch (error) {
-      console.error('Error registering push token on backend:', error);
+    } catch (error: any) {
+      if (error?.response?.status !== 401) {
+        console.warn('Notice registering push token on backend:', error?.message || error);
+      }
     }
   },
 

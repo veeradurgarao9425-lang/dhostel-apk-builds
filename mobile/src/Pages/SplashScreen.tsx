@@ -4,6 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../contexts/AuthContext';
+import { useDeveloper } from '../../contexts/DeveloperContext';
 import { COLORS, FONT } from '../theme/index';
 import { ONBOARDING_KEY } from './OnboardingScreen';
 
@@ -21,7 +22,8 @@ const LETTERS = [
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function SplashScreen({ navigation }: any) {
-  const { user, loading } = useAuth();
+  const { user, loading: authLoading } = useAuth();
+  const { developer, isDeveloperLoggedIn, loading: devLoading } = useDeveloper();
   const insets = useSafeAreaInsets();
 
   // Animation values for Logo & Container
@@ -114,11 +116,18 @@ export default function SplashScreen({ navigation }: any) {
 
   // Navigation redirection after animation
   useEffect(() => {
-    if (loading) return;
+    if (authLoading || devLoading) return;
 
     let cancelled = false;
 
     const timer = setTimeout(async () => {
+      // 1. Check Developer Session
+      if (isDeveloperLoggedIn || developer) {
+        navigation.reset({ index: 0, routes: [{ name: 'DeveloperMain' }] });
+        return;
+      }
+
+      // 2. Check Standard User Session
       if (user) {
         navigation.reset({ index: 0, routes: [{ name: 'Main' }] });
         return;
@@ -142,7 +151,7 @@ export default function SplashScreen({ navigation }: any) {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [navigation, user, loading]);
+  }, [navigation, user, developer, isDeveloperLoggedIn, authLoading, devLoading]);
 
   return (
     <View style={styles.container}>

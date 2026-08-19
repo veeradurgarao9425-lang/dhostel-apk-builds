@@ -3,14 +3,14 @@ import {
   View,
   Text,
   StyleSheet,
-  TextInput,
   TouchableOpacity,
   FlatList,
-  ActivityIndicator,
-  StatusBar,
-  SafeAreaView,
-  Platform,
+  TextInput,
   RefreshControl,
+  ActivityIndicator,
+  SafeAreaView,
+  StatusBar,
+  Platform,
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -29,60 +29,77 @@ export default function DeveloperOwnersScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
-  const [pagination, setPagination] = useState({ total: 0, totalPages: 1, limit: 15 });
+  const [totalPages, setTotalPages] = useState(1);
+  const [impersonatingId, setImpersonatingId] = useState<number | null>(null);
 
-  const fetchOwners = useCallback(async (currentPage = 1, query = search) => {
-    try {
-      setLoading(true);
-      const res = await developerService.getOwners({
-        page: currentPage,
-        limit: 15,
-        search: query.trim(),
-      });
+  const fetchOwners = useCallback(
+    async (pageNum = 1, isRefresh = false) => {
+      try {
+        if (isRefresh) setRefreshing(true);
+        else if (pageNum === 1) setLoading(true);
 
-      if (res?.success && res.data) {
-        setOwners(res.data.owners || []);
-        setPagination(res.data.pagination || { total: 0, totalPages: 1, limit: 15 });
-        setPage(currentPage);
+        const res = await developerService.getOwners({
+          page: pageNum,
+          limit: 15,
+          search: search.trim() || undefined,
+        });
+
+        if (res.success && res.data) {
+          if (pageNum === 1) {
+            setOwners(res.data);
+          } else {
+            setOwners((prev) => [...prev, ...res.data]);
+          }
+          if (res.pagination) {
+            setTotalPages(res.pagination.total_pages);
+            setPage(res.pagination.page);
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching owners:', err);
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
       }
-    } catch (err) {
-      console.error('Fetch owners error:', err);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, [search]);
+    },
+    [search]
+  );
 
   useEffect(() => {
-    fetchOwners(1, search);
-  }, []);
+    fetchOwners(1);
+  }, [fetchOwners]);
 
   const onRefresh = () => {
-    setRefreshing(true);
-    fetchOwners(1, search);
+    setPage(1);
+    fetchOwners(1, true);
   };
 
-  const handleOpenOwnerAccount = (owner: any) => {
+  const loadMore = () => {
+    if (page < totalPages && !loading) {
+      fetchOwners(page + 1);
+    }
+  };
+
+  const handleImpersonate = (owner: any) => {
     Alert.alert(
-      'Enter Owner Support Mode',
-      `Open and inspect account as: "${owner.full_name}"?\n\nThis delegated session will be recorded in audit logs.`,
+      'Enter Support Impersonation',
+      `You are entering ${owner.full_name}'s owner dashboard in controlled support mode.\n\nA top support banner with a live countdown timer will be displayed.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Open Account',
-          style: 'default',
+          text: 'Enter Support Mode',
           onPress: async () => {
             try {
-              const res = await enterSupportMode({
+              setImpersonatingId(owner.user_id);
+              await enterSupportMode({
                 target_user_id: owner.user_id,
                 target_role: 'OWNER',
-                reason: `Direct owner support session for #${owner.user_id}`,
+                hostel_id: owner.primary_hostel_id || undefined,
               });
-              if (!res.success) {
-                Alert.alert('Support Mode Error', res.error || 'Failed to enter support mode');
-              }
-            } catch (e: any) {
-              Alert.alert('Error', e.message);
+            } catch (err: any) {
+              Alert.alert('Support Mode Error', err.message || 'Failed to start support session.');
+            } finally {
+              setImpersonatingId(null);
             }
           },
         },
@@ -92,118 +109,96 @@ export default function DeveloperOwnersScreen() {
 
   const renderOwnerCard = ({ item }: { item: any }) => (
     <View style={styles.card}>
-      <View style={styles.cardHeader}>
-        <View style={styles.headerLeft}>
-          <View style={styles.avatarBox}>
-            <Ionicons name="person" size={20} color="#A855F7" />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.ownerName} numberOfLines={1}>{item.full_name}</Text>
-            <Text style={styles.ownerContact}>{item.email} • {item.phone || 'No phone'}</Text>
-          </View>
+      <View style={styles.cardTop}>
+        <View style={styles.avatarWrap}>
+          <Ionicons name="person" size={20} color="#7C3AED" />
         </View>
-
+        <View style={{ flex: 1 }}>
+          <Text style={styles.ownerName}>{item.full_name || 'Unnamed Owner'}</Text>
+          <Text style={styles.ownerEmail}>{item.email}</Text>
+          {item.phone ? <Text style={styles.ownerPhone}>📞 {item.phone}</Text> : null}
+        </View>
         <View style={[styles.statusBadge, item.is_active ? styles.statusActive : styles.statusInactive]}>
-          <Text style={[styles.statusBadgeText, { color: item.is_active ? '#10B981' : '#94A3B8' }]}>
-            {item.is_active ? 'ACTIVE' : 'SUSPENDED'}
+          <Text style={[styles.statusBadgeText, { color: item.is_active ? '#059669' : '#8C7A6B' }]}>
+            {item.is_active ? 'ACTIVE' : 'INACTIVE'}
           </Text>
         </View>
       </View>
 
-      {/* Hostels Tag Row */}
-      <View style={styles.hostelsRow}>
-        <Ionicons name="business-outline" size={14} color="#60A5FA" />
-        <Text style={styles.hostelsText} numberOfLines={1}>
-          {item.hostels && item.hostels.length > 0
-            ? item.hostels.map((h: any) => h.hostel_name).join(', ')
-            : 'No hostels linked'}
-        </Text>
+      <View style={styles.divider} />
+
+      <View style={styles.ownerMetaRow}>
+        <View style={styles.metaChip}>
+          <Ionicons name="business-outline" size={13} color="#C2410C" />
+          <Text style={styles.metaChipText}>{item.hostel_count || 0} Hostels</Text>
+        </View>
+        <View style={styles.metaChip}>
+          <Ionicons name="people-outline" size={13} color="#2563EB" />
+          <Text style={styles.metaChipText}>{item.total_students || 0} Students</Text>
+        </View>
+        <Text style={styles.ownerIdText}>User #{item.user_id}</Text>
       </View>
 
-      {/* Stat Pills */}
-      <View style={styles.statsRow}>
-        <View style={styles.statPill}>
-          <Text style={styles.statLabel}>Hostels</Text>
-          <Text style={styles.statVal}>{item.total_hostels || 0}</Text>
-        </View>
-        <View style={styles.statPill}>
-          <Text style={styles.statLabel}>Students</Text>
-          <Text style={styles.statVal}>{item.total_students || 0}</Text>
-        </View>
-        <View style={styles.statPill}>
-          <Text style={styles.statLabel}>Rooms</Text>
-          <Text style={styles.statVal}>{item.total_rooms || 0}</Text>
-        </View>
-        <View style={styles.statPill}>
-          <Text style={styles.statLabel}>Beds</Text>
-          <Text style={styles.statVal}>{item.total_beds || 0}</Text>
-        </View>
-      </View>
-
-      {/* Footer Actions */}
-      <View style={styles.cardFooter}>
-        <Text style={styles.lastLoginText}>
-          Last login: {item.last_login ? new Date(item.last_login).toLocaleDateString() : 'Never'}
-        </Text>
-
-        <View style={styles.actionsGroup}>
-          <TouchableOpacity
-            onPress={() => handleOpenOwnerAccount(item)}
-            style={styles.openAccountBtn}
-          >
-            <Ionicons name="shield-checkmark" size={12} color="#FFFFFF" />
-            <Text style={styles.openAccountBtnText}>Open Account</Text>
-          </TouchableOpacity>
-        </View>
+      <View style={styles.cardActions}>
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onPress={() => handleImpersonate(item)}
+          disabled={impersonatingId === item.user_id}
+          style={styles.impersonateBtn}
+        >
+          {impersonatingId === item.user_id ? (
+            <ActivityIndicator size="small" color="#FFF" />
+          ) : (
+            <>
+              <Ionicons name="shield-half-outline" size={14} color="#FFF" />
+              <Text style={styles.impersonateBtnText}>Open Account (Support)</Text>
+            </>
+          )}
+        </TouchableOpacity>
       </View>
     </View>
   );
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0B1120" />
+      <StatusBar barStyle="dark-content" backgroundColor="#FAF6F0" />
 
-      {/* Header */}
+      {/* Top Header */}
       <View style={[styles.topBar, { paddingTop: Platform.OS === 'android' ? insets.top + 8 : 8 }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={20} color="#94A3B8" />
-        </TouchableOpacity>
-        <Text style={styles.topBarTitle}>Platform Owners ({pagination.total})</Text>
-        <View style={{ width: 32 }} />
+        <View>
+          <Text style={styles.topTag}>PLATFORM OWNERS</Text>
+          <Text style={styles.screenTitle}>Hostel Owners Directory</Text>
+        </View>
+        <View style={styles.countBadge}>
+          <Text style={styles.countBadgeText}>{owners.length} Loaded</Text>
+        </View>
       </View>
 
-      {/* Search Bar */}
-      <View style={styles.searchSection}>
+      {/* Search */}
+      <View style={styles.searchBoxWrap}>
         <View style={styles.searchBar}>
-          <Ionicons name="search" size={18} color="#64748B" style={{ marginRight: 8 }} />
+          <Ionicons name="search" size={18} color="#A89687" />
           <TextInput
-            style={styles.searchInput}
             placeholder="Search owners by name, email, phone..."
-            placeholderTextColor="#64748B"
+            placeholderTextColor="#A89687"
             value={search}
             onChangeText={setSearch}
-            onSubmitEditing={() => fetchOwners(1, search)}
-            returnKeyType="search"
+            onSubmitEditing={() => fetchOwners(1)}
+            style={styles.searchInput}
           />
           {search ? (
-            <TouchableOpacity onPress={() => { setSearch(''); fetchOwners(1, ''); }}>
-              <Ionicons name="close-circle" size={16} color="#64748B" />
+            <TouchableOpacity onPress={() => { setSearch(''); fetchOwners(1); }}>
+              <Ionicons name="close-circle" size={18} color="#A89687" />
             </TouchableOpacity>
           ) : null}
         </View>
       </View>
 
-      {/* Owner List */}
+      {/* List */}
       {loading && !refreshing ? (
         <View style={styles.centerBox}>
-          <ActivityIndicator size="large" color="#A855F7" />
-          <Text style={styles.loadingText}>Loading owners...</Text>
-        </View>
-      ) : owners.length === 0 ? (
-        <View style={styles.emptyBox}>
-          <Ionicons name="people-outline" size={48} color="#334155" />
-          <Text style={styles.emptyTitle}>No owners found</Text>
-          <Text style={styles.emptySub}>Try searching with a different name or phone number.</Text>
+          <ActivityIndicator size="large" color="#C2410C" />
+          <Text style={styles.loadingText}>Loading owners directory...</Text>
         </View>
       ) : (
         <FlatList
@@ -211,33 +206,18 @@ export default function DeveloperOwnersScreen() {
           keyExtractor={(item) => String(item.user_id)}
           renderItem={renderOwnerCard}
           contentContainerStyle={styles.listContent}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#A855F7" />}
-          ListFooterComponent={
-            pagination.totalPages > 1 ? (
-              <View style={styles.paginationRow}>
-                <TouchableOpacity
-                  disabled={page <= 1}
-                  onPress={() => fetchOwners(page - 1)}
-                  style={[styles.pageBtn, page <= 1 && styles.pageBtnDisabled]}
-                >
-                  <Ionicons name="arrow-back" size={14} color={page <= 1 ? '#475569' : '#F8FAFC'} />
-                  <Text style={[styles.pageBtnText, page <= 1 && { color: '#475569' }]}>Previous</Text>
-                </TouchableOpacity>
-
-                <Text style={styles.pageInfo}>
-                  Page <Text style={{ color: '#A855F7', fontWeight: '800' }}>{page}</Text> of {pagination.totalPages}
-                </Text>
-
-                <TouchableOpacity
-                  disabled={page >= pagination.totalPages}
-                  onPress={() => fetchOwners(page + 1)}
-                  style={[styles.pageBtn, page >= pagination.totalPages && styles.pageBtnDisabled]}
-                >
-                  <Text style={[styles.pageBtnText, page >= pagination.totalPages && { color: '#475569' }]}>Next</Text>
-                  <Ionicons name="arrow-forward" size={14} color={page >= pagination.totalPages ? '#475569' : '#F8FAFC'} />
-                </TouchableOpacity>
-              </View>
-            ) : null
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#C2410C" />
+          }
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.3}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            <View style={styles.emptyCard}>
+              <Ionicons name="people-outline" size={40} color="#C4B5A5" />
+              <Text style={styles.emptyTitle}>No Owners Found</Text>
+              <Text style={styles.emptySub}>No owners match your search query.</Text>
+            </View>
           }
         />
       )}
@@ -248,7 +228,7 @@ export default function DeveloperOwnersScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0B1120',
+    backgroundColor: '#FAF6F0',
   },
   topBar: {
     flexDirection: 'row',
@@ -257,107 +237,118 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#1E293B',
+    borderBottomColor: '#EFE7DC',
+    backgroundColor: '#FAF6F0',
   },
-  backBtn: {
-    padding: 6,
+  topTag: {
+    color: '#C2410C',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+  },
+  screenTitle: {
+    color: '#1C1917',
+    fontSize: 18,
+    fontWeight: '900',
+  },
+  countBadge: {
+    backgroundColor: '#F3E8FF',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
     borderRadius: 8,
-    backgroundColor: '#1E293B',
+    borderWidth: 1,
+    borderColor: '#E9D5FF',
   },
-  topBarTitle: {
-    color: '#F8FAFC',
-    fontSize: 16,
+  countBadgeText: {
+    color: '#7C3AED',
+    fontSize: 11,
     fontWeight: '800',
   },
-  searchSection: {
-    padding: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: '#1E293B',
-    backgroundColor: '#0F172A',
+  searchBoxWrap: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#FAF6F0',
   },
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#0B1120',
-    borderRadius: 10,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
     paddingHorizontal: 12,
-    height: 42,
+    paddingVertical: 9,
     borderWidth: 1,
-    borderColor: '#24334C',
+    borderColor: '#EFE7DC',
+    gap: 8,
+    shadowColor: '#8C3A00',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
+    elevation: 1,
   },
   searchInput: {
     flex: 1,
-    color: '#F8FAFC',
     fontSize: 13,
+    color: '#1C1917',
+    padding: 0,
   },
   listContent: {
-    padding: 14,
-    paddingBottom: 30,
+    padding: 16,
+    paddingBottom: 90,
   },
   centerBox: {
-    padding: 40,
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    padding: 40,
   },
   loadingText: {
-    color: '#94A3B8',
+    color: '#78716C',
     marginTop: 12,
     fontSize: 13,
-  },
-  emptyBox: {
-    padding: 60,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  emptyTitle: {
-    color: '#F8FAFC',
-    fontSize: 16,
-    fontWeight: '800',
-    marginTop: 12,
-  },
-  emptySub: {
-    color: '#64748B',
-    fontSize: 12,
-    textAlign: 'center',
-    marginTop: 4,
+    fontWeight: '600',
   },
   card: {
-    backgroundColor: '#131D31',
-    borderRadius: 14,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
     padding: 14,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#1E293B',
+    borderColor: '#EFE7DC',
+    shadowColor: '#8C3A00',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  cardHeader: {
+  cardTop: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 10,
-  },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: 10,
-    flex: 1,
   },
-  avatarBox: {
-    width: 38,
-    height: 38,
-    borderRadius: 10,
-    backgroundColor: 'rgba(168, 85, 247, 0.15)',
+  avatarWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: '#F3E8FF',
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#E9D5FF',
   },
   ownerName: {
-    color: '#F8FAFC',
+    color: '#1C1917',
     fontSize: 15,
-    fontWeight: '800',
+    fontWeight: '900',
   },
-  ownerContact: {
-    color: '#64748B',
-    fontSize: 11,
+  ownerEmail: {
+    color: '#78716C',
+    fontSize: 12,
     marginTop: 1,
+  },
+  ownerPhone: {
+    color: '#78716C',
+    fontSize: 11,
+    marginTop: 2,
   },
   statusBadge: {
     paddingHorizontal: 8,
@@ -365,112 +356,90 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   statusActive: {
-    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    backgroundColor: '#ECFDF5',
   },
   statusInactive: {
-    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    backgroundColor: '#F5F5F4',
   },
   statusBadgeText: {
     fontSize: 9,
     fontWeight: '800',
   },
-  hostelsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: 'rgba(59, 130, 246, 0.08)',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 6,
-    marginBottom: 10,
+  divider: {
+    height: 1,
+    backgroundColor: '#F5EFE6',
+    marginVertical: 10,
   },
-  hostelsText: {
-    color: '#93C5FD',
-    fontSize: 11,
-    fontWeight: '600',
-    flex: 1,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    gap: 6,
-    marginBottom: 12,
-  },
-  statPill: {
-    flex: 1,
-    backgroundColor: '#1E293B',
-    borderRadius: 8,
-    paddingVertical: 6,
-    alignItems: 'center',
-  },
-  statLabel: {
-    color: '#94A3B8',
-    fontSize: 9,
-    fontWeight: '600',
-    marginBottom: 2,
-  },
-  statVal: {
-    color: '#F8FAFC',
-    fontSize: 13,
-    fontWeight: '800',
-  },
-  cardFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderTopWidth: 1,
-    borderTopColor: '#1E293B',
-    paddingTop: 10,
-  },
-  lastLoginText: {
-    color: '#64748B',
-    fontSize: 10,
-  },
-  actionsGroup: {
+  ownerMetaRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    marginBottom: 12,
   },
-  openAccountBtn: {
+  metaChip: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#2563EB',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    backgroundColor: '#FAF6F0',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
     borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#EFE7DC',
   },
-  openAccountBtnText: {
-    color: '#FFFFFF',
+  metaChipText: {
+    color: '#44403C',
     fontSize: 11,
-    fontWeight: '800',
-  },
-  paginationRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 16,
-    marginTop: 8,
-  },
-  pageBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: '#1E293B',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  pageBtnDisabled: {
-    opacity: 0.4,
-  },
-  pageBtnText: {
-    color: '#F8FAFC',
-    fontSize: 12,
     fontWeight: '700',
   },
-  pageInfo: {
-    color: '#94A3B8',
-    fontSize: 12,
+  ownerIdText: {
+    marginLeft: 'auto',
+    color: '#A89687',
+    fontSize: 10,
     fontWeight: '600',
+  },
+  cardActions: {
+    flexDirection: 'row',
+  },
+  impersonateBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#C2410C',
+    paddingVertical: 10,
+    borderRadius: 10,
+    shadowColor: '#C2410C',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  impersonateBtnText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  emptyCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 30,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#EFE7DC',
+    marginTop: 20,
+  },
+  emptyTitle: {
+    color: '#1C1917',
+    fontSize: 16,
+    fontWeight: '800',
+    marginTop: 10,
+  },
+  emptySub: {
+    color: '#78716C',
+    fontSize: 12,
+    textAlign: 'center',
+    marginTop: 4,
   },
 });

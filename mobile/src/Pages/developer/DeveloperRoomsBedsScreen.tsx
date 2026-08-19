@@ -4,12 +4,12 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  FlatList,
-  ActivityIndicator,
-  StatusBar,
-  SafeAreaView,
-  Platform,
+  ScrollView,
   RefreshControl,
+  ActivityIndicator,
+  SafeAreaView,
+  StatusBar,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { developerService } from '../../services/developerService';
@@ -20,21 +20,18 @@ export default function DeveloperRoomsBedsScreen() {
   const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
 
+  const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [summary, setSummary] = useState<any>({});
-  const [rooms, setRooms] = useState<any[]>([]);
 
-  const fetchRooms = useCallback(async () => {
+  const fetchRoomsBeds = useCallback(async () => {
     try {
-      setLoading(true);
-      const res = await developerService.getRoomsAndBeds();
-      if (res?.success && res.data) {
-        setSummary(res.data.summary || {});
-        setRooms(res.data.rooms || []);
+      const res = await developerService.getRoomsBeds();
+      if (res.success && res.data) {
+        setData(res.data);
       }
     } catch (err) {
-      console.error('Fetch rooms and beds error:', err);
+      console.error('Error fetching rooms & beds summary:', err);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -42,84 +39,118 @@ export default function DeveloperRoomsBedsScreen() {
   }, []);
 
   useEffect(() => {
-    fetchRooms();
-  }, [fetchRooms]);
+    fetchRoomsBeds();
+  }, [fetchRoomsBeds]);
 
   const onRefresh = () => {
     setRefreshing(true);
-    fetchRooms();
+    fetchRoomsBeds();
   };
 
-  const renderRoomItem = ({ item }: { item: any }) => (
-    <View style={styles.card}>
-      <View style={styles.cardHeader}>
-        <View style={styles.headerLeft}>
-          <View style={styles.iconBox}>
-            <Ionicons name="bed" size={18} color="#F59E0B" />
-          </View>
-          <View>
-            <Text style={styles.roomTitle}>Room {item.room_number}</Text>
-            <Text style={styles.hostelName}>{item.hostel_name} ({item.city || 'City'})</Text>
-          </View>
-        </View>
-
-        <View style={styles.occPill}>
-          <Text style={styles.occPillText}>
-            {item.occupied_beds || 0} / {item.capacity || 1} Occupied
-          </Text>
-        </View>
-      </View>
-    </View>
-  );
+  const summary = data?.summary || {};
+  const roomTypes = data?.by_room_type || [];
+  const hostelBreakdown = data?.by_hostel || [];
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0B1120" />
+      <StatusBar barStyle="dark-content" backgroundColor="#FAF6F0" />
 
       {/* Header */}
       <View style={[styles.topBar, { paddingTop: Platform.OS === 'android' ? insets.top + 8 : 8 }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={20} color="#94A3B8" />
+          <Ionicons name="arrow-back" size={22} color="#1C1917" />
         </TouchableOpacity>
-        <Text style={styles.topBarTitle}>Rooms & Bed Inventory</Text>
-        <View style={{ width: 32 }} />
-      </View>
-
-      {/* Summary Cards */}
-      <View style={styles.summaryContainer}>
-        <View style={styles.summaryCard}>
-          <Text style={styles.sumLabel}>Total Capacity</Text>
-          <Text style={styles.sumVal}>{summary.total_beds || 0}</Text>
-        </View>
-        <View style={[styles.summaryCard, { borderColor: '#10B981' }]}>
-          <Text style={[styles.sumLabel, { color: '#10B981' }]}>Occupied</Text>
-          <Text style={[styles.sumVal, { color: '#10B981' }]}>{summary.occupied_beds || 0}</Text>
-        </View>
-        <View style={[styles.summaryCard, { borderColor: '#3B82F6' }]}>
-          <Text style={[styles.sumLabel, { color: '#60A5FA' }]}>Available</Text>
-          <Text style={[styles.sumVal, { color: '#60A5FA' }]}>{summary.available_beds || 0}</Text>
-        </View>
-        <View style={[styles.summaryCard, { borderColor: '#F59E0B' }]}>
-          <Text style={[styles.sumLabel, { color: '#F59E0B' }]}>Occ Rate</Text>
-          <Text style={[styles.sumVal, { color: '#F59E0B' }]}>{summary.occupancy_rate || 0}%</Text>
+        <View>
+          <Text style={styles.topTag}>INVENTORY BREAKDOWN</Text>
+          <Text style={styles.screenTitle}>Rooms & Beds Platform Inventory</Text>
         </View>
       </View>
 
-      {/* Rooms List */}
-      {loading && !refreshing ? (
-        <View style={styles.centerBox}>
-          <ActivityIndicator size="large" color="#F59E0B" />
-          <Text style={styles.loadingText}>Loading inventory...</Text>
-        </View>
-      ) : (
-        <FlatList
-          data={rooms}
-          keyExtractor={(item) => String(item.room_id)}
-          renderItem={renderRoomItem}
-          contentContainerStyle={styles.listContent}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#F59E0B" />}
-        />
-      )}
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#C2410C" />
+        }
+        showsVerticalScrollIndicator={false}
+      >
+        {loading ? (
+          <View style={styles.centerBox}>
+            <ActivityIndicator size="large" color="#C2410C" />
+            <Text style={styles.loadingText}>Analyzing inventory data...</Text>
+          </View>
+        ) : (
+          <>
+            {/* KPI Cards */}
+            <View style={styles.kpiGrid}>
+              <View style={styles.kpiCard}>
+                <Text style={styles.kpiLabel}>TOTAL ROOMS</Text>
+                <Text style={styles.kpiValue}>{summary.total_rooms || 0}</Text>
+              </View>
+              <View style={styles.kpiCard}>
+                <Text style={styles.kpiLabel}>TOTAL BEDS</Text>
+                <Text style={styles.kpiValue}>{summary.total_beds || 0}</Text>
+              </View>
+              <View style={styles.kpiCard}>
+                <Text style={styles.kpiLabel}>OCCUPIED</Text>
+                <Text style={[styles.kpiValue, { color: '#059669' }]}>{summary.occupied_beds || 0}</Text>
+              </View>
+              <View style={styles.kpiCard}>
+                <Text style={styles.kpiLabel}>AVAILABLE</Text>
+                <Text style={[styles.kpiValue, { color: '#C2410C' }]}>{summary.available_beds || 0}</Text>
+              </View>
+            </View>
+
+            {/* Room Types Distribution */}
+            <View style={styles.card}>
+              <Text style={styles.cardHeading}>SHARING & ROOM TYPES</Text>
+              {roomTypes.length === 0 ? (
+                <Text style={styles.emptyText}>No room type data recorded.</Text>
+              ) : (
+                roomTypes.map((rt: any, i: number) => (
+                  <View key={i} style={styles.typeRow}>
+                    <View style={styles.typeLeft}>
+                      <View style={styles.typeDot} />
+                      <Text style={styles.typeName}>{rt.room_type || 'Standard'}</Text>
+                    </View>
+                    <Text style={styles.typeCount}>
+                      {rt.room_count} Rooms ({rt.total_beds} Beds)
+                    </Text>
+                  </View>
+                ))
+              )}
+            </View>
+
+            {/* Hostels Breakdown */}
+            <View style={styles.card}>
+              <Text style={styles.cardHeading}>HOSTEL-WISE OCCUPANCY BREAKDOWN</Text>
+              {hostelBreakdown.length === 0 ? (
+                <Text style={styles.emptyText}>No hostel breakdown available.</Text>
+              ) : (
+                hostelBreakdown.map((h: any) => {
+                  const occ = h.total_beds > 0 ? Math.round((h.occupied_beds / h.total_beds) * 100) : 0;
+                  return (
+                    <TouchableOpacity
+                      key={h.hostel_id}
+                      activeOpacity={0.75}
+                      onPress={() => navigation.navigate('DeveloperHostelDetails', { hostelId: h.hostel_id })}
+                      style={styles.hostelBreakdownRow}
+                    >
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.hName}>{h.hostel_name}</Text>
+                        <Text style={styles.hRooms}>{h.total_rooms} Rooms • {h.total_beds} Beds</Text>
+                      </View>
+                      <View style={styles.hRight}>
+                        <Text style={[styles.hOcc, { color: occ > 80 ? '#059669' : '#C2410C' }]}>{occ}%</Text>
+                        <Ionicons name="chevron-forward" size={14} color="#B5A496" />
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })
+              )}
+            </View>
+          </>
+        )}
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -127,58 +158,42 @@ export default function DeveloperRoomsBedsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0B1120',
+    backgroundColor: '#FAF6F0',
   },
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: 10,
     paddingHorizontal: 16,
     paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#1E293B',
+    borderBottomColor: '#EFE7DC',
+    backgroundColor: '#FAF6F0',
   },
   backBtn: {
-    padding: 6,
-    borderRadius: 8,
-    backgroundColor: '#1E293B',
-  },
-  topBarTitle: {
-    color: '#F8FAFC',
-    fontSize: 16,
-    fontWeight: '800',
-  },
-  summaryContainer: {
-    flexDirection: 'row',
-    gap: 8,
-    padding: 14,
-    backgroundColor: '#0F172A',
-    borderBottomWidth: 1,
-    borderBottomColor: '#1E293B',
-  },
-  summaryCard: {
-    flex: 1,
-    backgroundColor: '#131D31',
+    width: 36,
+    height: 36,
     borderRadius: 10,
-    padding: 10,
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#1E293B',
+    borderColor: '#EFE7DC',
   },
-  sumLabel: {
-    color: '#94A3B8',
-    fontSize: 9,
-    fontWeight: '700',
-    marginBottom: 4,
+  topTag: {
+    color: '#C2410C',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.8,
   },
-  sumVal: {
-    color: '#F8FAFC',
+  screenTitle: {
+    color: '#1C1917',
     fontSize: 16,
     fontWeight: '900',
   },
-  listContent: {
-    padding: 14,
-    paddingBottom: 30,
+  scrollContent: {
+    padding: 16,
+    paddingBottom: 40,
   },
   centerBox: {
     padding: 40,
@@ -186,56 +201,118 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   loadingText: {
-    color: '#94A3B8',
+    color: '#78716C',
     marginTop: 12,
     fontSize: 13,
   },
-  card: {
-    backgroundColor: '#131D31',
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: '#1E293B',
+  kpiGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginBottom: 16,
   },
-  cardHeader: {
+  kpiCard: {
+    width: '48%',
+    backgroundColor: '#FFFFFF',
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#EFE7DC',
+    shadowColor: '#8C3A00',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  kpiLabel: {
+    color: '#A89687',
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  kpiValue: {
+    color: '#1C1917',
+    fontSize: 22,
+    fontWeight: '900',
+    marginTop: 4,
+  },
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: '#EFE7DC',
+    shadowColor: '#8C3A00',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  cardHeading: {
+    color: '#8C7A6B',
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+    marginBottom: 12,
+  },
+  typeRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F5EFE6',
   },
-  headerLeft: {
+  typeLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    flex: 1,
+    gap: 8,
   },
-  iconBox: {
-    width: 34,
-    height: 34,
-    borderRadius: 8,
-    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+  typeDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#C2410C',
+  },
+  typeName: {
+    color: '#1C1917',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  typeCount: {
+    color: '#78716C',
+    fontSize: 12,
+  },
+  hostelBreakdownRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F5EFE6',
   },
-  roomTitle: {
-    color: '#F8FAFC',
-    fontSize: 14,
+  hName: {
+    color: '#1C1917',
+    fontSize: 13,
     fontWeight: '800',
   },
-  hostelName: {
-    color: '#64748B',
+  hRooms: {
+    color: '#78716C',
     fontSize: 11,
-    marginTop: 2,
+    marginTop: 1,
   },
-  occPill: {
-    backgroundColor: '#1E293B',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
+  hRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
-  occPillText: {
-    color: '#F59E0B',
-    fontSize: 11,
-    fontWeight: '700',
+  hOcc: {
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  emptyText: {
+    color: '#78716C',
+    fontSize: 12,
+    fontStyle: 'italic',
   },
 });

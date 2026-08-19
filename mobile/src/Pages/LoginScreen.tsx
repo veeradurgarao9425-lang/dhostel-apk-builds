@@ -94,7 +94,7 @@ export default function LoginScreen({ navigation }: any) {
                 if (user.role === 'DEVELOPER' || (user as any).is_developer) {
                     navigation.reset({
                         index: 0,
-                        routes: [{ name: 'DeveloperDashboard' }],
+                        routes: [{ name: 'DeveloperMain' }],
                     });
                 } else {
                     navigation.navigate('Main');

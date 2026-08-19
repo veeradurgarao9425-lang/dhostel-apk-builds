@@ -10,6 +10,7 @@ interface DeveloperContextType {
   developer: DeveloperUser | null;
   developerToken: string | null;
   isDeveloperLoggedIn: boolean;
+  isSupportMode: boolean;
   supportSession: SupportSessionState | null;
   loading: boolean;
   login: (identifier: string, pass: string) => Promise<{ success: boolean; error?: string }>;
@@ -27,6 +28,7 @@ const DeveloperContext = createContext<DeveloperContextType>({
   developer: null,
   developerToken: null,
   isDeveloperLoggedIn: false,
+  isSupportMode: false,
   supportSession: null,
   loading: true,
   login: async () => ({ success: false }),
@@ -55,6 +57,7 @@ export const DeveloperProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         if (storedDevToken && storedDevUser) {
           setDeveloperToken(storedDevToken);
           setDeveloper(JSON.parse(storedDevUser));
+          api.defaults.headers.common['Authorization'] = `Bearer ${storedDevToken}`;
         }
 
         if (storedSupport) {
@@ -181,8 +184,8 @@ export const DeveloperProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     // Clear normal user session
     await signOut();
 
-    // Navigate smoothly back to Developer Dashboard
-    navigate('DeveloperDashboard');
+    // Navigate smoothly back to Developer Main Hub
+    navigate('DeveloperMain');
   };
 
   return (
@@ -191,6 +194,7 @@ export const DeveloperProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         developer,
         developerToken,
         isDeveloperLoggedIn: !!developer && !!developerToken,
+        isSupportMode: !!supportSession,
         supportSession,
         loading,
         login,

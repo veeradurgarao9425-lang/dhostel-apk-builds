@@ -3,14 +3,14 @@ import {
   View,
   Text,
   StyleSheet,
-  TextInput,
   TouchableOpacity,
   FlatList,
-  ActivityIndicator,
-  StatusBar,
-  SafeAreaView,
-  Platform,
+  TextInput,
   RefreshControl,
+  ActivityIndicator,
+  SafeAreaView,
+  StatusBar,
+  Platform,
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -28,28 +28,38 @@ export default function DeveloperStudentsScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'ALL' | '1' | '0' | '3'>('ALL');
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL');
   const [page, setPage] = useState(1);
-  const [pagination, setPagination] = useState({ total: 0, totalPages: 1, limit: 15 });
+  const [totalPages, setTotalPages] = useState(1);
+  const [impersonatingId, setImpersonatingId] = useState<number | null>(null);
 
   const fetchStudents = useCallback(
-    async (currentPage = 1, query = search, status = statusFilter) => {
+    async (pageNum = 1, isRefresh = false) => {
       try {
-        setLoading(true);
+        if (isRefresh) setRefreshing(true);
+        else if (pageNum === 1) setLoading(true);
+
+        const statusParam = statusFilter === 'ALL' ? undefined : statusFilter === 'ACTIVE' ? 'active' : 'inactive';
         const res = await developerService.getStudents({
-          page: currentPage,
+          page: pageNum,
           limit: 15,
-          search: query.trim(),
-          status: status === 'ALL' ? undefined : status,
+          search: search.trim() || undefined,
+          status: statusParam,
         });
 
-        if (res?.success && res.data) {
-          setStudents(res.data.students || []);
-          setPagination(res.data.pagination || { total: 0, totalPages: 1, limit: 15 });
-          setPage(currentPage);
+        if (res.success && res.data) {
+          if (pageNum === 1) {
+            setStudents(res.data);
+          } else {
+            setStudents((prev) => [...prev, ...res.data]);
+          }
+          if (res.pagination) {
+            setTotalPages(res.pagination.total_pages);
+            setPage(res.pagination.page);
+          }
         }
       } catch (err) {
-        console.error('Fetch students error:', err);
+        console.error('Error fetching students:', err);
       } finally {
         setLoading(false);
         setRefreshing(false);
@@ -59,36 +69,45 @@ export default function DeveloperStudentsScreen() {
   );
 
   useEffect(() => {
-    fetchStudents(1, search, statusFilter);
-  }, [statusFilter]);
+    fetchStudents(1);
+  }, [fetchStudents]);
 
   const onRefresh = () => {
-    setRefreshing(true);
-    fetchStudents(1, search, statusFilter);
+    setPage(1);
+    fetchStudents(1, true);
   };
 
-  const handleOpenStudentAccount = (student: any) => {
+  const loadMore = () => {
+    if (page < totalPages && !loading) {
+      fetchStudents(page + 1);
+    }
+  };
+
+  const handleImpersonate = (student: any) => {
+    if (!student.user_id) {
+      Alert.alert('Cannot Impersonate', 'This student does not have an active login account linked.');
+      return;
+    }
+
     Alert.alert(
-      'Enter Tenant Support Mode',
-      `Open and troubleshoot account for Student: "${student.first_name} ${student.last_name || ''}"?\n\nThis delegated session will be recorded in audit logs.`,
+      'Enter Student Support Mode',
+      `You are entering ${student.first_name} ${student.last_name || ''}'s tenant account in controlled support mode.\n\nA top support banner with a live countdown timer will be displayed.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Open as Student',
-          style: 'default',
+          text: 'Enter Student Mode',
           onPress: async () => {
             try {
-              const res = await enterSupportMode({
-                target_user_id: student.student_id,
+              setImpersonatingId(student.student_id);
+              await enterSupportMode({
+                target_user_id: student.user_id,
                 target_role: 'TENANT',
-                hostel_id: student.hostel_id,
-                reason: `Troubleshooting student account #${student.student_id}`,
+                hostel_id: student.hostel_id || undefined,
               });
-              if (!res.success) {
-                Alert.alert('Support Mode Error', res.error || 'Failed to enter support mode');
-              }
-            } catch (e: any) {
-              Alert.alert('Error', e.message);
+            } catch (err: any) {
+              Alert.alert('Support Mode Error', err.message || 'Failed to start student support session.');
+            } finally {
+              setImpersonatingId(null);
             }
           },
         },
@@ -96,121 +115,117 @@ export default function DeveloperStudentsScreen() {
     );
   };
 
-  const renderStudentCard = ({ item }: { item: any }) => (
-    <View style={styles.card}>
-      <View style={styles.cardHeader}>
-        <View style={styles.headerLeft}>
-          <View style={styles.avatarBox}>
-            <Ionicons name="school" size={18} color="#10B981" />
+  const renderStudentCard = ({ item }: { item: any }) => {
+    const fullName = `${item.first_name || ''} ${item.last_name || ''}`.trim() || 'Unnamed Student';
+
+    return (
+      <View style={styles.card}>
+        <View style={styles.cardTop}>
+          <View style={styles.avatarWrap}>
+            <Ionicons name="school" size={20} color="#059669" />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.studentName} numberOfLines={1}>
-              {item.first_name} {item.last_name || ''}
+            <Text style={styles.studentName}>{fullName}</Text>
+            <Text style={styles.studentHostel}>🏠 {item.hostel_name || 'No Hostel Assigned'}</Text>
+            <Text style={styles.studentPhone}>📞 {item.phone || item.email || 'No contact'}</Text>
+          </View>
+          <View style={[styles.statusBadge, String(item.status).toLowerCase() === 'active' ? styles.statusActive : styles.statusInactive]}>
+            <Text style={[styles.statusBadgeText, { color: String(item.status).toLowerCase() === 'active' ? '#059669' : '#8C7A6B' }]}>
+              {String(item.status || 'ACTIVE').toUpperCase()}
             </Text>
-            <Text style={styles.studentContact}>Phone: {item.phone} {item.email ? `• ${item.email}` : ''}</Text>
           </View>
         </View>
 
-        <View style={[styles.statusBadge, item.status === 1 ? styles.statusActive : styles.statusInactive]}>
-          <Text style={[styles.statusBadgeText, { color: item.status === 1 ? '#10B981' : '#94A3B8' }]}>
-            {item.status === 1 ? 'ACTIVE' : item.status === 3 ? 'PENDING' : 'VACATED'}
-          </Text>
+        <View style={styles.divider} />
+
+        <View style={styles.roomMetaRow}>
+          <View style={styles.metaChip}>
+            <Ionicons name="bed-outline" size={13} color="#C2410C" />
+            <Text style={styles.metaChipText}>Room {item.room_number || 'N/A'}</Text>
+          </View>
+          {item.bed_number ? (
+            <View style={styles.metaChip}>
+              <Text style={styles.metaChipText}>Bed {item.bed_number}</Text>
+            </View>
+          ) : null}
+          <Text style={styles.rentText}>Rent: ₹{Number(item.monthly_rent || 0).toLocaleString('en-IN')}/mo</Text>
+        </View>
+
+        <View style={styles.cardActions}>
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => handleImpersonate(item)}
+            disabled={impersonatingId === item.student_id}
+            style={styles.impersonateBtn}
+          >
+            {impersonatingId === item.student_id ? (
+              <ActivityIndicator size="small" color="#FFF" />
+            ) : (
+              <>
+                <Ionicons name="shield-half-outline" size={14} color="#FFF" />
+                <Text style={styles.impersonateBtnText}>Open as Student (Support)</Text>
+              </>
+            )}
+          </TouchableOpacity>
         </View>
       </View>
-
-      {/* Hostel & Room Tag */}
-      <View style={styles.locationTagRow}>
-        <View style={styles.locPill}>
-          <Ionicons name="business" size={12} color="#60A5FA" />
-          <Text style={styles.locPillText} numberOfLines={1}>{item.hostel_name || 'Unassigned Hostel'}</Text>
-        </View>
-        <View style={[styles.locPill, { backgroundColor: 'rgba(245, 158, 11, 0.12)' }]}>
-          <Ionicons name="bed" size={12} color="#F59E0B" />
-          <Text style={[styles.locPillText, { color: '#F59E0B' }]}>Room {item.room_number || 'None'}</Text>
-        </View>
-      </View>
-
-      {/* Footer Action */}
-      <View style={styles.cardFooter}>
-        <Text style={styles.rentText}>
-          Rent: <Text style={styles.rentVal}>₹{item.monthly_rent || 0}/mo</Text>
-        </Text>
-
-        <TouchableOpacity
-          onPress={() => handleOpenStudentAccount(item)}
-          style={styles.openStudentBtn}
-        >
-          <Ionicons name="enter-outline" size={13} color="#FFFFFF" />
-          <Text style={styles.openStudentBtnText}>Open as Student</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0B1120" />
+      <StatusBar barStyle="dark-content" backgroundColor="#FAF6F0" />
 
-      {/* Header */}
+      {/* Top Header */}
       <View style={[styles.topBar, { paddingTop: Platform.OS === 'android' ? insets.top + 8 : 8 }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={20} color="#94A3B8" />
-        </TouchableOpacity>
-        <Text style={styles.topBarTitle}>All Students ({pagination.total})</Text>
-        <View style={{ width: 32 }} />
+        <View>
+          <Text style={styles.topTag}>PLATFORM TENANTS</Text>
+          <Text style={styles.screenTitle}>Students Directory</Text>
+        </View>
+        <View style={styles.countBadge}>
+          <Text style={styles.countBadgeText}>{students.length} Loaded</Text>
+        </View>
       </View>
 
-      {/* Search & Status Filters */}
-      <View style={styles.searchSection}>
+      {/* Search and Filters */}
+      <View style={styles.searchBoxWrap}>
         <View style={styles.searchBar}>
-          <Ionicons name="search" size={18} color="#64748B" style={{ marginRight: 8 }} />
+          <Ionicons name="search" size={18} color="#A89687" />
           <TextInput
-            style={styles.searchInput}
-            placeholder="Search students by name, phone, room, hostel..."
-            placeholderTextColor="#64748B"
+            placeholder="Search students by name, phone, room..."
+            placeholderTextColor="#A89687"
             value={search}
             onChangeText={setSearch}
-            onSubmitEditing={() => fetchStudents(1, search, statusFilter)}
-            returnKeyType="search"
+            onSubmitEditing={() => fetchStudents(1)}
+            style={styles.searchInput}
           />
           {search ? (
-            <TouchableOpacity onPress={() => { setSearch(''); fetchStudents(1, '', statusFilter); }}>
-              <Ionicons name="close-circle" size={16} color="#64748B" />
+            <TouchableOpacity onPress={() => { setSearch(''); fetchStudents(1); }}>
+              <Ionicons name="close-circle" size={18} color="#A89687" />
             </TouchableOpacity>
           ) : null}
         </View>
 
-        <View style={styles.filterTabs}>
-          {[
-            { key: 'ALL', label: 'All' },
-            { key: '1', label: 'Active' },
-            { key: '3', label: 'Pending' },
-            { key: '0', label: 'Vacated' },
-          ].map((tab) => (
+        <View style={styles.filterRow}>
+          {(['ALL', 'ACTIVE', 'INACTIVE'] as const).map((st) => (
             <TouchableOpacity
-              key={tab.key}
-              onPress={() => setStatusFilter(tab.key as any)}
-              style={[styles.filterTab, statusFilter === tab.key && styles.filterTabActive]}
+              key={st}
+              onPress={() => setStatusFilter(st)}
+              style={[styles.filterChip, statusFilter === st && styles.filterChipActive]}
             >
-              <Text style={[styles.filterTabText, statusFilter === tab.key && styles.filterTabTextActive]}>
-                {tab.label}
+              <Text style={[styles.filterChipText, statusFilter === st && styles.filterChipTextActive]}>
+                {st}
               </Text>
             </TouchableOpacity>
           ))}
         </View>
       </View>
 
-      {/* Students List */}
+      {/* List */}
       {loading && !refreshing ? (
         <View style={styles.centerBox}>
-          <ActivityIndicator size="large" color="#10B981" />
-          <Text style={styles.loadingText}>Loading students...</Text>
-        </View>
-      ) : students.length === 0 ? (
-        <View style={styles.emptyBox}>
-          <Ionicons name="school-outline" size={48} color="#334155" />
-          <Text style={styles.emptyTitle}>No students found</Text>
-          <Text style={styles.emptySub}>Try searching with a different name or room number.</Text>
+          <ActivityIndicator size="large" color="#C2410C" />
+          <Text style={styles.loadingText}>Loading students directory...</Text>
         </View>
       ) : (
         <FlatList
@@ -218,33 +233,18 @@ export default function DeveloperStudentsScreen() {
           keyExtractor={(item) => String(item.student_id)}
           renderItem={renderStudentCard}
           contentContainerStyle={styles.listContent}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#10B981" />}
-          ListFooterComponent={
-            pagination.totalPages > 1 ? (
-              <View style={styles.paginationRow}>
-                <TouchableOpacity
-                  disabled={page <= 1}
-                  onPress={() => fetchStudents(page - 1)}
-                  style={[styles.pageBtn, page <= 1 && styles.pageBtnDisabled]}
-                >
-                  <Ionicons name="arrow-back" size={14} color={page <= 1 ? '#475569' : '#F8FAFC'} />
-                  <Text style={[styles.pageBtnText, page <= 1 && { color: '#475569' }]}>Previous</Text>
-                </TouchableOpacity>
-
-                <Text style={styles.pageInfo}>
-                  Page <Text style={{ color: '#10B981', fontWeight: '800' }}>{page}</Text> of {pagination.totalPages}
-                </Text>
-
-                <TouchableOpacity
-                  disabled={page >= pagination.totalPages}
-                  onPress={() => fetchStudents(page + 1)}
-                  style={[styles.pageBtn, page >= pagination.totalPages && styles.pageBtnDisabled]}
-                >
-                  <Text style={[styles.pageBtnText, page >= pagination.totalPages && { color: '#475569' }]}>Next</Text>
-                  <Ionicons name="arrow-forward" size={14} color={page >= pagination.totalPages ? '#475569' : '#F8FAFC'} />
-                </TouchableOpacity>
-              </View>
-            ) : null
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#C2410C" />
+          }
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.3}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            <View style={styles.emptyCard}>
+              <Ionicons name="school-outline" size={40} color="#C4B5A5" />
+              <Text style={styles.emptyTitle}>No Students Found</Text>
+              <Text style={styles.emptySub}>No students match the active filters or search query.</Text>
+            </View>
           }
         />
       )}
@@ -255,7 +255,7 @@ export default function DeveloperStudentsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0B1120',
+    backgroundColor: '#FAF6F0',
   },
   topBar: {
     flexDirection: 'row',
@@ -264,129 +264,145 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#1E293B',
+    borderBottomColor: '#EFE7DC',
+    backgroundColor: '#FAF6F0',
   },
-  backBtn: {
-    padding: 6,
+  topTag: {
+    color: '#C2410C',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+  },
+  screenTitle: {
+    color: '#1C1917',
+    fontSize: 18,
+    fontWeight: '900',
+  },
+  countBadge: {
+    backgroundColor: '#ECFDF5',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
     borderRadius: 8,
-    backgroundColor: '#1E293B',
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
   },
-  topBarTitle: {
-    color: '#F8FAFC',
-    fontSize: 16,
+  countBadgeText: {
+    color: '#059669',
+    fontSize: 11,
     fontWeight: '800',
   },
-  searchSection: {
-    padding: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: '#1E293B',
-    backgroundColor: '#0F172A',
+  searchBoxWrap: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 8,
+    backgroundColor: '#FAF6F0',
   },
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#0B1120',
-    borderRadius: 10,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
     paddingHorizontal: 12,
-    height: 42,
+    paddingVertical: 9,
     borderWidth: 1,
-    borderColor: '#24334C',
-    marginBottom: 10,
+    borderColor: '#EFE7DC',
+    gap: 8,
+    shadowColor: '#8C3A00',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
+    elevation: 1,
   },
   searchInput: {
     flex: 1,
-    color: '#F8FAFC',
     fontSize: 13,
+    color: '#1C1917',
+    padding: 0,
   },
-  filterTabs: {
+  filterRow: {
     flexDirection: 'row',
     gap: 8,
+    marginTop: 10,
   },
-  filterTab: {
+  filterChip: {
     paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: 6,
-    backgroundColor: '#1E293B',
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#EFE7DC',
   },
-  filterTabActive: {
-    backgroundColor: '#10B981',
+  filterChipActive: {
+    backgroundColor: '#C2410C',
+    borderColor: '#C2410C',
   },
-  filterTabText: {
-    color: '#94A3B8',
+  filterChipText: {
+    color: '#78716C',
     fontSize: 11,
     fontWeight: '700',
   },
-  filterTabTextActive: {
+  filterChipTextActive: {
     color: '#FFFFFF',
+    fontWeight: '800',
   },
   listContent: {
-    padding: 14,
-    paddingBottom: 30,
+    padding: 16,
+    paddingBottom: 90,
   },
   centerBox: {
-    padding: 40,
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    padding: 40,
   },
   loadingText: {
-    color: '#94A3B8',
+    color: '#78716C',
     marginTop: 12,
     fontSize: 13,
-  },
-  emptyBox: {
-    padding: 60,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  emptyTitle: {
-    color: '#F8FAFC',
-    fontSize: 16,
-    fontWeight: '800',
-    marginTop: 12,
-  },
-  emptySub: {
-    color: '#64748B',
-    fontSize: 12,
-    textAlign: 'center',
-    marginTop: 4,
+    fontWeight: '600',
   },
   card: {
-    backgroundColor: '#131D31',
-    borderRadius: 14,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
     padding: 14,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#1E293B',
+    borderColor: '#EFE7DC',
+    shadowColor: '#8C3A00',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
   },
-  cardHeader: {
+  cardTop: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 10,
-  },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: 10,
-    flex: 1,
   },
-  avatarBox: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
-    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+  avatarWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: '#ECFDF5',
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
   },
   studentName: {
-    color: '#F8FAFC',
+    color: '#1C1917',
     fontSize: 15,
-    fontWeight: '800',
+    fontWeight: '900',
   },
-  studentContact: {
-    color: '#64748B',
-    fontSize: 11,
+  studentHostel: {
+    color: '#78716C',
+    fontSize: 12,
     marginTop: 1,
+  },
+  studentPhone: {
+    color: '#78716C',
+    fontSize: 11,
+    marginTop: 2,
   },
   statusBadge: {
     paddingHorizontal: 8,
@@ -394,91 +410,90 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   statusActive: {
-    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    backgroundColor: '#ECFDF5',
   },
   statusInactive: {
-    backgroundColor: 'rgba(148, 163, 184, 0.15)',
+    backgroundColor: '#F5F5F4',
   },
   statusBadgeText: {
     fontSize: 9,
     fontWeight: '800',
   },
-  locationTagRow: {
+  divider: {
+    height: 1,
+    backgroundColor: '#F5EFE6',
+    marginVertical: 10,
+  },
+  roomMetaRow: {
     flexDirection: 'row',
+    alignItems: 'center',
     gap: 8,
     marginBottom: 12,
   },
-  locPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    backgroundColor: 'rgba(59, 130, 246, 0.12)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  locPillText: {
-    color: '#93C5FD',
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  cardFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderTopWidth: 1,
-    borderTopColor: '#1E293B',
-    paddingTop: 10,
-  },
-  rentText: {
-    color: '#94A3B8',
-    fontSize: 11,
-  },
-  rentVal: {
-    color: '#F8FAFC',
-    fontWeight: '700',
-  },
-  openStudentBtn: {
+  metaChip: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#059669',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    backgroundColor: '#FAF6F0',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
     borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#EFE7DC',
   },
-  openStudentBtnText: {
-    color: '#FFFFFF',
+  metaChipText: {
+    color: '#44403C',
     fontSize: 11,
-    fontWeight: '800',
-  },
-  paginationRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 16,
-    marginTop: 8,
-  },
-  pageBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: '#1E293B',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  pageBtnDisabled: {
-    opacity: 0.4,
-  },
-  pageBtnText: {
-    color: '#F8FAFC',
-    fontSize: 12,
     fontWeight: '700',
   },
-  pageInfo: {
-    color: '#94A3B8',
+  rentText: {
+    marginLeft: 'auto',
+    color: '#059669',
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '800',
+  },
+  cardActions: {
+    flexDirection: 'row',
+  },
+  impersonateBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#059669',
+    paddingVertical: 10,
+    borderRadius: 10,
+    shadowColor: '#059669',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  impersonateBtnText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  emptyCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 30,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#EFE7DC',
+    marginTop: 20,
+  },
+  emptyTitle: {
+    color: '#1C1917',
+    fontSize: 16,
+    fontWeight: '800',
+    marginTop: 10,
+  },
+  emptySub: {
+    color: '#78716C',
+    fontSize: 12,
+    textAlign: 'center',
+    marginTop: 4,
   },
 });

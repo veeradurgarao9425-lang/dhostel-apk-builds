@@ -55,8 +55,8 @@ api.interceptors.response.use(
     const status = error?.response?.status;
     console.error(`[API Error] ${error.config?.url} | Status: ${status || 'No Response'} | Message: ${error.message}`, error.response?.data || '');
 
-    // 401 → clear session + redirect to Login (deduplicated)
-    if (status === 401 && !isHandling401) {
+    // 401 → clear session + redirect to Login (deduplicated, ignore on login attempt)
+    if (status === 401 && !isHandling401 && !error.config?.url?.includes('/auth/login')) {
       isHandling401 = true;
       try {
         await multiRemoveSecureItems(['token', 'user']);

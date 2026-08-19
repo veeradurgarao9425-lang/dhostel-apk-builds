@@ -42,6 +42,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { useAuth } from '../../../contexts/AuthContext';
+import { useDeveloper } from '../../../contexts/DeveloperContext';
 import * as RootNavigation from '../../navigation/navigationRef';
 import { useKeyboardInset } from '../../hooks/useKeyboardInset';
 import { KeyboardInsetDebugOverlay } from '../KeyboardInsetDebugOverlay';
@@ -150,6 +151,7 @@ const WELCOME_CHIPS: Array<{ icon: string; label: string; q: string }> = [
 // ─── Main Component ────────────────────────────────────────────────────────
 export const OwnerAssistant: React.FC = () => {
   const { user, updateTokenAndUser } = useAuth();
+  const { developer, isDeveloperLoggedIn } = useDeveloper();
   const insets = useSafeAreaInsets();
   const [isOpen, setIsOpen] = useState(false);
   const [isTourActive, setIsTourActive] = useState(false);
@@ -357,6 +359,7 @@ export const OwnerAssistant: React.FC = () => {
   }, [messages, isTyping, isKeyboardActive, scrollToEnd]);
 
   const loadSnap = async () => {
+    if (!user || user?.role?.toUpperCase() !== 'OWNER') return;
     setSnapLoading(true);
     try { setSnap(await fetchDashboardSnapshot()); }
     catch { }
@@ -367,14 +370,16 @@ export const OwnerAssistant: React.FC = () => {
   const fabPos = useMemo(() => {
     const activeRoute = currentRoute || (RootNavigation.navigationRef.isReady() ? RootNavigation.navigationRef.getCurrentRoute()?.name : '') || '';
 
-    // Screens with bottom tab bar
+    // Screens with bottom tab bar (Owner & Developer tabs)
     const tabScreens = [
       'HomeTab', 'Home', 'Main',
       'PendingDuesTab', 'PendingPayments', 'PendingTab',
       'OverviewTab', 'Overview',
-      'StudentsTab', 'Students'
+      'StudentsTab', 'Students',
+      'DevDashboardTab', 'DevHostelsTab', 'DevOwnersTab', 'DevStudentsTab', 'DevControlTab',
+      'DeveloperDashboard', 'DeveloperMain', 'DeveloperHostels', 'DeveloperOwners', 'DeveloperStudents'
     ];
-    const isTabScreen = tabScreens.includes(activeRoute);
+    const isTabScreen = tabScreens.includes(activeRoute) || activeRoute.endsWith('Tab');
 
     // Screens that have their own '+' Add FAB button
     const pagesWithAddFab = [
@@ -391,14 +396,14 @@ export const OwnerAssistant: React.FC = () => {
 
     if (hasAddFab) {
       // Stack directly above the '+' FAB
-      return { bottom: 204, right: 20 };
+      return { bottom: Math.max(insets.bottom + 180, 195), right: 18 };
     }
     if (isTabScreen) {
-      // Dashboard, Finance, Pending Dues: give generous clearance above the bottom tab bar
-      return { bottom: Math.max(insets.bottom + 95, 120), right: 20 };
+      // Dashboard, Finance, Pending Dues, Dev Tabs: sit cleanly and high above the bottom tab bar
+      return { bottom: Math.max(insets.bottom + 115, 128), right: 18 };
     }
     // Inside pages / detail / form screens without bottom tabs
-    return { bottom: Math.max(insets.bottom + 30, 40), right: 20 };
+    return { bottom: Math.max(insets.bottom + 45, 55), right: 18 };
   }, [currentRoute, insets.bottom]);
 
   // ── Message helpers ────────────────────────────────────────────────────
@@ -1502,9 +1507,10 @@ export const OwnerAssistant: React.FC = () => {
     loadSnap();
   };
 
-  // Only owners (exclude tenants)
+  // Only owners & developers (exclude tenants)
   const isTenant = user?.role?.toUpperCase() === 'TENANT' || user?.role_id === 3;
-  if (!user || isTenant || isTourActive || isAssistantHidden) return null;
+  const isAuthenticated = !!user || !!developer || isDeveloperLoggedIn;
+  if (!isAuthenticated || isTenant || isTourActive || isAssistantHidden) return null;
 
   return (
     <>
@@ -1515,7 +1521,7 @@ export const OwnerAssistant: React.FC = () => {
           onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => { }); setIsOpen(true); }}
           activeOpacity={0.85}
         >
-          <LinearGradient colors={['#7C3AED', '#6D28D9']} style={s.fabGrad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+          <LinearGradient colors={['#F97316', '#EA580C', '#C2410C']} style={s.fabGrad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
             <Ionicons name="chatbubble-ellipses" size={22} color="#FFF" />
           </LinearGradient>
         </TouchableOpacity>
@@ -1573,7 +1579,7 @@ export const OwnerAssistant: React.FC = () => {
                 <View style={{ flex: 1 }}>
                   {/* Greeting line */}
                   <Text style={s.headerGreeting} numberOfLines={1}>
-                    {getGreeting(user?.full_name)}
+                    {getGreeting(user?.full_name || developer?.full_name || developer?.username)}
                   </Text>
                   <Text style={s.headerTitle}>HOSTIX Assistant</Text>
                   {/* Welcome + hostel pill */}
@@ -1581,7 +1587,9 @@ export const OwnerAssistant: React.FC = () => {
                     <Text style={s.aiBadgeText}>Welcome</Text>
                     <Text style={s.aiBadgeSep}>·</Text>
                     <Ionicons name="business-outline" size={10} color="#C4B5FD" />
-                    <Text style={s.aiBadgeText} numberOfLines={1}>{user?.hostel_name || 'Your Hostel'}</Text>
+                    <Text style={s.aiBadgeText} numberOfLines={1}>
+                      {user?.hostel_name || (developer ? 'Master Platform' : 'Your Hostel')}
+                    </Text>
                   </View>
                 </View>
               </Pressable>
@@ -1873,7 +1881,7 @@ const s = StyleSheet.create({
     width: 52, height: 52, borderRadius: 26,
     overflow: 'hidden',
     elevation: 20,
-    shadowColor: '#7C3AED', shadowOpacity: 0.45, shadowRadius: 8, shadowOffset: { width: 0, height: 4 },
+    shadowColor: '#C2410C', shadowOpacity: 0.45, shadowRadius: 8, shadowOffset: { width: 0, height: 4 },
     zIndex: 999999,
   },
   fabGrad: { flex: 1, alignItems: 'center', justifyContent: 'center' },

@@ -5,11 +5,11 @@ import {
   StyleSheet,
   TouchableOpacity,
   FlatList,
-  ActivityIndicator,
-  StatusBar,
-  SafeAreaView,
-  Platform,
   RefreshControl,
+  ActivityIndicator,
+  SafeAreaView,
+  StatusBar,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { developerService } from '../../services/developerService';
@@ -20,25 +20,37 @@ export default function DeveloperPaymentsScreen() {
   const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
 
+  const [payments, setPayments] = useState<any[]>([]);
+  const [summary, setSummary] = useState<any>({});
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [payments, setPayments] = useState<any[]>([]);
-  const [totalRevenue, setTotalRevenue] = useState(0);
   const [page, setPage] = useState(1);
-  const [pagination, setPagination] = useState({ total: 0, totalPages: 1, limit: 20 });
+  const [totalPages, setTotalPages] = useState(1);
 
-  const fetchPayments = useCallback(async (currentPage = 1) => {
+  const fetchPayments = useCallback(async (pageNum = 1, isRefresh = false) => {
     try {
-      setLoading(true);
-      const res = await developerService.getPayments({ page: currentPage, limit: 20 });
-      if (res?.success && res.data) {
-        setPayments(res.data.payments || []);
-        setTotalRevenue(res.data.total_revenue || 0);
-        setPagination(res.data.pagination || { total: 0, totalPages: 1, limit: 20 });
-        setPage(currentPage);
+      if (isRefresh) setRefreshing(true);
+      else if (pageNum === 1) setLoading(true);
+
+      const res = await developerService.getPayments({
+        page: pageNum,
+        limit: 15,
+      });
+
+      if (res.success && res.data) {
+        if (pageNum === 1) {
+          setPayments(res.data);
+        } else {
+          setPayments((prev) => [...prev, ...res.data]);
+        }
+        if (res.summary) setSummary(res.summary);
+        if (res.pagination) {
+          setTotalPages(res.pagination.total_pages);
+          setPage(res.pagination.page);
+        }
       }
     } catch (err) {
-      console.error('Fetch payments error:', err);
+      console.error('Error fetching payments:', err);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -47,37 +59,38 @@ export default function DeveloperPaymentsScreen() {
 
   useEffect(() => {
     fetchPayments(1);
-  }, []);
+  }, [fetchPayments]);
 
   const onRefresh = () => {
-    setRefreshing(true);
-    fetchPayments(1);
+    setPage(1);
+    fetchPayments(1, true);
+  };
+
+  const loadMore = () => {
+    if (page < totalPages && !loading) {
+      fetchPayments(page + 1);
+    }
   };
 
   const renderPaymentItem = ({ item }: { item: any }) => (
     <View style={styles.card}>
-      <View style={styles.cardHeader}>
-        <View style={styles.headerLeft}>
-          <View style={styles.iconBox}>
-            <Ionicons name="card" size={18} color="#10B981" />
-          </View>
-          <View>
-            <Text style={styles.studentName}>
-              {item.first_name} {item.last_name || ''}
-            </Text>
-            <Text style={styles.hostelName}>{item.hostel_name || 'Hostel'}</Text>
-          </View>
+      <View style={styles.cardTop}>
+        <View style={styles.iconBox}>
+          <Ionicons name="card" size={18} color="#059669" />
         </View>
-
+        <View style={{ flex: 1 }}>
+          <Text style={styles.studentName}>{item.student_name || 'Student'}</Text>
+          <Text style={styles.hostelName}>{item.hostel_name || 'Hostel'}</Text>
+        </View>
         <Text style={styles.amount}>₹{Number(item.amount || 0).toLocaleString('en-IN')}</Text>
       </View>
 
-      <View style={styles.cardFooter}>
-        <Text style={styles.footerText}>
-          Method: <Text style={{ color: '#E2E8F0', fontWeight: '700' }}>{item.payment_method || 'Online'}</Text>
-        </Text>
-        <Text style={styles.footerDate}>
-          {new Date(item.payment_date || item.created_at).toLocaleDateString()}
+      <View style={styles.divider} />
+
+      <View style={styles.metaRow}>
+        <Text style={styles.metaText}>Mode: {(item.payment_mode || 'ONLINE').toUpperCase()}</Text>
+        <Text style={styles.metaDate}>
+          {item.payment_date ? new Date(item.payment_date).toLocaleDateString() : 'N/A'}
         </Text>
       </View>
     </View>
@@ -85,67 +98,58 @@ export default function DeveloperPaymentsScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0B1120" />
+      <StatusBar barStyle="dark-content" backgroundColor="#FAF6F0" />
 
       {/* Header */}
       <View style={[styles.topBar, { paddingTop: Platform.OS === 'android' ? insets.top + 8 : 8 }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={20} color="#94A3B8" />
+          <Ionicons name="arrow-back" size={22} color="#1C1917" />
         </TouchableOpacity>
-        <Text style={styles.topBarTitle}>Platform Payments</Text>
-        <View style={{ width: 32 }} />
+        <View>
+          <Text style={styles.topTag}>FINANCIAL LEDGER</Text>
+          <Text style={styles.screenTitle}>Platform Payments</Text>
+        </View>
       </View>
 
-      {/* Total Revenue Banner */}
-      <View style={styles.revenueBanner}>
-        <Text style={styles.revLabel}>TOTAL PLATFORM COLLECTIONS</Text>
-        <Text style={styles.revAmount}>₹{totalRevenue.toLocaleString('en-IN')}</Text>
+      {/* Summary Header */}
+      <View style={styles.summaryBar}>
+        <View style={styles.summaryBox}>
+          <Text style={styles.summaryLbl}>COLLECTED (30D)</Text>
+          <Text style={styles.summaryValGreen}>
+            ₹{Number(summary.total_collected_last_30_days || 0).toLocaleString('en-IN')}
+          </Text>
+        </View>
+        <View style={styles.summaryDivider} />
+        <View style={styles.summaryBox}>
+          <Text style={styles.summaryLbl}>TOTAL RECORDED</Text>
+          <Text style={styles.summaryVal}>
+            ₹{Number(summary.total_collected || 0).toLocaleString('en-IN')}
+          </Text>
+        </View>
       </View>
 
-      {/* Payment Transactions List */}
       {loading && !refreshing ? (
         <View style={styles.centerBox}>
-          <ActivityIndicator size="large" color="#10B981" />
-          <Text style={styles.loadingText}>Loading ledger...</Text>
-        </View>
-      ) : payments.length === 0 ? (
-        <View style={styles.emptyBox}>
-          <Ionicons name="card-outline" size={48} color="#334155" />
-          <Text style={styles.emptyTitle}>No payments recorded</Text>
+          <ActivityIndicator size="large" color="#C2410C" />
+          <Text style={styles.loadingText}>Loading payment transactions...</Text>
         </View>
       ) : (
         <FlatList
           data={payments}
-          keyExtractor={(item) => String(item.payment_id)}
+          keyExtractor={(item, index) => String(item.payment_id || index)}
           renderItem={renderPaymentItem}
           contentContainerStyle={styles.listContent}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#10B981" />}
-          ListFooterComponent={
-            pagination.totalPages > 1 ? (
-              <View style={styles.paginationRow}>
-                <TouchableOpacity
-                  disabled={page <= 1}
-                  onPress={() => fetchPayments(page - 1)}
-                  style={[styles.pageBtn, page <= 1 && styles.pageBtnDisabled]}
-                >
-                  <Ionicons name="arrow-back" size={14} color={page <= 1 ? '#475569' : '#F8FAFC'} />
-                  <Text style={[styles.pageBtnText, page <= 1 && { color: '#475569' }]}>Previous</Text>
-                </TouchableOpacity>
-
-                <Text style={styles.pageInfo}>
-                  Page <Text style={{ color: '#10B981', fontWeight: '800' }}>{page}</Text> of {pagination.totalPages}
-                </Text>
-
-                <TouchableOpacity
-                  disabled={page >= pagination.totalPages}
-                  onPress={() => fetchPayments(page + 1)}
-                  style={[styles.pageBtn, page >= pagination.totalPages && styles.pageBtnDisabled]}
-                >
-                  <Text style={[styles.pageBtnText, page >= pagination.totalPages && { color: '#475569' }]}>Next</Text>
-                  <Ionicons name="arrow-forward" size={14} color={page >= pagination.totalPages ? '#475569' : '#F8FAFC'} />
-                </TouchableOpacity>
-              </View>
-            ) : null
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#C2410C" />
+          }
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.3}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            <View style={styles.emptyCard}>
+              <Ionicons name="card-outline" size={40} color="#C4B5A5" />
+              <Text style={styles.emptyTitle}>No Payments Found</Text>
+            </View>
           }
         />
       )}
@@ -156,156 +160,166 @@ export default function DeveloperPaymentsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0B1120',
+    backgroundColor: '#FAF6F0',
   },
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: 10,
     paddingHorizontal: 16,
     paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#1E293B',
+    borderBottomColor: '#EFE7DC',
+    backgroundColor: '#FAF6F0',
   },
   backBtn: {
-    padding: 6,
-    borderRadius: 8,
-    backgroundColor: '#1E293B',
-  },
-  topBarTitle: {
-    color: '#F8FAFC',
-    fontSize: 16,
-    fontWeight: '800',
-  },
-  revenueBanner: {
-    backgroundColor: '#131D31',
-    padding: 16,
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: '#1E293B',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#EFE7DC',
   },
-  revLabel: {
-    color: '#64748B',
+  topTag: {
+    color: '#C2410C',
     fontSize: 10,
     fontWeight: '800',
     letterSpacing: 0.8,
-    marginBottom: 4,
   },
-  revAmount: {
-    color: '#10B981',
-    fontSize: 24,
+  screenTitle: {
+    color: '#1C1917',
+    fontSize: 16,
     fontWeight: '900',
   },
-  listContent: {
+  summaryBar: {
+    flexDirection: 'row',
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 16,
+    marginTop: 12,
+    borderRadius: 14,
     padding: 14,
+    borderWidth: 1,
+    borderColor: '#EFE7DC',
+    shadowColor: '#8C3A00',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  summaryBox: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  summaryDivider: {
+    width: 1,
+    backgroundColor: '#EFE7DC',
+  },
+  summaryLbl: {
+    color: '#A89687',
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  summaryValGreen: {
+    color: '#059669',
+    fontSize: 18,
+    fontWeight: '900',
+    marginTop: 2,
+  },
+  summaryVal: {
+    color: '#1C1917',
+    fontSize: 18,
+    fontWeight: '900',
+    marginTop: 2,
+  },
+  listContent: {
+    padding: 16,
     paddingBottom: 30,
   },
   centerBox: {
-    padding: 40,
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    padding: 40,
   },
   loadingText: {
-    color: '#94A3B8',
+    color: '#78716C',
     marginTop: 12,
     fontSize: 13,
   },
-  emptyBox: {
-    padding: 60,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  emptyTitle: {
-    color: '#F8FAFC',
-    fontSize: 16,
-    fontWeight: '800',
-  },
   card: {
-    backgroundColor: '#131D31',
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 8,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 10,
     borderWidth: 1,
-    borderColor: '#1E293B',
+    borderColor: '#EFE7DC',
+    shadowColor: '#8C3A00',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
+    elevation: 1,
   },
-  cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  headerLeft: {
+  cardTop: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    flex: 1,
   },
   iconBox: {
     width: 36,
     height: 36,
-    borderRadius: 8,
-    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    borderRadius: 10,
+    backgroundColor: '#ECFDF5',
     alignItems: 'center',
     justifyContent: 'center',
   },
   studentName: {
-    color: '#F8FAFC',
+    color: '#1C1917',
     fontSize: 14,
     fontWeight: '800',
   },
   hostelName: {
-    color: '#64748B',
+    color: '#78716C',
     fontSize: 11,
-    marginTop: 2,
+    marginTop: 1,
   },
   amount: {
-    color: '#10B981',
+    color: '#059669',
     fontSize: 16,
     fontWeight: '900',
   },
-  cardFooter: {
+  divider: {
+    height: 1,
+    backgroundColor: '#F5EFE6',
+    marginVertical: 10,
+  },
+  metaRow: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    borderTopWidth: 1,
-    borderTopColor: '#1E293B',
-    paddingTop: 8,
   },
-  footerText: {
-    color: '#94A3B8',
+  metaText: {
+    color: '#78716C',
     fontSize: 11,
-  },
-  footerDate: {
-    color: '#64748B',
-    fontSize: 11,
-  },
-  paginationRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 16,
-    marginTop: 8,
-  },
-  pageBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: '#1E293B',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  pageBtnDisabled: {
-    opacity: 0.4,
-  },
-  pageBtnText: {
-    color: '#F8FAFC',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  pageInfo: {
-    color: '#94A3B8',
-    fontSize: 12,
     fontWeight: '600',
+  },
+  metaDate: {
+    color: '#A89687',
+    fontSize: 11,
+  },
+  emptyCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 30,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#EFE7DC',
+    marginTop: 20,
+  },
+  emptyTitle: {
+    color: '#1C1917',
+    fontSize: 15,
+    fontWeight: '800',
+    marginTop: 10,
   },
 });
