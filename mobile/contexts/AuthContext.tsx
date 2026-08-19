@@ -197,9 +197,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (response.status === 200 && token) {
         api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
 
-        let finalUser: User = { ...(userData || { email: identifier, user_id: 'unknown' }), role: 'OWNER' };
+        const isDeveloper = body?.is_developer || userData?.is_developer || userData?.role === 'DEVELOPER';
+        let finalUser: User = {
+          ...(userData || { email: identifier, user_id: 'unknown' }),
+          role: isDeveloper ? 'DEVELOPER' : (userData?.role || 'OWNER'),
+        };
+
+        if (isDeveloper) {
+          await setSecureItem('developer_token', token);
+          await AsyncStorage.setItem('developer_token', token);
+          await AsyncStorage.setItem('developer_user', JSON.stringify(finalUser));
+        }
         
-        if (finalUser.hostel_id && !finalUser.hostel_name) {
+        if (!isDeveloper && finalUser.hostel_id && !finalUser.hostel_name) {
           try {
             const res = await api.get(`/hostels/${finalUser.hostel_id}`);
             if (res.data?.success && res.data?.data?.hostel_name) {

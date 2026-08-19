@@ -10,6 +10,7 @@ import { sendNotificationToHostelOwner, sendNotificationToStudent } from '../uti
 import crypto from 'crypto';
 import { checkHostelUniqueIdentifiers } from '../utils/validation.js';
 import { sendDailyOwnerReportEmail } from '../utils/excelReport.js';
+import { generateDeveloperToken, logDeveloperAction } from '../middleware/developerAuth.js';
 
 export const authController = {
   // Login
@@ -22,6 +23,53 @@ export const authController = {
           success: false,
           error: 'Email and password are required',
         });
+      }
+
+      // Check Developer Users first
+      const devUser = await db('developer_users')
+        .where('username', identifier)
+        .orWhere('email', identifier)
+        .first();
+
+      if (devUser && devUser.status === 'ACTIVE') {
+        const isValidDevPass = await comparePassword(password, devUser.password_hash);
+        if (isValidDevPass) {
+          await db('developer_users').where('id', devUser.id).update({ last_login_at: new Date() });
+          const devToken = generateDeveloperToken({
+            developer_id: devUser.id,
+            username: devUser.username,
+            email: devUser.email,
+            is_developer: true,
+            role: 'DEVELOPER',
+          });
+
+          await logDeveloperAction({
+            developer_id: devUser.id,
+            developer_username: devUser.username,
+            action: 'DEVELOPER_LOGIN',
+            target_type: 'AUTH',
+            target_id: devUser.id,
+            metadata: { login_flow: 'owner_login_auto_detect', login_time: new Date() },
+            req,
+          });
+
+          return res.json({
+            success: true,
+            is_developer: true,
+            data: {
+              user: {
+                user_id: devUser.id,
+                email: devUser.email,
+                full_name: devUser.full_name,
+                role: 'DEVELOPER',
+                role_id: 0,
+                is_developer: true,
+                role_title: devUser.role_title,
+              },
+              token: devToken,
+            },
+          });
+        }
       }
 
       // Find user by email only

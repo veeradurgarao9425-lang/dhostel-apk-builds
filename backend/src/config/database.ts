@@ -1898,6 +1898,90 @@ export async function patchDatabaseSchema() {
       console.error('[schema-patch] Error seeding Growth Journey stories:', e.message);
     }
 
+    // ─── DEVELOPER / MASTER ADMIN SCHEMA & SEED ─────────────────────────────
+    try {
+      console.log('[schema-patch] Checking Developer / Super Admin tables...');
+
+      await db.raw(`
+        CREATE TABLE IF NOT EXISTS developer_users (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          username VARCHAR(100) NOT NULL UNIQUE,
+          email VARCHAR(150) NOT NULL UNIQUE,
+          password_hash VARCHAR(255) NOT NULL,
+          full_name VARCHAR(150) NOT NULL,
+          role_title VARCHAR(100) DEFAULT 'Master Super Admin',
+          status ENUM('ACTIVE', 'INACTIVE', 'SUSPENDED') DEFAULT 'ACTIVE',
+          last_login_at DATETIME NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+      `);
+
+      await db.raw(`
+        CREATE TABLE IF NOT EXISTS support_sessions (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          developer_id INT NOT NULL,
+          target_user_id INT NOT NULL,
+          target_role VARCHAR(50) NOT NULL,
+          hostel_id INT NULL,
+          session_token VARCHAR(512) NOT NULL,
+          permission_level ENUM('VIEW_ONLY', 'SUPPORT', 'FULL_SUPPORT') DEFAULT 'FULL_SUPPORT',
+          reason TEXT NULL,
+          expires_at DATETIME NOT NULL,
+          is_active TINYINT DEFAULT 1,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          ended_at DATETIME NULL,
+          INDEX idx_support_dev (developer_id),
+          INDEX idx_support_target (target_user_id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+      `);
+
+      await db.raw(`
+        CREATE TABLE IF NOT EXISTS developer_audit_logs (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          developer_id INT NULL,
+          developer_username VARCHAR(100) NULL,
+          action VARCHAR(100) NOT NULL,
+          target_type VARCHAR(50) NULL,
+          target_id VARCHAR(100) NULL,
+          hostel_id INT NULL,
+          metadata JSON NULL,
+          ip_address VARCHAR(100) NULL,
+          user_agent TEXT NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          INDEX idx_audit_dev (developer_id),
+          INDEX idx_audit_action (action),
+          INDEX idx_audit_created (created_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+      `);
+
+      // Seed default developer account if not exists
+      const existingDev = await db('developer_users')
+        .where('username', 'durgarao9425')
+        .orWhere('email', 'durgarao9425@hostix.com')
+        .first();
+
+      if (!existingDev) {
+        console.log('[schema-patch] Seeding default Master Admin (durgarao9425)...');
+        // Pre-computed bcrypt hash of 'Durgarao@9425' with salt rounds 10
+        const defaultHash = '$2a$10$7Z2v1V4v3eG.4z4GzK5H1uV7uM8oY0H9lE.uR4H6V8L1jK9X9Q1y6'; // or hash dynamically
+        const { hashPassword } = await import('../utils/bcrypt.js');
+        const dynamicHash = await hashPassword('Durgarao@9425');
+
+        await db('developer_users').insert({
+          username: 'durgarao9425',
+          email: 'durgarao9425@hostix.com',
+          password_hash: dynamicHash || defaultHash,
+          full_name: 'Durgarao Developer',
+          role_title: 'Developer Super Admin',
+          status: 'ACTIVE',
+        });
+        console.log('[schema-patch] Default Master Admin user seeded successfully.');
+      }
+    } catch (devErr: any) {
+      console.error('[schema-patch] Error setting up developer tables/seed:', devErr.message);
+    }
+
     console.log('[schema-patch] Schema check and patch complete.');
   } catch (err: any) {
     console.error('[schema-patch] Critical error during schema patching:', err.message);

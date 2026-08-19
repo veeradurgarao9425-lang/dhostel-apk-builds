@@ -129,6 +129,18 @@ import AddNoticeScreen from '../Pages/AddNoticeScreen';
 import NoticeDetailsScreen from '../Pages/NoticeDetailsScreen';
 import RatingsManagementScreen from '../Pages/RatingsManagementScreen';
 
+// ── Developer / Master Admin Screens ──────────────────────────────────────────
+import DeveloperLoginScreen from '../Pages/developer/DeveloperLoginScreen';
+import DeveloperDashboardScreen from '../Pages/developer/DeveloperDashboardScreen';
+import DeveloperHostelsScreen from '../Pages/developer/DeveloperHostelsScreen';
+import DeveloperHostelDetailsScreen from '../Pages/developer/DeveloperHostelDetailsScreen';
+import DeveloperOwnersScreen from '../Pages/developer/DeveloperOwnersScreen';
+import DeveloperStudentsScreen from '../Pages/developer/DeveloperStudentsScreen';
+import DeveloperRoomsBedsScreen from '../Pages/developer/DeveloperRoomsBedsScreen';
+import DeveloperPaymentsScreen from '../Pages/developer/DeveloperPaymentsScreen';
+import DeveloperAuditLogsScreen from '../Pages/developer/DeveloperAuditLogsScreen';
+import DeveloperSystemScreen from '../Pages/developer/DeveloperSystemScreen';
+
 // ── Navigators ────────────────────────────────────────────────────────────────
 import BottomTabNavigator from '../components/BottomTabNavigator';
 import TenantBottomTabNavigator from '../components/tenant/BottomTabNavigator';
@@ -404,6 +416,18 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
 
                     {/* Coming Soon */}
                     <Stack.Screen name="ComingSoon" component={ComingSoonScreen} />
+
+                    {/* Developer / Master Admin Stack */}
+                    <Stack.Screen name="DeveloperLogin" component={DeveloperLoginScreen} />
+                    <Stack.Screen name="DeveloperDashboard" component={DeveloperDashboardScreen} />
+                    <Stack.Screen name="DeveloperHostels" component={DeveloperHostelsScreen} />
+                    <Stack.Screen name="DeveloperHostelDetails" component={DeveloperHostelDetailsScreen} />
+                    <Stack.Screen name="DeveloperOwners" component={DeveloperOwnersScreen} />
+                    <Stack.Screen name="DeveloperStudents" component={DeveloperStudentsScreen} />
+                    <Stack.Screen name="DeveloperRoomsBeds" component={DeveloperRoomsBedsScreen} />
+                    <Stack.Screen name="DeveloperPayments" component={DeveloperPaymentsScreen} />
+                    <Stack.Screen name="DeveloperAuditLogs" component={DeveloperAuditLogsScreen} />
+                    <Stack.Screen name="DeveloperSystem" component={DeveloperSystemScreen} />
                 </Stack.Navigator>
             </NavigationContainer>
             <FullScreenLoader visible={logoutLoading} />

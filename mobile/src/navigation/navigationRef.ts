@@ -7,3 +7,9 @@ export function navigate(name: string, params?: any) {
     navigationRef.navigate(name, params);
   }
 }
+
+export function reset(state: any) {
+  if (navigationRef.isReady()) {
+    navigationRef.reset(state);
+  }
+}

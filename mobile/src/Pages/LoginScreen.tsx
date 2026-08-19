@@ -50,8 +50,8 @@ export default function LoginScreen({ navigation }: any) {
         let err = '';
         if (name === 'identifier') {
             if (!value.trim()) {
-                err = 'Email is required';
-            } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())) {
+                err = 'Email or username is required';
+            } else if (value.trim().includes('@') && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())) {
                 err = 'Please enter a valid email address';
             }
         } else if (name === 'password') {
@@ -90,8 +90,15 @@ export default function LoginScreen({ navigation }: any) {
             console.log('[LOGIN_SCREEN] Attempting login with identifier:', identifier.trim());
             const { error, user } = await signIn(identifier.trim(), password);
             if (!error && user) {
-                console.log('[LOGIN_SCREEN] Login success!');
-                navigation.navigate('Main');
+                console.log('[LOGIN_SCREEN] Login success! Role:', user.role);
+                if (user.role === 'DEVELOPER' || (user as any).is_developer) {
+                    navigation.reset({
+                        index: 0,
+                        routes: [{ name: 'DeveloperDashboard' }],
+                    });
+                } else {
+                    navigation.navigate('Main');
+                }
             } else {
                 const errMsg = typeof error === 'string' ? error : JSON.stringify(error) || 'Invalid credentials';
                 console.warn('[LOGIN_SCREEN] Login failed with error:', errMsg);

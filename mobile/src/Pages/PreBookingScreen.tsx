@@ -15,6 +15,7 @@ import {
     Pressable,
     Animated,
     Modal,
+    Image,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';

@@ -20,6 +20,8 @@ SplashScreen.preventAutoHideAsync();
 import './src/i18n';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import { AuthProvider } from './contexts/AuthContext';
+import { DeveloperProvider } from './contexts/DeveloperContext';
+import { SupportModeBanner } from './src/components/SupportModeBanner';
 import { RefreshProvider } from './contexts/RefreshContext';
 import { ConfirmationProvider } from './contexts/ConfirmationContext';
 import { SocketProvider } from './src/context/SocketContext';
@@ -105,22 +107,25 @@ export default function App() {
       <ErrorBoundary>
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
-            <SocketProvider>
-            <RefreshProvider>
-            <ThemeProvider>
-              <ConfirmationProvider>
-              <ToastProvider>
-                <OfflineBanner />
-                <NetworkManager>
-                  <AppNavigator />
-                </NetworkManager>
-                <AssistantGate />
-                <ThemedToast />
-              </ToastProvider>
-              </ConfirmationProvider>
-            </ThemeProvider>
-            </RefreshProvider>
-            </SocketProvider>
+            <DeveloperProvider>
+              <SocketProvider>
+              <RefreshProvider>
+              <ThemeProvider>
+                <ConfirmationProvider>
+                <ToastProvider>
+                  <SupportModeBanner />
+                  <OfflineBanner />
+                  <NetworkManager>
+                    <AppNavigator />
+                  </NetworkManager>
+                  <AssistantGate />
+                  <ThemedToast />
+                </ToastProvider>
+                </ConfirmationProvider>
+              </ThemeProvider>
+              </RefreshProvider>
+              </SocketProvider>
+            </DeveloperProvider>
           </AuthProvider>
         </QueryClientProvider>
       </ErrorBoundary>
