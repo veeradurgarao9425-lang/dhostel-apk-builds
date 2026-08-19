@@ -55,6 +55,7 @@ import { startOwnerDailyAlertsJob } from './jobs/ownerDailyAlerts.js';
 import { startDailyExcelReportsJob } from './jobs/dailyExcelReports.js';
 import { sendNotificationToHostelOwner } from './utils/notification.js';
 import { checkHostelUniqueIdentifiers } from './utils/validation.js';
+import { sanitizeInputMiddleware, developerLoginLimiter } from './middleware/security.js';
 
 
 // Start Background Jobs
@@ -140,6 +141,7 @@ app.use(helmet({
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(sanitizeInputMiddleware);
 
 // Request Logger
 app.use((req, _res, next) => {
@@ -151,12 +153,15 @@ app.use((req, _res, next) => {
 // Serve uploaded files
 app.use('/uploads', express.static('uploads'));
 
-// Serve Cloudflare R2 media files via proxy
+// Serve Cloudflare R2 media files via proxy (with path traversal protection)
 app.get('/api/media/*', async (req, res) => {
   try {
     let key = req.params[0];
     if (!key) return res.status(400).send('Missing media key');
     
+    // Sanitize path to prevent directory traversal
+    key = path.normalize(key).replace(/^(\.\.[\/\\])+/, '');
+
     if (key.includes('hostix-media/')) {
       key = key.split('hostix-media/')[1];
     }
@@ -207,6 +212,8 @@ app.use('/api/mess', messSkipRoutes);
 app.use('/api/ratings', ratingRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/whatsapp', whatsappRoutes);
+app.use('/api/developer/login', developerLoginLimiter);
+app.use('/api/developer/request-otp', developerLoginLimiter);
 app.use('/api/developer', developerRoutes);
 // Multer storage for the public QR signup Aadhaar photos
 const qrSignupUpload = multer({
