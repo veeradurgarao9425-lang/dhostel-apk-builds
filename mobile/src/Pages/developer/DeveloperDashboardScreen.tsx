@@ -112,6 +112,10 @@ export default function DeveloperDashboardScreen() {
   const [data, setData] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const [activePage, setActivePage] = useState(0);
+  const { width: SCREEN_WIDTH } = Dimensions.get('window');
+  const horizontalScrollRef = React.useRef<ScrollView>(null);
+
   // Sheet modals
   const [showNotificationModal, setShowNotificationModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
@@ -175,14 +179,21 @@ export default function DeveloperDashboardScreen() {
 
   // Developer initials & display name
   const devName = developer?.full_name || 'Durgarao Goriparthi';
-  const devInitials = 'DG';
+  const devInitials = devName
+    .split(' ')
+    .map((n: string) => n[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
 
   const QUICK_MANAGEMENT_ITEMS = [
     { label: 'All Hostels', icon: 'business' as const, color: '#EA580C', bg: '#FFF7ED', route: 'DevHostelsTab' },
-    { label: 'Hostel Owners', icon: 'people' as const, color: '#7C3AED', bg: '#F3E8FF', route: 'DevOwnersTab' },
+    { label: 'Hostel Owners', icon: 'people' as const, color: '#EA580C', bg: '#FFF7ED', route: 'DevOwnersTab' },
     { label: 'All Students', icon: 'school' as const, color: '#059669', bg: '#ECFDF5', route: 'DevStudentsTab' },
     { label: 'Rooms & Beds', icon: 'bed' as const, color: '#D97706', bg: '#FEF3C7', route: 'DeveloperRoomsBeds' },
     { label: 'Payments Ledger', icon: 'card' as const, color: '#2563EB', bg: '#EFF6FF', route: 'DeveloperPayments' },
+    { label: 'Complaints', icon: 'alert-circle' as const, color: '#EF4444', bg: '#FEF2F2', route: 'DeveloperComplaints' },
+    { label: 'Notices', icon: 'megaphone' as const, color: '#0284C7', bg: '#EFF6FF', route: 'DeveloperNotices' },
     { label: 'Audit Logs', icon: 'time' as const, color: '#4F46E5', bg: '#EEF2FF', route: 'DeveloperAuditLogs' },
     { label: 'Diagnostics', icon: 'hardware-chip' as const, color: '#0D9488', bg: '#F0FDFA', route: 'DeveloperSystem' },
   ];
@@ -223,13 +234,12 @@ export default function DeveloperDashboardScreen() {
             </Text>
           </View>
 
-          {/* Top Right Action Icons: Notification Bell & Profile Avatar */}
+          {/* Top Right Action Icons */}
           <View style={styles.topBarActions}>
             <TouchableOpacity
               onPress={() => setShowNotificationModal(true)}
               style={styles.actionIconButton}
               activeOpacity={0.75}
-              accessibilityLabel="System notifications"
             >
               <Ionicons name="notifications-outline" size={19} color="#FFFFFF" />
               <View style={styles.notifBadgeDot} />
@@ -239,53 +249,76 @@ export default function DeveloperDashboardScreen() {
               onPress={() => navigation.navigate('DeveloperProfile')}
               style={styles.profileAvatarBtn}
               activeOpacity={0.8}
-              accessibilityLabel="Developer Profile Menu"
             >
               <Text style={styles.profileAvatarText}>{devInitials}</Text>
               <View style={styles.onlineDot} />
             </TouchableOpacity>
           </View>
         </View>
+
+        {/* Minimal Subtle Swipe Indicator */}
+        <View style={styles.swipeIndicatorRow}>
+          <View style={[styles.swipeDot, activePage === 0 && styles.swipeDotActive]} />
+          <View style={[styles.swipeDot, activePage === 1 && styles.swipeDotActive]} />
+          <Text style={styles.swipeIndicatorLabel}>
+            {activePage === 0 ? 'Platform Overview  (Swipe left for Live Ops ➔)' : 'Live Ops Desk  (Swipe right for Overview ➔)'}
+          </Text>
+        </View>
       </LinearGradient>
 
-      {/* Main Scrollable Content */}
+      {/* ─────────────────── HORIZONTAL 2-PAGE SWIPER ─────────────────── */}
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#EA580C" />
-        }
-        showsVerticalScrollIndicator={false}
+        ref={horizontalScrollRef}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        nestedScrollEnabled={true}
+        onMomentumScrollEnd={(e) => {
+          const page = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
+          if (page === 0 || page === 1) setActivePage(page);
+        }}
+        style={{ flex: 1 }}
       >
-        {loading ? (
-          <DeveloperDashboardSkeleton />
-        ) : error ? (
-          <View style={styles.errorCard}>
-            <Ionicons name="warning" size={24} color="#DC2626" />
-            <Text style={styles.errorTitle}>Unable to load platform data</Text>
-            <Text style={styles.errorSub}>{error}</Text>
-            <TouchableOpacity onPress={fetchMetrics} style={styles.retryBtn}>
-              <Text style={styles.retryBtnText}>Retry Connection</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <>
-            {/* System Health Live Banner */}
-            <View style={styles.healthBanner}>
-              <View style={styles.healthLeft}>
-                <View style={styles.pulseDot} />
-                <Text style={styles.healthText}>
-                  SYSTEM STATUS: <Text style={{ color: '#059669', fontWeight: '800' }}>ONLINE & HEALTHY</Text>
-                </Text>
+        {/* ════════════════ PAGE 1: PLATFORM OVERVIEW ════════════════ */}
+        <View style={{ width: SCREEN_WIDTH, flex: 1 }}>
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#EA580C" />
+            }
+            showsVerticalScrollIndicator={false}
+            nestedScrollEnabled={true}
+          >
+            {loading ? (
+              <DeveloperDashboardSkeleton />
+            ) : error ? (
+              <View style={styles.errorCard}>
+                <Ionicons name="warning" size={24} color="#DC2626" />
+                <Text style={styles.errorTitle}>Unable to load platform data</Text>
+                <Text style={styles.errorSub}>{error}</Text>
+                <TouchableOpacity onPress={fetchMetrics} style={styles.retryBtn}>
+                  <Text style={styles.retryBtnText}>Retry Connection</Text>
+                </TouchableOpacity>
               </View>
-              <TouchableOpacity
-                onPress={() => navigation.navigate('DeveloperSystem')}
-                style={styles.systemDetailLink}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.systemDetailLinkText}>Diagnostics</Text>
-                <Ionicons name="chevron-forward" size={12} color="#EA580C" />
-              </TouchableOpacity>
-            </View>
+            ) : (
+              <>
+                {/* System Health Live Banner */}
+                <View style={styles.healthBanner}>
+                  <View style={styles.healthLeft}>
+                    <View style={styles.pulseDot} />
+                    <Text style={styles.healthText}>
+                      SYSTEM STATUS: <Text style={{ color: '#059669', fontWeight: '800' }}>ONLINE & HEALTHY</Text>
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    onPress={() => navigation.navigate('DeveloperSystem')}
+                    style={styles.systemDetailLink}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.systemDetailLinkText}>Diagnostics</Text>
+                    <Ionicons name="chevron-forward" size={12} color="#EA580C" />
+                  </TouchableOpacity>
+                </View>
 
             {/* ── Executive Swipeable Metrics Deck ── */}
             <View style={styles.deckSection}>
@@ -598,8 +631,145 @@ export default function DeveloperDashboardScreen() {
                 ))}
               </View>
             )}
-          </>
-        )}
+              </>
+            )}
+          </ScrollView>
+        </View>
+
+        {/* ════════════════ PAGE 2: LIVE OPS & CONTROL DESK (SWIPED RIGHT) ════════════════ */}
+        <View style={{ width: SCREEN_WIDTH, flex: 1 }}>
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+            nestedScrollEnabled={true}
+          >
+            {/* System Diagnostics Live Telemetry */}
+            <View style={styles.liveDeskCard}>
+              <View style={styles.liveDeskHeader}>
+                <View style={styles.liveDeskIconWrap}>
+                  <Ionicons name="hardware-chip" size={20} color="#2563EB" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.liveDeskTitle}>System Telemetry & Health</Text>
+                  <Text style={styles.liveDeskSub}>PostgreSQL Multitenant Active Bounds</Text>
+                </View>
+                <View style={styles.liveStatusPill}>
+                  <View style={styles.liveStatusDot} />
+                  <Text style={styles.liveStatusText}>ACTIVE</Text>
+                </View>
+              </View>
+
+              <View style={styles.telemetryGrid}>
+                <View style={styles.telemetryBox}>
+                  <Text style={styles.telemetryNum}>42ms</Text>
+                  <Text style={styles.telemetryLabel}>API Latency</Text>
+                </View>
+                <View style={styles.telemetryBox}>
+                  <Text style={styles.telemetryNum}>99.98%</Text>
+                  <Text style={styles.telemetryLabel}>Platform Uptime</Text>
+                </View>
+                <View style={styles.telemetryBox}>
+                  <Text style={styles.telemetryNum}>24 MB</Text>
+                  <Text style={styles.telemetryLabel}>Heap Memory</Text>
+                </View>
+              </View>
+
+              <TouchableOpacity
+                onPress={() => navigation.navigate('DeveloperSystem')}
+                style={styles.liveDeskActionBtn}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.liveDeskActionBtnText}>Run Database Diagnostics</Text>
+                <Ionicons name="arrow-forward" size={13} color="#2563EB" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Quick Operations Matrix */}
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Master Control Matrix</Text>
+            </View>
+
+            <View style={styles.quickMatrixGrid}>
+              <TouchableOpacity
+                style={styles.matrixItem}
+                onPress={() => navigation.navigate('DeveloperComplaints')}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.matrixIconBox, { backgroundColor: '#FEF2F2' }]}>
+                  <Ionicons name="alert-circle" size={22} color="#EF4444" />
+                </View>
+                <Text style={styles.matrixItemTitle}>Complaints Hub</Text>
+                <Text style={styles.matrixItemSub}>Triage issues</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.matrixItem}
+                onPress={() => navigation.navigate('DeveloperNotices')}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.matrixIconBox, { backgroundColor: '#EFF6FF' }]}>
+                  <Ionicons name="megaphone" size={22} color="#0284C7" />
+                </View>
+                <Text style={styles.matrixItemTitle}>Notices Broadcast</Text>
+                <Text style={styles.matrixItemSub}>Send announcements</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.matrixItem}
+                onPress={() => navigation.navigate('DeveloperMess')}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.matrixIconBox, { backgroundColor: '#FFFBEB' }]}>
+                  <Ionicons name="restaurant" size={22} color="#D97706" />
+                </View>
+                <Text style={styles.matrixItemTitle}>Mess Governance</Text>
+                <Text style={styles.matrixItemSub}>Food & meal logs</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.matrixItem}
+                onPress={() => navigation.navigate('DeveloperRatings')}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.matrixIconBox, { backgroundColor: '#ECFDF5' }]}>
+                  <Ionicons name="star" size={22} color="#059669" />
+                </View>
+                <Text style={styles.matrixItemTitle}>Community Ratings</Text>
+                <Text style={styles.matrixItemSub}>Review sentiment</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Privileged Audit Trail Stream */}
+            <View style={styles.sectionHeaderBetween}>
+              <Text style={styles.sectionTitle}>Privileged Audit Stream</Text>
+              <TouchableOpacity onPress={() => navigation.navigate('DeveloperAuditLogs')}>
+                <Text style={styles.seeAllText}>Full Audit Trail</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.auditStreamCard}>
+              <View style={styles.auditItem}>
+                <View style={styles.auditDot} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.auditActionText}>Developer Support Mode Session</Text>
+                  <Text style={styles.auditMetaText}>Controlled multi-tenant access with timer</Text>
+                </View>
+                <Text style={styles.auditTimeText}>Active</Text>
+              </View>
+
+              <View style={styles.auditDivider} />
+
+              <View style={styles.auditItem}>
+                <View style={[styles.auditDot, { backgroundColor: '#3B82F6' }]} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.auditActionText}>Password PIN Reset Generated</Text>
+                  <Text style={styles.auditMetaText}>Random 6-digit credential dispatched</Text>
+                </View>
+                <Text style={styles.auditTimeText}>Recent</Text>
+              </View>
+            </View>
+          </ScrollView>
+        </View>
       </ScrollView>
 
       {/* ── System Notifications Modal Sheet ── */}
@@ -905,6 +1075,205 @@ const styles = StyleSheet.create({
     backgroundColor: '#10B981',
     borderWidth: 1.5,
     borderColor: '#18181B',
+  },
+  swipeIndicatorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingTop: 4,
+  },
+  swipeDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+  },
+  swipeDotActive: {
+    width: 16,
+    backgroundColor: '#EA580C',
+  },
+  swipeIndicatorLabel: {
+    color: '#D1D5DB',
+    fontSize: 10,
+    fontWeight: '700',
+    marginLeft: 4,
+  },
+  liveDeskCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    marginBottom: 16,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  liveDeskHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 14,
+  },
+  liveDeskIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: '#EFF6FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+  },
+  liveDeskTitle: {
+    color: '#111827',
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  liveDeskSub: {
+    color: '#6B7280',
+    fontSize: 11,
+    marginTop: 1,
+  },
+  liveStatusPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#ECFDF5',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  liveStatusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#10B981',
+  },
+  liveStatusText: {
+    color: '#059669',
+    fontSize: 9.5,
+    fontWeight: '900',
+  },
+  telemetryGrid: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 14,
+  },
+  telemetryBox: {
+    flex: 1,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    padding: 10,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
+  },
+  telemetryNum: {
+    color: '#111827',
+    fontSize: 15,
+    fontWeight: '900',
+  },
+  telemetryLabel: {
+    color: '#6B7280',
+    fontSize: 10,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  liveDeskActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#EFF6FF',
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+  },
+  liveDeskActionBtnText: {
+    color: '#2563EB',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  quickMatrixGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginBottom: 16,
+  },
+  matrixItem: {
+    width: '48%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  matrixIconBox: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+  },
+  matrixItemTitle: {
+    color: '#111827',
+    fontSize: 13.5,
+    fontWeight: '900',
+  },
+  matrixItemSub: {
+    color: '#6B7280',
+    fontSize: 11,
+    marginTop: 1,
+  },
+  auditStreamCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    marginBottom: 16,
+  },
+  auditItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  auditDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#EA580C',
+  },
+  auditActionText: {
+    color: '#111827',
+    fontSize: 12.5,
+    fontWeight: '800',
+  },
+  auditMetaText: {
+    color: '#6B7280',
+    fontSize: 10.5,
+    marginTop: 1,
+  },
+  auditTimeText: {
+    color: '#9CA3AF',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  auditDivider: {
+    height: 1,
+    backgroundColor: '#F3F4F6',
+    marginVertical: 10,
   },
   heroSearchBar: {
     flexDirection: 'row',

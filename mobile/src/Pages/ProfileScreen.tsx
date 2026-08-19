@@ -70,7 +70,11 @@ const ProfileScreen = ({ navigation }: any) => {
         } catch {}
     };
 
-    useFocusEffect(React.useCallback(() => { fetchStats(); }, []));
+    useFocusEffect(React.useCallback(() => { 
+        if (user) {
+            fetchStats(); 
+        }
+    }, [user]));
 
     const handleLogout = () => {
         confirm({

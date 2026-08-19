@@ -1,7 +1,7 @@
 import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../src/services/api';
-import { setSecureItem, removeSecureItem } from '../src/services/secureStore';
+import { getSecureItem, setSecureItem, removeSecureItem } from '../src/services/secureStore';
 import { notificationService } from '../src/services/notificationService';
 
 export type User = {
@@ -98,6 +98,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const loadHostels = useCallback(async () => {
     try {
+      const userToken = await getSecureItem('token');
+      if (!userToken && !api.defaults.headers.common['Authorization']) {
+        return;
+      }
       setHostelsLoading(true);
       const res = await api.get('/hostels?my_hostels=true');
       if (res.data?.success) {

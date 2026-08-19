@@ -5,7 +5,7 @@ import { hashPassword, comparePassword } from '../utils/bcrypt.js';
 import { generateToken } from '../utils/jwt.js';
 import { AuthRequest } from '../middleware/auth.js';
 import jwt from 'jsonwebtoken';
-import { sendPasswordResetEmail, sendOtpEmail, sendEmail } from '../utils/email.js';
+import { sendPasswordResetEmail, sendOtpEmail, sendEmail, sendNewJoinerOwnerAlertEmail, sendNewJoinerStudentEmail } from '../utils/email.js';
 import { sendNotificationToHostelOwner, sendNotificationToStudent } from '../utils/notification.js';
 import crypto from 'crypto';
 import { checkHostelUniqueIdentifiers } from '../utils/validation.js';
@@ -1339,6 +1339,27 @@ export const authController = {
         'Medium',
         { id: student_id }
       ).catch(err => console.error('Failed to send registration-pending notification to tenant:', err));
+
+      // Dispatch Email Alert to Hostel Owner
+      (async () => {
+        try {
+          const hostel = await db('hostel_master').where({ hostel_id }).first();
+          const owner = hostel?.owner_id ? await db('users').where({ user_id: hostel.owner_id }).first() : null;
+          if (owner?.email && String(owner.email).includes('@')) {
+            await sendNewJoinerOwnerAlertEmail({
+              ownerEmail: String(owner.email).trim(),
+              ownerName: owner.full_name || 'Hostel Owner',
+              studentName: `${first_name} ${last_name || ''}`.trim(),
+              studentPhone: finalPhone,
+              studentEmail: finalEmail || null,
+              hostelName: hostel?.hostel_name || 'Your Hostel',
+              admissionDate: admission_date || new Date().toISOString().split('T')[0],
+            });
+          }
+        } catch (err: any) {
+          console.error('[tenantRegister] Failed to send owner alert email:', err.message);
+        }
+      })();
 
       // Issue JWT token immediately so they can log in
       const { generateToken } = await import('../utils/jwt.js');

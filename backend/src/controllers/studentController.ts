@@ -3,6 +3,7 @@ import db from '../config/database.js';
 import { AuthRequest } from '../middleware/auth.js';
 import { processFileUpload } from '../utils/fileUpload.js';
 import { sendNotificationToHostelOwner, sendNotificationToStudent } from '../utils/notification.js';
+import { sendNewJoinerStudentEmail, sendNewJoinerOwnerAlertEmail } from '../utils/email.js';
 import { kickUserFromRoomChat } from '../socket/index.js';
 import { checkHostelUniqueIdentifiers } from '../utils/validation.js';
 import { resolveScopedHostelId, resolveOwnerHostelId, canAccessHostel } from '../utils/scope.js';
@@ -602,6 +603,48 @@ export const createStudent = async (req: AuthRequest, res: Response) => {
       { id: student_id }
     ).catch(err => console.error('Failed to send student admission notification:', err));
 
+    // Send Welcome Email to New Joiner & Owner Alert Email
+    (async () => {
+      try {
+        const hostel = await db('hostel_master').where({ hostel_id }).first();
+        const owner = hostel?.owner_id ? await db('users').where({ user_id: hostel.owner_id }).first() : null;
+        const hostelName = hostel?.hostel_name || 'Your Hostel';
+
+        // 1. Send Welcome Confirmation Email to Student (if student email provided)
+        if (email && String(email).includes('@')) {
+          await sendNewJoinerStudentEmail({
+            email: String(email).trim(),
+            studentName: `${first_name} ${last_name || ''}`.trim(),
+            hostelName,
+            roomNumber: roomDetails?.room_number || null,
+            bedNumber: bed_number || null,
+            admissionDate: convertToDateOnly(admission_date) || new Date().toISOString().split('T')[0],
+            monthlyRent: monthlyRent || null,
+            admissionFee: admission_fee || null,
+          }).catch(err => console.error('[createStudent] Student welcome email error:', err.message));
+        }
+
+        // 2. Send Alert Email to Hostel Owner
+        if (owner?.email && String(owner.email).includes('@')) {
+          await sendNewJoinerOwnerAlertEmail({
+            ownerEmail: String(owner.email).trim(),
+            ownerName: owner.full_name || 'Hostel Owner',
+            studentName: `${first_name} ${last_name || ''}`.trim(),
+            studentPhone: phone,
+            studentEmail: email || null,
+            hostelName,
+            roomNumber: roomDetails?.room_number || null,
+            bedNumber: bed_number || null,
+            admissionDate: convertToDateOnly(admission_date) || new Date().toISOString().split('T')[0],
+            monthlyRent: monthlyRent || null,
+            admissionFee: admission_fee || null,
+          }).catch(err => console.error('[createStudent] Owner alert email error:', err.message));
+        }
+      } catch (mailErr: any) {
+        console.error('[createStudent] Failed to process new joiner emails:', mailErr.message);
+      }
+    })();
+
     res.status(201).json({
       success: true,
       message: 'Student registered successfully',
@@ -1158,6 +1201,25 @@ export const allocateRoom = async (req: AuthRequest, res: Response) => {
       'Room Allocated!',
       `You have been assigned to room ${room.room_number}. You now have full access to the hostel app.`
     ).catch(err => console.error('Failed to send room allocation notification:', err));
+
+    // Send Room Allocation Confirmation Email to Tenant
+    if (student.email && String(student.email).includes('@')) {
+      (async () => {
+        try {
+          const hostel = await db('hostel_master').where({ hostel_id: student.hostel_id }).first();
+          await sendNewJoinerStudentEmail({
+            email: String(student.email).trim(),
+            studentName: `${student.first_name} ${student.last_name || ''}`.trim(),
+            hostelName: hostel?.hostel_name || 'Your Hostel',
+            roomNumber: room.room_number,
+            admissionDate: new Date().toISOString().split('T')[0],
+            monthlyRent: room.rent_per_bed || null,
+          });
+        } catch (err: any) {
+          console.error('[allocateRoom] Failed to send email to student:', err.message);
+        }
+      })();
+    }
 
     res.json({
       success: true,
