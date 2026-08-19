@@ -764,7 +764,7 @@ export default function HomeScreen() {
                 ref={horizontalScrollRef}
                 horizontal
                 pagingEnabled={true}
-                scrollEnabled={isPagerScrollEnabled}
+                scrollEnabled={true}
                 showsHorizontalScrollIndicator={false}
                 keyboardShouldPersistTaps="handled"
                 nestedScrollEnabled={true}
@@ -772,6 +772,7 @@ export default function HomeScreen() {
                 bounces={false}
                 overScrollMode="never"
                 scrollEventThrottle={16}
+                decelerationRate="fast"
                 onMomentumScrollEnd={(e) => {
                     const page = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
                     setActivePageIndex(Math.max(0, Math.min(1, page)));
@@ -806,65 +807,30 @@ export default function HomeScreen() {
                                 </View>
                             ) : null}
                             {(data.unallocatedCount > 0 || data.qrRegisterCount > 0 || data.openComplaintsCount > 0 || data.pendingAdmissionsCount > 0) && (
-                                <View
-                                    collapsable={false}
-                                    onTouchStart={() => setIsPagerScrollEnabled(false)}
-                                    onTouchEnd={() => setIsPagerScrollEnabled(true)}
-                                    onTouchCancel={() => setIsPagerScrollEnabled(true)}
-                                >
+                                <View collapsable={false}>
                                     <WarningCards data={data} />
                                 </View>
                             )}
                             {(data.totalBeds > 0 || data.totalRooms > 0) && (
-                                <View
-                                    collapsable={false}
-                                    onTouchStart={() => setIsPagerScrollEnabled(false)}
-                                    onTouchEnd={() => setIsPagerScrollEnabled(true)}
-                                    onTouchCancel={() => setIsPagerScrollEnabled(true)}
-                                >
+                                <View collapsable={false}>
                                     <OverviewCard data={data} setShowCollectionSheet={setShowCollectionSheet} pulseValue={pulseValue} fmt={fmt} />
                                 </View>
                             )}
-                            <View
-                                collapsable={false}
-                                onTouchStart={() => setIsPagerScrollEnabled(false)}
-                                onTouchEnd={() => setIsPagerScrollEnabled(true)}
-                                onTouchCancel={() => setIsPagerScrollEnabled(true)}
-                            >
+                            <View collapsable={false}>
                                 <QuickActionsGrid data={data} />
                             </View>
                             {(data.totalBeds > 0 || data.totalRooms > 0) && (
                                 <>
-                                    <View
-                                        collapsable={false}
-                                        onTouchStart={() => setIsPagerScrollEnabled(false)}
-                                        onTouchEnd={() => setIsPagerScrollEnabled(true)}
-                                        onTouchCancel={() => setIsPagerScrollEnabled(true)}
-                                    >
+                                    <View collapsable={false}>
                                         <StatisticsGrid data={data} fmt={fmt} />
                                     </View>
-                                    <View
-                                        collapsable={false}
-                                        onTouchStart={() => setIsPagerScrollEnabled(false)}
-                                        onTouchEnd={() => setIsPagerScrollEnabled(true)}
-                                        onTouchCancel={() => setIsPagerScrollEnabled(true)}
-                                    >
+                                    <View collapsable={false}>
                                         <TopOverdueStudents data={data} />
                                     </View>
-                                    <View
-                                        collapsable={false}
-                                        onTouchStart={() => setIsPagerScrollEnabled(false)}
-                                        onTouchEnd={() => setIsPagerScrollEnabled(true)}
-                                        onTouchCancel={() => setIsPagerScrollEnabled(true)}
-                                    >
+                                    <View collapsable={false}>
                                         <UpcomingDues data={data} renewalStudents={renewalStudents} />
                                     </View>
-                                    <View
-                                        collapsable={false}
-                                        onTouchStart={() => setIsPagerScrollEnabled(false)}
-                                        onTouchEnd={() => setIsPagerScrollEnabled(true)}
-                                        onTouchCancel={() => setIsPagerScrollEnabled(true)}
-                                    >
+                                    <View collapsable={false}>
                                         <UpcomingCheckoutSchedules data={data} />
                                     </View>
                                     <OccupancyCard data={data} />

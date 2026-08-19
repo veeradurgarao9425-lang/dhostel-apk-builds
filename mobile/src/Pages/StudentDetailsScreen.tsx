@@ -150,6 +150,16 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
     const [vacateLoading, setVacateLoading] = useState(false);
     const [previewImageModalUrl, setPreviewImageModalUrl] = useState<string | null>(null);
 
+    // Admission Fee Payment State
+    const [admissionPayVisible, setAdmissionPayVisible] = useState(false);
+    const [admissionPayAmount, setAdmissionPayAmount] = useState('');
+    const [admissionPayMode, setAdmissionPayMode] = useState('1');
+    const [admissionPayDate, setAdmissionPayDate] = useState(new Date().toISOString().split('T')[0]);
+    const [admissionPayNotes, setAdmissionPayNotes] = useState('');
+    const [admissionPayTransId, setAdmissionPayTransId] = useState('');
+    const [admissionPayLoading, setAdmissionPayLoading] = useState(false);
+    const [admissionDatePickerVisible, setAdmissionDatePickerVisible] = useState(false);
+
     // Guard against concurrent fetches
     const isFetching = useRef(false);
     // Ensure the "allocate a room" popup shows only once per screen visit
@@ -493,6 +503,43 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
             setVacateLoading(false);
         }
     };
+
+    // ── Pay Admission Fee ─────────────────────────────────────────────────
+    const openAdmissionPay = useCallback(() => {
+        // Pre-fill with student's admission fee; allow manual edit
+        setAdmissionPayAmount(student?.admission_fee?.toString() || '');
+        setAdmissionPayDate(new Date().toISOString().split('T')[0]);
+        setAdmissionPayNotes('');
+        setAdmissionPayTransId('');
+        fetchPaymentModes(); // reuse existing modes
+        setAdmissionPayVisible(true);
+    }, [student, fetchPaymentModes]);
+
+    const handlePayAdmissionFee = useCallback(async () => {
+        const amt = parseFloat(admissionPayAmount || '0');
+        if (!admissionPayAmount || isNaN(amt) || amt <= 0) {
+            showError('Please enter a valid amount.');
+            return;
+        }
+        try {
+            setAdmissionPayLoading(true);
+            // Mark admission as paid on the student record
+            const res = await api.put(`/students/${student.student_id}`, {
+                admission_status: 1,
+                admission_fee: amt,   // update fee amount in case it was changed
+            });
+            if (res.data.success) {
+                setAdmissionPayVisible(false);
+                showSuccess(`Admission fee ₹${amt.toLocaleString('en-IN')} collected from ${student.first_name}!`);
+                fetchStudentDetails();
+                triggerRefresh();
+            }
+        } catch (e: any) {
+            showApiError(e, 'Failed to record admission fee payment');
+        } finally {
+            setAdmissionPayLoading(false);
+        }
+    }, [admissionPayAmount, student, fetchStudentDetails, triggerRefresh]);
 
     // ── Schedule Vacancy Notice ───────────────────────────────────────────
     const handleSetVacancyNotice = useCallback(async () => {
@@ -1341,10 +1388,27 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                                                     ₹{student.admission_fee || 0}
                                                 </Text>
                                             </View>
-                                            <View style={[styles.feeStatusBadge, { backgroundColor: student.admission_status === 1 ? '#E6F9F3' : '#FFEBEE' }]}>
-                                                <Text style={[styles.feeStatusBadgeText, { color: student.admission_status === 1 ? '#00B074' : '#E53935' }]}>
-                                                    {student.admission_status === 1 ? 'Paid' : 'Unpaid'}
-                                                </Text>
+                                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                                <View style={[styles.feeStatusBadge, { backgroundColor: student.admission_status === 1 ? '#E6F9F3' : '#FFEBEE' }]}>
+                                                    <Text style={[styles.feeStatusBadgeText, { color: student.admission_status === 1 ? '#00B074' : '#E53935' }]}>
+                                                        {student.admission_status === 1 ? '✓ Paid' : 'Unpaid'}
+                                                    </Text>
+                                                </View>
+                                                {/* Pay Now button — only when unpaid */}
+                                                {student.admission_status !== 1 && (
+                                                    <TouchableOpacity
+                                                        onPress={openAdmissionPay}
+                                                        activeOpacity={0.8}
+                                                        style={{
+                                                            backgroundColor: theme.primary,
+                                                            paddingHorizontal: 12,
+                                                            paddingVertical: 6,
+                                                            borderRadius: 8,
+                                                        }}
+                                                    >
+                                                        <Text style={{ color: '#FFF', fontSize: 12, fontWeight: '700' }}>Pay Now</Text>
+                                                    </TouchableOpacity>
+                                                )}
                                             </View>
                                         </View>
                                     </View>
@@ -1722,9 +1786,151 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                     )}
                 </TouchableOpacity>
             </Modal>
+
+            {/* ── Admission Fee Payment Drawer ─────────────────────────────── */}
+            <Modal
+                visible={admissionPayVisible}
+                transparent
+                animationType="slide"
+                onRequestClose={() => setAdmissionPayVisible(false)}
+            >
+                <KeyboardAvoidingView
+                    style={{ flex: 1, backgroundColor: 'transparent', justifyContent: 'flex-end' }}
+                    behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                >
+                    <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={() => setAdmissionPayVisible(false)} />
+                    <View style={[styles.admissionDrawer, { backgroundColor: isDark ? '#0F172A' : '#FFFFFF' }]}>
+
+                        {/* Header */}
+                        <View style={styles.admDrawerHeader}>
+                            <View style={{ flex: 1 }}>
+                                <Text style={[styles.admDrawerTitle, { color: isDark ? '#F8FAFC' : '#0F172A' }]}>Collect Admission Fee</Text>
+                                <Text style={{ fontSize: 13, fontWeight: '700', color: theme.primary, marginTop: 3 }}>
+                                    🎓 {student?.first_name} {student?.last_name || ''}{student?.room_number ? ` · Room ${student.room_number}` : ''}
+                                </Text>
+                                <Text style={{ fontSize: 11, color: isDark ? '#94A3B8' : '#64748B', marginTop: 2 }}>
+                                    Admission Fee (One-time)
+                                </Text>
+                            </View>
+                            <TouchableOpacity onPress={() => setAdmissionPayVisible(false)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                                <X color="#64748B" size={20} />
+                            </TouchableOpacity>
+                        </View>
+
+                        {/* Banner */}
+                        <View style={[styles.admBanner, { backgroundColor: theme.primary + '12' }]}>
+                            <View>
+                                <Text style={{ fontSize: 13, fontWeight: '800', color: theme.primary }}>Admission Fee</Text>
+                                <Text style={{ fontSize: 11, color: isDark ? '#94A3B8' : '#64748B' }}>Enter amount collected</Text>
+                            </View>
+                            <Text style={{ fontSize: 22, fontWeight: '900', color: isDark ? '#F8FAFC' : '#0F172A' }}>
+                                ₹{student?.admission_fee || 0}
+                            </Text>
+                        </View>
+
+                        <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+                            {/* Amount */}
+                            <Text style={[styles.admLabel, { color: isDark ? '#CBD5E1' : '#475569' }]}>Amount Collected (₹) *</Text>
+                            <TextInput
+                                style={[styles.admInput, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0', color: isDark ? '#F8FAFC' : '#0F172A' }]}
+                                keyboardType="numeric"
+                                value={admissionPayAmount}
+                                onChangeText={setAdmissionPayAmount}
+                                placeholder={`₹${student?.admission_fee || 0}`}
+                                placeholderTextColor={isDark ? '#475569' : '#CBD5E1'}
+                            />
+
+                            {/* Payment Mode Chips */}
+                            <Text style={[styles.admLabel, { color: isDark ? '#CBD5E1' : '#475569' }]}>Payment Method</Text>
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingVertical: 4, paddingHorizontal: 2 }} keyboardShouldPersistTaps="handled">
+                                {paymentModes.map((m: any) => {
+                                    const mId = (m.payment_mode_id || m.id)?.toString();
+                                    const mName = m.payment_mode_name || m.name || 'Cash';
+                                    const active = admissionPayMode === mId;
+                                    const nL = mName.toLowerCase();
+                                    const icon = nL.includes('upi') ? 'scan-outline' : nL.includes('card') ? 'card-outline' : nL.includes('bank') ? 'business-outline' : 'cash-outline';
+                                    return (
+                                        <TouchableOpacity
+                                            key={mId}
+                                            onPress={() => setAdmissionPayMode(mId)}
+                                            activeOpacity={0.75}
+                                            style={[styles.admChip, {
+                                                backgroundColor: active ? theme.primary + '15' : (isDark ? '#1E293B' : '#F8FAFC'),
+                                                borderColor: active ? theme.primary : (isDark ? '#334155' : '#E2E8F0'),
+                                                borderWidth: active ? 1.5 : 1,
+                                            }]}
+                                        >
+                                            <Ionicons name={icon as any} size={15} color={active ? theme.primary : (isDark ? '#94A3B8' : '#64748B')} />
+                                            <Text style={{ fontSize: 13, color: active ? theme.primary : (isDark ? '#CBD5E1' : '#475569'), fontWeight: active ? '800' : '600' }}>{mName}</Text>
+                                        </TouchableOpacity>
+                                    );
+                                })}
+                            </ScrollView>
+
+                            {/* Date */}
+                            <Text style={[styles.admLabel, { color: isDark ? '#CBD5E1' : '#475569' }]}>Payment Date</Text>
+                            <TouchableOpacity
+                                style={[styles.admDateField, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0' }]}
+                                onPress={() => setAdmissionDatePickerVisible(true)}
+                            >
+                                <Calendar size={14} color="#64748B" />
+                                <Text style={{ fontSize: 13, fontWeight: '600', color: isDark ? '#F8FAFC' : '#0F172A' }}>{admissionPayDate}</Text>
+                            </TouchableOpacity>
+
+                            {/* Transaction ID */}
+                            <Text style={[styles.admLabel, { color: isDark ? '#CBD5E1' : '#475569' }]}>Transaction ID (Optional)</Text>
+                            <TextInput
+                                style={[styles.admInput, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0', color: isDark ? '#F8FAFC' : '#0F172A' }]}
+                                value={admissionPayTransId}
+                                onChangeText={setAdmissionPayTransId}
+                                placeholder="e.g. UPI-123456"
+                                placeholderTextColor={isDark ? '#475569' : '#CBD5E1'}
+                            />
+
+                            {/* Notes */}
+                            <Text style={[styles.admLabel, { color: isDark ? '#CBD5E1' : '#475569' }]}>Notes (Optional)</Text>
+                            <TextInput
+                                style={[styles.admInput, { height: 60, textAlignVertical: 'top', backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0', color: isDark ? '#F8FAFC' : '#0F172A' }]}
+                                value={admissionPayNotes}
+                                onChangeText={setAdmissionPayNotes}
+                                multiline
+                                placeholder="Any remarks..."
+                                placeholderTextColor={isDark ? '#475569' : '#CBD5E1'}
+                            />
+
+                            <View style={{ height: 14 }} />
+
+                            {/* Submit */}
+                            <TouchableOpacity
+                                style={[styles.admSubmitBtn, { backgroundColor: theme.primary, opacity: admissionPayLoading ? 0.6 : 1 }]}
+                                onPress={handlePayAdmissionFee}
+                                disabled={admissionPayLoading}
+                                activeOpacity={0.8}
+                            >
+                                {admissionPayLoading
+                                    ? <ActivityIndicator color="#FFF" />
+                                    : <Text style={styles.admSubmitText}>Collect Admission Fee from {student?.first_name}</Text>
+                                }
+                            </TouchableOpacity>
+                            <View style={{ height: 100 }} />
+                        </ScrollView>
+                    </View>
+                </KeyboardAvoidingView>
+
+                <DateTimePickerModal
+                    isVisible={admissionDatePickerVisible}
+                    mode="date"
+                    onConfirm={(d) => { setAdmissionPayDate(d.toISOString().split('T')[0]); setAdmissionDatePickerVisible(false); }}
+                    onCancel={() => setAdmissionDatePickerVisible(false)}
+                    date={new Date(admissionPayDate)}
+                    maximumDate={new Date()}
+                />
+            </Modal>
         </View>
     );
 };
+
+
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#F8FAFC' },
@@ -1882,7 +2088,43 @@ const styles = StyleSheet.create({
     modeListItemText: { fontSize: 14, fontWeight: '500', color: '#64748B' },
     modeListItemTextActive: { color: '#FF6B6B', fontWeight: '700' },
     divider: { height: 1, backgroundColor: '#F1F5F9', marginLeft: 68 },
-    amountInput: { backgroundColor: '#F1F5F9', borderRadius: 10, padding: 14, fontSize: 16, fontWeight: '600', color: '#1E293B' }
+    amountInput: { backgroundColor: '#F1F5F9', borderRadius: 10, padding: 14, fontSize: 16, fontWeight: '600', color: '#1E293B' },
+
+    /* ── Admission Fee Payment Drawer ── */
+    admissionDrawer: {
+        borderTopLeftRadius: 28, borderTopRightRadius: 28,
+        width: '100%', maxHeight: '90%',
+        paddingHorizontal: 20, paddingBottom: 20,
+        shadowColor: '#000', shadowOffset: { width: 0, height: -4 },
+        shadowOpacity: 0.15, shadowRadius: 12, elevation: 5, overflow: 'hidden',
+    },
+    admDrawerHeader: {
+        flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+        paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#F1F5F9', marginBottom: 4,
+    },
+    admDrawerTitle: { fontSize: 18, fontWeight: '800' },
+    admBanner: {
+        flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+        borderRadius: 14, paddingHorizontal: 16, paddingVertical: 14, marginBottom: 8,
+    },
+    admLabel: { fontSize: 12, fontWeight: '700', marginTop: 14, marginBottom: 6 },
+    admInput: {
+        borderWidth: 1.5, borderRadius: 12, paddingHorizontal: 14,
+        paddingVertical: 12, fontSize: 14,
+    },
+    admChip: {
+        flexDirection: 'row', alignItems: 'center', gap: 6,
+        paddingHorizontal: 14, paddingVertical: 10, borderRadius: 50, minWidth: 80,
+    },
+    admDateField: {
+        flexDirection: 'row', alignItems: 'center', gap: 8,
+        borderWidth: 1.5, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 12,
+    },
+    admSubmitBtn: {
+        borderRadius: 14, paddingVertical: 16, alignItems: 'center',
+        justifyContent: 'center', marginTop: 8, elevation: 3,
+    },
+    admSubmitText: { fontSize: 15, fontWeight: '900', color: '#FFFFFF', letterSpacing: 0.5 },
 });
 
 export default StudentDetailsScreen;

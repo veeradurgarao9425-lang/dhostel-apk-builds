@@ -320,12 +320,13 @@ export const AddExpenseScreen = ({ route, navigation }: any) => {
         try {
             const response = await api.get('/staff');
             if (response.data.success && Array.isArray(response.data.data)) {
-                setStaffList(response.data.data.filter((s: any) => 
-                    s.status === 1 || 
-                    s.status === '1' || 
-                    s.status === 'Active' || 
-                    s.is_active === 1 || 
-                    s.is_active === true || 
+                setStaffList(response.data.data.filter((s: any) =>
+                    s.status === 1 ||
+                    s.status === '1' ||
+                    s.status === 'Active' ||
+                    s.status === 'ACTIVE' ||   // backend returns uppercase
+                    s.is_active === 1 ||
+                    s.is_active === true ||
                     s.status == null
                 ));
             }

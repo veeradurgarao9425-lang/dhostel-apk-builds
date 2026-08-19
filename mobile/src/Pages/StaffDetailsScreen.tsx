@@ -539,6 +539,16 @@ export default function StaffDetailsScreen({ route, navigation }: any) {
                         ) : (
                             <Animated.View style={{ opacity: tabAnim }}>
 
+                                {/* ── Quick Pay / Wallet Top-up Button ── */}
+                                <TouchableOpacity
+                                    style={[styles.payNowBtn, { backgroundColor: '#16A34A' }]}
+                                    onPress={() => setModalVisible(true)}
+                                    activeOpacity={0.85}
+                                >
+                                    <Plus size={18} color="#FFF" />
+                                    <Text style={styles.payNowBtnText}>Pay Salary / Add Advance</Text>
+                                </TouchableOpacity>
+
                                 {/* Salary cycle quick summary */}
                                 {staff.monthly_salary ? (
                                     <View style={styles.salarySummaryCard}>
@@ -648,6 +658,14 @@ const styles = StyleSheet.create({
     avatarPlaceholder: { width: 72, height: 72, borderRadius: 36, borderWidth: 2, justifyContent: 'center', alignItems: 'center' },
     avatar: { width: 72, height: 72, borderRadius: 36, borderWidth: 2, borderColor: '#FFF' },
     avatarStatusBadge: { position: 'absolute', bottom: 2, right: 2, width: 16, height: 16, borderRadius: 8, borderWidth: 2, borderColor: '#FFF' },
+
+    // Pay / Salary button
+    payNowBtn: {
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+        gap: 8, paddingVertical: 14, borderRadius: 14, marginBottom: 14,
+        elevation: 3, shadowColor: '#16A34A', shadowOpacity: 0.25, shadowRadius: 6,
+    },
+    payNowBtnText: { fontSize: 15, fontWeight: '900', color: '#FFF', letterSpacing: 0.3 },
     profileInfo: { flex: 1 },
     nameRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 4 },
     name: { fontSize: 20, fontWeight: '800', flex: 1 },
