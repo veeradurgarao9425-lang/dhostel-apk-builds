@@ -22,9 +22,14 @@ export const api = axios.create({
 api.interceptors.request.use(
   async (config) => {
     try {
-      const token = await getSecureItem('token');
-      if (token) {
-        config.headers['Authorization'] = `Bearer ${token}`;
+      if (!config.headers['Authorization']) {
+        const isDevEndpoint = config.url?.startsWith('/developer');
+        const devToken = await getSecureItem('developer_token');
+        const userToken = await getSecureItem('token');
+        const tokenToUse = isDevEndpoint ? (devToken || userToken) : (userToken || devToken);
+        if (tokenToUse) {
+          config.headers['Authorization'] = `Bearer ${tokenToUse}`;
+        }
       }
       if (config.data instanceof FormData) {
         delete config.headers['Content-Type'];
@@ -55,13 +60,20 @@ api.interceptors.response.use(
     const status = error?.response?.status;
     console.error(`[API Error] ${error.config?.url} | Status: ${status || 'No Response'} | Message: ${error.message}`, error.response?.data || '');
 
-    // 401 → clear session + redirect to Login (deduplicated, ignore on login attempt)
-    if (status === 401 && !isHandling401 && !error.config?.url?.includes('/auth/login')) {
+    // 401 → clear session + redirect (deduplicated, ignore on login attempts)
+    const isLoginEndpoint = error.config?.url?.includes('/auth/login') || error.config?.url?.includes('/developer/auth/login');
+    if (status === 401 && !isHandling401 && !isLoginEndpoint) {
       isHandling401 = true;
       try {
-        await multiRemoveSecureItems(['token', 'user']);
-        delete api.defaults.headers.common['Authorization'];
-        navigate('Login');
+        const isDevEndpoint = error.config?.url?.startsWith('/developer');
+        if (isDevEndpoint) {
+          await multiRemoveSecureItems(['developer_token']);
+          navigate('RoleSelect');
+        } else {
+          await multiRemoveSecureItems(['token', 'user']);
+          delete api.defaults.headers.common['Authorization'];
+          navigate('Login');
+        }
       } finally {
         isHandling401 = false;
       }

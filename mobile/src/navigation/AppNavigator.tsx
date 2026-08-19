@@ -134,9 +134,15 @@ import DeveloperDashboardScreen from '../Pages/developer/DeveloperDashboardScree
 import DeveloperHostelsScreen from '../Pages/developer/DeveloperHostelsScreen';
 import DeveloperHostelDetailsScreen from '../Pages/developer/DeveloperHostelDetailsScreen';
 import DeveloperOwnersScreen from '../Pages/developer/DeveloperOwnersScreen';
+import DeveloperOwnerDetailsScreen from '../Pages/developer/DeveloperOwnerDetailsScreen';
 import DeveloperStudentsScreen from '../Pages/developer/DeveloperStudentsScreen';
+import DeveloperStudentDetailsScreen from '../Pages/developer/DeveloperStudentDetailsScreen';
 import DeveloperRoomsBedsScreen from '../Pages/developer/DeveloperRoomsBedsScreen';
 import DeveloperPaymentsScreen from '../Pages/developer/DeveloperPaymentsScreen';
+import DeveloperComplaintsScreen from '../Pages/developer/DeveloperComplaintsScreen';
+import DeveloperNoticesScreen from '../Pages/developer/DeveloperNoticesScreen';
+import DeveloperMessScreen from '../Pages/developer/DeveloperMessScreen';
+import DeveloperRatingsScreen from '../Pages/developer/DeveloperRatingsScreen';
 import DeveloperAuditLogsScreen from '../Pages/developer/DeveloperAuditLogsScreen';
 import DeveloperSystemScreen from '../Pages/developer/DeveloperSystemScreen';
 import DeveloperControlHubScreen from '../Pages/developer/DeveloperControlHubScreen';
@@ -447,9 +453,15 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
                     <Stack.Screen name="DeveloperHostels" component={DeveloperHostelsScreen} />
                     <Stack.Screen name="DeveloperHostelDetails" component={DeveloperHostelDetailsScreen} />
                     <Stack.Screen name="DeveloperOwners" component={DeveloperOwnersScreen} />
+                    <Stack.Screen name="DeveloperOwnerDetails" component={DeveloperOwnerDetailsScreen} />
                     <Stack.Screen name="DeveloperStudents" component={DeveloperStudentsScreen} />
+                    <Stack.Screen name="DeveloperStudentDetails" component={DeveloperStudentDetailsScreen} />
                     <Stack.Screen name="DeveloperRoomsBeds" component={DeveloperRoomsBedsScreen} />
                     <Stack.Screen name="DeveloperPayments" component={DeveloperPaymentsScreen} />
+                    <Stack.Screen name="DeveloperComplaints" component={DeveloperComplaintsScreen} />
+                    <Stack.Screen name="DeveloperNotices" component={DeveloperNoticesScreen} />
+                    <Stack.Screen name="DeveloperMess" component={DeveloperMessScreen} />
+                    <Stack.Screen name="DeveloperRatings" component={DeveloperRatingsScreen} />
                     <Stack.Screen name="DeveloperAuditLogs" component={DeveloperAuditLogsScreen} />
                     <Stack.Screen name="DeveloperSystem" component={DeveloperSystemScreen} />
                     <Stack.Screen name="DeveloperProfile" component={DeveloperProfileScreen} />

@@ -16,10 +16,13 @@ import {
   Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { developerService } from '../../services/developerService';
 import { useDeveloper } from '../../../contexts/DeveloperContext';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { DeveloperListSkeleton } from '../../components/ui/SkeletonCard';
+import { DeveloperSupportModal } from '../../components/developer/DeveloperSupportModal';
 
 export default function DeveloperOwnersScreen() {
   const navigation = useNavigation<any>();
@@ -36,6 +39,10 @@ export default function DeveloperOwnersScreen() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [impersonatingId, setImpersonatingId] = useState<number | null>(null);
+
+  // Support Mode Modal State
+  const [supportModalVisible, setSupportModalVisible] = useState(false);
+  const [selectedOwnerForSupport, setSelectedOwnerForSupport] = useState<any>(null);
 
   // Reset Password Modal State
   const [passwordModalVisible, setPasswordModalVisible] = useState(false);
@@ -100,7 +107,7 @@ export default function DeveloperOwnersScreen() {
     }
   };
 
-  // Filter list by status tab and selected hostel tab
+  // Filter list by status tab, selected hostel tab, and live search query
   const filteredOwners = owners.filter((o) => {
     if (statusFilter === 'ACTIVE' && !o.is_active) return false;
     if (statusFilter === 'INACTIVE' && !!o.is_active) return false;
@@ -112,6 +119,18 @@ export default function DeveloperOwnersScreen() {
         return false;
       }
     }
+
+    if (search.trim()) {
+      const q = search.toLowerCase().trim();
+      const name = (o.full_name || o.name || '').toLowerCase();
+      const email = (o.email || '').toLowerCase();
+      const phone = (o.phone || '').toLowerCase();
+      const hostel = (o.hostel_name || '').toLowerCase();
+      if (!name.includes(q) && !email.includes(q) && !phone.includes(q) && !hostel.includes(q)) {
+        return false;
+      }
+    }
+
     return true;
   });
 
@@ -176,37 +195,19 @@ export default function DeveloperOwnersScreen() {
   };
 
   const handleImpersonate = (owner: any) => {
-    Alert.alert(
-      'Enter Support Mode (CEO)',
-      `You are opening ${owner.full_name}'s owner dashboard in controlled support mode.\n\nA top support banner with a live countdown timer will be displayed.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Open Account',
-          onPress: async () => {
-            try {
-              setImpersonatingId(owner.user_id);
-              await enterSupportMode({
-                target_user_id: owner.user_id,
-                target_role: 'OWNER',
-                hostel_id: owner.primary_hostel_id || undefined,
-              });
-            } catch (err: any) {
-              Alert.alert('Support Mode Error', err.message || 'Failed to start support session.');
-            } finally {
-              setImpersonatingId(null);
-            }
-          },
-        },
-      ]
-    );
+    setSelectedOwnerForSupport(owner);
+    setSupportModalVisible(true);
   };
 
   const renderOwnerCard = ({ item }: { item: any }) => (
-    <View style={styles.card}>
+    <TouchableOpacity
+      style={styles.card}
+      activeOpacity={0.85}
+      onPress={() => navigation.navigate('DeveloperOwnerDetails', { ownerId: item.user_id, owner: item })}
+    >
       <View style={styles.cardTop}>
         <View style={styles.avatarWrap}>
-          <Ionicons name="person" size={20} color="#7C3AED" />
+          <Ionicons name="person" size={20} color="#EA580C" />
         </View>
         <View style={{ flex: 1 }}>
           <Text style={styles.ownerName}>{item.full_name || 'Unnamed Owner'}</Text>
@@ -228,7 +229,7 @@ export default function DeveloperOwnersScreen() {
 
       <View style={styles.ownerMetaRow}>
         <View style={styles.metaChip}>
-          <Ionicons name="business-outline" size={13} color="#C2410C" />
+          <Ionicons name="business-outline" size={13} color="#EA580C" />
           <Text style={styles.metaChipText}>{item.hostel_count || 0} Hostels</Text>
         </View>
         <View style={styles.metaChip}>
@@ -242,11 +243,11 @@ export default function DeveloperOwnersScreen() {
       <View style={styles.cardActions}>
         <TouchableOpacity
           activeOpacity={0.8}
-          onPress={() => handleOpenResetPassword(item)}
+          onPress={() => navigation.navigate('DeveloperOwnerDetails', { ownerId: item.user_id, owner: item })}
           style={styles.resetPassBtn}
         >
-          <Ionicons name="key-outline" size={13} color="#D97706" />
-          <Text style={styles.resetPassBtnText}>Reset Password</Text>
+          <Ionicons name="document-text-outline" size={13} color="#EA580C" />
+          <Text style={[styles.resetPassBtnText, { color: '#EA580C' }]}>View Dossier</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -265,81 +266,98 @@ export default function DeveloperOwnersScreen() {
           )}
         </TouchableOpacity>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FAF6F0" />
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor="#18181B" />
 
-      {/* Top Header */}
-      <View style={[styles.topBar, { paddingTop: Platform.OS === 'android' ? insets.top + 8 : 8 }]}>
-        <View>
-          <Text style={styles.topTag}>PLATFORM GOVERNANCE</Text>
-          <Text style={styles.screenTitle}>Hostel Owners Directory</Text>
-        </View>
-        <View style={styles.countBadge}>
-          <Text style={styles.countBadgeText}>{filteredOwners.length} Owners</Text>
-        </View>
-      </View>
+      {/* ─────────────────── EXECUTIVE HERO HEADER ─────────────────── */}
+      <LinearGradient
+        colors={['#18181B', '#27272A', '#1C1917']}
+        style={[
+          styles.heroHeader,
+          {
+            paddingTop: insets.top + (Platform.OS === 'android' ? 14 : 10),
+          },
+        ]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      >
+        {/* Decorative Ambient Glow Orbs */}
+        <View style={styles.hdrOrb1} />
+        <View style={styles.hdrOrb2} />
 
-      {/* Search Bar */}
-      <View style={styles.searchBoxWrap}>
-        <View style={styles.searchBar}>
-          <Ionicons name="search" size={18} color="#A89687" />
+        <View style={styles.topBarRow}>
+          <View>
+            <View style={styles.masterBadge}>
+              <Text style={styles.masterBadgeCrown}>👑</Text>
+              <Text style={styles.masterBadgeText}>PLATFORM GOVERNANCE</Text>
+              <View style={styles.masterBadgeLiveDot} />
+            </View>
+            <Text style={styles.screenTitle}>Hostel Owners Directory</Text>
+          </View>
+          <View style={styles.countBadge}>
+            <Text style={styles.countBadgeText}>{filteredOwners.length} Owners</Text>
+          </View>
+        </View>
+
+        {/* Floating Search Bar */}
+        <View style={styles.heroSearchBar}>
+          <Ionicons name="search" size={17} color="#FB923C" />
           <TextInput
             placeholder="Search owners by name, email, phone..."
-            placeholderTextColor="#A89687"
+            placeholderTextColor="#9CA3AF"
             value={search}
             onChangeText={setSearch}
             onSubmitEditing={() => fetchOwners(1)}
-            style={styles.searchInput}
+            autoCapitalize="none"
+            autoCorrect={false}
+            returnKeyType="search"
+            style={styles.heroSearchInput}
           />
           {search ? (
-            <TouchableOpacity onPress={() => { setSearch(''); fetchOwners(1); }}>
-              <Ionicons name="close-circle" size={18} color="#A89687" />
+            <TouchableOpacity onPress={() => setSearch('')}>
+              <Ionicons name="close-circle" size={18} color="#D1D5DB" />
             </TouchableOpacity>
           ) : null}
         </View>
-      </View>
 
-      {/* TOP TABS ROW 1: HOSTELS LIST SEGREGATION */}
-      <View style={styles.hostelTabsSection}>
-        <View style={styles.tabSectionHeader}>
-          <Ionicons name="business" size={13} color="#C2410C" />
-          <Text style={styles.tabSectionTitle}>FILTER BY HOSTEL PROPERTY</Text>
-        </View>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.tabsScroll}
-        >
-          <TouchableOpacity
-            onPress={() => setSelectedHostelId(null)}
-            style={[styles.hostelTabChip, selectedHostelId === null && styles.hostelTabChipActive]}
+        {/* INTEGRATED TAB ROW 1: HOSTELS LIST SEGREGATION */}
+        <View style={styles.hdrTabSection}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.hdrTabsScroll}
           >
-            <Text style={[styles.hostelTabChipText, selectedHostelId === null && styles.hostelTabChipTextActive]}>
-              🏢 All Properties ({hostels.length})
-            </Text>
-          </TouchableOpacity>
-          {hostels.map((hostel) => {
-            const isSelected = selectedHostelId === hostel.hostel_id;
-            return (
-              <TouchableOpacity
-                key={hostel.hostel_id}
-                onPress={() => setSelectedHostelId(isSelected ? null : hostel.hostel_id)}
-                style={[styles.hostelTabChip, isSelected && styles.hostelTabChipActive]}
-              >
-                <Text style={[styles.hostelTabChipText, isSelected && styles.hostelTabChipTextActive]}>
-                  🏠 {hostel.hostel_name}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-      </View>
+            <TouchableOpacity
+              onPress={() => setSelectedHostelId(null)}
+              style={[styles.hdrHostelChip, selectedHostelId === null && styles.hdrHostelChipActive]}
+            >
+              <Text style={[styles.hdrHostelChipText, selectedHostelId === null && styles.hdrHostelChipTextActive]}>
+                🏢 All Properties ({hostels.length})
+              </Text>
+            </TouchableOpacity>
+            {hostels.map((hostel) => {
+              const isSelected = selectedHostelId === hostel.hostel_id;
+              return (
+                <TouchableOpacity
+                  key={hostel.hostel_id}
+                  onPress={() => setSelectedHostelId(isSelected ? null : hostel.hostel_id)}
+                  style={[styles.hdrHostelChip, isSelected && styles.hdrHostelChipActive]}
+                >
+                  <Text style={[styles.hdrHostelChipText, isSelected && styles.hdrHostelChipTextActive]}>
+                    🏠 {hostel.hostel_name}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+      </LinearGradient>
 
-      {/* TOP TABS ROW 2: STATUS SEGREGATION */}
+      {/* STATUS SEGREGATION TABS OUTSIDE HEADER */}
       <View style={styles.statusTabsSection}>
         <View style={styles.filterRow}>
           {(['ALL', 'ACTIVE', 'INACTIVE'] as const).map((st) => (
@@ -358,10 +376,7 @@ export default function DeveloperOwnersScreen() {
 
       {/* List */}
       {loading && !refreshing ? (
-        <View style={styles.centerBox}>
-          <ActivityIndicator size="large" color="#C2410C" />
-          <Text style={styles.loadingText}>Loading owners directory...</Text>
-        </View>
+        <DeveloperListSkeleton count={4} />
       ) : (
         <FlatList
           data={filteredOwners}
@@ -448,7 +463,15 @@ export default function DeveloperOwnersScreen() {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+
+      {/* Executive Support Mode Modal */}
+      <DeveloperSupportModal
+        visible={supportModalVisible}
+        onClose={() => setSupportModalVisible(false)}
+        targetUser={selectedOwnerForSupport}
+        targetRole="OWNER"
+      />
+    </View>
   );
 }
 
@@ -457,65 +480,165 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FAF6F0',
   },
-  topBar: {
+  heroHeader: {
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    position: 'relative',
+    overflow: 'hidden',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  hdrOrb1: {
+    position: 'absolute',
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+    backgroundColor: 'rgba(234, 88, 12, 0.12)',
+    top: -80,
+    right: -40,
+  },
+  hdrOrb2: {
+    position: 'absolute',
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    backgroundColor: 'rgba(124, 58, 237, 0.08)',
+    bottom: -50,
+    left: -40,
+  },
+  topBarRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#EFE7DC',
-    backgroundColor: '#FAF6F0',
+    marginBottom: 12,
   },
-  topTag: {
-    color: '#C2410C',
+  masterBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: 'rgba(251, 146, 60, 0.14)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+    marginBottom: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(251, 146, 60, 0.25)',
+  },
+  masterBadgeCrown: {
     fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 0.8,
+  },
+  masterBadgeLiveDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: '#10B981',
+  },
+  masterBadgeText: {
+    color: '#FB923C',
+    fontSize: 9.5,
+    fontWeight: '900',
+    letterSpacing: 0.7,
   },
   screenTitle: {
-    color: '#1C1917',
-    fontSize: 18,
+    color: '#FFFFFF',
+    fontSize: 19,
     fontWeight: '900',
+    letterSpacing: -0.3,
   },
   countBadge: {
-    backgroundColor: '#F3E8FF',
+    backgroundColor: 'rgba(251, 146, 60, 0.18)',
     paddingHorizontal: 10,
     paddingVertical: 5,
-    borderRadius: 8,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#DDD6FE',
+    borderColor: 'rgba(251, 146, 60, 0.35)',
   },
   countBadgeText: {
-    color: '#7C3AED',
+    color: '#FB923C',
     fontSize: 11,
     fontWeight: '800',
   },
-  searchBoxWrap: {
-    paddingHorizontal: 16,
-    paddingTop: 10,
-    backgroundColor: '#FAF6F0',
-  },
-  searchBar: {
+  heroSearchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.09)',
+    borderRadius: 14,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderWidth: 1,
-    borderColor: '#EFE7DC',
+    borderColor: 'rgba(255, 255, 255, 0.14)',
     gap: 8,
-    shadowColor: '#8C3A00',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.03,
-    shadowRadius: 4,
-    elevation: 1,
   },
-  searchInput: {
+  hdrTabSection: {
+    marginTop: 10,
+  },
+  hdrTabsScroll: {
+    gap: 6,
+  },
+  hdrHostelChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+  },
+  hdrHostelChipActive: {
+    backgroundColor: '#EA580C',
+    borderColor: '#FB923C',
+  },
+  hdrHostelChipText: {
+    color: '#D1D5DB',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  hdrHostelChipTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+  },
+  hdrStatusRow: {
+    flexDirection: 'row',
+    gap: 6,
+    marginTop: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.25)',
+    padding: 4,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  hdrStatusChip: {
+    flex: 1,
+    paddingVertical: 6,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  hdrStatusChipActive: {
+    backgroundColor: '#EA580C',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  hdrStatusChipText: {
+    color: '#9CA3AF',
+    fontSize: 10.5,
+    fontWeight: '800',
+  },
+  hdrStatusChipTextActive: {
+    color: '#FFFFFF',
+  },
+  heroSearchInput: {
     flex: 1,
     fontSize: 13,
-    color: '#1C1917',
+    color: '#FFFFFF',
     padding: 0,
   },
   hostelTabsSection: {
@@ -581,8 +704,8 @@ const styles = StyleSheet.create({
     borderColor: '#EFE7DC',
   },
   statusFilterChipActive: {
-    backgroundColor: '#7C3AED',
-    borderColor: '#7C3AED',
+    backgroundColor: '#EA580C',
+    borderColor: '#EA580C',
   },
   statusFilterChipText: {
     color: '#78716C',
@@ -631,11 +754,11 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: '#F3E8FF',
+    backgroundColor: '#FFF7ED',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#DDD6FE',
+    borderColor: '#FED7AA',
   },
   ownerName: {
     color: '#1C1917',
@@ -710,14 +833,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    backgroundColor: '#FEF3C7',
+    backgroundColor: '#FFF7ED',
     paddingVertical: 9,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#FDE68A',
+    borderColor: '#FED7AA',
   },
   resetPassBtnText: {
-    color: '#B45309',
+    color: '#EA580C',
     fontSize: 11.5,
     fontWeight: '800',
   },
@@ -727,7 +850,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    backgroundColor: '#7C3AED',
+    backgroundColor: '#EA580C',
     paddingVertical: 9,
     borderRadius: 10,
   },

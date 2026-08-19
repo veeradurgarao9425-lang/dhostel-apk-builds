@@ -8,7 +8,7 @@ import { useDeveloper } from '../../contexts/DeveloperContext';
 import { COLORS, FONT } from '../theme/index';
 import { ONBOARDING_KEY } from './OnboardingScreen';
 
-const ALWAYS_SHOW_INTRO_IN_DEV = true;
+const ALWAYS_SHOW_INTRO_IN_DEV = false;
 
 // App name broken down into individual letters
 const LETTERS = [
@@ -122,7 +122,7 @@ export default function SplashScreen({ navigation }: any) {
 
     const timer = setTimeout(async () => {
       // 1. Check Developer Session
-      if (isDeveloperLoggedIn || developer) {
+      if (isDeveloperLoggedIn || developer || user?.role === 'DEVELOPER' || (user as any)?.is_developer) {
         navigation.reset({ index: 0, routes: [{ name: 'DeveloperMain' }] });
         return;
       }
@@ -144,8 +144,8 @@ export default function SplashScreen({ navigation }: any) {
         /* treat as not-seen on read failure */
       }
       if (cancelled) return;
-      navigation.replace(seenIntro ? 'Login' : 'Onboarding');
-    }, 1700);
+      navigation.replace(seenIntro ? 'RoleSelect' : 'Onboarding');
+    }, 1500);
 
     return () => {
       cancelled = true;

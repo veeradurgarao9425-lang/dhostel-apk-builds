@@ -50,20 +50,20 @@ export const SupportModeBanner: React.FC = () => {
         {/* Left Side: Icon and Impersonation Info */}
         <View style={styles.infoLeft}>
           <View style={styles.iconBadge}>
-            <Ionicons name="shield-half" size={14} color="#C2410C" />
+            <Ionicons name="shield-half" size={15} color="#FB923C" />
           </View>
           <View style={{ flex: 1 }}>
             <View style={styles.titleRow}>
-              <Text style={styles.modeTitle}>SUPPORT IMPERSONATION</Text>
+              <Text style={styles.modeTitle}>SUPPORT SESSION ACTIVE</Text>
               {timeLeft ? (
                 <View style={styles.timerBadge}>
-                  <Ionicons name="timer-outline" size={10} color="#7C2D12" />
+                  <Ionicons name="timer-outline" size={10} color="#10B981" />
                   <Text style={styles.timerText}>{timeLeft}</Text>
                 </View>
               ) : null}
             </View>
             <Text style={styles.userSubtitle} numberOfLines={1}>
-              Viewing as: <Text style={styles.boldUser}>{userName}</Text> ({roleText})
+              Viewing: <Text style={styles.boldUser}>{userName}</Text> ({roleText})
             </Text>
           </View>
         </View>
@@ -84,15 +84,15 @@ export const SupportModeBanner: React.FC = () => {
 
 const styles = StyleSheet.create({
   bannerContainer: {
-    backgroundColor: '#FEF3C7',
+    backgroundColor: '#18181B',
     borderBottomWidth: 1,
-    borderBottomColor: '#FDE68A',
+    borderBottomColor: 'rgba(251, 146, 60, 0.3)',
     zIndex: 9999,
-    shadowColor: '#8C3A00',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 6,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 8,
   },
   bannerContent: {
     flexDirection: 'row',
@@ -109,14 +109,14 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   iconBadge: {
-    width: 28,
-    height: 28,
-    borderRadius: 8,
-    backgroundColor: '#FFFBEB',
+    width: 30,
+    height: 30,
+    borderRadius: 10,
+    backgroundColor: 'rgba(251, 146, 60, 0.18)',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#FDE68A',
+    borderColor: 'rgba(251, 146, 60, 0.35)',
   },
   titleRow: {
     flexDirection: 'row',
@@ -124,51 +124,53 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   modeTitle: {
-    color: '#92400E',
-    fontSize: 9,
+    color: '#FB923C',
+    fontSize: 9.5,
     fontWeight: '900',
-    letterSpacing: 0.5,
+    letterSpacing: 0.6,
   },
   timerBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 2,
-    backgroundColor: '#FDE68A',
-    paddingHorizontal: 5,
-    paddingVertical: 1,
-    borderRadius: 4,
+    gap: 3,
+    backgroundColor: 'rgba(16, 185, 129, 0.18)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.3)',
   },
   timerText: {
-    color: '#78350F',
-    fontSize: 9,
+    color: '#10B981',
+    fontSize: 9.5,
     fontWeight: '800',
   },
   userSubtitle: {
-    color: '#78350F',
+    color: '#D1D5DB',
     fontSize: 11,
     marginTop: 1,
   },
   boldUser: {
     fontWeight: '800',
-    color: '#451A03',
+    color: '#FFFFFF',
   },
   exitButton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#C2410C',
-    paddingHorizontal: 10,
+    backgroundColor: '#EA580C',
+    paddingHorizontal: 11,
     paddingVertical: 6,
-    borderRadius: 8,
-    shadowColor: '#C2410C',
+    borderRadius: 10,
+    shadowColor: '#EA580C',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
-    elevation: 2,
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    elevation: 3,
   },
   exitButtonText: {
     color: '#FFFFFF',
-    fontSize: 11,
+    fontSize: 11.5,
     fontWeight: '800',
   },
 });

@@ -18,14 +18,16 @@ import { useDeveloper } from '../../../contexts/DeveloperContext';
 import { developerService } from '../../services/developerService';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { DeveloperLogoutModal } from '../../components/developer/DeveloperLogoutModal';
 
 export default function DeveloperProfileScreen() {
   const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
-  const { developer, logout } = useDeveloper();
+  const { developer } = useDeveloper();
 
   const [metrics, setMetrics] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [logoutModalVisible, setLogoutModalVisible] = useState(false);
 
   useEffect(() => {
     developerService.getDashboardMetrics().then((res) => {
@@ -36,10 +38,7 @@ export default function DeveloperProfileScreen() {
   }, []);
 
   const handleLogout = () => {
-    Alert.alert('Sign Out Master Admin', 'Are you sure you want to end your developer session?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Sign Out', style: 'destructive', onPress: () => logout() },
-    ]);
+    setLogoutModalVisible(true);
   };
 
   const devName = developer?.full_name || 'Durgarao Goriparthi';
@@ -47,28 +46,47 @@ export default function DeveloperProfileScreen() {
   const devRole = 'SUPER_DEVELOPER (CEO)';
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FAF6F0" />
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor="#18181B" />
 
-      {/* Top Header */}
-      <View style={[styles.topBar, { paddingTop: Platform.OS === 'android' ? insets.top + 8 : 8 }]}>
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          style={styles.backBtn}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="arrow-back" size={22} color="#1C1917" />
-        </TouchableOpacity>
-        <Text style={styles.topTitle}>Master Profile & Security</Text>
-        <TouchableOpacity onPress={handleLogout} style={styles.logoutMiniBtn} activeOpacity={0.7}>
-          <Ionicons name="log-out-outline" size={18} color="#DC2626" />
-        </TouchableOpacity>
-      </View>
+      {/* ─────────────────── EXECUTIVE HERO HEADER ─────────────────── */}
+      <LinearGradient
+        colors={['#18181B', '#27272A', '#1C1917']}
+        style={[
+          styles.heroHeader,
+          {
+            paddingTop: insets.top + (Platform.OS === 'android' ? 14 : 10),
+          },
+        ]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      >
+        {/* Decorative Ambient Glow Orbs */}
+        <View style={styles.hdrOrb1} />
+        <View style={styles.hdrOrb2} />
+
+        <View style={styles.topBarRow}>
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            style={styles.backBtn}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="arrow-back" size={20} color="#FFFFFF" />
+          </TouchableOpacity>
+          <View style={styles.headerTitleWrap}>
+            <Text style={styles.masterBadgeText}>👑 MASTER SECURITY</Text>
+            <Text style={styles.topTitle}>Profile & Credentials</Text>
+          </View>
+          <TouchableOpacity onPress={handleLogout} style={styles.logoutMiniBtn} activeOpacity={0.7}>
+            <Ionicons name="log-out-outline" size={17} color="#EF4444" />
+          </TouchableOpacity>
+        </View>
+      </LinearGradient>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* CEO Identity Card */}
         <LinearGradient
-          colors={['#8C3A00', '#C2410C', '#EA580C']}
+          colors={['#18181B', '#27272A', '#18181B']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.profileHero}
@@ -197,39 +215,91 @@ export default function DeveloperProfileScreen() {
           style={styles.logoutFullBtn}
           activeOpacity={0.8}
         >
-          <Ionicons name="log-out" size={18} color="#DC2626" />
+          <Ionicons name="log-out" size={18} color="#EF4444" />
           <Text style={styles.logoutFullBtnText}>Sign Out Master Admin</Text>
         </TouchableOpacity>
       </ScrollView>
-    </SafeAreaView>
+
+      {/* Developer Logout Confirmation Modal */}
+      <DeveloperLogoutModal
+        visible={logoutModalVisible}
+        onClose={() => setLogoutModalVisible(false)}
+      />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAF6F0',
+    backgroundColor: '#F8FAFC',
   },
-  topBar: {
+  heroHeader: {
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    position: 'relative',
+    overflow: 'hidden',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  hdrOrb1: {
+    position: 'absolute',
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+    backgroundColor: 'rgba(234, 88, 12, 0.12)',
+    top: -80,
+    right: -40,
+  },
+  hdrOrb2: {
+    position: 'absolute',
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    backgroundColor: 'rgba(124, 58, 237, 0.08)',
+    bottom: -50,
+    left: -40,
+  },
+  topBarRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#EFE7DC',
-    backgroundColor: '#FAF6F0',
   },
-  backBtn: {
-    padding: 6,
+  headerTitleWrap: {
+    alignItems: 'center',
+  },
+  masterBadgeText: {
+    color: '#FB923C',
+    fontSize: 9.5,
+    fontWeight: '900',
+    letterSpacing: 0.7,
+    marginBottom: 2,
   },
   topTitle: {
-    color: '#1C1917',
+    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '900',
   },
+  backBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   logoutMiniBtn: {
-    padding: 6,
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   scrollContent: {
     padding: 16,

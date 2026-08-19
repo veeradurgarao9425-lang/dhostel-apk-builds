@@ -1,39 +1,38 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  SafeAreaView,
   StatusBar,
   Platform,
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useDeveloper } from '../../../contexts/DeveloperContext';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { DeveloperLogoutModal } from '../../components/developer/DeveloperLogoutModal';
 
 export default function DeveloperControlHubScreen() {
   const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
-  const { developer, logout } = useDeveloper();
+  const { developer } = useDeveloper();
+  const [logoutModalVisible, setLogoutModalVisible] = useState(false);
 
   const handleLogout = () => {
-    Alert.alert('Sign Out Master Admin', 'Are you sure you want to end your developer session?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Sign Out', style: 'destructive', onPress: () => logout() },
-    ]);
+    setLogoutModalVisible(true);
   };
 
   const SECTIONS = [
     {
-      title: 'INVENTORY & OPERATIONS',
+      title: 'INVENTORY & FINANCIAL LEDGER',
       items: [
         {
           title: 'Rooms & Bed Distribution',
-          subtitle: 'Live platform-wide room types and vacancy breakdown',
+          subtitle: 'Live platform-wide room types, capacity & vacancy breakdown',
           icon: 'bed' as const,
           color: '#EA580C',
           route: 'DeveloperRoomsBeds',
@@ -48,7 +47,40 @@ export default function DeveloperControlHubScreen() {
       ],
     },
     {
-      title: 'GOVERNANCE & SYSTEM',
+      title: 'TENANT & HOSTEL ECOSYSTEM',
+      items: [
+        {
+          title: 'Mess & Food Menu Governance',
+          subtitle: 'Master daily food schedule & meal logs across all hostels',
+          icon: 'restaurant' as const,
+          color: '#D97706',
+          route: 'DeveloperMess',
+        },
+        {
+          title: 'Complaints & Maintenance Triage',
+          subtitle: 'Platform-wide tenant issues, resolution SLA & triage',
+          icon: 'alert-circle' as const,
+          color: '#EF4444',
+          route: 'DeveloperComplaints',
+        },
+        {
+          title: 'Notices & Platform Broadcasts',
+          subtitle: 'Dispatch emergency announcements to owners & residents',
+          icon: 'megaphone' as const,
+          color: '#0284C7',
+          route: 'DeveloperNotices',
+        },
+        {
+          title: 'Ratings & Feedback Moderation',
+          subtitle: 'Hostel ratings breakdown, student sentiment & review logs',
+          icon: 'star' as const,
+          color: '#F59E0B',
+          route: 'DeveloperRatings',
+        },
+      ],
+    },
+    {
+      title: 'GOVERNANCE & SYSTEM SECURITY',
       items: [
         {
           title: 'Developer Audit Logs',
@@ -64,32 +96,59 @@ export default function DeveloperControlHubScreen() {
           color: '#2563EB',
           route: 'DeveloperSystem',
         },
+        {
+          title: 'Master Profile & Credentials',
+          subtitle: 'Root developer account, security tokens & active sessions',
+          icon: 'person-circle' as const,
+          color: '#EA580C',
+          route: 'DeveloperProfile',
+        },
       ],
     },
   ];
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FAF6F0" />
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor="#18181B" />
 
-      {/* Header */}
-      <View style={[styles.topBar, { paddingTop: Platform.OS === 'android' ? insets.top + 8 : 8 }]}>
-        <View>
-          <Text style={styles.headerTag}>HOSTIX MASTER CONTROL</Text>
-          <Text style={styles.headerTitle}>System & Governance</Text>
+      {/* ─────────────────── EXECUTIVE HERO HEADER ─────────────────── */}
+      <LinearGradient
+        colors={['#18181B', '#27272A', '#1C1917']}
+        style={[
+          styles.heroHeader,
+          {
+            paddingTop: insets.top + (Platform.OS === 'android' ? 14 : 10),
+          },
+        ]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      >
+        {/* Decorative Ambient Glow Orbs */}
+        <View style={styles.hdrOrb1} />
+        <View style={styles.hdrOrb2} />
+
+        <View style={styles.topBarRow}>
+          <View>
+            <View style={styles.masterBadge}>
+              <Text style={styles.masterBadgeCrown}>👑</Text>
+              <Text style={styles.masterBadgeText}>HOSTIX MASTER CONTROL</Text>
+              <View style={styles.masterBadgeLiveDot} />
+            </View>
+            <Text style={styles.screenTitle}>System & Governance</Text>
+          </View>
+
+          <TouchableOpacity onPress={handleLogout} style={styles.logoutBtn} activeOpacity={0.8}>
+            <Ionicons name="log-out-outline" size={15} color="#EF4444" />
+            <Text style={styles.logoutBtnText}>Logout</Text>
+          </TouchableOpacity>
         </View>
-
-        <TouchableOpacity onPress={handleLogout} style={styles.logoutBtn} activeOpacity={0.8}>
-          <Ionicons name="log-out-outline" size={16} color="#DC2626" />
-          <Text style={styles.logoutBtnText}>Logout</Text>
-        </TouchableOpacity>
-      </View>
+      </LinearGradient>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Developer Identity Card */}
         <View style={styles.identityCard}>
           <View style={styles.avatarWrap}>
-            <Ionicons name="shield-checkmark" size={24} color="#C2410C" />
+            <Ionicons name="shield-checkmark" size={24} color="#EA580C" />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.devName}>{developer?.full_name || 'Master Super Admin'}</Text>
@@ -122,7 +181,7 @@ export default function DeveloperControlHubScreen() {
                     <Text style={styles.itemTitle}>{item.title}</Text>
                     <Text style={styles.itemSubtitle}>{item.subtitle}</Text>
                   </View>
-                  <Ionicons name="chevron-forward" size={18} color="#B5A496" />
+                  <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
                 </TouchableOpacity>
               ))}
             </View>
@@ -130,57 +189,106 @@ export default function DeveloperControlHubScreen() {
         ))}
 
         <View style={styles.footerNote}>
-          <Ionicons name="lock-closed-outline" size={14} color="#A89687" />
+          <Ionicons name="lock-closed-outline" size={14} color="#9CA3AF" />
           <Text style={styles.footerNoteText}>
             Protected under Hostix Multi-Tenant Master Administrator Protocol.
           </Text>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAF6F0',
+    backgroundColor: '#F8FAFC',
   },
-  topBar: {
+  heroHeader: {
+    paddingHorizontal: 16,
+    paddingBottom: 18,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    position: 'relative',
+    overflow: 'hidden',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  hdrOrb1: {
+    position: 'absolute',
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+    backgroundColor: 'rgba(234, 88, 12, 0.12)',
+    top: -80,
+    right: -40,
+  },
+  hdrOrb2: {
+    position: 'absolute',
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    backgroundColor: 'rgba(124, 58, 237, 0.08)',
+    bottom: -50,
+    left: -40,
+  },
+  topBarRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#EFE7DC',
-    backgroundColor: '#FAF6F0',
   },
-  headerTag: {
-    color: '#C2410C',
+  masterBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: 'rgba(251, 146, 60, 0.14)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+    marginBottom: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(251, 146, 60, 0.25)',
+  },
+  masterBadgeCrown: {
     fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 0.8,
   },
-  headerTitle: {
-    color: '#292524',
-    fontSize: 18,
+  masterBadgeLiveDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: '#10B981',
+  },
+  masterBadgeText: {
+    color: '#FB923C',
+    fontSize: 9.5,
     fontWeight: '900',
+    letterSpacing: 0.7,
+  },
+  screenTitle: {
+    color: '#FFFFFF',
+    fontSize: 19,
+    fontWeight: '900',
+    letterSpacing: -0.3,
   },
   logoutBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#FEE2E2',
+    backgroundColor: 'rgba(239, 68, 68, 0.15)',
     paddingHorizontal: 10,
     paddingVertical: 6,
-    borderRadius: 8,
+    borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#FECACA',
+    borderColor: 'rgba(239, 68, 68, 0.3)',
   },
   logoutBtnText: {
-    color: '#DC2626',
+    color: '#EF4444',
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   scrollContent: {
     padding: 16,
@@ -194,9 +302,9 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#EFE7DC',
+    borderColor: '#F3F4F6',
     marginBottom: 20,
-    shadowColor: '#8C3A00',
+    shadowColor: '#000000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
     shadowRadius: 8,
@@ -210,15 +318,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1.5,
-    borderColor: '#FFEDD5',
+    borderColor: '#FED7AA',
   },
   devName: {
-    color: '#1C1917',
+    color: '#111827',
     fontSize: 16,
     fontWeight: '900',
   },
   devEmail: {
-    color: '#78716C',
+    color: '#6B7280',
     fontSize: 12,
     marginTop: 1,
   },
@@ -233,7 +341,7 @@ const styles = StyleSheet.create({
     borderColor: '#FED7AA',
   },
   rolePillText: {
-    color: '#C2410C',
+    color: '#EA580C',
     fontSize: 10,
     fontWeight: '800',
   },
@@ -241,7 +349,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   sectionHeading: {
-    color: '#8C7A6B',
+    color: '#6B7280',
     fontSize: 11,
     fontWeight: '800',
     letterSpacing: 0.8,
@@ -252,9 +360,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#EFE7DC',
+    borderColor: '#F3F4F6',
     overflow: 'hidden',
-    shadowColor: '#8C3A00',
+    shadowColor: '#000000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
     shadowRadius: 8,
@@ -268,7 +376,7 @@ const styles = StyleSheet.create({
   },
   menuItemBorder: {
     borderBottomWidth: 1,
-    borderBottomColor: '#F5EFE6',
+    borderBottomColor: '#F3F4F6',
   },
   iconBox: {
     width: 40,
@@ -278,12 +386,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   itemTitle: {
-    color: '#1C1917',
+    color: '#111827',
     fontSize: 14,
     fontWeight: '800',
   },
   itemSubtitle: {
-    color: '#78716C',
+    color: '#6B7280',
     fontSize: 11,
     marginTop: 2,
     lineHeight: 15,
@@ -297,7 +405,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   footerNoteText: {
-    color: '#A89687',
+    color: '#9CA3AF',
     fontSize: 11,
     textAlign: 'center',
   },

@@ -43,10 +43,24 @@ const WELCOME_CHIPS: Array<{ icon: string; label: string; q: string }> = [
   { icon: 'pulse-outline', label: 'System Diagnostics', q: 'Check server health and database' },
 ];
 
+const DEV_MENU_ITEMS = [
+  { label: 'Owners Breakdown', icon: 'people-outline', color: '#7C3AED', bg: '#F3E8FF', q: 'How many owners are registered?' },
+  { label: 'Students Roster', icon: 'school-outline', color: '#10B981', bg: '#ECFDF5', q: 'How many students on platform?' },
+  { label: 'Hostels Network', icon: 'business-outline', color: '#EA580C', bg: '#FFF7ED', q: 'Show all hostels breakdown' },
+  { label: 'New Joiners', icon: 'person-add-outline', color: '#2563EB', bg: '#EFF6FF', q: 'Who joined today?' },
+  { label: 'Vacated / Left', icon: 'walk-outline', color: '#DC2626', bg: '#FEF2F2', q: 'Who left today?' },
+  { label: 'Expiring Trials', icon: 'gift-outline', color: '#D97706', bg: '#FEF3C7', q: 'Whose free trial is ending soon?' },
+  { label: 'Diagnostics', icon: 'pulse-outline', color: '#0D9488', bg: '#F0FDFA', q: 'Check server health and database' },
+];
+
 export const DeveloperAssistant: React.FC = () => {
   const { developer, isDeveloperLoggedIn, enterSupportMode } = useDeveloper();
   const insets = useSafeAreaInsets();
-  const { keyboardInset, handleBodyLayout } = useKeyboardInset();
+  const [isKeyboardActive, setIsKeyboardActive] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
+  const { keyboardInset, onContainerLayout, resetKeyboardInset } = useKeyboardInset({
+    onVisibilityChange: setIsKeyboardActive,
+  });
 
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Msg[]>([]);
@@ -57,6 +71,22 @@ export const DeveloperAssistant: React.FC = () => {
   const scrollRef = useRef<ScrollView>(null);
   const inputRef = useRef<TextInput>(null);
   const msgId = useRef(0);
+  const wasOpenRef = useRef(false);
+
+  // Opening/closing the modal sheet must cleanly clear keyboard state and avoid stale insets
+  useEffect(() => {
+    if (isOpen) {
+      wasOpenRef.current = true;
+      return;
+    }
+    if (!wasOpenRef.current) return;
+    wasOpenRef.current = false;
+    Keyboard.dismiss();
+    setIsAddMenuOpen(false);
+    setIsFocused(false);
+    setIsKeyboardActive(false);
+    resetKeyboardInset();
+  }, [isOpen, resetKeyboardInset]);
 
   const nextId = () => {
     msgId.current += 1;
@@ -116,6 +146,20 @@ export const DeveloperAssistant: React.FC = () => {
       scrollRef.current?.scrollToEnd({ animated });
     }, 100);
   };
+
+  // Keep newest turn in view when thread changes or keyboard shows/hides
+  useEffect(() => {
+    if (!messages.length) return;
+    const t = setTimeout(() => scrollToEnd(true), 120);
+    return () => clearTimeout(t);
+  }, [messages, isTyping, isKeyboardActive]);
+
+  const toggleQuickMenu = useCallback(() => {
+    if (isKeyboardActive) {
+      Keyboard.dismiss();
+    }
+    setIsAddMenuOpen((prev) => !prev);
+  }, [isKeyboardActive]);
 
   const handleQuery = async (queryText: string) => {
     const q = queryText.trim();
@@ -520,11 +564,11 @@ export const DeveloperAssistant: React.FC = () => {
         <SafeAreaView style={styles.safe} edges={Platform.OS === 'ios' ? ['top', 'bottom'] : ['top']}>
           <View
             style={[styles.body, keyboardInset > 0 && { paddingBottom: keyboardInset }]}
-            onLayout={handleBodyLayout}
+            onLayout={onContainerLayout}
           >
-            {/* Header matching OwnerAssistant */}
+            {/* Executive Dark Hero Header */}
             <LinearGradient
-              colors={['#8C3A00', '#C2410C', '#EA580C']}
+              colors={['#18181B', '#27272A', '#1C1917']}
               style={styles.header}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
@@ -668,8 +712,49 @@ export const DeveloperAssistant: React.FC = () => {
               </ScrollView>
             </View>
 
+            {/* Quick Category Menu Drawer / Sheet */}
+            {isAddMenuOpen && (
+              <View style={styles.quickCategoryMenu}>
+                <View style={styles.quickCategoryHeader}>
+                  <Text style={styles.quickCategoryTitle}>Direct Executive Queries</Text>
+                  <TouchableOpacity onPress={() => setIsAddMenuOpen(false)}>
+                    <Ionicons name="close" size={16} color="#8C7A6B" />
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.quickCategoryGrid}>
+                  {DEV_MENU_ITEMS.map((item, i) => (
+                    <TouchableOpacity
+                      key={i}
+                      style={styles.quickCatItem}
+                      onPress={() => {
+                        setIsAddMenuOpen(false);
+                        handleQuery(item.q);
+                      }}
+                      activeOpacity={0.75}
+                    >
+                      <View style={[styles.quickCatIcon, { backgroundColor: item.bg }]}>
+                        <Ionicons name={item.icon as any} size={16} color={item.color} />
+                      </View>
+                      <Text style={styles.quickCatLabel}>{item.label}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            )}
+
             {/* Bottom Composer matching OwnerAssistant */}
             <View style={styles.composerWrap}>
+              <TouchableOpacity
+                onPress={toggleQuickMenu}
+                style={styles.plusMenuBtn}
+                activeOpacity={0.75}
+              >
+                <Ionicons
+                  name={isAddMenuOpen ? 'close' : 'add'}
+                  size={20}
+                  color="#EA580C"
+                />
+              </TouchableOpacity>
               <TextInput
                 ref={inputRef}
                 style={styles.inputField}
@@ -677,6 +762,11 @@ export const DeveloperAssistant: React.FC = () => {
                 placeholderTextColor="#A89687"
                 value={inputText}
                 onChangeText={setInputText}
+                onFocus={() => {
+                  setIsFocused(true);
+                  setIsAddMenuOpen(false);
+                }}
+                onBlur={() => setIsFocused(false)}
                 onSubmitEditing={() => handleQuery(inputText)}
                 returnKeyType="send"
               />
@@ -724,11 +814,11 @@ const styles = StyleSheet.create({
   },
   safe: {
     flex: 1,
-    backgroundColor: '#8C3A00',
+    backgroundColor: '#18181B',
   },
   body: {
     flex: 1,
-    backgroundColor: '#FAF6F0',
+    backgroundColor: '#F8FAFC',
   },
   header: {
     paddingHorizontal: 16,
@@ -823,12 +913,17 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   userBubble: {
-    backgroundColor: '#C2410C',
+    backgroundColor: '#EA580C',
     paddingHorizontal: 14,
     paddingVertical: 10,
-    borderRadius: 16,
-    borderBottomRightRadius: 2,
+    borderRadius: 18,
+    borderBottomRightRadius: 3,
     maxWidth: '85%',
+    shadowColor: '#EA580C',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 2,
   },
   userText: {
     color: '#FFFFFF',
@@ -839,27 +934,27 @@ const styles = StyleSheet.create({
   botRow: {
     width: '100%',
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 12,
+    borderRadius: 18,
+    padding: 14,
     borderWidth: 1,
-    borderColor: '#EFE7DC',
-    shadowColor: '#8C3A00',
+    borderColor: '#F3F4F6',
+    shadowColor: '#000000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.03,
-    shadowRadius: 6,
-    elevation: 1,
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
   },
   topHubCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+    borderRadius: 18,
     padding: 14,
     marginBottom: 14,
     borderWidth: 1,
-    borderColor: '#EFE7DC',
-    shadowColor: '#8C3A00',
+    borderColor: '#F3F4F6',
+    shadowColor: '#000000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
-    shadowRadius: 6,
+    shadowRadius: 8,
     elevation: 2,
   },
   topHubHeader: {
@@ -869,20 +964,22 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   topHubBotBadge: {
-    width: 34,
-    height: 34,
-    borderRadius: 10,
+    width: 36,
+    height: 36,
+    borderRadius: 12,
     backgroundColor: '#FFF7ED',
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#FED7AA',
   },
   topHubTitle: {
-    color: '#1C1917',
+    color: '#111827',
     fontSize: 14,
     fontWeight: '900',
   },
   topHubSub: {
-    color: '#78716C',
+    color: '#6B7280',
     fontSize: 11.5,
     marginTop: 1,
   },
@@ -897,7 +994,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 4,
     paddingVertical: 8,
-    borderRadius: 8,
+    borderRadius: 10,
     borderWidth: 1,
   },
   topPulseText: {
@@ -910,20 +1007,20 @@ const styles = StyleSheet.create({
     gap: 8,
     padding: 12,
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#EFE7DC',
+    borderColor: '#F3F4F6',
     marginTop: 6,
   },
   typingText: {
-    color: '#78716C',
+    color: '#6B7280',
     fontSize: 12,
     fontWeight: '600',
   },
   quickChipsBar: {
     backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
-    borderTopColor: '#EFE7DC',
+    borderTopColor: '#F3F4F6',
     paddingVertical: 8,
   },
   chipsScroll: {
@@ -942,36 +1039,99 @@ const styles = StyleSheet.create({
     borderColor: '#FED7AA',
   },
   chipPillText: {
-    color: '#C2410C',
+    color: '#EA580C',
     fontSize: 11,
     fontWeight: '700',
+  },
+  quickCategoryMenu: {
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 14,
+  },
+  quickCategoryHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  quickCategoryTitle: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#111827',
+    letterSpacing: 0.2,
+  },
+  quickCategoryGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  quickCatItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  quickCatIcon: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quickCatLabel: {
+    fontSize: 11.5,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  plusMenuBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#FFF7ED',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#FED7AA',
   },
   composerWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
-    borderTopColor: '#EFE7DC',
-    gap: 10,
+    borderTopColor: '#F3F4F6',
+    gap: 8,
   },
   inputField: {
     flex: 1,
-    backgroundColor: '#FAF6F0',
+    backgroundColor: '#F9FAFB',
     borderRadius: 20,
     paddingHorizontal: 14,
     paddingVertical: 8,
     fontSize: 13,
-    color: '#1C1917',
+    color: '#111827',
     borderWidth: 1,
-    borderColor: '#EFE7DC',
+    borderColor: '#E5E7EB',
   },
   sendBtn: {
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: '#C2410C',
+    backgroundColor: '#EA580C',
     alignItems: 'center',
     justifyContent: 'center',
   },

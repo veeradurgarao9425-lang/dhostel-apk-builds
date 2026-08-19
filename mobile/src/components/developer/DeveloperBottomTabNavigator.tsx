@@ -2,6 +2,7 @@ import React from 'react';
 import { View, TouchableOpacity, Text, StyleSheet, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 
 const TABS = [
   {
@@ -19,8 +20,8 @@ const TABS = [
   {
     label: 'Owners',
     route: 'DevOwnersTab',
-    activeIcon: 'person-circle' as const,
-    inactiveIcon: 'person-circle-outline' as const,
+    activeIcon: 'people' as const,
+    inactiveIcon: 'people-outline' as const,
   },
   {
     label: 'Students',
@@ -44,7 +45,7 @@ export const DeveloperBottomTabNavigator = ({ state, descriptors, navigation }: 
       style={[
         styles.container,
         {
-          paddingBottom: Math.max(insets.bottom + 14, Platform.OS === 'ios' ? 32 : 24),
+          paddingBottom: Math.max(insets.bottom + 8, Platform.OS === 'ios' ? 24 : 14),
         },
       ]}
     >
@@ -56,6 +57,7 @@ export const DeveloperBottomTabNavigator = ({ state, descriptors, navigation }: 
         const iconName = isActive ? tabConfig.activeIcon : tabConfig.inactiveIcon;
 
         const handlePress = () => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
           const event = navigation.emit({
             type: 'tabPress',
             target: route.key,
@@ -69,20 +71,20 @@ export const DeveloperBottomTabNavigator = ({ state, descriptors, navigation }: 
         return (
           <TouchableOpacity
             key={route.key}
-            style={styles.tabItem}
+            style={[styles.tabItem, isActive && styles.tabItemActive]}
             onPress={handlePress}
             activeOpacity={0.8}
             accessibilityRole="button"
             accessibilityLabel={tabConfig.label}
           >
-            {/* Active indicator pill at top */}
-            {isActive && <View style={styles.topPill} />}
+            {/* Active indicator capsule */}
+            {isActive && <View style={styles.topCapsule} />}
 
             <View style={[styles.iconWrap, isActive && styles.iconWrapActive]}>
               <Ionicons
                 name={iconName}
-                size={22}
-                color={isActive ? '#C2410C' : '#8C7A6B'}
+                size={21}
+                color={isActive ? '#EA580C' : '#6B7280'}
               />
             </View>
             <Text
@@ -105,16 +107,16 @@ const styles = StyleSheet.create({
   container: {
     backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
-    borderTopColor: '#EFE7DC',
-    paddingTop: 10,
+    borderTopColor: '#F3F4F6',
+    paddingTop: 8,
     justifyContent: 'space-around',
     alignItems: 'center',
     flexDirection: 'row',
-    shadowColor: '#8C3A00',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 16,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 12,
   },
   tabItem: {
     flex: 1,
@@ -122,15 +124,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     position: 'relative',
     paddingVertical: 2,
-    gap: 3,
+    gap: 2,
   },
-  topPill: {
+  tabItemActive: {
+    transform: [{ scale: 1.02 }],
+  },
+  topCapsule: {
     position: 'absolute',
-    top: -10,
-    width: 24,
+    top: -8,
+    width: 28,
     height: 3,
     borderRadius: 2,
-    backgroundColor: '#C2410C',
+    backgroundColor: '#EA580C',
   },
   iconWrap: {
     width: 32,
@@ -139,18 +144,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   iconWrapActive: {
-    transform: [{ scale: 1.06 }],
+    transform: [{ scale: 1.05 }],
   },
   label: {
-    fontSize: 10.5,
+    fontSize: 10,
     marginTop: 1,
     fontWeight: '600',
+    letterSpacing: 0.1,
   },
   labelActive: {
-    color: '#C2410C',
+    color: '#EA580C',
     fontWeight: '800',
   },
   labelInactive: {
-    color: '#8C7A6B',
+    color: '#6B7280',
   },
 });

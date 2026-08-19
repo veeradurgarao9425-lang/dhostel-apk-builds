@@ -16,10 +16,13 @@ import {
   Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { developerService } from '../../services/developerService';
 import { useDeveloper } from '../../../contexts/DeveloperContext';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { DeveloperListSkeleton } from '../../components/ui/SkeletonCard';
+import { DeveloperSupportModal } from '../../components/developer/DeveloperSupportModal';
 
 export default function DeveloperStudentsScreen() {
   const navigation = useNavigation<any>();
@@ -38,6 +41,10 @@ export default function DeveloperStudentsScreen() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [impersonatingId, setImpersonatingId] = useState<number | null>(null);
+
+  // Support Mode Modal State
+  const [supportModalVisible, setSupportModalVisible] = useState(false);
+  const [selectedStudentForSupport, setSelectedStudentForSupport] = useState<any>(null);
 
   // View Student Details Modal State
   const [viewDetailsModalVisible, setViewDetailsModalVisible] = useState(false);
@@ -227,35 +234,8 @@ export default function DeveloperStudentsScreen() {
   };
 
   const handleImpersonate = (student: any) => {
-    if (!student.user_id) {
-      Alert.alert('Cannot Impersonate', 'This student does not have an active login account linked.');
-      return;
-    }
-
-    Alert.alert(
-      'Enter Student Support Mode',
-      `You are entering ${student.first_name} ${student.last_name || ''}'s tenant account in controlled support mode.\n\nA top support banner with a live countdown timer will be displayed.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Enter Student Mode',
-          onPress: async () => {
-            try {
-              setImpersonatingId(student.student_id);
-              await enterSupportMode({
-                target_user_id: student.user_id,
-                target_role: 'TENANT',
-                hostel_id: student.hostel_id || undefined,
-              });
-            } catch (err: any) {
-              Alert.alert('Support Mode Error', err.message || 'Failed to start student support session.');
-            } finally {
-              setImpersonatingId(null);
-            }
-          },
-        },
-      ]
-    );
+    setSelectedStudentForSupport(student);
+    setSupportModalVisible(true);
   };
 
   const renderStudentCard = ({ item }: { item: any }) => {
@@ -263,7 +243,11 @@ export default function DeveloperStudentsScreen() {
     const isActive = String(item.status).toLowerCase() === 'active' || item.status === 1 || item.status === true;
 
     return (
-      <View style={styles.card}>
+      <TouchableOpacity
+        style={styles.card}
+        activeOpacity={0.85}
+        onPress={() => navigation.navigate('DeveloperStudentDetails', { studentId: item.student_id, student: item })}
+      >
         <View style={styles.cardTop}>
           <View style={styles.avatarWrap}>
             <Ionicons name="school" size={20} color="#059669" />
@@ -303,11 +287,11 @@ export default function DeveloperStudentsScreen() {
         <View style={styles.cardActions}>
           <TouchableOpacity
             activeOpacity={0.8}
-            onPress={() => handleOpenDetails(item)}
+            onPress={() => navigation.navigate('DeveloperStudentDetails', { studentId: item.student_id, student: item })}
             style={styles.viewProfileBtn}
           >
-            <Ionicons name="eye-outline" size={13} color="#059669" />
-            <Text style={styles.viewProfileBtnText}>View Details</Text>
+            <Ionicons name="document-text-outline" size={13} color="#059669" />
+            <Text style={styles.viewProfileBtnText}>View Dossier</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -335,112 +319,95 @@ export default function DeveloperStudentsScreen() {
             )}
           </TouchableOpacity>
         </View>
-      </View>
+      </TouchableOpacity>
     );
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FAF6F0" />
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor="#18181B" />
 
-      {/* Top Header */}
-      <View style={[styles.topBar, { paddingTop: Platform.OS === 'android' ? insets.top + 8 : 8 }]}>
-        <View>
-          <Text style={styles.topTag}>PLATFORM TENANTS</Text>
-          <Text style={styles.screenTitle}>Students Directory</Text>
-        </View>
-        <View style={styles.countBadge}>
-          <Text style={styles.countBadgeText}>{filteredStudents.length} Students</Text>
-        </View>
-      </View>
+      {/* ─────────────────── EXECUTIVE HERO HEADER WITH INTEGRATED TABS ─────────────────── */}
+      <LinearGradient
+        colors={['#18181B', '#27272A', '#1C1917']}
+        style={[
+          styles.heroHeader,
+          {
+            paddingTop: insets.top + (Platform.OS === 'android' ? 14 : 10),
+          },
+        ]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      >
+        {/* Decorative Ambient Glow Orbs */}
+        <View style={styles.hdrOrb1} />
+        <View style={styles.hdrOrb2} />
 
-      {/* Search Bar */}
-      <View style={styles.searchBoxWrap}>
-        <View style={styles.searchBar}>
-          <Ionicons name="search" size={18} color="#A89687" />
+        <View style={styles.topBarRow}>
+          <View>
+            <View style={styles.masterBadge}>
+              <Text style={styles.masterBadgeCrown}>👑</Text>
+              <Text style={styles.masterBadgeText}>PLATFORM TENANTS</Text>
+              <View style={styles.masterBadgeLiveDot} />
+            </View>
+            <Text style={styles.screenTitle}>Students Directory</Text>
+          </View>
+          <View style={styles.countBadge}>
+            <Text style={styles.countBadgeText}>{filteredStudents.length} Students</Text>
+          </View>
+        </View>
+
+        {/* Floating Search Bar */}
+        <View style={styles.heroSearchBar}>
+          <Ionicons name="search" size={17} color="#FB923C" />
           <TextInput
             placeholder="Search students by name, phone, room..."
-            placeholderTextColor="#A89687"
+            placeholderTextColor="#9CA3AF"
             value={search}
             onChangeText={setSearch}
             onSubmitEditing={() => fetchStudents(1)}
-            style={styles.searchInput}
+            autoCapitalize="none"
+            autoCorrect={false}
+            returnKeyType="search"
+            style={styles.heroSearchInput}
           />
           {search ? (
-            <TouchableOpacity onPress={() => { setSearch(''); fetchStudents(1); }}>
-              <Ionicons name="close-circle" size={18} color="#A89687" />
+            <TouchableOpacity onPress={() => setSearch('')}>
+              <Ionicons name="close-circle" size={18} color="#D1D5DB" />
             </TouchableOpacity>
           ) : null}
         </View>
-      </View>
 
-      {/* TOP TABS ROW 1: HOSTELS LIST TABS */}
-      <View style={styles.tabSectionRow}>
-        <View style={styles.tabSectionHeader}>
-          <Ionicons name="business" size={13} color="#C2410C" />
-          <Text style={styles.tabSectionTitle}>SELECT HOSTEL PROPERTY</Text>
+        {/* INTEGRATED TAB ROW 1: HOSTELS LIST TABS */}
+        <View style={styles.hdrTabSection}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.hdrTabsScroll}>
+            <TouchableOpacity
+              onPress={() => handleSelectHostel(null)}
+              style={[styles.hdrHostelChip, selectedHostelId === null && styles.hdrHostelChipActive]}
+            >
+              <Text style={[styles.hdrHostelChipText, selectedHostelId === null && styles.hdrHostelChipTextActive]}>
+                🏢 All Hostels ({hostels.length})
+              </Text>
+            </TouchableOpacity>
+            {visibleHostels.map((h) => {
+              const isSelected = selectedHostelId === h.hostel_id;
+              return (
+                <TouchableOpacity
+                  key={h.hostel_id}
+                  onPress={() => handleSelectHostel(isSelected ? null : h.hostel_id)}
+                  style={[styles.hdrHostelChip, isSelected && styles.hdrHostelChipActive]}
+                >
+                  <Text style={[styles.hdrHostelChipText, isSelected && styles.hdrHostelChipTextActive]}>
+                    🏠 {h.hostel_name}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
         </View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsScroll}>
-          <TouchableOpacity
-            onPress={() => handleSelectHostel(null)}
-            style={[styles.hostelChip, selectedHostelId === null && styles.hostelChipActive]}
-          >
-            <Text style={[styles.hostelChipText, selectedHostelId === null && styles.hostelChipTextActive]}>
-              🏠 All Properties ({hostels.length})
-            </Text>
-          </TouchableOpacity>
-          {visibleHostels.map((h) => {
-            const isSelected = selectedHostelId === h.hostel_id;
-            return (
-              <TouchableOpacity
-                key={h.hostel_id}
-                onPress={() => handleSelectHostel(isSelected ? null : h.hostel_id)}
-                style={[styles.hostelChip, isSelected && styles.hostelChipActive]}
-              >
-                <Text style={[styles.hostelChipText, isSelected && styles.hostelChipTextActive]}>
-                  {h.hostel_name}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-      </View>
+      </LinearGradient>
 
-      {/* TOP TABS ROW 2: OWNERS LIST TABS (CONNECTED & CASCADING) */}
-      <View style={styles.tabSectionRow}>
-        <View style={styles.tabSectionHeader}>
-          <Ionicons name="people" size={13} color="#7C3AED" />
-          <Text style={[styles.tabSectionTitle, { color: '#7C3AED' }]}>
-            {selectedHostelId ? 'HOSTEL OWNER (MATCHED)' : 'FILTER BY OWNER'}
-          </Text>
-        </View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsScroll}>
-          <TouchableOpacity
-            onPress={() => handleSelectOwner(null)}
-            style={[styles.ownerChip, selectedOwnerId === null && styles.ownerChipActive]}
-          >
-            <Text style={[styles.ownerChipText, selectedOwnerId === null && styles.ownerChipTextActive]}>
-              👑 All Owners ({visibleOwners.length})
-            </Text>
-          </TouchableOpacity>
-          {visibleOwners.map((o) => {
-            const isSelected = selectedOwnerId === o.user_id;
-            return (
-              <TouchableOpacity
-                key={o.user_id}
-                onPress={() => handleSelectOwner(isSelected ? null : o.user_id)}
-                style={[styles.ownerChip, isSelected && styles.ownerChipActive]}
-              >
-                <Text style={[styles.ownerChipText, isSelected && styles.ownerChipTextActive]}>
-                  👤 {o.full_name}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-      </View>
-
-      {/* TOP TABS ROW 3: STATUS SEGREGATION TABS */}
+      {/* STATUS FILTER ROW OUTSIDE HEADER */}
       <View style={styles.statusTabsSection}>
         <View style={styles.filterRow}>
           {(['ALL', 'ACTIVE', 'INACTIVE'] as const).map((st) => (
@@ -459,10 +426,7 @@ export default function DeveloperStudentsScreen() {
 
       {/* List */}
       {loading && !refreshing ? (
-        <View style={styles.centerBox}>
-          <ActivityIndicator size="large" color="#059669" />
-          <Text style={styles.loadingText}>Loading students directory...</Text>
-        </View>
+        <DeveloperListSkeleton count={4} />
       ) : (
         <FlatList
           data={filteredStudents}
@@ -642,7 +606,15 @@ export default function DeveloperStudentsScreen() {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+
+      {/* Executive Support Mode Modal */}
+      <DeveloperSupportModal
+        visible={supportModalVisible}
+        onClose={() => setSupportModalVisible(false)}
+        targetUser={selectedStudentForSupport}
+        targetRole="TENANT"
+      />
+    </View>
   );
 }
 
@@ -651,66 +623,166 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FAF6F0',
   },
-  topBar: {
+  heroHeader: {
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    position: 'relative',
+    overflow: 'hidden',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  hdrOrb1: {
+    position: 'absolute',
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+    backgroundColor: 'rgba(234, 88, 12, 0.12)',
+    top: -80,
+    right: -40,
+  },
+  hdrOrb2: {
+    position: 'absolute',
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    backgroundColor: 'rgba(124, 58, 237, 0.08)',
+    bottom: -50,
+    left: -40,
+  },
+  topBarRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#EFE7DC',
-    backgroundColor: '#FAF6F0',
+    marginBottom: 12,
   },
-  topTag: {
-    color: '#059669',
+  masterBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: 'rgba(251, 146, 60, 0.14)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+    marginBottom: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(251, 146, 60, 0.25)',
+  },
+  masterBadgeCrown: {
     fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 0.8,
+  },
+  masterBadgeLiveDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: '#10B981',
+  },
+  masterBadgeText: {
+    color: '#FB923C',
+    fontSize: 9.5,
+    fontWeight: '900',
+    letterSpacing: 0.7,
   },
   screenTitle: {
-    color: '#1C1917',
-    fontSize: 18,
+    color: '#FFFFFF',
+    fontSize: 19,
     fontWeight: '900',
+    letterSpacing: -0.3,
   },
   countBadge: {
-    backgroundColor: '#ECFDF5',
+    backgroundColor: 'rgba(251, 146, 60, 0.18)',
     paddingHorizontal: 10,
     paddingVertical: 5,
-    borderRadius: 8,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#A7F3D0',
+    borderColor: 'rgba(251, 146, 60, 0.35)',
   },
   countBadgeText: {
-    color: '#059669',
+    color: '#FB923C',
     fontSize: 11,
     fontWeight: '800',
   },
-  searchBoxWrap: {
-    paddingHorizontal: 16,
-    paddingTop: 10,
-    backgroundColor: '#FAF6F0',
-  },
-  searchBar: {
+  heroSearchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.09)',
+    borderRadius: 14,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderWidth: 1,
-    borderColor: '#EFE7DC',
+    borderColor: 'rgba(255, 255, 255, 0.14)',
     gap: 8,
-    shadowColor: '#8C3A00',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.03,
-    shadowRadius: 4,
-    elevation: 1,
   },
-  searchInput: {
+  heroSearchInput: {
     flex: 1,
     fontSize: 13,
-    color: '#1C1917',
+    color: '#FFFFFF',
     padding: 0,
+  },
+  hdrTabSection: {
+    marginTop: 10,
+  },
+  hdrTabsScroll: {
+    gap: 6,
+  },
+  hdrHostelChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+  },
+  hdrHostelChipActive: {
+    backgroundColor: '#EA580C',
+    borderColor: '#FB923C',
+  },
+  hdrHostelChipText: {
+    color: '#D1D5DB',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  hdrHostelChipTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+  },
+  hdrStatusRow: {
+    flexDirection: 'row',
+    gap: 6,
+    marginTop: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.25)',
+    padding: 4,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  hdrStatusChip: {
+    flex: 1,
+    paddingVertical: 6,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  hdrStatusChipActive: {
+    backgroundColor: '#EA580C',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  hdrStatusChipText: {
+    color: '#9CA3AF',
+    fontSize: 10.5,
+    fontWeight: '800',
+  },
+  hdrStatusChipTextActive: {
+    color: '#FFFFFF',
   },
   tabSectionRow: {
     paddingTop: 8,

@@ -25,7 +25,7 @@ const isSmall = height < 700;
 const isTiny = height < 600;
 
 export default function LoginScreen({ navigation }: any) {
-    const { signIn } = useAuth();
+    const { signIn, user } = useAuth();
     const insets = useSafeAreaInsets();
     const [identifier, setIdentifier] = useState('');
     const [password, setPassword] = useState('');
@@ -40,6 +40,17 @@ export default function LoginScreen({ navigation }: any) {
 
     const scrollRef = useRef<ScrollView>(null);
     const passwordRef = useRef<TextInput>(null);
+
+    // If user is already authenticated when landing on LoginScreen, route immediately
+    React.useEffect(() => {
+        if (user) {
+            if (user.role === 'DEVELOPER' || (user as any).is_developer) {
+                navigation.reset({ index: 0, routes: [{ name: 'DeveloperMain' }] });
+            } else {
+                navigation.reset({ index: 0, routes: [{ name: 'Main' }] });
+            }
+        }
+    }, [user, navigation]);
 
     // Keyboard handling. Replaces KeyboardAvoidingView(behavior="height"), whose
     // stale container height was leaving a grey band along the bottom of this

@@ -50,7 +50,10 @@ export const DeveloperProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   useEffect(() => {
     const initDev = async () => {
       try {
-        const storedDevToken = await getSecureItem('developer_token');
+        let storedDevToken = await getSecureItem('developer_token');
+        if (!storedDevToken) {
+          storedDevToken = await AsyncStorage.getItem('developer_token');
+        }
         const storedDevUser = await AsyncStorage.getItem('developer_user');
         const storedSupport = await AsyncStorage.getItem('support_session');
 

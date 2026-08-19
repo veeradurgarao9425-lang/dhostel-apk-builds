@@ -16,9 +16,11 @@ import {
   Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { developerService } from '../../services/developerService';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { DeveloperListSkeleton } from '../../components/ui/SkeletonCard';
 
 export default function DeveloperHostelsScreen() {
   const navigation = useNavigation<any>();
@@ -238,39 +240,60 @@ export default function DeveloperHostelsScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FAF6F0" />
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor="#18181B" />
 
-      {/* Top Header */}
-      <View style={[styles.topBar, { paddingTop: Platform.OS === 'android' ? insets.top + 8 : 8 }]}>
-        <View>
-          <Text style={styles.topTag}>PLATFORM DIRECTORY</Text>
-          <Text style={styles.screenTitle}>Hostels Management</Text>
-        </View>
-        <View style={styles.countBadge}>
-          <Text style={styles.countBadgeText}>{hostels.length} Hostels</Text>
-        </View>
-      </View>
+      {/* ─────────────────── EXECUTIVE HERO HEADER ─────────────────── */}
+      <LinearGradient
+        colors={['#18181B', '#27272A', '#1C1917']}
+        style={[
+          styles.heroHeader,
+          {
+            paddingTop: insets.top + (Platform.OS === 'android' ? 14 : 10),
+          },
+        ]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      >
+        {/* Decorative Ambient Glow Orbs */}
+        <View style={styles.hdrOrb1} />
+        <View style={styles.hdrOrb2} />
 
-      {/* Search Bar */}
-      <View style={styles.searchBoxWrap}>
-        <View style={styles.searchBar}>
-          <Ionicons name="search" size={18} color="#A89687" />
+        <View style={styles.topBarRow}>
+          <View>
+            <View style={styles.masterBadge}>
+              <Text style={styles.masterBadgeCrown}>👑</Text>
+              <Text style={styles.masterBadgeText}>PLATFORM DIRECTORY</Text>
+              <View style={styles.masterBadgeLiveDot} />
+            </View>
+            <Text style={styles.screenTitle}>Hostels Management</Text>
+          </View>
+          <View style={styles.countBadge}>
+            <Text style={styles.countBadgeText}>{hostels.length} Properties</Text>
+          </View>
+        </View>
+
+        {/* Floating Search Bar */}
+        <View style={styles.heroSearchBar}>
+          <Ionicons name="search" size={17} color="#FB923C" />
           <TextInput
             placeholder="Search by hostel name, city, code..."
-            placeholderTextColor="#A89687"
+            placeholderTextColor="#9CA3AF"
             value={search}
             onChangeText={setSearch}
             onSubmitEditing={() => fetchHostels(1)}
-            style={styles.searchInput}
+            autoCapitalize="none"
+            autoCorrect={false}
+            returnKeyType="search"
+            style={styles.heroSearchInput}
           />
           {search ? (
-            <TouchableOpacity onPress={() => { setSearch(''); fetchHostels(1); }}>
-              <Ionicons name="close-circle" size={18} color="#A89687" />
+            <TouchableOpacity onPress={() => setSearch('')}>
+              <Ionicons name="close-circle" size={18} color="#D1D5DB" />
             </TouchableOpacity>
           ) : null}
         </View>
-      </View>
+      </LinearGradient>
 
       {/* TOP TABS ROW 1: OWNERS LIST SEGREGATION */}
       <View style={styles.ownerTabsSection}>
@@ -327,10 +350,7 @@ export default function DeveloperHostelsScreen() {
 
       {/* List */}
       {loading && !refreshing ? (
-        <View style={styles.centerBox}>
-          <ActivityIndicator size="large" color="#C2410C" />
-          <Text style={styles.loadingText}>Loading platform hostels...</Text>
-        </View>
+        <DeveloperListSkeleton count={4} />
       ) : (
         <FlatList
           data={hostels}
@@ -422,7 +442,7 @@ export default function DeveloperHostelsScreen() {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -431,65 +451,105 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FAF6F0',
   },
-  topBar: {
+  heroHeader: {
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    position: 'relative',
+    overflow: 'hidden',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  hdrOrb1: {
+    position: 'absolute',
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+    backgroundColor: 'rgba(234, 88, 12, 0.12)',
+    top: -80,
+    right: -40,
+  },
+  hdrOrb2: {
+    position: 'absolute',
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    backgroundColor: 'rgba(124, 58, 237, 0.08)',
+    bottom: -50,
+    left: -40,
+  },
+  topBarRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#EFE7DC',
-    backgroundColor: '#FAF6F0',
+    marginBottom: 12,
   },
-  topTag: {
-    color: '#C2410C',
+  masterBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: 'rgba(251, 146, 60, 0.14)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+    marginBottom: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(251, 146, 60, 0.25)',
+  },
+  masterBadgeCrown: {
     fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 0.8,
+  },
+  masterBadgeLiveDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: '#10B981',
+  },
+  masterBadgeText: {
+    color: '#FB923C',
+    fontSize: 9.5,
+    fontWeight: '900',
+    letterSpacing: 0.7,
   },
   screenTitle: {
-    color: '#1C1917',
-    fontSize: 18,
+    color: '#FFFFFF',
+    fontSize: 19,
     fontWeight: '900',
+    letterSpacing: -0.3,
   },
   countBadge: {
-    backgroundColor: '#FFF7ED',
+    backgroundColor: 'rgba(251, 146, 60, 0.18)',
     paddingHorizontal: 10,
     paddingVertical: 5,
-    borderRadius: 8,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#FED7AA',
+    borderColor: 'rgba(251, 146, 60, 0.35)',
   },
   countBadgeText: {
-    color: '#C2410C',
+    color: '#FB923C',
     fontSize: 11,
     fontWeight: '800',
   },
-  searchBoxWrap: {
-    paddingHorizontal: 16,
-    paddingTop: 10,
-    backgroundColor: '#FAF6F0',
-  },
-  searchBar: {
+  heroSearchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.09)',
+    borderRadius: 14,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderWidth: 1,
-    borderColor: '#EFE7DC',
+    borderColor: 'rgba(255, 255, 255, 0.14)',
     gap: 8,
-    shadowColor: '#8C3A00',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.03,
-    shadowRadius: 4,
-    elevation: 1,
   },
-  searchInput: {
+  heroSearchInput: {
     flex: 1,
     fontSize: 13,
-    color: '#1C1917',
+    color: '#FFFFFF',
     padding: 0,
   },
   ownerTabsSection: {
