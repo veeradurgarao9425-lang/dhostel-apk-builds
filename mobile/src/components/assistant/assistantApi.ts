@@ -496,9 +496,34 @@ export async function fetchRoomByNumber(roomNum: number | string): Promise<any |
   });
   if (!foundRoom) return null;
 
-  // Fetch full details including occupants
-  const roomDetail = await safeGet(`/rooms/${foundRoom.room_id}`);
-  return roomDetail?.data || foundRoom;
+  // Fetch full details including occupants and fee summary
+  const [roomDetail, duesSummary] = await Promise.all([
+    safeGet(`/rooms/${foundRoom.room_id}`),
+    safeGet('/monthly-fees/summary')
+  ]);
+
+  const result = roomDetail?.data || foundRoom;
+  const feesList = duesSummary?.data?.fees || [];
+  const feeMap = new Map<number, any>();
+  feesList.forEach((f: any) => {
+    if (f.student_id) feeMap.set(Number(f.student_id), f);
+  });
+
+  if (Array.isArray(result.occupants) && result.occupants.length > 0) {
+    result.occupants = result.occupants.map((occ: any) => {
+      const sId = Number(occ.student_id || occ.id || occ.studentId);
+      const fee = feeMap.get(sId);
+      const balance = fee !== undefined ? parseFloat(fee.balance || 0) : (occ.due_amount !== undefined ? parseFloat(occ.due_amount) : 0);
+      const isPaid = balance <= 0;
+      return {
+        ...occ,
+        due_amount: balance,
+        rent_status: isPaid ? 'paid' : 'pending'
+      };
+    });
+  }
+
+  return result;
 }
 
 // ─── Floor Details by Floor Number ───────────────────────────────────────────

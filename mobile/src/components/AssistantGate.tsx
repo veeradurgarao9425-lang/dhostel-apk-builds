@@ -28,6 +28,7 @@ const EXPLICITLY_HIDDEN_ROUTES = [
   'AddHostel',
   'BulkRoomSetup',
   'AddPreBooking',
+  'PreBooking',
 
   // View / Details / Receipt Screens
   'StudentDetails',

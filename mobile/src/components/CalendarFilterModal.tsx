@@ -256,6 +256,40 @@ export const CalendarFilterModal: React.FC<CalendarFilterModalProps> = ({
                                 </View>
                             )}
                         </ScrollView>
+
+                        {/* Sticky Bottom Actions Bar */}
+                        <View style={[
+                            styles.footerBar,
+                            {
+                                borderTopColor: borderColor,
+                                backgroundColor: cardBg,
+                                paddingBottom: Math.max(insets.bottom, 14),
+                            }
+                        ]}>
+                            <TouchableOpacity
+                                style={[styles.footerResetBtn, { borderColor }]}
+                                onPress={() => {
+                                    onSelect({
+                                        type: 'all',
+                                        label: 'All Transactions',
+                                    });
+                                    onClose();
+                                }}
+                                activeOpacity={0.7}
+                            >
+                                <Ionicons name="refresh-outline" size={16} color={textMuted} />
+                                <Text style={[styles.footerResetText, { color: textMuted }]}>Clear</Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                style={[styles.footerConfirmBtn, { backgroundColor: theme.primary }]}
+                                onPress={onClose}
+                                activeOpacity={0.85}
+                            >
+                                <Ionicons name="checkmark-circle" size={18} color="#FFF" style={{ marginRight: 6 }} />
+                                <Text style={styles.footerConfirmText}>Apply Filter</Text>
+                            </TouchableOpacity>
+                        </View>
                     </View>
                 </View>
             </Modal>
@@ -429,6 +463,46 @@ const styles = StyleSheet.create({
         height: 5,
         borderRadius: 2.5,
         marginTop: 4,
+    },
+    footerBar: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 20,
+        paddingTop: 12,
+        borderTopWidth: 1,
+        gap: 12,
+    },
+    footerResetBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        borderRadius: 12,
+        borderWidth: 1,
+        gap: 6,
+    },
+    footerResetText: {
+        fontSize: 13.5,
+        fontWeight: '700',
+    },
+    footerConfirmBtn: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 13,
+        borderRadius: 12,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 3,
+    },
+    footerConfirmText: {
+        color: '#FFFFFF',
+        fontSize: 14.5,
+        fontWeight: '800',
     },
 });
 

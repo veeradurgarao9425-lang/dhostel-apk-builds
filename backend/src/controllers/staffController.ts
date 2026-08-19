@@ -114,8 +114,7 @@ export const createStaff = async (req: AuthRequest, res: Response) => {
         phone,
         email,
         id_number: aadhaar_number
-      },
-      { entityType: 'staff' }
+      }
     );
 
     if (!validation.isUnique) {

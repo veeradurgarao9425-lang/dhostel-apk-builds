@@ -311,14 +311,26 @@ export default function IncomeDetailsScreen() {
     // Filter transactions into separate categories
     const rentTransactions = transactionsList.filter((t: any) => t.type === 'Rent');
     const guestTransactions = transactionsList.filter((t: any) => t.type === 'Guest');
-    const otherTransactions = transactionsList.filter((t: any) => t.type === 'Other');
+    const depositTransactions = transactionsList.filter((t: any) => 
+        t.type === 'Deposit' || 
+        t.type === 'Deposit Refund' ||
+        t.title?.toLowerCase().includes('deposit') || 
+        t.subtitle?.toLowerCase().includes('deposit') || 
+        t.subtitle?.toLowerCase().includes('settle') || 
+        t.title?.toLowerCase().includes('damage')
+    );
     const admissionTransactions = transactionsList.filter((t: any) => t.type === 'Admission');
+    const otherTransactions = transactionsList.filter((t: any) => 
+        t.type !== 'Rent' && t.type !== 'Guest' && t.type !== 'Admission' &&
+        !(t.type === 'Deposit' || t.title?.toLowerCase().includes('deposit') || t.subtitle?.toLowerCase().includes('deposit') || t.subtitle?.toLowerCase().includes('settle') || t.title?.toLowerCase().includes('damage'))
+    );
 
     const total = transactionsList.reduce((sum: number, t: any) => sum + t.amount, 0);
     const rentTotal = rentTransactions.reduce((sum: number, t: any) => sum + t.amount, 0);
+    const depositTotal = depositTransactions.reduce((sum: number, t: any) => sum + t.amount, 0);
     const guestTotal = guestTransactions.reduce((sum: number, t: any) => sum + t.amount, 0);
-    const otherTotal = otherTransactions.reduce((sum: number, t: any) => sum + t.amount, 0);
     const admissionTotal = admissionTransactions.reduce((sum: number, t: any) => sum + t.amount, 0);
+    const otherTotal = otherTransactions.reduce((sum: number, t: any) => sum + t.amount, 0);
 
     const totalPaymentsCount = transactionsList.length;
     const averagePayment = totalPaymentsCount > 0 ? Math.round(total / totalPaymentsCount) : 0;
@@ -802,6 +814,56 @@ export default function IncomeDetailsScreen() {
                                 <Ionicons name="help-circle-outline" size={13} color="#64748B" />
                             </View>
                         </TouchableOpacity>
+                    </View>
+                )}
+
+                {/* REVENUE CATEGORY BREAKDOWN CARDS */}
+                {!loading && total > 0 && (
+                    <View style={{ marginHorizontal: 16, marginTop: 12, marginBottom: 4 }}>
+                        <Text style={{ fontSize: 13, fontWeight: '700', color: theme.textSecondary, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                            Income Sources & Settlements
+                        </Text>
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+                            {rentTotal > 0 && (
+                                <View style={{ backgroundColor: isDark ? '#064E3B' : '#DCFCE7', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, borderWidth: 1, borderColor: isDark ? '#059669' : '#BBF7D0', minWidth: 120 }}>
+                                    <Text style={{ fontSize: 11, fontWeight: '700', color: isDark ? '#A7F3D0' : '#15803D' }}>Rent Collections</Text>
+                                    <Text style={{ fontSize: 15, fontWeight: '900', color: isDark ? '#FFF' : '#166534', marginTop: 2 }}>₹{rentTotal.toLocaleString('en-IN')}</Text>
+                                    <Text style={{ fontSize: 10, color: isDark ? '#A7F3D0' : '#15803D', marginTop: 2 }}>{rentTransactions.length} transaction{rentTransactions.length > 1 ? 's' : ''}</Text>
+                                </View>
+                            )}
+
+                            {depositTotal > 0 && (
+                                <View style={{ backgroundColor: isDark ? '#1E3A8A' : '#EFF6FF', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, borderWidth: 1, borderColor: isDark ? '#2563EB' : '#BFDBFE', minWidth: 120 }}>
+                                    <Text style={{ fontSize: 11, fontWeight: '700', color: isDark ? '#BFDBFE' : '#1D4ED8' }}>Deposits / Vacate</Text>
+                                    <Text style={{ fontSize: 15, fontWeight: '900', color: isDark ? '#FFF' : '#1E40AF', marginTop: 2 }}>₹{depositTotal.toLocaleString('en-IN')}</Text>
+                                    <Text style={{ fontSize: 10, color: isDark ? '#BFDBFE' : '#1D4ED8', marginTop: 2 }}>{depositTransactions.length} settlement{depositTransactions.length > 1 ? 's' : ''}</Text>
+                                </View>
+                            )}
+
+                            {admissionTotal > 0 && (
+                                <View style={{ backgroundColor: isDark ? '#3B0764' : '#EDE9FE', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, borderWidth: 1, borderColor: isDark ? '#7C3AED' : '#DDD6FE', minWidth: 120 }}>
+                                    <Text style={{ fontSize: 11, fontWeight: '700', color: isDark ? '#DDD6FE' : '#6D28D9' }}>Admission Fees</Text>
+                                    <Text style={{ fontSize: 15, fontWeight: '900', color: isDark ? '#FFF' : '#5B21B6', marginTop: 2 }}>₹{admissionTotal.toLocaleString('en-IN')}</Text>
+                                    <Text style={{ fontSize: 10, color: isDark ? '#DDD6FE' : '#6D28D9', marginTop: 2 }}>{admissionTransactions.length} new student{admissionTransactions.length > 1 ? 's' : ''}</Text>
+                                </View>
+                            )}
+
+                            {guestTotal > 0 && (
+                                <View style={{ backgroundColor: isDark ? '#4A044E' : '#F3E8FF', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, borderWidth: 1, borderColor: isDark ? '#9333EA' : '#E9D5FF', minWidth: 120 }}>
+                                    <Text style={{ fontSize: 11, fontWeight: '700', color: isDark ? '#E9D5FF' : '#7E22CE' }}>Guest Stays</Text>
+                                    <Text style={{ fontSize: 15, fontWeight: '900', color: isDark ? '#FFF' : '#6B21A8', marginTop: 2 }}>₹{guestTotal.toLocaleString('en-IN')}</Text>
+                                    <Text style={{ fontSize: 10, color: isDark ? '#E9D5FF' : '#7E22CE', marginTop: 2 }}>{guestTransactions.length} guest{guestTransactions.length > 1 ? 's' : ''}</Text>
+                                </View>
+                            )}
+
+                            {otherTotal > 0 && (
+                                <View style={{ backgroundColor: isDark ? '#78350F' : '#FFEDD5', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, borderWidth: 1, borderColor: isDark ? '#D97706' : '#FED7AA', minWidth: 120 }}>
+                                    <Text style={{ fontSize: 11, fontWeight: '700', color: isDark ? '#FED7AA' : '#C2410C' }}>Other Incomes</Text>
+                                    <Text style={{ fontSize: 15, fontWeight: '900', color: isDark ? '#FFF' : '#9A3412', marginTop: 2 }}>₹{otherTotal.toLocaleString('en-IN')}</Text>
+                                    <Text style={{ fontSize: 10, color: isDark ? '#FED7AA' : '#C2410C', marginTop: 2 }}>{otherTransactions.length} record{otherTransactions.length > 1 ? 's' : ''}</Text>
+                                </View>
+                            )}
+                        </ScrollView>
                     </View>
                 )}
 

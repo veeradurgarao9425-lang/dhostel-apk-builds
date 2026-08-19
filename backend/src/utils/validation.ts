@@ -8,7 +8,7 @@ export interface IdentityIdentifiers {
 
 export interface ExcludeEntity {
   entityType: 'student' | 'staff' | 'guest';
-  entityId: number | string;
+  entityId?: number | string;
 }
 
 export interface ValidationResult {

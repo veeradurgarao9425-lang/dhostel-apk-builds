@@ -201,7 +201,7 @@ export function FilterDuesModal({ visible, onClose, onApply, initialFilters }: F
 
     return (
         <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
                 <View style={S.modalOverlay}>
                 <View style={[S.modalContent, { backgroundColor: isDark ? '#0F172A' : '#F8FAFC' }]}>
                     {/* Header Left Aligned */}

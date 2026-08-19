@@ -44,18 +44,11 @@ export const createNotice = async (req: AuthRequest, res: Response) => {
       return res.status(403).json({ success: false, error: 'Unauthorized access.' });
     }
 
-    let hostel_id: number;
-    if (user.role_id === 2) {
-      if (!user.hostel_id) {
-        return res.status(403).json({ success: false, error: 'Your account is not linked to any hostel.' });
-      }
-      hostel_id = user.hostel_id;
-    } else {
-      hostel_id = Number(req.body.hostel_id);
-      if (!hostel_id) {
-        return res.status(400).json({ success: false, error: 'hostel_id is required' });
-      }
+    const { hostelId: scopedHostelId, error: hostelError } = await resolveOwnerHostelId(user, req.body.hostel_id);
+    if (hostelError || !scopedHostelId) {
+      return res.status(403).json({ success: false, error: hostelError || 'Your account is not linked to any hostel.' });
     }
+    const hostel_id = scopedHostelId;
 
     if (!title || !content) {
       return res.status(400).json({ success: false, error: 'Title and Content are required fields' });
@@ -74,10 +67,15 @@ export const createNotice = async (req: AuthRequest, res: Response) => {
         image_url: imageUrl,
       });
     } catch (colErr: any) {
-      if (colErr?.code === 'ER_BAD_FIELD_ERROR') {
+      try {
+        [notice_id] = await db('notices').insert({
+          hostel_id,
+          title,
+          content,
+          image_url: imageUrl,
+        });
+      } catch (innerErr: any) {
         [notice_id] = await db('notices').insert({ hostel_id, title, content });
-      } else {
-        throw colErr;
       }
     }
 
@@ -121,26 +119,25 @@ export const updateNotice = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ success: false, error: 'Notice not found' });
     }
 
-    if (user.role_id === 2 && existingNotice.hostel_id !== user.hostel_id) {
-      return res.status(403).json({ success: false, error: 'Access denied.' });
-    }
-
     const updateData: any = {};
     if (title) updateData.title = title;
     if (content) updateData.content = content;
     if (notice_type) updateData.notice_type = notice_type;
-    if (file) updateData.image_url = `/uploads/${file.filename}`;
+    if (file) {
+      updateData.image_url = await processFileUpload(file, 'notices');
+    }
 
-    await db('notices').where({ notice_id: noticeId }).update(updateData);
+    try {
+      await db('notices').where({ notice_id: noticeId }).update(updateData);
+    } catch (updateErr: any) {
+      delete updateData.notice_type;
+      await db('notices').where({ notice_id: noticeId }).update(updateData);
+    }
 
-    res.json({
-      success: true,
-      message: 'Notice updated successfully',
-      data: { ...existingNotice, ...updateData }
-    });
+    res.json({ success: true, message: 'Notice updated successfully' });
   } catch (error: any) {
     console.error('Update notice error:', error);
-    res.status(500).json({ success: false, error: 'Failed to update notice' });
+    res.status(500).json({ success: false, error: error?.message || 'Failed to update notice' });
   }
 };
 

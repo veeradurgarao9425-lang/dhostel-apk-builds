@@ -1635,7 +1635,8 @@ const RoomDetailCardBlock = ({ room }: { room: any }) => {
                 const name = `${occ.first_name || occ.name || 'Student'} ${occ.last_name || ''}`.trim();
                 const studentId = occ.id || occ.student_id || occ.studentId;
                 const phone = occ.phone || occ.mobile || '';
-                const isPaid = occ.rent_status === 'paid' || occ.due_amount === 0;
+                const dueAmt = occ.due_amount !== undefined && occ.due_amount !== null ? parseFloat(occ.due_amount) : 0;
+                const isPaid = occ.rent_status === 'paid' || dueAmt <= 0;
 
                 return (
                   <TouchableOpacity
@@ -1698,7 +1699,7 @@ const RoomDetailCardBlock = ({ room }: { room: any }) => {
                     <View style={{ alignItems: 'flex-end', gap: 4 }}>
                       <View style={[st.listItemBadge, { backgroundColor: isPaid ? '#ECFDF5' : '#FEF2F2' }]}>
                         <Text style={[st.listItemBadgeText, { color: isPaid ? '#10B981' : '#EF4444', fontSize: 10, fontWeight: '700' }]}>
-                          {isPaid ? 'Paid' : 'Dues Pending'}
+                          {isPaid ? 'Paid' : (dueAmt > 0 ? `₹${dueAmt.toLocaleString('en-IN')} Due` : 'Dues Pending')}
                         </Text>
                       </View>
                       <Ionicons name="chevron-forward" size={14} color="#CBD5E1" />

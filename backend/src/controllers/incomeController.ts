@@ -617,9 +617,25 @@ export const getIncomeAnalytics = async (req: AuthRequest, res: Response) => {
     ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
     const rentTotal = feePayments.reduce((sum, fp) => sum + parseFloat(fp.amount), 0);
-    const otherTotal = incomes.reduce((sum, inc) => sum + parseFloat(inc.amount), 0);
+    const depositTotal = incomes
+      .filter(inc => inc.source && (
+        inc.source.toLowerCase().includes('deposit') ||
+        inc.source.toLowerCase().includes('deduction') ||
+        inc.source.toLowerCase().includes('settle') ||
+        inc.source.toLowerCase().includes('damage')
+      ))
+      .reduce((sum, inc) => sum + parseFloat(inc.amount), 0);
+    const otherTotal = incomes
+      .filter(inc => !(inc.source && (
+        inc.source.toLowerCase().includes('deposit') ||
+        inc.source.toLowerCase().includes('deduction') ||
+        inc.source.toLowerCase().includes('settle') ||
+        inc.source.toLowerCase().includes('damage')
+      )))
+      .reduce((sum, inc) => sum + parseFloat(inc.amount), 0);
     const guestTotal = guests.reduce((sum, g) => sum + parseFloat(g.amount_paid), 0);
-    const totalAmount = rentTotal + otherTotal + guestTotal;
+    const admissionTotal = admissions.reduce((sum, a) => sum + parseFloat(a.admission_fee), 0);
+    const totalAmount = rentTotal + depositTotal + otherTotal + guestTotal + admissionTotal;
 
     // 4. Graph Data
     let graph: { label: string; value: number }[] = [];
@@ -681,7 +697,13 @@ export const getIncomeAnalytics = async (req: AuthRequest, res: Response) => {
         total_amount: totalAmount,
         total_count: transactions.length,
         transactions: paginatedTransactions,
-        breakdown: { rent: rentTotal, other: otherTotal },
+        breakdown: {
+          rent: rentTotal,
+          deposit: depositTotal,
+          admission: admissionTotal,
+          guest: guestTotal,
+          other: otherTotal
+        },
         graph,
         hasMore
       }

@@ -250,14 +250,50 @@ export const getRoomById = async (req: AuthRequest, res: Response) => {
       }
     }
 
-    // Get occupants
+    // Get occupants with payment/dues status
     console.log('[getRoomById] Fetching occupants for room:', roomId);
-    const students = await db('students')
+    const rawStudents = await db('students')
       .where('room_id', roomId)
       .whereIn('status', [1, 2])
       .select('student_id', 'first_name', 'last_name', 'phone', 'bed_number');
 
-    const occupiedCount = students.length;
+    let studentsWithDues = rawStudents;
+    if (rawStudents.length > 0) {
+      try {
+        const studentIds = rawStudents.map(s => s.student_id);
+        const fees = await db('monthly_fees')
+          .whereIn('student_id', studentIds)
+          .orderBy('created_at', 'desc');
+
+        const feeMap = new Map<number, any>();
+        fees.forEach(f => {
+          if (!feeMap.has(f.student_id)) {
+            feeMap.set(f.student_id, f);
+          }
+        });
+
+        studentsWithDues = rawStudents.map(s => {
+          const fee = feeMap.get(s.student_id);
+          const balance = fee ? parseFloat(fee.balance || 0) : 0;
+          const paidAmount = fee ? parseFloat(fee.paid_amount || fee.amount_paid || 0) : 0;
+          const isPaid = balance <= 0;
+          return {
+            ...s,
+            due_amount: balance,
+            paid_amount: paidAmount,
+            rent_status: isPaid ? 'paid' : 'pending'
+          };
+        });
+      } catch (e) {
+        studentsWithDues = rawStudents.map(s => ({
+          ...s,
+          due_amount: 0,
+          rent_status: 'paid'
+        }));
+      }
+    }
+
+    const occupiedCount = rawStudents.length;
 
     // Capacity: use r.capacity first, fall back to room type name, then hardcode 2
     const rawCap = (room as any).capacity;
@@ -276,7 +312,7 @@ export const getRoomById = async (req: AuthRequest, res: Response) => {
 
     const availableBeds = Math.max(0, totalCapacity - occupiedCount);
 
-    const occupiedBedsList = students.map(s => s.bed_number).filter(Boolean);
+    const occupiedBedsList = rawStudents.map(s => s.bed_number).filter(Boolean);
 
     res.json({
       success: true,
@@ -288,7 +324,7 @@ export const getRoomById = async (req: AuthRequest, res: Response) => {
         occupied_beds_list: occupiedBedsList,
         capacity: totalCapacity,
         total_capacity: totalCapacity,
-        occupants: students
+        occupants: studentsWithDues
       }
     });
   } catch (error: any) {

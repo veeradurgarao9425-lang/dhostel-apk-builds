@@ -963,9 +963,13 @@ export async function patchDatabaseSchema() {
         console.log('[schema-patch] creating indexes for notices table...');
         await db.raw("CREATE INDEX idx_notices_hostel ON notices(hostel_id)");
       } else {
-        // Ensure image_url column exists
+        // Ensure image_url and notice_type columns exist
         const [columns] = await db.raw("SHOW COLUMNS FROM notices");
         const columnNames = (columns as any[]).map(col => col.Field.toLowerCase());
+        if (!columnNames.includes('notice_type')) {
+          console.log('[schema-patch] adding notice_type to notices...');
+          await db.raw("ALTER TABLE notices ADD COLUMN notice_type VARCHAR(100) DEFAULT 'General'");
+        }
         if (!columnNames.includes('image_url')) {
           console.log('[schema-patch] adding image_url to notices...');
           await db.raw("ALTER TABLE notices ADD COLUMN image_url TEXT NULL");

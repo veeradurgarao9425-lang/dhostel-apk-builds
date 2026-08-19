@@ -19,10 +19,11 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as ImagePicker from 'expo-image-picker';
 import {
     User, Phone, Home, Calendar,
     ChevronDown, Check, BedDouble, Plus, Search,
-    Mail, CreditCard
+    Mail, CreditCard, Camera, Upload, X, FileText, Image as ImageIcon
 } from 'lucide-react-native';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import { useAuth } from '../../contexts/AuthContext';
@@ -32,6 +33,150 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { COLORS, FONT, SPACING } from '../theme/index';
 import { AppHeader } from '../components/AppHeader';
 import { FullScreenLoader } from '../components/FullScreenLoader';
+
+// ─── Image Source Picker Bottom Drawer ──────────────────────────────────────
+const ImageSourceDrawer = ({ visible, onClose, onSelectCamera, onSelectGallery, title }: any) => {
+    const { theme, isDark, fontSize } = useTheme();
+    const insets = useSafeAreaInsets();
+    return (
+        <ModalSheet visible={visible} onClose={onClose} maxHeight="40%">
+            <View style={styles.sheetHeader}>
+                <Text style={[styles.sheetTitle, { color: theme.textPrimary }]}>{title || 'Select Image Source'}</Text>
+                <TouchableOpacity onPress={onClose} style={[styles.doneBtn, { backgroundColor: isDark ? theme.primary + '20' : '#FFEFE6' }]}>
+                    <Text style={[styles.doneBtnText, { color: theme.primary }]}>Close</Text>
+                </TouchableOpacity>
+            </View>
+            <View style={{ padding: 24, paddingBottom: Math.max(insets.bottom, 24) + 20, gap: 16, flexDirection: 'row', justifyContent: 'space-around' }}>
+                <TouchableOpacity
+                    style={[styles.sourceOptionBtn, { backgroundColor: isDark ? '#1E293B' : '#F3EEFF', borderColor: theme.primary }]}
+                    onPress={() => { onSelectCamera(); onClose(); }}
+                    activeOpacity={0.75}
+                >
+                    <View style={[styles.sourceIconBg, { backgroundColor: theme.primary }]}>
+                        <Camera size={24} color="#FFF" />
+                    </View>
+                    <Text style={[styles.sourceOptionText, { color: theme.textPrimary, fontSize }]}>Use Camera</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                    style={[styles.sourceOptionBtn, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0' }]}
+                    onPress={() => { onSelectGallery(); onClose(); }}
+                    activeOpacity={0.75}
+                >
+                    <View style={[styles.sourceIconBg, { backgroundColor: isDark ? '#475569' : '#CBD5E1' }]}>
+                        <Upload size={24} color={isDark ? '#FFF' : '#475569'} />
+                    </View>
+                    <Text style={[styles.sourceOptionText, { color: theme.textPrimary, fontSize }]}>Choose Gallery</Text>
+                </TouchableOpacity>
+            </View>
+        </ModalSheet>
+    );
+};
+
+// ─── Document Upload Box Component ──────────────────────────────────────────
+const DocumentUploadBox = ({ label, uri, onCapture, onRemove, isFront, error }: { label: string; uri: string | null; onCapture: (uri: string) => void; onRemove: () => void; isFront: boolean; error?: string }) => {
+    const { theme, isDark } = useTheme();
+    const [pickerVisible, setPickerVisible] = useState(false);
+
+    const onSelectCamera = async () => {
+        try {
+            const p = await ImagePicker.requestCameraPermissionsAsync();
+            if (!p.granted) {
+                Alert.alert('Permission Required', 'Camera permission is needed to upload documents.');
+                return;
+            }
+            const r = await ImagePicker.launchCameraAsync({ quality: 0.6 });
+            if (!r.canceled && r.assets && r.assets.length > 0) {
+                onCapture(r.assets[0].uri);
+            }
+        } catch (err) {
+            console.error('Document camera error:', err);
+        }
+    };
+
+    const onSelectGallery = async () => {
+        try {
+            const p = await ImagePicker.requestMediaLibraryPermissionsAsync();
+            if (!p.granted) {
+                Alert.alert('Permission Required', 'Media library permission is needed to upload documents.');
+                return;
+            }
+            const r = await ImagePicker.launchImageLibraryAsync({ quality: 0.6 });
+            if (!r.canceled && r.assets && r.assets.length > 0) {
+                onCapture(r.assets[0].uri);
+            }
+        } catch (err) {
+            console.error('Document gallery error:', err);
+        }
+    };
+
+    return (
+        <>
+            <View style={[styles.docUploadBox, { flex: 1, backgroundColor: isDark ? '#1E293B' : '#F9FAFB', borderColor: error ? '#EF4444' : (isDark ? '#334155' : '#E2E8F0'), borderStyle: 'dashed' }]}>
+                {uri ? (
+                    <View style={styles.docPreviewContainer}>
+                        <Image source={{ uri }} style={styles.docPreviewImage} />
+                        <TouchableOpacity style={styles.docRemoveBtn} onPress={onRemove}>
+                            <X size={14} color="#FFF" />
+                        </TouchableOpacity>
+                        <TouchableOpacity style={[styles.docRetakeRow, { backgroundColor: 'rgba(0,0,0,0.6)' }]} onPress={() => setPickerVisible(true)}>
+                            <Camera size={12} color="#FFF" />
+                            <Text style={{ fontSize: 10, color: '#FFF', fontWeight: '700', marginLeft: 4 }}>Retake</Text>
+                        </TouchableOpacity>
+                    </View>
+                ) : (
+                    <View style={{ flex: 1, justifyContent: 'space-between', padding: 8 }}>
+                        <View style={styles.docBoxTopRow}>
+                            <View style={[styles.skeletonCard, { borderColor: error ? '#EF4444' : (isDark ? '#475569' : '#CBD5E1') }]}>
+                                {isFront ? (
+                                    <View style={{ flexDirection: 'row', gap: 4, alignItems: 'center', height: '100%', paddingHorizontal: 4 }}>
+                                        <View style={[styles.skeletonAvatar, { backgroundColor: error ? '#EF4444' : (isDark ? '#475569' : '#CBD5E1') }]} />
+                                        <View style={{ flex: 1, gap: 2 }}>
+                                            <View style={[styles.skeletonLine, { width: '80%', backgroundColor: error ? '#EF4444' : (isDark ? '#475569' : '#CBD5E1') }]} />
+                                            <View style={[styles.skeletonLine, { width: '60%', backgroundColor: error ? '#EF4444' : (isDark ? '#475569' : '#CBD5E1') }]} />
+                                        </View>
+                                    </View>
+                                ) : (
+                                    <View style={{ justifyContent: 'center', height: '100%', gap: 2, paddingHorizontal: 4 }}>
+                                        <View style={[styles.skeletonLine, { width: '90%', backgroundColor: error ? '#EF4444' : (isDark ? '#475569' : '#CBD5E1') }]} />
+                                        <View style={[styles.skeletonLine, { width: '80%', backgroundColor: error ? '#EF4444' : (isDark ? '#475569' : '#CBD5E1') }]} />
+                                        <View style={[styles.skeletonLine, { width: '40%', backgroundColor: error ? '#EF4444' : (isDark ? '#475569' : '#CBD5E1') }]} />
+                                    </View>
+                                )}
+                            </View>
+                            <View style={[styles.uploadCircle, { backgroundColor: error ? '#FEE2E2' : (isDark ? '#2D1B6B' : '#F3EEFF') }]}>
+                                <Upload size={14} color={error ? '#EF4444' : theme.primary} />
+                            </View>
+                        </View>
+
+                        <View style={{ marginTop: 6 }}>
+                            <Text style={[styles.docBoxTitle, { color: error ? '#EF4444' : (isDark ? '#F1F5F9' : '#1E293B') }]}>{label}</Text>
+                            <Text style={styles.docBoxSubtitle}>JPG, PNG · Max 5MB</Text>
+                        </View>
+
+                        <TouchableOpacity
+                            style={[styles.docUploadBtn, { borderColor: error ? '#EF4444' : theme.primary }]}
+                            onPress={() => setPickerVisible(true)}
+                            activeOpacity={0.7}
+                        >
+                            <Upload size={12} color={error ? '#EF4444' : theme.primary} />
+                            <Text style={[styles.docUploadBtnText, { color: error ? '#EF4444' : theme.primary }]}>Upload</Text>
+                        </TouchableOpacity>
+                    </View>
+                )}
+                {error && <Text style={{ color: '#EF4444', fontSize: 9, marginTop: 4, fontWeight: '600', textAlign: 'center' }}>{error}</Text>}
+            </View>
+
+            <ImageSourceDrawer
+                visible={pickerVisible}
+                onClose={() => setPickerVisible(false)}
+                onSelectCamera={onSelectCamera}
+                onSelectGallery={onSelectGallery}
+                title={`Upload ${label}`}
+            />
+        </>
+    );
+};
 
 // ─── Reusable custom components ──────────────────────────────────────────────
 const FormInput = ({ label, icon: Icon, placeholder, value, onChangeText, keyboardType, error, onBlur }: any) => {
@@ -448,6 +593,8 @@ export default function PreBookingScreen({ navigation, route }: any) {
 
     const [idProofTypes, setIdProofTypes] = useState<any[]>([]);
     const [proofModal, setProofModal] = useState(false);
+    const [idProofFront, setIdProofFront] = useState<string | null>(null);
+    const [idProofBack, setIdProofBack] = useState<string | null>(null);
 
     const selectedRoom = rooms.find(r => r.room_id?.toString() === formData.room_id);
     const selectedBed = beds.find(b => b.bed_id?.toString() === formData.bed_id);
@@ -577,6 +724,8 @@ export default function PreBookingScreen({ navigation, route }: any) {
             first_name: '', last_name: '', phone: '', email: '', id_proof_type_id: '', id_proof_number: '', gender: 'Male', expected_join_date: new Date().toISOString().split('T')[0],
             room_id: '', bed_id: '', floor_number: '', monthly_rent: '',
         });
+        setIdProofFront(null);
+        setIdProofBack(null);
         setErrors({});
     };
 
@@ -587,7 +736,7 @@ export default function PreBookingScreen({ navigation, route }: any) {
         }
         setLoading(true);
         try {
-            const payload = {
+            const payload: any = {
                 first_name: formData.first_name.trim(),
                 last_name: formData.last_name.trim(),
                 gender: formData.gender,
@@ -605,7 +754,42 @@ export default function PreBookingScreen({ navigation, route }: any) {
                 admission_status: 0,
                 id_proof_status: 1,
             };
-            await api.post('/students', payload);
+
+            const hasFiles = (idProofFront && idProofFront.startsWith('file:')) || (idProofBack && idProofBack.startsWith('file:'));
+            if (hasFiles) {
+                const bodyFormData = new FormData();
+                Object.keys(payload).forEach(key => {
+                    if (payload[key] !== null && payload[key] !== undefined) {
+                        bodyFormData.append(key, String(payload[key]));
+                    }
+                });
+                if (idProofFront && idProofFront.startsWith('file:')) {
+                    const filename = idProofFront.split('/').pop() || 'id_proof_front.jpg';
+                    const match = /\.(\w+)$/.exec(filename);
+                    const type = match ? `image/${match[1]}` : 'image/jpeg';
+                    bodyFormData.append('id_proof_front', {
+                        uri: idProofFront,
+                        name: filename,
+                        type,
+                    } as any);
+                }
+                if (idProofBack && idProofBack.startsWith('file:')) {
+                    const filename = idProofBack.split('/').pop() || 'id_proof_back.jpg';
+                    const match = /\.(\w+)$/.exec(filename);
+                    const type = match ? `image/${match[1]}` : 'image/jpeg';
+                    bodyFormData.append('id_proof_back', {
+                        uri: idProofBack,
+                        name: filename,
+                        type,
+                    } as any);
+                }
+                await api.post('/students', bodyFormData, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
+            } else {
+                await api.post('/students', payload);
+            }
+
             Toast.show({ type: 'success', text1: 'Pre-Booking Saved', text2: 'The bed has been successfully reserved.' });
             navigation.goBack();
         } catch (e: any) {
@@ -678,25 +862,50 @@ export default function PreBookingScreen({ navigation, route }: any) {
                         onPress={() => setProofModal(true)} 
                     />
                     {formData.id_proof_type_id ? (
-                        <FormInput 
-                            label={`${idProofTypes.find(t => t.id.toString() === formData.id_proof_type_id)?.name || 'ID'} Number *`} 
-                            icon={CreditCard} 
-                            placeholder={`Enter ${idProofTypes.find(t => t.id.toString() === formData.id_proof_type_id)?.name || 'ID'} Number`} 
-                            value={formData.id_proof_number} 
-                            error={errors.id_proof_number} 
-                            onChangeText={(t: string) => {
-                                const proofTypeName = idProofTypes.find(p => p.id.toString() === formData.id_proof_type_id)?.name || '';
-                                let clean = t;
-                                if (proofTypeName.toLowerCase().includes('aadhar') || proofTypeName.toLowerCase().includes('aadhaar')) {
-                                    clean = t.replace(/\D/g, '').slice(0, 12);
-                                } else if (proofTypeName.toLowerCase().includes('pan')) {
-                                    clean = t.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10);
-                                }
-                                up('id_proof_number', clean);
-                                setErrors(prev => { const newE = { ...prev }; delete newE.id_proof_number; return newE; });
-                            }} 
-                            onBlur={() => checkUnique('id_proof_number', formData.id_proof_number)}
-                        />
+                        <>
+                            <FormInput 
+                                label={`${idProofTypes.find(t => t.id.toString() === formData.id_proof_type_id)?.name || 'ID'} Number *`} 
+                                icon={CreditCard} 
+                                placeholder={`Enter ${idProofTypes.find(t => t.id.toString() === formData.id_proof_type_id)?.name || 'ID'} Number`} 
+                                value={formData.id_proof_number} 
+                                error={errors.id_proof_number} 
+                                onChangeText={(t: string) => {
+                                    const proofTypeName = idProofTypes.find(p => p.id.toString() === formData.id_proof_type_id)?.name || '';
+                                    let clean = t;
+                                    if (proofTypeName.toLowerCase().includes('aadhar') || proofTypeName.toLowerCase().includes('aadhaar')) {
+                                        clean = t.replace(/\D/g, '').slice(0, 12);
+                                    } else if (proofTypeName.toLowerCase().includes('pan')) {
+                                        clean = t.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10);
+                                    }
+                                    up('id_proof_number', clean);
+                                    setErrors(prev => { const newE = { ...prev }; delete newE.id_proof_number; return newE; });
+                                }} 
+                                onBlur={() => checkUnique('id_proof_number', formData.id_proof_number)}
+                            />
+
+                            {/* ID Proof Attachment Upload Box */}
+                            <View style={{ marginTop: 8, marginBottom: 4 }}>
+                                <Text style={[styles.inputLabel, { fontSize: fontSize - 1, color: theme.textSecondary, marginBottom: 8 }]}>
+                                    {idProofTypes.find(t => t.id.toString() === formData.id_proof_type_id)?.name || 'ID'} Documents (Optional)
+                                </Text>
+                                <View style={{ flexDirection: 'row', gap: 12, height: 160 }}>
+                                    <DocumentUploadBox
+                                        label="Front Side"
+                                        uri={idProofFront}
+                                        onCapture={(uri) => setIdProofFront(uri)}
+                                        onRemove={() => setIdProofFront(null)}
+                                        isFront={true}
+                                    />
+                                    <DocumentUploadBox
+                                        label="Back Side"
+                                        uri={idProofBack}
+                                        onCapture={(uri) => setIdProofBack(uri)}
+                                        onRemove={() => setIdProofBack(null)}
+                                        isFront={false}
+                                    />
+                                </View>
+                            </View>
+                        </>
                     ) : null}
                 </View>
 
@@ -867,5 +1076,116 @@ const styles = StyleSheet.create({
     selectorTabText: {
         fontSize: 14,
         fontWeight: '600',
+    },
+    docUploadBox: {
+        borderWidth: 1.5,
+        borderRadius: 14,
+        padding: 10,
+        minHeight: 140,
+        overflow: 'hidden',
+    },
+    docPreviewContainer: {
+        width: '100%',
+        height: '100%',
+        borderRadius: 10,
+        overflow: 'hidden',
+        position: 'relative',
+    },
+    docPreviewImage: {
+        width: '100%',
+        height: '100%',
+        resizeMode: 'cover',
+    },
+    docRemoveBtn: {
+        position: 'absolute',
+        top: 6,
+        right: 6,
+        backgroundColor: 'rgba(239, 68, 68, 0.9)',
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    docRetakeRow: {
+        position: 'absolute',
+        bottom: 6,
+        left: 6,
+        right: 6,
+        paddingVertical: 4,
+        borderRadius: 6,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    docBoxTopRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    skeletonCard: {
+        width: 44,
+        height: 28,
+        borderRadius: 4,
+        borderWidth: 1,
+        borderStyle: 'dashed',
+        padding: 2,
+    },
+    skeletonAvatar: {
+        width: 10,
+        height: 10,
+        borderRadius: 5,
+    },
+    skeletonLine: {
+        height: 2.5,
+        borderRadius: 1,
+    },
+    uploadCircle: {
+        width: 28,
+        height: 28,
+        borderRadius: 14,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    docBoxTitle: {
+        fontSize: 12,
+        fontWeight: '700',
+    },
+    docBoxSubtitle: {
+        fontSize: 10,
+        color: '#94A3B8',
+        marginTop: 2,
+    },
+    docUploadBtn: {
+        borderWidth: 1,
+        borderRadius: 8,
+        paddingVertical: 5,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 4,
+        marginTop: 8,
+    },
+    docUploadBtnText: {
+        fontSize: 11,
+        fontWeight: '700',
+    },
+    sourceOptionBtn: {
+        alignItems: 'center',
+        padding: 16,
+        borderRadius: 16,
+        borderWidth: 1,
+        width: '45%',
+        gap: 10,
+    },
+    sourceIconBg: {
+        width: 50,
+        height: 50,
+        borderRadius: 25,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    sourceOptionText: {
+        fontWeight: '700',
     },
 });

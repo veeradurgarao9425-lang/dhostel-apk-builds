@@ -153,6 +153,7 @@ export const OwnerAssistant: React.FC = () => {
   const insets = useSafeAreaInsets();
   const [isOpen, setIsOpen] = useState(false);
   const [isTourActive, setIsTourActive] = useState(false);
+  const [isAssistantHidden, setIsAssistantHidden] = useState(false);
   const [currentRoute, setCurrentRoute] = useState<string | null>(null);
 
   // Content state
@@ -282,6 +283,9 @@ export const OwnerAssistant: React.FC = () => {
   // ── Lifecycle ──────────────────────────────────────────────────────────
   useEffect(() => {
     const sub = DeviceEventEmitter.addListener('TOUR_STATE_CHANGE', setIsTourActive);
+    const hideSub = DeviceEventEmitter.addListener('SET_ASSISTANT_HIDDEN', (hidden: boolean) => {
+      setIsAssistantHidden(!!hidden);
+    });
     const closeSub = DeviceEventEmitter.addListener('CLOSE_ASSISTANT', () => {
       setIsOpen(false);
     });
@@ -293,6 +297,7 @@ export const OwnerAssistant: React.FC = () => {
     });
     return () => {
       sub.remove();
+      hideSub.remove();
       closeSub.remove();
       openSub.remove();
       routeSub.remove();
@@ -1499,7 +1504,7 @@ export const OwnerAssistant: React.FC = () => {
 
   // Only owners (exclude tenants)
   const isTenant = user?.role?.toUpperCase() === 'TENANT' || user?.role_id === 3;
-  if (!user || isTenant || isTourActive) return null;
+  if (!user || isTenant || isTourActive || isAssistantHidden) return null;
 
   return (
     <>

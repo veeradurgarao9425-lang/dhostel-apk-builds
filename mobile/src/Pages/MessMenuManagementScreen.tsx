@@ -2,7 +2,8 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
     View, Text, StyleSheet, ScrollView, TouchableOpacity,
     ActivityIndicator, Alert, TextInput, Platform, Modal,
-    SafeAreaView, StatusBar, LayoutAnimation, UIManager, KeyboardAvoidingView
+    SafeAreaView, StatusBar, LayoutAnimation, UIManager, KeyboardAvoidingView,
+    DeviceEventEmitter
 } from 'react-native';
 import { 
     Coffee, Soup, Moon, Edit2, ChevronLeft, Calendar, 
@@ -95,6 +96,13 @@ export default function MessMenuManagementScreen({ navigation }: any) {
     useEffect(() => {
         fetchMenu();
     }, [fetchMenu]);
+
+    useEffect(() => {
+        DeviceEventEmitter.emit('SET_ASSISTANT_HIDDEN', modalVisible);
+        return () => {
+            DeviceEventEmitter.emit('SET_ASSISTANT_HIDDEN', false);
+        };
+    }, [modalVisible]);
 
     const openEditModal = (meal: string) => {
         setEditingMeal(meal);
