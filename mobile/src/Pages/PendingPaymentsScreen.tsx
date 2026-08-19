@@ -198,19 +198,32 @@ const TenantDueCard = React.memo(({ item, themeColor, onRemind, onCollect, isDar
     let accentColor = '#D97706';
     let tagLabel = '';
 
+    // ── Priority order for label / color ────────────────────────────────────
+    // 1. Fully paid
+    // 2. Overdue (due date passed AND still owes money) — even if partially paid
+    // 3. Partially paid but not yet overdue
+    // 4. Regular upcoming due
     if (isFullyPaid) {
         accentColor = '#059669';
         tagLabel = 'Fully Paid';
-    } else if (item.isOverdue && effectiveUnpaidCarry > 0) {
+    } else if (item.isOverdue && !isFullyPaid) {
+        // ← FIXED: was checking effectiveUnpaidCarry > 0 which excluded
+        //   current-month partial payments. Now ANY overdue balance = red.
         accentColor = '#DC2626';
         if (item.daysOverdue > 0) {
             tagLabel = `${item.daysOverdue}d overdue`;
-        } else {
+        } else if (effectiveUnpaidCarry > 0) {
             const dueObj = new Date(item.rawDueDate);
             const now = new Date(); now.setHours(0, 0, 0, 0);
             const lastMonthDue = new Date(now.getFullYear(), now.getMonth() - 1, dueObj.getDate());
             const carryDays = Math.max(1, Math.floor((now.getTime() - lastMonthDue.getTime()) / 86400000));
             tagLabel = `${carryDays}d overdue`;
+        } else {
+            tagLabel = 'Overdue';
+        }
+        // Append partial tag so owner knows some was already paid
+        if (isPartialPaid) {
+            tagLabel = `${tagLabel} (Partial)`;
         }
     } else if (isPartialPaid) {
         accentColor = '#0284C7';
@@ -233,8 +246,8 @@ const TenantDueCard = React.memo(({ item, themeColor, onRemind, onCollect, isDar
     return (
         <View style={[card.wrap, {
             backgroundColor: isDarkBg,
-            borderColor: isFullyPaid ? '#86EFAC' : (item.isOverdue && effectiveUnpaidCarry > 0 ? '#FECACA' : (isDark ? '#334155' : '#ECECEC')),
-            borderWidth: (item.isOverdue && effectiveUnpaidCarry > 0) || isFullyPaid ? 1.5 : 1,
+            borderColor: isFullyPaid ? '#86EFAC' : (!isFullyPaid && item.isOverdue ? '#FECACA' : (isDark ? '#334155' : '#ECECEC')),
+            borderWidth: (item.isOverdue && !isFullyPaid) || isFullyPaid ? 1.5 : 1,
             shadowColor: '#000',
         }]}>
             {/* Left accent bar (only for unpaid/due cards) */}
