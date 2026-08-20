@@ -186,11 +186,11 @@ export default function DeveloperComplaintsScreen() {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#18181B" />
+      <StatusBar barStyle="light-content" backgroundColor="#EA580C" />
 
       {/* ─────────────────── EXECUTIVE HERO HEADER ─────────────────── */}
       <LinearGradient
-        colors={['#18181B', '#27272A', '#1C1917']}
+        colors={['#EA580C', '#D97706', '#B45309']}
         style={[
           styles.heroHeader,
           {
@@ -227,7 +227,7 @@ export default function DeveloperComplaintsScreen() {
 
         {/* Search Bar */}
         <View style={styles.heroSearchBar}>
-          <Ionicons name="search" size={17} color="#FB923C" />
+          <Ionicons name="search" size={17} color="#EA580C" />
           <TextInput
             placeholder="Search issues, hostels, resident names..."
             placeholderTextColor="#9CA3AF"
@@ -239,7 +239,7 @@ export default function DeveloperComplaintsScreen() {
           />
           {search ? (
             <TouchableOpacity onPress={() => setSearch('')}>
-              <Ionicons name="close-circle" size={18} color="#D1D5DB" />
+              <Ionicons name="close-circle" size={18} color="#9CA3AF" />
             </TouchableOpacity>
           ) : null}
         </View>

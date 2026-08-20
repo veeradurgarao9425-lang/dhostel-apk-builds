@@ -105,11 +105,11 @@ export default function DeveloperRatingsScreen() {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#18181B" />
+      <StatusBar barStyle="light-content" backgroundColor="#EA580C" />
 
       {/* ─────────────────── EXECUTIVE HERO HEADER ─────────────────── */}
       <LinearGradient
-        colors={['#18181B', '#27272A', '#1C1917']}
+        colors={['#EA580C', '#D97706', '#B45309']}
         style={[
           styles.heroHeader,
           {
@@ -235,18 +235,21 @@ const styles = StyleSheet.create({
   masterBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    backgroundColor: 'rgba(251, 146, 60, 0.14)',
+    gap: 5,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 10,
-    marginBottom: 2,
+    paddingVertical: 3,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+    marginBottom: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.35)',
   },
   masterBadgeCrown: {
-    fontSize: 9,
+    fontSize: 10,
   },
   masterBadgeText: {
-    color: '#FB923C',
+    color: '#FFFFFF',
     fontSize: 9.5,
     fontWeight: '900',
     letterSpacing: 0.7,

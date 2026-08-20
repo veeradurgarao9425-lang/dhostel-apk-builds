@@ -233,7 +233,62 @@ export const developerController = {
         totalExpenses = 0;
       }
 
-      // 6. Recent Platform Activity & Audit Logs
+      // 6. Today's churn — new sign-ups and departures across the whole network.
+      // MySQL DATE() on the indexed created_at is fine at this table size and
+      // keeps the boundary in the DB's own timezone, matching every other query.
+      const countToday = async (table: string, column: string) => {
+        try {
+          const res: any = await db(table)
+            .whereRaw(`DATE(${column}) = CURDATE()`)
+            .count('* as total')
+            .first();
+          return Number(res?.total || 0);
+        } catch {
+          return 0;
+        }
+      };
+
+      const [newHostelsToday, newOwnersToday, newStudentsToday] = await Promise.all([
+        countToday('hostel_master', 'created_at'),
+        db('users')
+          .where('role_id', 2)
+          .whereRaw('DATE(created_at) = CURDATE()')
+          .count('user_id as total')
+          .first()
+          .then((r: any) => Number(r?.total || 0))
+          .catch(() => 0),
+        countToday('students', 'created_at'),
+      ]);
+
+      // Students who have left / vacated (status 0), plus how many left today.
+      let studentsLeft = 0;
+      let studentsLeftToday = 0;
+      try {
+        const leftRes: any = await db('students').where('status', 0).count('student_id as total').first();
+        studentsLeft = Number(leftRes?.total || 0);
+        const leftTodayRes: any = await db('students')
+          .where('status', 0)
+          .whereRaw('DATE(inactive_date) = CURDATE()')
+          .count('student_id as total')
+          .first();
+        studentsLeftToday = Number(leftTodayRes?.total || 0);
+      } catch {
+        // inactive_date missing on an older DB — the lifetime count above still stands.
+      }
+
+      // Unread developer notifications, so the header badge reflects reality.
+      let unreadNotifications = 0;
+      try {
+        const unreadRes: any = await db('developer_notifications')
+          .where('is_read', 0)
+          .count('notification_id as total')
+          .first();
+        unreadNotifications = Number(unreadRes?.total || 0);
+      } catch {
+        unreadNotifications = 0;
+      }
+
+      // 7. Recent Platform Activity & Audit Logs
       const recentAudit = await db('developer_audit_logs')
         .orderBy('created_at', 'desc')
         .limit(5);
@@ -262,6 +317,13 @@ export const developerController = {
             pending_fees: pendingFees,
             total_collected: totalCollected,
             total_expenses: totalExpenses,
+            new_hostels_today: newHostelsToday,
+            new_owners_today: newOwnersToday,
+            new_students_today: newStudentsToday,
+            new_registrations_today: newOwnersToday + newStudentsToday,
+            students_left: studentsLeft,
+            students_left_today: studentsLeftToday,
+            unread_notifications: unreadNotifications,
           },
           recent_audit_logs: recentAudit,
           recent_hostels: recentHostels,

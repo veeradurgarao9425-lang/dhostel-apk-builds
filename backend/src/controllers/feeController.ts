@@ -4,6 +4,7 @@ import { AuthRequest } from '../middleware/auth.js';
 import { processFileUpload } from '../utils/fileUpload.js';
 import { sendNotificationToStudent, sendNotificationToHostelOwner } from '../utils/notification.js';
 import { resolveScopedHostelId, getAuthenticatedStudent, getAuthenticatedStudentId } from '../utils/scope.js';
+import { io } from '../socket/index.js';
 
 // Get all fee payments
 export const getFeePayments = async (req: AuthRequest, res: Response) => {
@@ -442,6 +443,7 @@ export const uploadPaymentProof = async (req: AuthRequest, res: Response) => {
     const student = await getAuthenticatedStudent(req.user);
     if (!student) return res.status(401).json({ success: false, message: 'Unauthorized: Tenant profile not found.' });
     const student_id = student.student_id;
+    const { amount_paid, payment_mode_id, transaction_reference, proof_url: body_proof_url, proof } = req.body;
 
     let proof_url: string | null = null;
     if (req.file) {
@@ -454,8 +456,8 @@ export const uploadPaymentProof = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ success: false, message: 'No payment proof file or screenshot was provided' });
     }
 
-    const student = await db('students').where('student_id', student_id).first();
-    if (!student) return res.status(404).json({ success: false, message: 'Student not found' });
+    const studentRec = await db('students').where('student_id', student_id).first();
+    if (!studentRec) return res.status(404).json({ success: false, message: 'Student not found' });
 
     const receiptNumber = `RCP${Date.now()}${Math.floor(Math.random() * 1000)}`;
 
@@ -464,7 +466,7 @@ export const uploadPaymentProof = async (req: AuthRequest, res: Response) => {
     let monthlyFee = await db('monthly_fees').where({ student_id, fee_month: currentMonth }).first();
 
     if (!monthlyFee) {
-      const monthlyRent = parseFloat(student?.monthly_rent || 0);
+      const monthlyRent = parseFloat(studentRec?.monthly_rent || 0);
       const [fee_id] = await db('monthly_fees').insert({
         student_id,
         hostel_id: student.hostel_id,
@@ -506,7 +508,7 @@ export const uploadPaymentProof = async (req: AuthRequest, res: Response) => {
         student.hostel_id,
         'Payment Proof',
         'New Payment Proof',
-        `${student.first_name} ${student.last_name} uploaded a payment proof for ₹${amount_paid || 0}.`,
+        `${student.first_name} ${student.last_name || ''}`.trim() + ` uploaded a payment proof for ₹${amount_paid || 0}.`,
         'Medium',
         { payment_id, student_id }
       );

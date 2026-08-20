@@ -93,8 +93,35 @@ export const DeveloperAssistant: React.FC = () => {
     return `dev_msg_${Date.now()}_${msgId.current}`;
   };
 
+  const [metricsData, setMetricsData] = useState<any>(null);
+
+  // Fetch real-time metrics for the landing Command Center
+  const fetchLandingMetrics = useCallback(async () => {
+    try {
+      const [dashRes, finRes] = await Promise.allSettled([
+        developerService.getDashboardMetrics(),
+        developerService.getFinanceOverview(),
+      ]);
+      const dash = dashRes.status === 'fulfilled' ? dashRes.value?.data : null;
+      const fin = finRes.status === 'fulfilled' ? finRes.value?.data : null;
+      setMetricsData({
+        metrics: dash?.metrics || {},
+        finance: fin?.summary || {},
+      });
+    } catch {
+      // non-fatal
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isOpen && isDeveloperLoggedIn) {
+      fetchLandingMetrics();
+    }
+  }, [isOpen, isDeveloperLoggedIn, fetchLandingMetrics]);
+
   const getInitialWelcomeMsgs = useCallback((): Msg[] => {
-    const ceoName = developer?.full_name || 'Durgarao Goriparthi';
+    const ceoName = developer?.full_name?.split(' ')[0] || 'Durgarao';
+
     return [
       {
         id: nextId(),
@@ -102,24 +129,15 @@ export const DeveloperAssistant: React.FC = () => {
         blocks: [
           {
             type: 'text',
-            text: `Welcome, ${ceoName} (CEO & Master Admin)!\nI am your Hostix Master Executive Copilot. You can query any property, tenant, owner, vacancy rate, today's joiners, or extend trials instantly.`,
+            text: `Hello ${ceoName}! How can I help you manage your hostels today? Ask about revenue, pending dues, student occupancy, or system health.`,
           },
           {
-            type: 'stat_cards',
-            cards: [
-              { label: 'Hostels', value: '3', icon: 'business-outline', color: '#EA580C', bg: '#FFF7ED', trend: 'Live' },
-              { label: 'Owners', value: '3', icon: 'people-outline', color: '#7C3AED', bg: '#F3E8FF', trend: 'Active' },
-              { label: 'Students', value: '25', icon: 'school-outline', color: '#10B981', bg: '#ECFDF5', trend: 'Active' },
-              { label: 'System Health', value: 'ONLINE', icon: 'pulse-outline', color: '#3B82F6', bg: '#EFF6FF', trend: '2ms DB' },
-            ],
-          },
-          {
-            type: 'action_buttons',
-            isWelcome: true,
-            buttons: [
-              { label: 'Owners Directory', icon: 'people-outline', onPress: () => handleQuery('How many owners are registered?'), variant: 'primary' },
-              { label: 'Students Roster', icon: 'school-outline', onPress: () => handleQuery('How many students on platform?'), variant: 'outline' },
-              { label: 'Hostels Network', icon: 'business-outline', onPress: () => handleQuery('Show all hostels breakdown'), variant: 'outline' },
+            type: 'follow_up_chips',
+            chips: [
+              { label: '🏢 Hostels Overview', icon: 'business-outline', onPress: () => handleQuery('Show all hostels breakdown') },
+              { label: '💰 Pending Dues', icon: 'wallet-outline', onPress: () => handleQuery('Show pending dues') },
+              { label: '👥 Owners Roster', icon: 'people-outline', onPress: () => handleQuery('How many owners are registered?') },
+              { label: '🎓 Students Roster', icon: 'school-outline', onPress: () => handleQuery('How many students on platform?') },
             ],
           },
         ],
@@ -566,9 +584,9 @@ export const DeveloperAssistant: React.FC = () => {
             style={[styles.body, keyboardInset > 0 && { paddingBottom: keyboardInset }]}
             onLayout={onContainerLayout}
           >
-            {/* Executive Dark Hero Header */}
+            {/* Executive Hero Header */}
             <LinearGradient
-              colors={['#18181B', '#27272A', '#1C1917']}
+              colors={['#EA580C', '#D97706', '#B45309']}
               style={styles.header}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
@@ -593,7 +611,7 @@ export const DeveloperAssistant: React.FC = () => {
                   <View style={styles.aiBadge}>
                     <Text style={styles.aiBadgeText}>Executive Governance</Text>
                     <Text style={styles.aiBadgeSep}>·</Text>
-                    <Ionicons name="shield-checkmark" size={10} color="#FED7AA" />
+                    <Ionicons name="shield-checkmark" size={10} color="#FEF08A" />
                     <Text style={styles.aiBadgeText}>Master Admin</Text>
                   </View>
                 </View>
@@ -601,7 +619,7 @@ export const DeveloperAssistant: React.FC = () => {
 
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                 <TouchableOpacity style={styles.headerActionBtn} onPress={handleReset}>
-                  <Ionicons name="refresh-outline" size={16} color="#FED7AA" />
+                  <Ionicons name="refresh-outline" size={16} color="#FFF" />
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.headerActionBtn} onPress={() => setIsOpen(false)}>
                   <Ionicons name="close" size={18} color="#FFF" />
@@ -620,7 +638,7 @@ export const DeveloperAssistant: React.FC = () => {
                 keyboardDismissMode="on-drag"
                 onContentSizeChange={() => scrollToEnd(true)}
               >
-                {/* Top Live Action Hub when fresh */}
+                {/* Top Live Action Hub & Command Center when fresh */}
                 {messages.length <= 2 && (
                   <View style={styles.topHubCard}>
                     <View style={styles.topHubHeader}>
@@ -628,8 +646,8 @@ export const DeveloperAssistant: React.FC = () => {
                         <Ionicons name="sparkles" size={16} color="#EA580C" />
                       </View>
                       <View style={{ flex: 1 }}>
-                        <Text style={styles.topHubTitle}>Executive Live AI</Text>
-                        <Text style={styles.topHubSub}>Ask questions across any PG or tap a live query below</Text>
+                        <Text style={styles.topHubTitle}>Developer Command Center</Text>
+                        <Text style={styles.topHubSub}>Multi-property live overview & instant executive actions</Text>
                       </View>
                     </View>
 
@@ -641,7 +659,9 @@ export const DeveloperAssistant: React.FC = () => {
                         activeOpacity={0.75}
                       >
                         <Ionicons name="people" size={13} color="#EA580C" />
-                        <Text style={[styles.topPulseText, { color: '#C2410C' }]}>Check Owners</Text>
+                        <Text style={[styles.topPulseText, { color: '#C2410C' }]}>
+                          Owners ({metricsData?.metrics?.total_owners ?? '...'})
+                        </Text>
                       </TouchableOpacity>
 
                       <TouchableOpacity
@@ -650,7 +670,9 @@ export const DeveloperAssistant: React.FC = () => {
                         activeOpacity={0.75}
                       >
                         <Ionicons name="school" size={13} color="#10B981" />
-                        <Text style={[styles.topPulseText, { color: '#047857' }]}>Active Tenants</Text>
+                        <Text style={[styles.topPulseText, { color: '#047857' }]}>
+                          Students ({metricsData?.metrics?.total_students ?? '...'})
+                        </Text>
                       </TouchableOpacity>
 
                       <TouchableOpacity
@@ -658,8 +680,40 @@ export const DeveloperAssistant: React.FC = () => {
                         onPress={() => handleQuery('Show all hostels breakdown')}
                         activeOpacity={0.75}
                       >
-                        <Ionicons name="bed" size={13} color="#3B82F6" />
-                        <Text style={[styles.topPulseText, { color: '#1D4ED8' }]}>Beds & Rooms</Text>
+                        <Ionicons name="business" size={13} color="#3B82F6" />
+                        <Text style={[styles.topPulseText, { color: '#1D4ED8' }]}>
+                          Hostels ({metricsData?.metrics?.total_hostels ?? '...'})
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+
+                    {/* Secondary Quick Action Row */}
+                    <View style={[styles.topPulseRow, { marginTop: 6 }]}>
+                      <TouchableOpacity
+                        style={[styles.topPulseItem, { backgroundColor: '#FEF2F2', borderColor: '#FECACA' }]}
+                        onPress={() => handleQuery('Who joined today?')}
+                        activeOpacity={0.75}
+                      >
+                        <Ionicons name="person-add" size={13} color="#EF4444" />
+                        <Text style={[styles.topPulseText, { color: '#B91C1C' }]}>New Joiners</Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={[styles.topPulseItem, { backgroundColor: '#FEF3C7', borderColor: '#FDE68A' }]}
+                        onPress={() => handleQuery('Whose free trial is ending soon?')}
+                        activeOpacity={0.75}
+                      >
+                        <Ionicons name="gift" size={13} color="#D97706" />
+                        <Text style={[styles.topPulseText, { color: '#B45309' }]}>Expiring Trials</Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={[styles.topPulseItem, { backgroundColor: '#F0FDFA', borderColor: '#99F6E4' }]}
+                        onPress={() => handleQuery('Check server health and database')}
+                        activeOpacity={0.75}
+                      >
+                        <Ionicons name="hardware-chip" size={13} color="#0D9488" />
+                        <Text style={[styles.topPulseText, { color: '#0F766E' }]}>Diagnostics</Text>
                       </TouchableOpacity>
                     </View>
                   </View>

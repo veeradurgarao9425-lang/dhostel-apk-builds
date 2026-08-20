@@ -5,7 +5,7 @@ import {
   updateRelation,
   deleteRelation
 } from '../controllers/relationsController.js';
-import { authMiddleware } from '../middleware/auth.js';
+import { authMiddleware, isAdmin } from '../middleware/auth.js';
 import { requireActiveSubscription } from '../middleware/subscriptionAuth.js';
 
 const router = express.Router();
@@ -19,20 +19,20 @@ router.get('/', getRelations);
 
 /**
  * POST /api/relations
- * Create a new relation (Admin only)
+ * Create a new relation (Super Admin only)
  */
-router.post('/', authMiddleware, requireActiveSubscription, createRelation);
+router.post('/', authMiddleware, isAdmin, createRelation);
 
 /**
  * PUT /api/relations/:relationId
- * Update a relation (Admin only)
+ * Update a relation (Super Admin only)
  */
-router.put('/:relationId', authMiddleware, requireActiveSubscription, updateRelation);
+router.put('/:relationId', authMiddleware, isAdmin, updateRelation);
 
 /**
  * DELETE /api/relations/:relationId
- * Delete a relation (Admin only)
+ * Delete a relation (Super Admin only)
  */
-router.delete('/:relationId', authMiddleware, requireActiveSubscription, deleteRelation);
+router.delete('/:relationId', authMiddleware, isAdmin, deleteRelation);
 
 export default router;

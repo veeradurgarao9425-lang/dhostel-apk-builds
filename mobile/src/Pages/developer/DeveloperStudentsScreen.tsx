@@ -325,24 +325,18 @@ export default function DeveloperStudentsScreen() {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#18181B" />
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
-      {/* ─────────────────── EXECUTIVE HERO HEADER WITH INTEGRATED TABS ─────────────────── */}
-      <LinearGradient
-        colors={['#18181B', '#27272A', '#1C1917']}
+      {/* ─────────────────── CLEAN SIMPLE LIGHT HEADER ─────────────────── */}
+      <View
         style={[
           styles.heroHeader,
           {
-            paddingTop: insets.top + (Platform.OS === 'android' ? 14 : 10),
+            paddingTop: insets.top + (Platform.OS === 'android' ? 10 : 6),
+            backgroundColor: '#FFFFFF',
           },
         ]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
       >
-        {/* Decorative Ambient Glow Orbs */}
-        <View style={styles.hdrOrb1} />
-        <View style={styles.hdrOrb2} />
-
         <View style={styles.topBarRow}>
           <View>
             <View style={styles.masterBadge}>
@@ -359,10 +353,10 @@ export default function DeveloperStudentsScreen() {
 
         {/* Floating Search Bar */}
         <View style={styles.heroSearchBar}>
-          <Ionicons name="search" size={17} color="#FB923C" />
+          <Ionicons name="search" size={17} color="#64748B" />
           <TextInput
             placeholder="Search students by name, phone, room..."
-            placeholderTextColor="#9CA3AF"
+            placeholderTextColor="#94A3B8"
             value={search}
             onChangeText={setSearch}
             onSubmitEditing={() => fetchStudents(1)}
@@ -373,7 +367,7 @@ export default function DeveloperStudentsScreen() {
           />
           {search ? (
             <TouchableOpacity onPress={() => setSearch('')}>
-              <Ionicons name="close-circle" size={18} color="#D1D5DB" />
+              <Ionicons name="close-circle" size={18} color="#94A3B8" />
             </TouchableOpacity>
           ) : null}
         </View>
@@ -405,7 +399,7 @@ export default function DeveloperStudentsScreen() {
             })}
           </ScrollView>
         </View>
-      </LinearGradient>
+      </View>
 
       {/* STATUS FILTER ROW OUTSIDE HEADER */}
       <View style={styles.statusTabsSection}>
@@ -621,38 +615,19 @@ export default function DeveloperStudentsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAF6F0',
+    backgroundColor: '#FFFFFF',
   },
   heroHeader: {
+    backgroundColor: '#FFFFFF',
     paddingHorizontal: 16,
-    paddingBottom: 16,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
-    position: 'relative',
-    overflow: 'hidden',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  hdrOrb1: {
-    position: 'absolute',
-    width: 220,
-    height: 220,
-    borderRadius: 110,
-    backgroundColor: 'rgba(234, 88, 12, 0.12)',
-    top: -80,
-    right: -40,
-  },
-  hdrOrb2: {
-    position: 'absolute',
-    width: 160,
-    height: 160,
-    borderRadius: 80,
-    backgroundColor: 'rgba(124, 58, 237, 0.08)',
-    bottom: -50,
-    left: -40,
+    paddingBottom: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+    shadowColor: '#0F172A',
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
   },
   topBarRow: {
     flexDirection: 'row',
@@ -660,68 +635,73 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 12,
   },
+  topBarLeft: {
+    flex: 1,
+    paddingRight: 8,
+  },
   masterBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    backgroundColor: 'rgba(251, 146, 60, 0.14)',
+    backgroundColor: '#F1F5F9',
     paddingHorizontal: 8,
     paddingVertical: 3,
-    borderRadius: 12,
+    borderRadius: 8,
     alignSelf: 'flex-start',
     marginBottom: 4,
     borderWidth: 1,
-    borderColor: 'rgba(251, 146, 60, 0.25)',
+    borderColor: '#E2E8F0',
   },
   masterBadgeCrown: {
     fontSize: 10,
   },
   masterBadgeLiveDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
     backgroundColor: '#10B981',
   },
   masterBadgeText: {
-    color: '#FB923C',
+    color: '#475569',
     fontSize: 9.5,
-    fontWeight: '900',
-    letterSpacing: 0.7,
+    fontWeight: '800',
+    letterSpacing: 0.5,
   },
   screenTitle: {
-    color: '#FFFFFF',
+    color: '#0F172A',
     fontSize: 19,
     fontWeight: '900',
     letterSpacing: -0.3,
   },
   countBadge: {
-    backgroundColor: 'rgba(251, 146, 60, 0.18)',
+    backgroundColor: '#F1F5F9',
     paddingHorizontal: 10,
     paddingVertical: 5,
-    borderRadius: 12,
+    borderRadius: 8,
     borderWidth: 1,
-    borderColor: 'rgba(251, 146, 60, 0.35)',
+    borderColor: '#E2E8F0',
   },
   countBadgeText: {
-    color: '#FB923C',
+    color: '#475569',
     fontSize: 11,
     fontWeight: '800',
   },
   heroSearchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.09)',
-    borderRadius: 14,
+    backgroundColor: '#F1F5F9',
+    borderRadius: 12,
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 9,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.14)',
+    borderColor: '#E2E8F0',
     gap: 8,
   },
   heroSearchInput: {
     flex: 1,
     fontSize: 13,
-    color: '#FFFFFF',
+    fontWeight: '600',
+    color: '#0F172A',
     padding: 0,
   },
   hdrTabSection: {
@@ -787,7 +767,7 @@ const styles = StyleSheet.create({
   tabSectionRow: {
     paddingTop: 8,
     paddingBottom: 2,
-    backgroundColor: '#FAF6F0',
+    backgroundColor: '#FFFFFF',
   },
   tabSectionHeader: {
     flexDirection: 'row',
@@ -852,7 +832,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 6,
     paddingBottom: 8,
-    backgroundColor: '#FAF6F0',
+    backgroundColor: '#FFFFFF',
   },
   filterRow: {
     flexDirection: 'row',
@@ -969,7 +949,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#FAF6F0',
+    backgroundColor: '#FFFFFF',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
@@ -1115,7 +1095,7 @@ const styles = StyleSheet.create({
   },
   passTextInput: {
     flex: 1,
-    backgroundColor: '#FAF6F0',
+    backgroundColor: '#FFFFFF',
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 10,
@@ -1204,7 +1184,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   detailSection: {
-    backgroundColor: '#FAF6F0',
+    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     padding: 12,
     marginBottom: 10,

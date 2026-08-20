@@ -2,6 +2,7 @@ import { Response } from 'express';
 import db from '../config/database.js';
 import { AuthRequest } from '../middleware/auth.js';
 import { sendEmail } from '../utils/email.js';
+import { notifyDeveloper } from '../services/developerNotificationService.js';
 import crypto from 'crypto';
 
 export const createHostel = async (req: AuthRequest, res: Response) => {
@@ -226,6 +227,27 @@ export const createHostel = async (req: AuthRequest, res: Response) => {
         priority: 'High'
       });
 
+      // 5. Surface it in the Developer Notification Centre. `email: false` on
+      // purpose — step 3 above already mailed SUPER_ADMIN_EMAIL for this exact
+      // event, and sending again here would double every registration alert.
+      void notifyDeveloper({
+        type: 'NEW_HOSTEL',
+        title: 'New Hostel Registered',
+        message: `"${hostel_name}" joined the network under ${ownerName}. Set its platform billing amount to start tracking revenue.`,
+        priority: 'HIGH',
+        relatedEntity: 'HOSTEL',
+        relatedEntityId: hostel_id,
+        metadata: {
+          hostel_id,
+          hostel_name,
+          owner_id: finalOwnerId,
+          owner_name: ownerName,
+          owner_email: ownerEmail || null,
+          city: city || null,
+        },
+        email: false,
+      });
+
     } catch (err) {
       console.error('Failed to log history or send registration emails:', err);
     }
@@ -278,9 +300,12 @@ export const getAllHostels = async (req: AuthRequest, res: Response) => {
       )
       .where({ 'h.is_active': 1 });
 
-    // Security filter: If they are an owner or requested my_hostels, fetch hostels linked by owner_id or hostel_id
+    // Security filter: Strict role-based isolation
     const user = req.user;
-    if (user?.role_id === 2 || req.query.my_hostels === 'true') {
+    if (user?.role_id === 1) {
+      // Super Admin: can view all active hostels
+    } else if (user?.role_id === 2) {
+      // Owner: only hostels owned by this user or matching their active hostel
       const validUserId = (user?.user_id && !isNaN(Number(user.user_id)) && Number(user.user_id) > 0) ? Number(user.user_id) : null;
       const validHostelId = (user?.hostel_id && !isNaN(Number(user.hostel_id)) && Number(user.hostel_id) > 0) ? Number(user.hostel_id) : null;
 
@@ -296,6 +321,17 @@ export const getAllHostels = async (req: AuthRequest, res: Response) => {
       } else {
         return res.json({ success: true, data: [] });
       }
+    } else if (user?.role_id === 3 || user?.role_id === 4) {
+      // Tenant (3) or Staff (4): strictly their own assigned hostel only
+      const validHostelId = (user?.hostel_id && !isNaN(Number(user.hostel_id)) && Number(user.hostel_id) > 0) ? Number(user.hostel_id) : null;
+      if (validHostelId) {
+        query = query.where('h.hostel_id', validHostelId);
+      } else {
+        return res.json({ success: true, data: [] });
+      }
+    } else {
+      // Unassigned role
+      return res.json({ success: true, data: [] });
     }
 
     const hostels = await query.orderBy('h.created_at', 'desc');
@@ -336,6 +372,7 @@ export const getAllHostels = async (req: AuthRequest, res: Response) => {
 export const getHostelDetails = async (req: AuthRequest, res: Response) => {
   try {
     const { hostelId } = req.params;
+    const requestedHostelId = Number(hostelId);
 
     const hostel = await db('hostel_master as h')
       .leftJoin('users as u', 'h.owner_id', 'u.user_id')
@@ -357,8 +394,21 @@ export const getHostelDetails = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    // Owners (role 2) may only view their own hostel
-    if (req.user?.role_id === 2 && hostel.owner_id !== req.user.user_id) {
+    const user = req.user;
+    // Strict Role-Based Hostel Authorization:
+    if (user?.role_id === 1) {
+      // Super Admin: allowed
+    } else if (user?.role_id === 2) {
+      // Owner: must be owner of this hostel or have it as their active hostel
+      if (hostel.owner_id !== user.user_id && user.hostel_id !== requestedHostelId) {
+        return res.status(403).json({ success: false, error: 'Access denied. You do not own this hostel.' });
+      }
+    } else if (user?.role_id === 3 || user?.role_id === 4) {
+      // Tenant (3) or Staff (4): strictly restricted to their own assigned hostel
+      if (!user.hostel_id || Number(user.hostel_id) !== requestedHostelId) {
+        return res.status(403).json({ success: false, error: 'Access denied. You are not a member of this hostel.' });
+      }
+    } else {
       return res.status(403).json({ success: false, error: 'Access denied.' });
     }
 

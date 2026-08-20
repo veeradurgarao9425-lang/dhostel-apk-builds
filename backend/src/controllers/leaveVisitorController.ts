@@ -1,5 +1,5 @@
 import { Response } from 'express';
-import { AuthRequest } from '../middleware/auth.js';
+import { AuthRequest, verifyHostelAccess } from '../middleware/auth.js';
 import db from '../config/database.js';
 import { sendNotificationToHostelOwner, sendNotificationToStudent } from '../utils/notification.js';
 import { getAuthenticatedStudent } from '../utils/scope.js';
@@ -14,10 +14,11 @@ export const createLeaveRequest = async (req: AuthRequest, res: Response) => {
     const student = await getAuthenticatedStudent(req.user);
     if (!student) return res.status(401).json({ success: false, message: 'Tenant profile not found' });
     const student_id = student.student_id;
-    const hostel_id = student.hostel_id || req.body.hostel_id;
+    // Strict isolation: always bind directly to the authenticated tenant's hostel
+    const hostel_id = student.hostel_id;
 
     if (!hostel_id || !start_date || !end_date) {
-      return res.status(400).json({ success: false, message: 'Missing required fields' });
+      return res.status(400).json({ success: false, message: 'Missing required fields or student is not assigned to a hostel.' });
     }
 
     const [leave_id] = await db('leave_requests').insert({
@@ -29,8 +30,8 @@ export const createLeaveRequest = async (req: AuthRequest, res: Response) => {
       status: 'Pending'
     });
 
-    const student = await db('students').where('student_id', student_id).first();
-    const studentName = student ? `${student.first_name} ${student.last_name || ''}`.trim() : 'A student';
+    const studentDetails = await db('students').where('student_id', student_id).first();
+    const studentName = studentDetails ? `${studentDetails.first_name} ${studentDetails.last_name || ''}`.trim() : 'A student';
 
     await sendNotificationToHostelOwner(
       hostel_id,
@@ -56,6 +57,7 @@ export const getTenantLeaves = async (req: AuthRequest, res: Response) => {
 
     const leaves = await db('leave_requests')
       .where('student_id', student_id)
+      .andWhere('hostel_id', student.hostel_id)
       .orderBy('created_at', 'desc');
 
     res.status(200).json({ success: true, leaves });
@@ -70,9 +72,10 @@ export const getHostelLeaves = async (req: AuthRequest, res: Response) => {
     const { hostelId } = req.params;
     const user = req.user;
 
-    // Restrict Owner to their own hostel
-    if (user?.role_id === 2 && user.hostel_id !== Number(hostelId)) {
-      return res.status(403).json({ success: false, error: 'Access denied.' });
+    // Strict multi-hostel owner isolation
+    const hasAccess = await verifyHostelAccess(user, hostelId);
+    if (!hasAccess) {
+      return res.status(403).json({ success: false, error: 'Access denied. You do not own this hostel.' });
     }
 
     const leaves = await db('leave_requests')
@@ -101,9 +104,10 @@ export const updateLeaveStatus = async (req: AuthRequest, res: Response) => {
     const leave = await db('leave_requests').where('leave_id', leaveId).first();
     if (!leave) return res.status(404).json({ success: false, message: 'Not found' });
 
-    // Restrict Owner to their own hostel
-    if (user?.role_id === 2 && leave.hostel_id !== user.hostel_id) {
-      return res.status(403).json({ success: false, error: 'Access denied.' });
+    // Strict multi-hostel owner isolation
+    const hasAccess = await verifyHostelAccess(user, leave.hostel_id);
+    if (!hasAccess) {
+      return res.status(403).json({ success: false, error: 'Access denied. You do not have permission for this hostel.' });
     }
 
     await db('leave_requests').where('leave_id', leaveId).update({ status });
@@ -134,10 +138,11 @@ export const createVisitorRequest = async (req: AuthRequest, res: Response) => {
     const student = await getAuthenticatedStudent(req.user);
     if (!student) return res.status(401).json({ success: false, message: 'Tenant profile not found' });
     const student_id = student.student_id;
-    const hostel_id = student.hostel_id || req.body.hostel_id;
+    // Strict isolation: always bind directly to the authenticated tenant's hostel
+    const hostel_id = student.hostel_id;
 
     if (!hostel_id || !visitor_name || !visit_date || !visit_time) {
-      return res.status(400).json({ success: false, message: 'Missing required fields' });
+      return res.status(400).json({ success: false, message: 'Missing required fields or student is not assigned to a hostel.' });
     }
 
     const [visitor_id] = await db('visitor_requests').insert({
@@ -150,8 +155,8 @@ export const createVisitorRequest = async (req: AuthRequest, res: Response) => {
       status: 'Pending'
     });
 
-    const student = await db('students').where('student_id', student_id).first();
-    const studentName = student ? `${student.first_name} ${student.last_name || ''}`.trim() : 'A student';
+    const studentDetails = await db('students').where('student_id', student_id).first();
+    const studentName = studentDetails ? `${studentDetails.first_name} ${studentDetails.last_name || ''}`.trim() : 'A student';
 
     await sendNotificationToHostelOwner(
       hostel_id,
@@ -177,6 +182,7 @@ export const getTenantVisitors = async (req: AuthRequest, res: Response) => {
 
     const visitors = await db('visitor_requests')
       .where('student_id', student_id)
+      .andWhere('hostel_id', student.hostel_id)
       .orderBy('created_at', 'desc');
 
     res.status(200).json({ success: true, visitors });
@@ -191,9 +197,10 @@ export const getHostelVisitors = async (req: AuthRequest, res: Response) => {
     const { hostelId } = req.params;
     const user = req.user;
 
-    // Restrict Owner to their own hostel
-    if (user?.role_id === 2 && user.hostel_id !== Number(hostelId)) {
-      return res.status(403).json({ success: false, error: 'Access denied.' });
+    // Strict multi-hostel owner isolation
+    const hasAccess = await verifyHostelAccess(user, hostelId);
+    if (!hasAccess) {
+      return res.status(403).json({ success: false, error: 'Access denied. You do not own this hostel.' });
     }
 
     const visitors = await db('visitor_requests')
@@ -222,9 +229,10 @@ export const updateVisitorStatus = async (req: AuthRequest, res: Response) => {
     const visitor = await db('visitor_requests').where('visitor_id', visitorId).first();
     if (!visitor) return res.status(404).json({ success: false, message: 'Not found' });
 
-    // Restrict Owner to their own hostel
-    if (user?.role_id === 2 && visitor.hostel_id !== user.hostel_id) {
-      return res.status(403).json({ success: false, error: 'Access denied.' });
+    // Strict multi-hostel owner isolation
+    const hasAccess = await verifyHostelAccess(user, visitor.hostel_id);
+    if (!hasAccess) {
+      return res.status(403).json({ success: false, error: 'Access denied. You do not have permission for this hostel.' });
     }
 
     await db('visitor_requests').where('visitor_id', visitorId).update({ status });
@@ -244,3 +252,4 @@ export const updateVisitorStatus = async (req: AuthRequest, res: Response) => {
     res.status(500).json({ success: false, message: 'Internal Server Error' });
   }
 };
+

@@ -364,7 +364,7 @@ export const getRoomBeds = async (req: AuthRequest, res: Response) => {
     const occupantByBed = new Map(occupants.map(o => [o.bed_number, o.student_id]));
     const isOwnerOrAdminUser = req.user?.role_id === 1 || req.user?.role_id === 2;
     const authenticatedStudentId = req.user?.role_id === 3 ? await getAuthenticatedStudentId(req.user) : null;
-
+    const capacity = room.capacity || 1;
     const beds = Array.from({ length: capacity }, (_, i) => {
       const bedLetter = String.fromCharCode(65 + i);
       const student_id = occupantByBed.get(bedLetter) ?? null;

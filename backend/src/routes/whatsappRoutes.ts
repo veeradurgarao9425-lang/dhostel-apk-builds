@@ -1,12 +1,12 @@
 import express, { Response } from 'express';
-import { authMiddleware, AuthRequest } from '../middleware/auth.js';
+import { authMiddleware, isOwnerOrAdmin, AuthRequest, verifyHostelAccess } from '../middleware/auth.js';
 import db from '../config/database.js';
 import { metaWhatsAppService, WhatsAppSendResult } from '../services/metaWhatsappService.js';
 
 const router = express.Router();
 
-// Apply authentication middleware to all WhatsApp routes
-router.use(authMiddleware);
+// Apply authentication middleware and owner/admin restriction to all WhatsApp routes
+router.use(authMiddleware, isOwnerOrAdmin);
 
 /**
  * POST /api/whatsapp/send
@@ -15,7 +15,7 @@ router.use(authMiddleware);
 router.post('/send', async (req: AuthRequest, res: Response) => {
   try {
     const { student_ids, template_name, parameters = {} } = req.body;
-    const hostelId = req.user?.hostel_id || req.body.hostel_id || 45;
+    const targetHostelId = req.body.hostel_id || req.user?.hostel_id;
 
     if (!Array.isArray(student_ids) || student_ids.length === 0) {
       return res.status(400).json({
@@ -24,16 +24,32 @@ router.post('/send', async (req: AuthRequest, res: Response) => {
       });
     }
 
+    if (targetHostelId) {
+      const hasAccess = await verifyHostelAccess(req.user, targetHostelId);
+      if (!hasAccess) {
+        return res.status(403).json({
+          success: false,
+          error: 'Access denied. You do not have permission for this hostel.'
+        });
+      }
+    }
+
     const templateName = template_name || 'fee_reminder';
 
-    // Fetch details of selected students from database
-    const students = await db('students as s')
+    // Fetch details of selected students from database strictly filtered by authorized hostel
+    let studentQuery = db('students as s')
       .leftJoin('rooms as r', 's.room_id', '=', 'r.room_id')
       .leftJoin('hostel_master as h', 's.hostel_id', '=', 'h.hostel_id')
       .leftJoin('monthly_fees as mf', function () {
         this.on('s.student_id', '=', 'mf.student_id').andOn('mf.balance', '>', db.raw('0'));
       })
-      .whereIn('s.student_id', student_ids)
+      .whereIn('s.student_id', student_ids);
+
+    if (req.user?.role_id !== 1 && targetHostelId) {
+      studentQuery = studentQuery.where('s.hostel_id', targetHostelId);
+    }
+
+    const students = await studentQuery
       .select(
         's.student_id',
         's.first_name',

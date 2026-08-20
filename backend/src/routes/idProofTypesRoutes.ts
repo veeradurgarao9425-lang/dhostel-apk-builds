@@ -6,7 +6,7 @@ import {
   updateIdProofType,
   deleteIdProofType
 } from '../controllers/idProofTypesController.js';
-import { authMiddleware } from '../middleware/auth.js';
+import { authMiddleware, isAdmin } from '../middleware/auth.js';
 import { requireActiveSubscription } from '../middleware/subscriptionAuth.js';
 
 const router = express.Router();
@@ -26,20 +26,20 @@ router.get('/:proofTypeId', getIdProofTypeById);
 
 /**
  * POST /api/id-proof-types
- * Create a new ID proof type (Admin only)
+ * Create a new ID proof type (Super Admin only)
  */
-router.post('/', authMiddleware, requireActiveSubscription, createIdProofType);
+router.post('/', authMiddleware, isAdmin, createIdProofType);
 
 /**
  * PUT /api/id-proof-types/:proofTypeId
- * Update an ID proof type (Admin only)
+ * Update an ID proof type (Super Admin only)
  */
-router.put('/:proofTypeId', authMiddleware, requireActiveSubscription, updateIdProofType);
+router.put('/:proofTypeId', authMiddleware, isAdmin, updateIdProofType);
 
 /**
  * DELETE /api/id-proof-types/:proofTypeId
- * Delete an ID proof type (Admin only)
+ * Delete an ID proof type (Super Admin only)
  */
-router.delete('/:proofTypeId', authMiddleware, requireActiveSubscription, deleteIdProofType);
+router.delete('/:proofTypeId', authMiddleware, isAdmin, deleteIdProofType);
 
 export default router;

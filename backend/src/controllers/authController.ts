@@ -11,6 +11,7 @@ import crypto from 'crypto';
 import { checkHostelUniqueIdentifiers } from '../utils/validation.js';
 import { sendDailyOwnerReportEmail } from '../utils/excelReport.js';
 import { generateDeveloperToken, logDeveloperAction } from '../middleware/developerAuth.js';
+import { notifyNewOwnerRegistered } from '../services/developerNotificationService.js';
 
 export const authController = {
   // Login
@@ -388,29 +389,19 @@ export const authController = {
         hostel_id,
       });
 
-      // Send notification to Super Admin
-      try {
-        const superAdminEmail = process.env.SUPER_ADMIN_EMAIL || 'hostixhelp@gmail.com';
-        await sendEmail({
-          to: superAdminEmail,
-          subject: 'New Owner Registration - Hostix',
-          html: `
-            <div style="font-family: Arial, sans-serif; padding: 20px;">
-              <h2 style="color: #333;">New Owner Registered</h2>
-              <p>A new owner has just created an account on the Hostix platform.</p>
-              <ul>
-                <li><strong>Name:</strong> ${full_name}</li>
-                <li><strong>Email:</strong> ${resolvedEmail}</li>
-                <li><strong>Phone:</strong> ${phone || 'N/A'}</li>
-                <li><strong>Hostel Name:</strong> ${trimmedHostel || 'N/A'}</li>
-                <li><strong>Address:</strong> ${address ? String(address).trim() : 'N/A'}</li>
-              </ul>
-            </div>
-          `
-        });
-      } catch (err) {
-        console.error('Failed to send admin notification email:', err);
-      }
+      // Tell the developer/master admin: one in-app notification row (read by the
+      // Developer Notification Centre) plus exactly one email to SUPER_ADMIN_EMAIL.
+      // Deliberately NOT awaited — SMTP can take seconds and must not delay the
+      // signup response, and a mail failure must not fail the registration.
+      notifyNewOwnerRegistered({
+        userId: user_id,
+        fullName: full_name,
+        email: resolvedEmail,
+        phone: phone || null,
+        hostelName: trimmedHostel || null,
+        hostelId: hostel_id,
+        address: address ? String(address).trim() : null,
+      });
 
       return res.status(201).json({
         success: true,

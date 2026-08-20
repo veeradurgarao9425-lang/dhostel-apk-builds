@@ -52,10 +52,11 @@ export const isAdmin = (
   next();
 };
 
+import db from '../config/database.js';
+
 /**
- * Blocks tenants (role_id=3) from owner/admin endpoints.
- * Super-admins (role 1) and owners (role 2) pass through.
- * Use on any route that should never be accessible by a tenant.
+ * Restricts access to Super Admin (role_id=1) and Hostel Owner (role_id=2).
+ * Strictly blocks Tenants (3), Staff (4), and unauthenticated/unassigned roles.
  */
 export const isOwnerOrAdmin = (
   req: AuthRequest,
@@ -63,13 +64,47 @@ export const isOwnerOrAdmin = (
   next: NextFunction
 ) => {
   const roleId = req.user?.role_id;
-  if (roleId === 3) {
+  if (roleId !== 1 && roleId !== 2) {
     return res.status(403).json({
       success: false,
-      error: 'Access denied. This endpoint is restricted to hostel owners.',
+      error: 'Access denied. This endpoint is restricted to hostel owners and administrators.',
     });
   }
   next();
+};
+
+/**
+ * Verifies if the authenticated user has legitimate access to the specified hostel.
+ * - Super Admin (role 1): global access to all hostels.
+ * - Owner (role 2): only hostels they own (hostel_master.owner_id === user.user_id) or their active hostel.
+ * - Tenant (role 3) / Staff (role 4): strictly their assigned hostel_id only.
+ */
+export const verifyHostelAccess = async (
+  user: TokenPayload | undefined,
+  targetHostelId: number | string
+): Promise<boolean> => {
+  if (!user) return false;
+  const hostelIdNum = Number(targetHostelId);
+  if (isNaN(hostelIdNum) || hostelIdNum <= 0) return false;
+
+  // Super Admin has global access
+  if (user.role_id === 1) return true;
+
+  // Owner: verify ownership in hostel_master or token's active hostel_id
+  if (user.role_id === 2) {
+    if (user.hostel_id && Number(user.hostel_id) === hostelIdNum) return true;
+    const owned = await db('hostel_master')
+      .where({ hostel_id: hostelIdNum, owner_id: user.user_id, is_active: 1 })
+      .first();
+    return !!owned;
+  }
+
+  // Tenant (3) or Staff (4): strictly their assigned hostel_id
+  if (user.role_id === 3 || user.role_id === 4) {
+    return !!user.hostel_id && Number(user.hostel_id) === hostelIdNum;
+  }
+
+  return false;
 };
 
 /**

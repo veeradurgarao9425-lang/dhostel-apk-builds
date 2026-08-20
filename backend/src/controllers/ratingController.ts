@@ -42,11 +42,11 @@ export const submitRating = async (req: AuthRequest, res: Response) => {
     }
 
     // Fetch student and hostel details for email
-    const student = await db('students').where('student_id', student_id).first();
+    const studentRec = await db('students').where('student_id', student_id).first();
     const hostel = await db('hostel_master').where('hostel_id', hostel_id).first();
     const owner = hostel ? await db('users').where('user_id', hostel.owner_id).first() : null;
 
-    const studentName = student ? `${student.first_name} ${student.last_name || ''}`.trim() : 'A tenant';
+    const studentName = studentRec ? `${studentRec.first_name} ${studentRec.last_name || ''}`.trim() : 'A tenant';
     const hostelName = hostel?.hostel_name || 'Your Hostel';
     const stars = '★'.repeat(rating) + '☆'.repeat(5 - rating);
 

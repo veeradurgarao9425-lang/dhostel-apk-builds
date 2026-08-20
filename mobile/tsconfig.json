@@ -15,5 +15,19 @@
     "noEmit": true,
     "skipLibCheck": true,
     "target": "esnext"
-  }
+  },
+  "include": [
+    "src/**/*",
+    "App.tsx",
+    "index.ts",
+    "i18n.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    ".expo",
+    "android",
+    "ios",
+    "dist",
+    "scratch"
+  ]
 }

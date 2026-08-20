@@ -31,15 +31,22 @@ export default function DeveloperControlHubScreen() {
       title: 'INVENTORY & FINANCIAL LEDGER',
       items: [
         {
+          title: 'Money Management & Billing',
+          subtitle: 'Hostel agreements, dues triage, platform expenses & P&L',
+          icon: 'wallet' as const,
+          color: '#EA580C',
+          route: 'DeveloperFinance',
+        },
+        {
           title: 'Rooms & Bed Distribution',
           subtitle: 'Live platform-wide room types, capacity & vacancy breakdown',
           icon: 'bed' as const,
-          color: '#EA580C',
+          color: '#D97706',
           route: 'DeveloperRoomsBeds',
         },
         {
-          title: 'Payments & Revenue Ledger',
-          subtitle: 'Complete transaction history and revenue analytics',
+          title: 'Tenant Payments Ledger',
+          subtitle: 'Complete transaction history and tenant fee analytics',
           icon: 'cash' as const,
           color: '#059669',
           route: 'DeveloperPayments',
@@ -109,24 +116,17 @@ export default function DeveloperControlHubScreen() {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#18181B" />
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
 
-      {/* ─────────────────── EXECUTIVE HERO HEADER ─────────────────── */}
-      <LinearGradient
-        colors={['#18181B', '#27272A', '#1C1917']}
+      {/* ─────────────────── CLEAN SIMPLE LIGHT HEADER ─────────────────── */}
+      <View
         style={[
           styles.heroHeader,
           {
-            paddingTop: insets.top + (Platform.OS === 'android' ? 14 : 10),
+            paddingTop: insets.top + (Platform.OS === 'android' ? 10 : 6),
           },
         ]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
       >
-        {/* Decorative Ambient Glow Orbs */}
-        <View style={styles.hdrOrb1} />
-        <View style={styles.hdrOrb2} />
-
         <View style={styles.topBarRow}>
           <View>
             <View style={styles.masterBadge}>
@@ -138,11 +138,11 @@ export default function DeveloperControlHubScreen() {
           </View>
 
           <TouchableOpacity onPress={handleLogout} style={styles.logoutBtn} activeOpacity={0.8}>
-            <Ionicons name="log-out-outline" size={15} color="#EF4444" />
+            <Ionicons name="log-out-outline" size={15} color="#DC2626" />
             <Text style={styles.logoutBtnText}>Logout</Text>
           </TouchableOpacity>
         </View>
-      </LinearGradient>
+      </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Developer Identity Card */}
@@ -202,38 +202,19 @@ export default function DeveloperControlHubScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#FFFFFF',
   },
   heroHeader: {
+    backgroundColor: '#FFFFFF',
     paddingHorizontal: 16,
-    paddingBottom: 18,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
-    position: 'relative',
-    overflow: 'hidden',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  hdrOrb1: {
-    position: 'absolute',
-    width: 220,
-    height: 220,
-    borderRadius: 110,
-    backgroundColor: 'rgba(234, 88, 12, 0.12)',
-    top: -80,
-    right: -40,
-  },
-  hdrOrb2: {
-    position: 'absolute',
-    width: 160,
-    height: 160,
-    borderRadius: 80,
-    backgroundColor: 'rgba(124, 58, 237, 0.08)',
-    bottom: -50,
-    left: -40,
+    paddingBottom: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+    shadowColor: '#0F172A',
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
   },
   topBarRow: {
     flexDirection: 'row',
@@ -244,32 +225,32 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    backgroundColor: 'rgba(251, 146, 60, 0.14)',
+    backgroundColor: '#F1F5F9',
     paddingHorizontal: 8,
     paddingVertical: 3,
-    borderRadius: 12,
+    borderRadius: 8,
     alignSelf: 'flex-start',
     marginBottom: 4,
     borderWidth: 1,
-    borderColor: 'rgba(251, 146, 60, 0.25)',
+    borderColor: '#E2E8F0',
   },
   masterBadgeCrown: {
     fontSize: 10,
   },
   masterBadgeLiveDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
     backgroundColor: '#10B981',
   },
   masterBadgeText: {
-    color: '#FB923C',
+    color: '#475569',
     fontSize: 9.5,
-    fontWeight: '900',
-    letterSpacing: 0.7,
+    fontWeight: '800',
+    letterSpacing: 0.5,
   },
   screenTitle: {
-    color: '#FFFFFF',
+    color: '#0F172A',
     fontSize: 19,
     fontWeight: '900',
     letterSpacing: -0.3,
@@ -278,15 +259,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    backgroundColor: '#FEF2F2',
     paddingHorizontal: 10,
     paddingVertical: 6,
-    borderRadius: 10,
+    borderRadius: 8,
     borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.3)',
+    borderColor: '#FECACA',
   },
   logoutBtnText: {
-    color: '#EF4444',
+    color: '#DC2626',
     fontSize: 12,
     fontWeight: '800',
   },

@@ -1,5 +1,5 @@
 import { Response } from 'express';
-import { AuthRequest } from '../middleware/auth.js';
+import { AuthRequest, verifyHostelAccess } from '../middleware/auth.js';
 import db from '../config/database.js';
 import { processFileUpload } from '../utils/fileUpload.js';
 import { sendNotificationToHostelOwner, sendNotificationToStudent } from '../utils/notification.js';
@@ -18,10 +18,11 @@ export const createComplaint = async (req: AuthRequest, res: Response) => {
       return res.status(401).json({ success: false, message: 'Tenant profile not found' });
     }
     const student_id = student.student_id;
-    const hostel_id = student.hostel_id || req.body.hostel_id;
+    // Strict isolation: always bind directly to the authenticated tenant's hostel
+    const hostel_id = student.hostel_id;
 
     if (!hostel_id || !category || !title) {
-      return res.status(400).json({ success: false, message: 'Missing required fields' });
+      return res.status(400).json({ success: false, message: 'Missing required fields or student is not assigned to a hostel.' });
     }
 
     const files = (req as any).files as Express.Multer.File[] | undefined;
@@ -42,9 +43,9 @@ export const createComplaint = async (req: AuthRequest, res: Response) => {
     });
 
     // Fetch student info for notification
-    const student = await db('students').where('student_id', student_id).first();
-    const studentName = student ? `${student.first_name} ${student.last_name || ''}`.trim() : 'A student';
-    const bedInfo = student?.bed_id ? ` (Bed: ${student.bed_id})` : '';
+    const studentDetails = await db('students').where('student_id', student_id).first();
+    const studentName = studentDetails ? `${studentDetails.first_name} ${studentDetails.last_name || ''}`.trim() : 'A student';
+    const bedInfo = studentDetails?.bed_id ? ` (Bed: ${studentDetails.bed_id})` : '';
 
     // Notify Owner via Push & Sockets
     try {
@@ -80,14 +81,13 @@ export const getTenantComplaints = async (req: AuthRequest, res: Response) => {
       return res.status(401).json({ success: false, message: 'Tenant profile not found' });
     }
     const student_id = student.student_id;
-    const { hostel_id } = req.query;
 
-    let query = db('complaints').where('student_id', student_id);
-    if (hostel_id) {
-      query = query.andWhere('hostel_id', hostel_id);
-    }
+    // Strict boundary: only return complaints for this specific student and their hostel
+    const complaints = await db('complaints')
+      .where('student_id', student_id)
+      .andWhere('hostel_id', student.hostel_id)
+      .orderBy('created_at', 'desc');
 
-    const complaints = await query.orderBy('created_at', 'desc');
     res.status(200).json({ success: true, complaints });
   } catch (error: any) {
     console.error('Error fetching tenant complaints:', error);
@@ -104,9 +104,10 @@ export const getHostelComplaints = async (req: AuthRequest, res: Response) => {
     const { hostelId } = req.params;
     const user = req.user;
 
-    // Restrict Owner to their own hostel
-    if (user?.role_id === 2 && user.hostel_id !== Number(hostelId)) {
-      return res.status(403).json({ success: false, error: 'Access denied.' });
+    // Strict multi-hostel owner isolation
+    const hasAccess = await verifyHostelAccess(user, hostelId);
+    if (!hasAccess) {
+      return res.status(403).json({ success: false, error: 'Access denied. You do not own this hostel.' });
     }
     
     // Join with students table to get name and room/bed
@@ -146,9 +147,10 @@ export const updateComplaintStatus = async (req: AuthRequest, res: Response) => 
       return res.status(404).json({ success: false, message: 'Complaint not found' });
     }
 
-    // Restrict Owner to their own hostel
-    if (user?.role_id === 2 && complaint.hostel_id !== user.hostel_id) {
-      return res.status(403).json({ success: false, error: 'Access denied.' });
+    // Strict multi-hostel owner isolation
+    const hasAccess = await verifyHostelAccess(user, complaint.hostel_id);
+    if (!hasAccess) {
+      return res.status(403).json({ success: false, error: 'Access denied. You do not have permission for this hostel.' });
     }
 
     await db('complaints').where('complaint_id', complaintId).update({ status });

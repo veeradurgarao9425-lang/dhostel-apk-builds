@@ -6,7 +6,7 @@ import { sendNotificationToHostelOwner, sendNotificationToStudent } from '../uti
 import { sendNewJoinerStudentEmail, sendNewJoinerOwnerAlertEmail } from '../utils/email.js';
 import { kickUserFromRoomChat } from '../socket/index.js';
 import { checkHostelUniqueIdentifiers } from '../utils/validation.js';
-import { resolveScopedHostelId, resolveOwnerHostelId, canAccessHostel } from '../utils/scope.js';
+import { resolveScopedHostelId, resolveOwnerHostelId, canAccessHostel, getAuthenticatedStudent } from '../utils/scope.js';
 
 // Helper function to convert ISO datetime string to date-only format (YYYY-MM-DD)
 const convertToDateOnly = (dateValue: any): string | null => {
