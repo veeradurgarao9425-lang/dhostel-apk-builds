@@ -587,3 +587,77 @@ export const sendNewJoinerOwnerAlertEmail = async (params: {
 
   await sendEmail({ to: ownerEmail, subject, html, emailType: 'NewJoinerOwnerAlert' });
 };
+
+/**
+ * ─── Password Reset Security Notification Email ─────────────────────────────
+ * Triggered whenever a student or owner password is reset by developer / admin.
+ */
+export const sendPasswordResetNotificationEmail = async (params: {
+  recipientEmail: string;
+  recipientName: string;
+  userType: 'Student / Resident' | 'Hostel Owner' | 'User';
+  newPassword?: string;
+}) => {
+  const { recipientEmail, recipientName, userType, newPassword } = params;
+  if (!recipientEmail || !recipientEmail.includes('@')) return;
+
+  const subject = `Security Alert: Your Hostix Account Password Was Changed`;
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #F8FAFC; margin: 0; padding: 24px;">
+      <div style="max-width: 560px; margin: 0 auto; background-color: #FFFFFF; border-radius: 16px; border: 1px solid #E2E8F0; overflow: hidden; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);">
+        <!-- Header Banner -->
+        <div style="background: linear-gradient(135deg, #18181B 0%, #27272A 100%); padding: 24px; text-align: center;">
+          <h1 style="color: #EA580C; margin: 0; font-size: 20px; font-weight: 800; letter-spacing: 0.5px;">HOSTIX SECURITY NOTICE</h1>
+          <p style="color: #D4D4D8; font-size: 13px; margin-top: 4px; margin-bottom: 0;">Account Credential Update</p>
+        </div>
+
+        <div style="padding: 24px;">
+          <p style="color: #334155; font-size: 14px; line-height: 22px; margin-top: 0;">
+            Hello <strong>${recipientName || 'User'}</strong>,
+          </p>
+          <p style="color: #475569; font-size: 14px; line-height: 22px;">
+            Your Hostix <strong>${userType}</strong> account password has recently been updated.
+          </p>
+
+          ${newPassword ? `
+          <div style="background-color: #F1F5F9; border: 1px solid #E2E8F0; border-radius: 10px; padding: 14px; margin: 16px 0; text-align: center;">
+            <span style="color: #64748B; font-size: 11px; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; display: block; margin-bottom: 4px;">Temporary Access Password</span>
+            <span style="font-family: monospace; font-size: 18px; font-weight: 800; color: #0F172A; letter-spacing: 2px;">${newPassword}</span>
+          </div>
+          ` : ''}
+
+          <!-- Alert Box -->
+          <div style="background-color: #FEF3C7; border: 1px solid #FCD34D; border-radius: 12px; padding: 16px; margin: 20px 0;">
+            <p style="color: #92400E; font-size: 13px; line-height: 20px; margin: 0; font-weight: 700;">
+              ⚠️ If you did not request this change or need login assistance, please contact your Admin / Developer immediately:
+            </p>
+            <div style="margin-top: 10px; color: #78350F; font-size: 13px; line-height: 20px;">
+              <strong>Developer / Admin:</strong> Durgarao<br>
+              <strong>Contact Phone:</strong> <a href="tel:6303359425" style="color: #EA580C; text-decoration: none; font-weight: 800;">6303359425</a>
+            </div>
+          </div>
+
+          <p style="color: #64748B; font-size: 12px; line-height: 18px; margin: 0;">
+            You can now log in to the Hostix App with your updated credentials.
+          </p>
+        </div>
+
+        <div style="background-color: #F1F5F9; padding: 14px 24px; text-align: center; border-top: 1px solid #E2E8F0;">
+          <p style="color: #94A3B8; font-size: 11px; margin: 0;">Hostix Ecosystem Security • Automated Dispatch</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  await sendEmail({ to: recipientEmail, subject, html, emailType: 'PasswordResetAlert' }).catch((err) => {
+    console.error('Password reset email dispatch notice:', err?.message || err);
+  });
+};
+

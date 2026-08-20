@@ -366,7 +366,7 @@ export default function DeveloperHostelsScreen() {
         />
       )}
 
-      {/* Extend Trial Modal */}
+      {/* Extend Trial / Subscription Modal */}
       <Modal
         visible={trialModalVisible}
         transparent={true}
@@ -377,34 +377,42 @@ export default function DeveloperHostelsScreen() {
           <View style={styles.modalCard}>
             <View style={styles.modalHeader}>
               <View style={styles.modalIconWrap}>
-                <Ionicons name="gift" size={20} color="#C2410C" />
+                <Ionicons name="sparkles" size={20} color="#C2410C" />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.modalTitle}>Extend Free Trial / Access</Text>
+                <Text style={styles.modalTitle}>Extend Subscription / Access</Text>
                 <Text style={styles.modalSub}>{selectedHostel?.hostel_name}</Text>
               </View>
-              <TouchableOpacity onPress={() => setTrialModalVisible(false)}>
+              <TouchableOpacity onPress={() => setTrialModalVisible(false)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
                 <Ionicons name="close" size={22} color="#78716C" />
               </TouchableOpacity>
             </View>
 
-            <Text style={styles.inputLabel}>Select or Enter Days to Extend</Text>
-            <View style={styles.presetDaysRow}>
-              {['15', '30', '60', '90'].map((d) => (
+            <Text style={styles.inputLabel}>Choose Subscription Period</Text>
+            <View style={[styles.presetDaysRow, { flexWrap: 'wrap', gap: 6 }]}>
+              {[
+                { label: '+15 Days', val: '15' },
+                { label: '+1 Month', val: '30' },
+                { label: '+3 Months', val: '90' },
+                { label: '+6 Months', val: '180' },
+                { label: '+1 Year', val: '365' },
+              ].map((item) => (
                 <TouchableOpacity
-                  key={d}
-                  onPress={() => setTrialDays(d)}
-                  style={[styles.presetDayChip, trialDays === d && styles.presetDayChipActive]}
+                  key={item.val}
+                  onPress={() => setTrialDays(item.val)}
+                  style={[styles.presetDayChip, trialDays === item.val && styles.presetDayChipActive]}
+                  activeOpacity={0.8}
                 >
-                  <Text style={[styles.presetDayText, trialDays === d && styles.presetDayTextActive]}>
-                    +{d} Days
+                  <Text style={[styles.presetDayText, trialDays === item.val && styles.presetDayTextActive]}>
+                    {item.label}
                   </Text>
                 </TouchableOpacity>
               ))}
             </View>
 
+            <Text style={[styles.inputLabel, { marginTop: 12 }]}>Or Enter Custom Days</Text>
             <TextInput
-              placeholder="Custom days count"
+              placeholder="e.g. 45"
               placeholderTextColor="#A89687"
               value={trialDays}
               onChangeText={setTrialDays}
@@ -412,10 +420,24 @@ export default function DeveloperHostelsScreen() {
               style={styles.daysTextInput}
             />
 
+            {/* Calculated Extension Info Preview */}
+            <View style={{ backgroundColor: '#FFFBEB', borderWidth: 1, borderColor: '#FDE68A', borderRadius: 10, padding: 10, marginTop: 12, marginBottom: 14 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Ionicons name="calendar" size={14} color="#D97706" />
+                <Text style={{ fontSize: 11, fontWeight: '800', color: '#92400E' }}>
+                  Valid Until: {new Date(Date.now() + (parseInt(trialDays || '0', 10) || 0) * 86400000).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                </Text>
+              </View>
+              <Text style={{ fontSize: 10, color: '#B45309', marginTop: 2 }}>
+                Hostel status will automatically be set to ACTIVE upon confirmation.
+              </Text>
+            </View>
+
             <View style={styles.modalBtnRow}>
               <TouchableOpacity
                 onPress={() => setTrialModalVisible(false)}
                 style={styles.cancelBtn}
+                activeOpacity={0.8}
               >
                 <Text style={styles.cancelBtnText}>Cancel</Text>
               </TouchableOpacity>
@@ -424,6 +446,7 @@ export default function DeveloperHostelsScreen() {
                 onPress={handleConfirmExtendTrial}
                 disabled={extendingTrial}
                 style={styles.confirmExtendBtn}
+                activeOpacity={0.8}
               >
                 {extendingTrial ? (
                   <ActivityIndicator size="small" color="#FFF" />

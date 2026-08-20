@@ -33,7 +33,7 @@ const ToastContext = createContext<ToastContextValue>({
 export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
   const showToast = useCallback(({ type, message, title, duration }: ShowToastParams) => {
-    const defaultDuration = (type === 'error') ? 6000 : 3000;
+    const defaultDuration = (type === 'error') ? 5000 : 3500;
     const titleMap: Record<ToastType, string> = {
       success: 'Success',
       error: 'Error',
@@ -47,8 +47,8 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       text2: message,
       visibilityTime: duration ?? defaultDuration,
       autoHide: true,
-      position: 'bottom',
-      bottomOffset: 100, // Above tab bar (60px) + safe margin
+      position: 'top',
+      topOffset: 50,
     });
   }, []);
 

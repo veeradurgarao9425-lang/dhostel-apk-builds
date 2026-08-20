@@ -36,9 +36,20 @@ const getVariantConfig = (variant: ToastVariant) => {
     }
 };
 
+import Toast from 'react-native-toast-message';
+
 export const CustomToast = ({ variant, title, message, progress, onAction, onClose }: CustomToastProps) => {
     const { isDark } = useTheme();
     const config = getVariantConfig(variant);
+
+    const handleClose = () => {
+        try {
+            if (onClose) onClose();
+        } catch (e) {
+            console.warn('Toast close handler error:', e);
+        }
+        Toast.hide();
+    };
 
     return (
         <View style={[S.container, isDark && S.containerDark]}>
@@ -58,9 +69,9 @@ export const CustomToast = ({ variant, title, message, progress, onAction, onClo
                     {/* Texts */}
                     <View style={S.textCol}>
                         <Text style={[S.title, isDark && S.textDark]}>{title}</Text>
-                        {message && (
+                        {message ? (
                             <Text style={[S.message, isDark && S.textDimDark]}>{message}</Text>
-                        )}
+                        ) : null}
                     </View>
 
                     {/* Right Side (Action / Progress / Close) */}
@@ -70,15 +81,22 @@ export const CustomToast = ({ variant, title, message, progress, onAction, onClo
                         )}
                         
                         {config.actionText && (
-                            <TouchableOpacity onPress={onAction} style={S.actionBtn}>
+                            <TouchableOpacity onPress={onAction} style={S.actionBtn} activeOpacity={0.7}>
                                 <Text style={[S.actionText, { color: config.color }]}>
                                     {config.actionText}
                                 </Text>
                             </TouchableOpacity>
                         )}
 
-                        <TouchableOpacity onPress={onClose} style={S.closeBtn}>
-                            <Ionicons name="close" size={20} color="#94A3B8" />
+                        <TouchableOpacity 
+                            onPress={handleClose} 
+                            style={S.closeBtn}
+                            hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
+                            activeOpacity={0.6}
+                            accessibilityLabel="Close notification"
+                            accessibilityRole="button"
+                        >
+                            <Ionicons name="close" size={20} color={isDark ? "#94A3B8" : "#64748B"} />
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -174,7 +192,12 @@ const S = StyleSheet.create({
         fontWeight: '700',
     },
     closeBtn: {
-        padding: 4,
+        padding: 6,
+        borderRadius: 20,
+        minWidth: 32,
+        minHeight: 32,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     progressBarBg: {
         height: 4,

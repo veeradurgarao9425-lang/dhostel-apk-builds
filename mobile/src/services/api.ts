@@ -31,8 +31,19 @@ api.interceptors.request.use(
           config.headers['Authorization'] = `Bearer ${tokenToUse}`;
         }
       }
-      if (config.data instanceof FormData) {
-        delete config.headers['Content-Type'];
+      const isFormData =
+        config.data instanceof FormData ||
+        (config.data && typeof config.data === 'object' && ('_parts' in config.data || config.data.constructor?.name === 'FormData'));
+
+      if (isFormData) {
+        if (config.headers) {
+          if (typeof (config.headers as any).delete === 'function') {
+            (config.headers as any).delete('Content-Type');
+            (config.headers as any).delete('content-type');
+          }
+          delete (config.headers as any)['Content-Type'];
+          delete (config.headers as any)['content-type'];
+        }
       }
     } catch {
       // Token read failed — proceed without token

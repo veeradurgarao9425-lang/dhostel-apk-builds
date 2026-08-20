@@ -756,36 +756,47 @@ export default function PreBookingScreen({ navigation, route }: any) {
                 id_proof_status: 1,
             };
 
-            const hasFiles = (idProofFront && idProofFront.startsWith('file:')) || (idProofBack && idProofBack.startsWith('file:'));
+            const isLocalUri = (uri: string | null | undefined): boolean => {
+                if (!uri || typeof uri !== 'string') return false;
+                const clean = uri.trim();
+                if (!clean) return false;
+                return !clean.startsWith('http://') && !clean.startsWith('https://') && !clean.startsWith('/uploads');
+            };
+
+            const appendImage = (formDataObj: FormData, fieldName: string, uri: string, fallbackFilename: string) => {
+                let filename = uri.split('/').pop() || fallbackFilename;
+                filename = filename.split('?')[0];
+                if (!/\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(filename)) {
+                    filename = `${filename}.jpg`;
+                }
+                const match = /\.(\w+)$/.exec(filename);
+                const ext = match ? match[1].toLowerCase() : 'jpg';
+                const type = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
+                formDataObj.append(fieldName, {
+                    uri: Platform.OS === 'android' ? uri : uri.replace('file://', ''),
+                    name: filename,
+                    type,
+                } as any);
+            };
+
+            const hasFiles = isLocalUri(idProofFront) || isLocalUri(idProofBack);
             if (hasFiles) {
                 const bodyFormData = new FormData();
                 Object.keys(payload).forEach(key => {
-                    if (payload[key] !== null && payload[key] !== undefined) {
-                        bodyFormData.append(key, String(payload[key]));
+                    const val = payload[key];
+                    if (val !== null && val !== undefined && val !== '') {
+                        bodyFormData.append(key, String(val));
                     }
                 });
-                if (idProofFront && idProofFront.startsWith('file:')) {
-                    const filename = idProofFront.split('/').pop() || 'id_proof_front.jpg';
-                    const match = /\.(\w+)$/.exec(filename);
-                    const type = match ? `image/${match[1]}` : 'image/jpeg';
-                    bodyFormData.append('id_proof_front', {
-                        uri: idProofFront,
-                        name: filename,
-                        type,
-                    } as any);
+                if (isLocalUri(idProofFront) && idProofFront) {
+                    appendImage(bodyFormData, 'id_proof_front', idProofFront, 'id_proof_front.jpg');
                 }
-                if (idProofBack && idProofBack.startsWith('file:')) {
-                    const filename = idProofBack.split('/').pop() || 'id_proof_back.jpg';
-                    const match = /\.(\w+)$/.exec(filename);
-                    const type = match ? `image/${match[1]}` : 'image/jpeg';
-                    bodyFormData.append('id_proof_back', {
-                        uri: idProofBack,
-                        name: filename,
-                        type,
-                    } as any);
+                if (isLocalUri(idProofBack) && idProofBack) {
+                    appendImage(bodyFormData, 'id_proof_back', idProofBack, 'id_proof_back.jpg');
                 }
                 await api.post('/students', bodyFormData, {
-                    headers: { 'Content-Type': 'multipart/form-data' }
+                    headers: { 'Content-Type': 'multipart/form-data' },
+                    transformRequest: (data: any) => data,
                 });
             } else {
                 await api.post('/students', payload);

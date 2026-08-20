@@ -120,8 +120,11 @@ export const DeveloperProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setSupportSession(null);
 
     await removeSecureItem('developer_token');
-    await AsyncStorage.multiRemove(['developer_user', 'support_session']);
-    navigate('RoleSelect');
+    await AsyncStorage.multiRemove(['developer_user', 'support_session', 'token', 'user']);
+    reset({
+      index: 0,
+      routes: [{ name: 'RoleSelect' }],
+    });
   };
 
   // Enter Delegated Support Mode
@@ -187,8 +190,11 @@ export const DeveloperProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     // Clear normal user session
     await signOut();
 
-    // Navigate smoothly back to Developer Main Hub
-    navigate('DeveloperMain');
+    // Navigate smoothly back to Developer Main Hub without routing to Login
+    reset({
+      index: 0,
+      routes: [{ name: 'DeveloperMain' }],
+    });
   };
 
   return (

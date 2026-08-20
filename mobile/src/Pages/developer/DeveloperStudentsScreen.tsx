@@ -14,6 +14,7 @@ import {
   Platform,
   Alert,
   Modal,
+  Share,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -55,6 +56,12 @@ export default function DeveloperStudentsScreen() {
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
   const [newPassword, setNewPassword] = useState('');
   const [resettingPassword, setResettingPassword] = useState(false);
+  const [passwordSuccessData, setPasswordSuccessData] = useState<{
+    name: string;
+    account: string;
+    password: string;
+    role: 'Owner' | 'Tenant';
+  } | null>(null);
 
   // Load Hostels and Owners lists for top tabs
   useEffect(() => {
@@ -216,11 +223,15 @@ export default function DeveloperStudentsScreen() {
     try {
       setResettingPassword(true);
       await developerService.resetStudentPassword(selectedStudent.student_id, newPassword.trim());
+      const savedPass = newPassword.trim();
+      const studentObj = selectedStudent;
       setPasswordModalVisible(false);
-      Alert.alert(
-        'Student Password Updated! 🔑',
-        `New password for ${selectedStudent.first_name}:\n\n${newPassword.trim()}\n\nPlease share this with the tenant so they can log in.`
-      );
+      setPasswordSuccessData({
+        name: `${studentObj?.first_name || ''} ${studentObj?.last_name || ''}`.trim() || 'Student',
+        account: studentObj?.phone || studentObj?.email || 'Tenant Account',
+        password: savedPass,
+        role: 'Tenant',
+      });
     } catch (err: any) {
       Alert.alert('Reset Failed', err.message || 'Could not reset student password.');
     } finally {
@@ -509,7 +520,21 @@ export default function DeveloperStudentsScreen() {
               </View>
             </ScrollView>
 
-            <View style={styles.detailBtnRow}>
+            <View style={[styles.detailBtnRow, { marginTop: 12 }]}>
+              <TouchableOpacity
+                onPress={() => {
+                  setViewDetailsModalVisible(false);
+                  navigation.navigate('DeveloperStudentDetails', {
+                    studentId: detailStudent?.student_id,
+                    student: detailStudent,
+                  });
+                }}
+                style={[styles.detailResetBtn, { backgroundColor: '#FFF7ED', borderColor: '#FED7AA' }]}
+              >
+                <Ionicons name="document-text-outline" size={13} color="#EA580C" />
+                <Text style={[styles.detailResetBtnText, { color: '#EA580C' }]}>Full Dossier</Text>
+              </TouchableOpacity>
+
               <TouchableOpacity
                 onPress={() => {
                   setViewDetailsModalVisible(false);
@@ -518,7 +543,7 @@ export default function DeveloperStudentsScreen() {
                 style={styles.detailResetBtn}
               >
                 <Ionicons name="key-outline" size={13} color="#D97706" />
-                <Text style={styles.detailResetBtnText}>Reset Password</Text>
+                <Text style={styles.detailResetBtnText}>Reset Pass</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -529,7 +554,7 @@ export default function DeveloperStudentsScreen() {
                 style={styles.detailSupportBtn}
               >
                 <Ionicons name="shield-half-outline" size={13} color="#FFF" />
-                <Text style={styles.detailSupportBtnText}>Support Mode</Text>
+                <Text style={styles.detailSupportBtnText}>Support</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -546,22 +571,33 @@ export default function DeveloperStudentsScreen() {
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
             <View style={styles.modalHeader}>
-              <View style={styles.modalIconWrap}>
-                <Ionicons name="key" size={20} color="#D97706" />
+              <View style={[styles.modalIconWrap, { backgroundColor: '#FFF7ED' }]}>
+                <Ionicons name="key" size={20} color="#EA580C" />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.modalTitle}>Set Student Password</Text>
+                <Text style={styles.modalTitle}>Reset Student Password</Text>
                 <Text style={styles.modalSub}>{selectedStudent?.first_name} {selectedStudent?.last_name || ''}</Text>
               </View>
-              <TouchableOpacity onPress={() => setPasswordModalVisible(false)}>
+              <TouchableOpacity onPress={() => setPasswordModalVisible(false)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
                 <Ionicons name="close" size={22} color="#78716C" />
               </TouchableOpacity>
             </View>
 
-            <Text style={styles.inputLabel}>Enter or Generate New Password</Text>
+            {/* Security Email Dispatch Info Alert */}
+            <View style={{ flexDirection: 'row', alignItems: 'flex-start', backgroundColor: '#FFFBEB', borderColor: '#FDE68A', borderWidth: 1, borderRadius: 12, padding: 10, marginBottom: 12, gap: 8 }}>
+              <Ionicons name="mail" size={15} color="#D97706" style={{ marginTop: 2 }} />
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 11, fontWeight: '800', color: '#92400E', marginBottom: 2 }}>Automated Email Notification</Text>
+                <Text style={{ fontSize: 10, color: '#B45309', lineHeight: 14 }}>
+                  A security notice with Admin / Developer contact (<Text style={{ fontWeight: '700', color: '#92400E' }}>Durgarao: 6303359425</Text>) will be sent to the resident.
+                </Text>
+              </View>
+            </View>
+
+            <Text style={styles.inputLabel}>New Secure Password</Text>
             <View style={styles.passInputRow}>
               <TextInput
-                placeholder="e.g. 123456 or studentpass"
+                placeholder="Enter password or tap 6-digit"
                 placeholderTextColor="#A89687"
                 value={newPassword}
                 onChangeText={setNewPassword}
@@ -570,10 +606,11 @@ export default function DeveloperStudentsScreen() {
               />
               <TouchableOpacity
                 onPress={handleGenerateRandomPassword}
-                style={styles.generateBtn}
+                style={[styles.generateBtn, { backgroundColor: '#FFF7ED', borderWidth: 1, borderColor: '#FED7AA' }]}
                 activeOpacity={0.8}
               >
-                <Text style={styles.generateBtnText}>🎲 6-Digit</Text>
+                <Ionicons name="shuffle" size={13} color="#EA580C" style={{ marginRight: 3 }} />
+                <Text style={[styles.generateBtnText, { color: '#EA580C', fontWeight: '800' }]}>PIN</Text>
               </TouchableOpacity>
             </View>
 
@@ -581,6 +618,7 @@ export default function DeveloperStudentsScreen() {
               <TouchableOpacity
                 onPress={() => setPasswordModalVisible(false)}
                 style={styles.cancelBtn}
+                activeOpacity={0.8}
               >
                 <Text style={styles.cancelBtnText}>Cancel</Text>
               </TouchableOpacity>
@@ -588,12 +626,13 @@ export default function DeveloperStudentsScreen() {
               <TouchableOpacity
                 onPress={handleSavePassword}
                 disabled={resettingPassword}
-                style={styles.confirmSaveBtn}
+                style={[styles.confirmSaveBtn, { backgroundColor: '#EA580C' }]}
+                activeOpacity={0.8}
               >
                 {resettingPassword ? (
                   <ActivityIndicator size="small" color="#FFF" />
                 ) : (
-                  <Text style={styles.confirmSaveBtnText}>Save Password</Text>
+                  <Text style={styles.confirmSaveBtnText}>Update & Send</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -608,6 +647,88 @@ export default function DeveloperStudentsScreen() {
         targetUser={selectedStudentForSupport}
         targetRole="TENANT"
       />
+
+      {/* ── MODERN CREDENTIALS SUCCESS POPUP MODAL ── */}
+      <Modal
+        visible={!!passwordSuccessData}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setPasswordSuccessData(null)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={[styles.modalCard, { padding: 0, overflow: 'hidden' }]}>
+            <LinearGradient
+              colors={['#059669', '#047857']}
+              style={{ padding: 20, alignItems: 'center', justifyContent: 'center' }}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}>
+                <Ionicons name="checkmark-done-circle" size={30} color="#FFFFFF" />
+              </View>
+              <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '900' }}>Password Reset Successful</Text>
+              <Text style={{ color: '#A7F3D0', fontSize: 11, fontWeight: '700', marginTop: 2 }}>
+                Credentials Generated & Security Email Sent
+              </Text>
+            </LinearGradient>
+
+            <View style={{ padding: 18 }}>
+              <Text style={{ fontSize: 10, fontWeight: '800', color: '#64748B', letterSpacing: 0.5, marginBottom: 2 }}>
+                {passwordSuccessData?.role?.toUpperCase()} ACCOUNT
+              </Text>
+              <Text style={{ fontSize: 15, fontWeight: '900', color: '#0F172A', marginBottom: 12 }}>
+                {passwordSuccessData?.name}
+              </Text>
+
+              {/* Highlighted Password Box */}
+              <View style={{ backgroundColor: '#FFF7ED', borderWidth: 1.5, borderColor: '#FED7AA', borderRadius: 14, padding: 12, marginBottom: 12, alignItems: 'center' }}>
+                <Text style={{ fontSize: 10, fontWeight: '800', color: '#9A3412', letterSpacing: 0.5 }}>
+                  NEW TEMPORARY PASSWORD
+                </Text>
+                <Text style={{ fontSize: 24, fontWeight: '900', color: '#EA580C', letterSpacing: 2, marginVertical: 4 }}>
+                  {passwordSuccessData?.password}
+                </Text>
+                <Text style={{ fontSize: 10.5, color: '#C2410C' }}>
+                  Student can sign in immediately with this PIN
+                </Text>
+              </View>
+
+              {/* Security Alert Note */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#F8FAFC', padding: 9, borderRadius: 10, borderWidth: 1, borderColor: '#E2E8F0', marginBottom: 14 }}>
+                <Ionicons name="shield-checkmark" size={15} color="#059669" />
+                <Text style={{ fontSize: 10.5, color: '#475569', flex: 1, lineHeight: 14 }}>
+                  Security alert dispatched with Admin/Dev contact (<Text style={{ fontWeight: '700', color: '#0F172A' }}>Durgarao: 6303359425</Text>).
+                </Text>
+              </View>
+
+              {/* Share & Done Buttons */}
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <TouchableOpacity
+                  onPress={() => {
+                    Share.share({
+                      title: 'Hostix Account Credentials',
+                      message: `Hostix Student Portal\nAccount: ${passwordSuccessData?.account}\nNew Password: ${passwordSuccessData?.password}\nAdmin Support: Durgarao (6303359425)`,
+                    }).catch(() => {});
+                  }}
+                  style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#ECFDF5', borderWidth: 1, borderColor: '#A7F3D0', paddingVertical: 11, borderRadius: 12 }}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="share-social" size={15} color="#059669" />
+                  <Text style={{ fontSize: 12.5, fontWeight: '800', color: '#059669' }}>Share / Copy</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={() => setPasswordSuccessData(null)}
+                  style={{ flex: 1, backgroundColor: '#0F172A', paddingVertical: 11, borderRadius: 12, alignItems: 'center', justifyContent: 'center' }}
+                  activeOpacity={0.8}
+                >
+                  <Text style={{ fontSize: 12.5, fontWeight: '800', color: '#FFFFFF' }}>Done</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }

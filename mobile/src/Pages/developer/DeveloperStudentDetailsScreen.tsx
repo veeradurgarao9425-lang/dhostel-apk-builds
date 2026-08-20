@@ -13,6 +13,7 @@ import {
   Modal,
   TextInput,
   Share,
+  Linking,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -39,6 +40,12 @@ export default function DeveloperStudentDetailsScreen() {
   const [passwordModalVisible, setPasswordModalVisible] = useState(false);
   const [newPassword, setNewPassword] = useState('');
   const [resettingPassword, setResettingPassword] = useState(false);
+  const [passwordSuccessData, setPasswordSuccessData] = useState<{
+    name: string;
+    account: string;
+    password: string;
+    role: 'Owner' | 'Tenant';
+  } | null>(null);
 
   // Support Mode Modal
   const [supportModalVisible, setSupportModalVisible] = useState(false);
@@ -302,6 +309,26 @@ export default function DeveloperStudentDetailsScreen() {
                 <Text style={styles.infoLabel}>Phone Number</Text>
                 <Text style={styles.infoValue}>{phone}</Text>
               </View>
+              {phone && phone !== 'N/A' && (
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  <TouchableOpacity
+                    onPress={() => Linking.openURL(`tel:${phone.replace(/\D/g, '')}`)}
+                    style={{ backgroundColor: '#EFF6FF', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: '#BFDBFE', flexDirection: 'row', alignItems: 'center', gap: 4 }}
+                    activeOpacity={0.75}
+                  >
+                    <Ionicons name="call" size={13} color="#2563EB" />
+                    <Text style={{ fontSize: 11, fontWeight: '700', color: '#2563EB' }}>Call</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => Linking.openURL(`https://wa.me/91${phone.replace(/\D/g, '')}?text=Hello%20${encodeURIComponent(name)}`)}
+                    style={{ backgroundColor: '#ECFDF5', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: '#A7F3D0', flexDirection: 'row', alignItems: 'center', gap: 4 }}
+                    activeOpacity={0.75}
+                  >
+                    <Ionicons name="logo-whatsapp" size={13} color="#059669" />
+                    <Text style={{ fontSize: 11, fontWeight: '700', color: '#059669' }}>Chat</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
             </View>
 
             <View style={styles.infoRow}>
@@ -312,6 +339,16 @@ export default function DeveloperStudentDetailsScreen() {
                 <Text style={styles.infoLabel}>Email Address</Text>
                 <Text style={styles.infoValue}>{email}</Text>
               </View>
+              {email && email !== 'N/A' && (
+                <TouchableOpacity
+                  onPress={() => Linking.openURL(`mailto:${email}`)}
+                  style={{ backgroundColor: '#FFF7ED', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: '#FED7AA', flexDirection: 'row', alignItems: 'center', gap: 4 }}
+                  activeOpacity={0.75}
+                >
+                  <Ionicons name="mail" size={13} color="#EA580C" />
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: '#EA580C' }}>Email</Text>
+                </TouchableOpacity>
+              )}
             </View>
 
             <View style={styles.infoRow}>
@@ -478,7 +515,7 @@ export default function DeveloperStudentDetailsScreen() {
       )}
 
       {/* ─────────────────── RESET PASSWORD MODAL ─────────────────── */}
-      <Modal visible={passwordModalVisible} transparent animationType="fade">
+      <Modal visible={passwordModalVisible} transparent animationType="fade" onRequestClose={() => setPasswordModalVisible(false)}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
             <View style={styles.modalHeaderRow}>
@@ -489,9 +526,20 @@ export default function DeveloperStudentDetailsScreen() {
                 <Text style={styles.modalTitle}>Reset Tenant Password</Text>
                 <Text style={styles.modalSub}>{name}</Text>
               </View>
-              <TouchableOpacity onPress={() => setPasswordModalVisible(false)}>
+              <TouchableOpacity onPress={() => setPasswordModalVisible(false)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
                 <Ionicons name="close" size={20} color="#9CA3AF" />
               </TouchableOpacity>
+            </View>
+
+            {/* Security Email Dispatch Info */}
+            <View style={styles.securityAlertBox}>
+              <Ionicons name="mail" size={15} color="#D97706" style={{ marginTop: 2 }} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.securityAlertTitle}>Automated Email Notification</Text>
+                <Text style={styles.securityAlertText}>
+                  A security notice with Admin / Developer contact (<Text style={{ fontWeight: '700', color: '#B45309' }}>Durgarao: 6303359425</Text>) will be sent to the resident.
+                </Text>
+              </View>
             </View>
 
             <Text style={styles.inputLabel}>New Secure Password</Text>
@@ -502,9 +550,12 @@ export default function DeveloperStudentDetailsScreen() {
                 placeholder="Enter password or tap generate"
                 placeholderTextColor="#9CA3AF"
                 style={styles.modalInput}
+                autoCapitalize="none"
+                autoCorrect={false}
               />
-              <TouchableOpacity onPress={handleGeneratePassword} style={styles.generatePinBtn}>
-                <Text style={styles.generatePinBtnText}>🎲 6-Digit</Text>
+              <TouchableOpacity onPress={handleGeneratePassword} style={styles.generatePinBtn} activeOpacity={0.8}>
+                <Ionicons name="shuffle" size={14} color="#EA580C" style={{ marginRight: 4 }} />
+                <Text style={styles.generatePinBtnText}>Generate</Text>
               </TouchableOpacity>
             </View>
 
@@ -512,6 +563,7 @@ export default function DeveloperStudentDetailsScreen() {
               <TouchableOpacity
                 onPress={() => setPasswordModalVisible(false)}
                 style={styles.modalCancelBtn}
+                activeOpacity={0.8}
               >
                 <Text style={styles.modalCancelBtnText}>Cancel</Text>
               </TouchableOpacity>
@@ -519,11 +571,12 @@ export default function DeveloperStudentDetailsScreen() {
                 onPress={handleSavePassword}
                 disabled={resettingPassword}
                 style={styles.modalSaveBtn}
+                activeOpacity={0.8}
               >
                 {resettingPassword ? (
                   <ActivityIndicator size="small" color="#FFFFFF" />
                 ) : (
-                  <Text style={styles.modalSaveBtnText}>Save Password</Text>
+                  <Text style={styles.modalSaveBtnText}>Update & Send Email</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -1001,6 +1054,28 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     fontSize: 12,
     marginTop: 1,
+  },
+  securityAlertBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    backgroundColor: '#FFFBEB',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    borderRadius: 12,
+    padding: 10,
+    marginBottom: 14,
+  },
+  securityAlertTitle: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#92400E',
+    marginBottom: 2,
+  },
+  securityAlertText: {
+    fontSize: 10.5,
+    color: '#78350F',
+    lineHeight: 15,
   },
   inputLabel: {
     color: '#374151',

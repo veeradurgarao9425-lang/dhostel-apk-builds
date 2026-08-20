@@ -15,6 +15,8 @@ import {
   TouchableWithoutFeedback,
   Dimensions,
   Animated,
+  KeyboardAvoidingView,
+  Linking,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -573,25 +575,6 @@ export default function DeveloperDashboardScreen() {
               <View style={styles.onlineDot} />
             </TouchableOpacity>
           </View>
-        </View>
-
-        {/* Universal Search Bar */}
-        <View style={styles.headerSearchBar}>
-          <Ionicons name="search" size={16} color="#64748B" />
-          <TextInput
-            placeholder="Search hostels, owners, students..."
-            placeholderTextColor="#94A3B8"
-            value={pricingSearch}
-            onChangeText={setPricingSearch}
-            style={styles.headerSearchInput}
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
-          {pricingSearch ? (
-            <TouchableOpacity onPress={() => setPricingSearch('')}>
-              <Ionicons name="close-circle" size={17} color="#94A3B8" />
-            </TouchableOpacity>
-          ) : null}
         </View>
       </View>
 
@@ -1283,19 +1266,22 @@ export default function DeveloperDashboardScreen() {
       </ScrollView>
 
       {/* ── MODAL: EDIT CUSTOM PRICING / AGREED AMOUNT ── */}
-      <Modal visible={!!editBillingModal} transparent animationType="fade">
-        <TouchableWithoutFeedback onPress={() => setEditBillingModal(null)}>
-          <View style={styles.modalOverlay}>
-            <TouchableWithoutFeedback>
-              <View style={styles.modalContent}>
-                <View style={styles.dragHandle} />
-                <View style={styles.modalHeader}>
-                  <Text style={styles.modalTitle}>Set Hostel Custom Amount</Text>
-                  <TouchableOpacity onPress={() => setEditBillingModal(null)}>
-                    <Ionicons name="close" size={20} color="#6B7280" />
-                  </TouchableOpacity>
-                </View>
+      <Modal visible={!!editBillingModal} transparent animationType="fade" onRequestClose={() => setEditBillingModal(null)}>
+        <View style={styles.modalOverlay}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            style={{ width: '100%', maxHeight: '90%' }}
+          >
+            <View style={styles.modalContent}>
+              <View style={styles.dragHandle} />
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Set Hostel Custom Amount</Text>
+                <TouchableOpacity onPress={() => setEditBillingModal(null)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                  <Ionicons name="close" size={20} color="#6B7280" />
+                </TouchableOpacity>
+              </View>
 
+              <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
                 <Text style={styles.modalSub}>{editBillingModal?.hostel_name}</Text>
 
                 <Text style={styles.inputLabel}>
@@ -1346,7 +1332,7 @@ export default function DeveloperDashboardScreen() {
                   multiline
                 />
 
-                <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
+                <View style={{ flexDirection: 'row', gap: 8, marginTop: 14 }}>
                   <TouchableOpacity
                     style={[styles.modalSaveBtn, { flex: 1, backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0' }]}
                     onPress={async () => {
@@ -1371,26 +1357,29 @@ export default function DeveloperDashboardScreen() {
                     )}
                   </TouchableOpacity>
                 </View>
-              </View>
-            </TouchableWithoutFeedback>
-          </View>
-        </TouchableWithoutFeedback>
+              </ScrollView>
+            </View>
+          </KeyboardAvoidingView>
+        </View>
       </Modal>
 
       {/* ── MODAL: RECORD PAYMENT ── */}
-      <Modal visible={!!paymentModal} transparent animationType="fade">
-        <TouchableWithoutFeedback onPress={() => setPaymentModal(null)}>
-          <View style={styles.modalOverlay}>
-            <TouchableWithoutFeedback>
-              <View style={styles.modalContent}>
-                <View style={styles.dragHandle} />
-                <View style={styles.modalHeader}>
-                  <Text style={styles.modalTitle}>Record Received Payment</Text>
-                  <TouchableOpacity onPress={() => setPaymentModal(null)}>
-                    <Ionicons name="close" size={20} color="#6B7280" />
-                  </TouchableOpacity>
-                </View>
+      <Modal visible={!!paymentModal} transparent animationType="fade" onRequestClose={() => setPaymentModal(null)}>
+        <View style={styles.modalOverlay}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            style={{ width: '100%', maxHeight: '90%' }}
+          >
+            <View style={styles.modalContent}>
+              <View style={styles.dragHandle} />
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Record Received Payment</Text>
+                <TouchableOpacity onPress={() => setPaymentModal(null)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                  <Ionicons name="close" size={20} color="#6B7280" />
+                </TouchableOpacity>
+              </View>
 
+              <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
                 <Text style={styles.modalSub}>{paymentModal?.hostel_name}</Text>
 
                 <Text style={styles.inputLabel}>Amount Received (₹)</Text>
@@ -1424,9 +1413,10 @@ export default function DeveloperDashboardScreen() {
                 />
 
                 <TouchableOpacity
-                  style={[styles.modalSaveBtn, { backgroundColor: '#059669' }]}
+                  style={[styles.modalSaveBtn, { backgroundColor: '#059669', marginTop: 14 }]}
                   onPress={handleRecordPayment}
                   disabled={isSavingPayment}
+                  activeOpacity={0.8}
                 >
                   {isSavingPayment ? (
                     <ActivityIndicator size="small" color="#FFF" />
@@ -1434,10 +1424,10 @@ export default function DeveloperDashboardScreen() {
                     <Text style={styles.modalSaveBtnText}>Confirm & Mark Received</Text>
                   )}
                 </TouchableOpacity>
-              </View>
-            </TouchableWithoutFeedback>
-          </View>
-        </TouchableWithoutFeedback>
+              </ScrollView>
+            </View>
+          </KeyboardAvoidingView>
+        </View>
       </Modal>
 
       {/* ── ANIMATED CELEBRATION RECEIPT MODAL ── */}
@@ -1530,53 +1520,105 @@ export default function DeveloperDashboardScreen() {
       </Modal>
 
       {/* ── MODAL: ADD EXPENSE ── */}
-      <Modal visible={expenseModal} transparent animationType="fade">
-        <TouchableWithoutFeedback onPress={() => setExpenseModal(false)}>
-          <View style={styles.modalOverlay}>
-            <TouchableWithoutFeedback>
-              <View style={styles.modalContent}>
-                <View style={styles.dragHandle} />
-                <View style={styles.modalHeader}>
+      <Modal visible={expenseModal} transparent animationType="fade" onRequestClose={() => setExpenseModal(false)}>
+        <View style={styles.modalOverlay}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            style={{ width: '100%', maxHeight: '90%' }}
+          >
+            <View style={styles.modalContent}>
+              <View style={styles.dragHandle} />
+              <View style={styles.modalHeader}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <View style={{ width: 32, height: 32, borderRadius: 10, backgroundColor: '#FFF7ED', alignItems: 'center', justifyContent: 'center' }}>
+                    <Ionicons name="card" size={17} color="#EA580C" />
+                  </View>
                   <Text style={styles.modalTitle}>Record Platform Expense</Text>
-                  <TouchableOpacity onPress={() => setExpenseModal(false)}>
-                    <Ionicons name="close" size={20} color="#6B7280" />
-                  </TouchableOpacity>
+                </View>
+                <TouchableOpacity onPress={() => setExpenseModal(false)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                  <Ionicons name="close" size={20} color="#6B7280" />
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+                <Text style={styles.inputLabel}>Expense Category</Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
+                  {[
+                    { name: 'Server', icon: 'server-outline' as const, color: '#2563EB', bg: '#EFF6FF' },
+                    { name: 'Database', icon: 'layers-outline' as const, color: '#0D9488', bg: '#CCFBF1' },
+                    { name: 'Storage', icon: 'cloud-outline' as const, color: '#7C3AED', bg: '#F3E8FF' },
+                    { name: 'Email', icon: 'mail-outline' as const, color: '#EA580C', bg: '#FFF7ED' },
+                    { name: 'Domain', icon: 'globe-outline' as const, color: '#059669', bg: '#ECFDF5' },
+                    { name: 'Hosting', icon: 'hardware-chip-outline' as const, color: '#4F46E5', bg: '#EEF2FF' },
+                    { name: 'Marketing', icon: 'megaphone-outline' as const, color: '#DB2777', bg: '#FCE7F3' },
+                    { name: 'Other', icon: 'receipt-outline' as const, color: '#64748B', bg: '#F1F5F9' },
+                  ].map((cat) => {
+                    const isSel = expCategory === cat.name;
+                    return (
+                      <TouchableOpacity
+                        key={cat.name}
+                        style={[
+                          styles.freqChip,
+                          { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 7 },
+                          isSel && { backgroundColor: cat.bg, borderColor: cat.color },
+                        ]}
+                        onPress={() => setExpCategory(cat.name)}
+                        activeOpacity={0.75}
+                      >
+                        <Ionicons name={cat.icon} size={13} color={isSel ? cat.color : '#6B7280'} />
+                        <Text style={[styles.freqChipText, isSel && { color: cat.color, fontWeight: '800' }]}>
+                          {cat.name}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
                 </View>
 
-                <Text style={styles.inputLabel}>Category</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.frequencyRow}>
-                  {EXPENSE_CATS.map((cat) => (
+                <Text style={styles.inputLabel}>Expense Amount (₹)</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', borderWidth: 1.5, borderColor: '#E2E8F0', borderRadius: 12, backgroundColor: '#F8FAFC', paddingHorizontal: 12, marginBottom: 12 }}>
+                  <Text style={{ fontSize: 18, fontWeight: '900', color: '#EA580C', marginRight: 6 }}>₹</Text>
+                  <TextInput
+                    style={{ flex: 1, fontSize: 16, fontWeight: '800', color: '#0F172A', paddingVertical: 10 }}
+                    keyboardType="numeric"
+                    placeholder="e.g. 1500"
+                    placeholderTextColor="#94A3B8"
+                    value={expAmount}
+                    onChangeText={setExpAmount}
+                  />
+                </View>
+
+                <Text style={styles.inputLabel}>Payment Method</Text>
+                <View style={{ flexDirection: 'row', gap: 6, marginBottom: 12 }}>
+                  {['UPI', 'BANK_TRANSFER', 'CARD', 'CASH'].map((m) => (
                     <TouchableOpacity
-                      key={cat}
-                      style={[styles.freqChip, expCategory === cat && styles.freqChipActive]}
-                      onPress={() => setExpCategory(cat)}
+                      key={m}
+                      style={[
+                        styles.freqChip,
+                        { flex: 1, alignItems: 'center', paddingVertical: 8 },
+                        expCategory === m && styles.freqChipActive,
+                      ]}
+                      onPress={() => {}}
                     >
-                      <Text style={[styles.freqChipText, expCategory === cat && styles.freqChipTextActive]}>{cat}</Text>
+                      <Text style={styles.freqChipText}>{m.replace('_', ' ')}</Text>
                     </TouchableOpacity>
                   ))}
-                </ScrollView>
+                </View>
 
-                <Text style={styles.inputLabel}>Amount (₹)</Text>
+                <Text style={styles.inputLabel}>Description / Notes</Text>
                 <TextInput
-                  style={styles.modalInput}
-                  keyboardType="numeric"
-                  placeholder="e.g. 1500"
-                  value={expAmount}
-                  onChangeText={setExpAmount}
-                />
-
-                <Text style={styles.inputLabel}>Description</Text>
-                <TextInput
-                  style={styles.modalInput}
-                  placeholder="e.g. Server hosting / Supabase DB"
+                  style={[styles.modalInput, { height: 65, textAlignVertical: 'top' }]}
+                  placeholder="e.g. Render server hosting / Supabase DB subscription"
+                  placeholderTextColor="#94A3B8"
                   value={expDesc}
                   onChangeText={setExpDesc}
+                  multiline
                 />
 
                 <TouchableOpacity
-                  style={styles.modalSaveBtn}
+                  style={[styles.modalSaveBtn, { marginTop: 14 }]}
                   onPress={handleCreateExpense}
                   disabled={isSavingExpense}
+                  activeOpacity={0.8}
                 >
                   {isSavingExpense ? (
                     <ActivityIndicator size="small" color="#FFF" />
@@ -1584,10 +1626,10 @@ export default function DeveloperDashboardScreen() {
                     <Text style={styles.modalSaveBtnText}>Save Expense</Text>
                   )}
                 </TouchableOpacity>
-              </View>
-            </TouchableWithoutFeedback>
-          </View>
-        </TouchableWithoutFeedback>
+              </ScrollView>
+            </View>
+          </KeyboardAvoidingView>
+        </View>
       </Modal>
 
       {/* ── System Notifications Modal Sheet ── */}
@@ -1600,7 +1642,7 @@ export default function DeveloperDashboardScreen() {
         <TouchableWithoutFeedback onPress={() => setShowNotificationModal(false)}>
           <View style={styles.modalOverlay}>
             <TouchableWithoutFeedback>
-              <View style={styles.modalSheetContent}>
+              <View style={[styles.modalSheetContent, { paddingBottom: Math.max(insets.bottom + 16, 28) }]}>
                 <View style={styles.dragHandle} />
                 <View style={styles.modalHeader}>
                   <View style={styles.modalTitleRow}>
@@ -1662,9 +1704,9 @@ export default function DeveloperDashboardScreen() {
                                 ? 'checkmark-circle'
                                 : notif.type === 'PAYMENT_OVERDUE'
                                 ? 'alert-circle'
-                                : 'information-circle'
+                                : 'notifications'
                             }
-                            size={18}
+                            size={16}
                             color={
                               notif.type === 'NEW_OWNER' || notif.type === 'NEW_HOSTEL'
                                 ? '#EA580C'
@@ -1679,7 +1721,9 @@ export default function DeveloperDashboardScreen() {
                         <View style={{ flex: 1 }}>
                           <Text style={styles.notifItemTitle}>{notif.title}</Text>
                           <Text style={styles.notifItemSub}>{notif.message}</Text>
-                          <Text style={styles.notifTime}>{new Date(notif.created_at).toLocaleDateString()}</Text>
+                          <Text style={styles.notifTime}>
+                            {new Date(notif.created_at).toLocaleDateString()} • {new Date(notif.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </Text>
                         </View>
                       </View>
                     ))
@@ -1687,12 +1731,12 @@ export default function DeveloperDashboardScreen() {
                 </ScrollView>
 
                 <TouchableOpacity
+                  style={styles.modalActionBtn}
                   onPress={() => {
                     setShowNotificationModal(false);
                     navigation.navigate('DeveloperAuditLogs');
                   }}
-                  style={styles.modalActionBtn}
-                  activeOpacity={0.8}
+                  activeOpacity={0.85}
                 >
                   <Text style={styles.modalActionBtnText}>View Full Audit Trail</Text>
                   <Ionicons name="arrow-forward" size={14} color="#FFF" />
@@ -1713,7 +1757,7 @@ export default function DeveloperDashboardScreen() {
         <TouchableWithoutFeedback onPress={() => setShowProfileModal(false)}>
           <View style={styles.modalOverlay}>
             <TouchableWithoutFeedback>
-              <View style={styles.modalSheetContent}>
+              <View style={[styles.modalSheetContent, { paddingBottom: Math.max(insets.bottom + 16, 28) }]}>
                 <View style={styles.dragHandle} />
                 <View style={styles.modalHeader}>
                   <View style={styles.modalTitleRow}>
@@ -1774,11 +1818,25 @@ export default function DeveloperDashboardScreen() {
                     style={styles.profileLinkItem}
                     onPress={() => {
                       setShowProfileModal(false);
-                      navigation.navigate('DeveloperSystem');
+                      Linking.openURL('https://wa.me/916303359425?text=Hello%20Developer%20Support');
                     }}
                   >
                     <View style={[styles.profileLinkIcon, { backgroundColor: '#ECFDF5' }]}>
-                      <Ionicons name="speedometer" size={16} color="#059669" />
+                      <Ionicons name="logo-whatsapp" size={16} color="#059669" />
+                    </View>
+                    <Text style={styles.profileLinkText}>WhatsApp Developer Chat</Text>
+                    <Ionicons name="chevron-forward" size={16} color="#B5A496" />
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.profileLinkItem}
+                    onPress={() => {
+                      setShowProfileModal(false);
+                      navigation.navigate('DeveloperSystem');
+                    }}
+                  >
+                    <View style={[styles.profileLinkIcon, { backgroundColor: '#EFF6FF' }]}>
+                      <Ionicons name="speedometer" size={16} color="#2563EB" />
                     </View>
                     <Text style={styles.profileLinkText}>System Diagnostics</Text>
                     <Ionicons name="chevron-forward" size={16} color="#B5A496" />
@@ -1787,8 +1845,8 @@ export default function DeveloperDashboardScreen() {
 
                 <TouchableOpacity
                   onPress={handleLogout}
-                  style={styles.profileLogoutBtn}
-                  activeOpacity={0.8}
+                  style={[styles.profileLogoutBtn, { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }]}
+                  activeOpacity={0.7}
                 >
                   <Ionicons name="log-out-outline" size={18} color="#DC2626" />
                   <Text style={styles.profileLogoutBtnText}>Sign Out Developer Session</Text>
@@ -1903,7 +1961,7 @@ const styles = StyleSheet.create({
   profileAvatarBtn: {
     width: 38,
     height: 38,
-    borderRadius: 12,
+    borderRadius: 19,
     backgroundColor: '#FFF7ED',
     borderWidth: 1.5,
     borderColor: '#FED7AA',
@@ -3078,14 +3136,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
+    gap: 8,
     backgroundColor: '#FEF2F2',
-    borderRadius: 12,
-    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    borderRadius: 14,
+    paddingVertical: 14,
+    marginTop: 8,
+    marginBottom: 4,
   },
   profileLogoutBtnText: {
     color: '#DC2626',
-    fontSize: 13,
+    fontSize: 13.5,
     fontWeight: '800',
   },
   errorCard: {

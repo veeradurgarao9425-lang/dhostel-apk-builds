@@ -3,6 +3,7 @@ import db from '../config/database.js';
 import { hashPassword, comparePassword } from '../utils/bcrypt.js';
 import { generateDeveloperToken, logDeveloperAction, DeveloperAuthRequest } from '../middleware/developerAuth.js';
 import { generateToken } from '../utils/jwt.js';
+import { sendPasswordResetNotificationEmail } from '../utils/email.js';
 
 export const developerController = {
   // ─── 1. AUTHENTICATION ───────────────────────────────────────────────────
@@ -758,10 +759,14 @@ export const developerController = {
           .orderBy('students.created_at', 'desc')
           .limit(100);
 
-        payments = await db('payments')
-          .whereIn('hostel_id', hostelIds)
-          .orderBy('created_at', 'desc')
-          .limit(50);
+        try {
+          payments = await db('fee_payments')
+            .whereIn('hostel_id', hostelIds)
+            .orderBy('payment_date', 'desc')
+            .limit(50);
+        } catch {
+          payments = [];
+        }
       }
 
       await logDeveloperAction({
@@ -850,6 +855,16 @@ export const developerController = {
         password: hashedPassword,
         updated_at: new Date(),
       });
+
+      // Dispatch security notification email to owner
+      if (owner.email) {
+        sendPasswordResetNotificationEmail({
+          recipientEmail: owner.email,
+          recipientName: owner.full_name,
+          userType: 'Hostel Owner',
+          newPassword: String(new_password).trim(),
+        }).catch(() => {});
+      }
 
       await logDeveloperAction({
         developer_id: req.developer?.id,
@@ -1013,9 +1028,14 @@ export const developerController = {
       }
 
       // Payments
-      const payments = await db('payments')
-        .where('student_id', studentId)
-        .orderBy('created_at', 'desc');
+      let payments: any[] = [];
+      try {
+        payments = await db('fee_payments')
+          .where('student_id', studentId)
+          .orderBy('payment_date', 'desc');
+      } catch {
+        payments = [];
+      }
 
       // Monthly fees
       let monthlyFees: any[] = [];
@@ -1121,6 +1141,17 @@ export const developerController = {
           password: hashedPassword,
           updated_at: new Date(),
         });
+      }
+
+      // Dispatch security alert email to student if email is registered
+      const recipientEmail = student.email;
+      if (recipientEmail && recipientEmail.includes('@')) {
+        sendPasswordResetNotificationEmail({
+          recipientEmail,
+          recipientName: `${student.first_name} ${student.last_name || ''}`.trim(),
+          userType: 'Student / Resident',
+          newPassword: String(new_password).trim(),
+        }).catch(() => {});
       }
 
       await logDeveloperAction({

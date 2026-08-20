@@ -1052,92 +1052,123 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
         executeSave();
     };
 
+    const isLocalUri = (uri: string | null | undefined): boolean => {
+        if (!uri || typeof uri !== 'string') return false;
+        const clean = uri.trim();
+        if (!clean) return false;
+        if (clean.startsWith('http://') || clean.startsWith('https://') || clean.startsWith('/uploads')) {
+            return false;
+        }
+        return true;
+    };
+
+    const appendImageToFormData = (formDataObj: FormData, fieldName: string, uri: string, fallbackFilename: string) => {
+        let filename = uri.split('/').pop() || fallbackFilename;
+        filename = filename.split('?')[0];
+        if (!/\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(filename)) {
+            filename = `${filename}.jpg`;
+        }
+        const match = /\.(\w+)$/.exec(filename);
+        const ext = match ? match[1].toLowerCase() : 'jpg';
+        const type = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
+        
+        formDataObj.append(fieldName, {
+            uri: Platform.OS === 'android' ? uri : uri.replace('file://', ''),
+            name: filename,
+            type,
+        } as any);
+    };
+
     const executeSave = async (forceStatus?: 'Unpaid') => {
         setLoading(true);
         try {
-            const payload = {
-                ...formData,
-                hostel_id: String(user?.hostel_id),
-                guardian_phone: formData.guardian_phone || null,
-                guardian_name: formData.guardian_name || null,
+            const payload: Record<string, any> = {
+                hostel_id: String(user?.hostel_id || ''),
+                first_name: formData.first_name?.trim() || '',
+                last_name: formData.last_name?.trim() || '',
+                gender: formData.gender || 'Male',
+                phone: formData.phone?.replace(/\D/g, '').slice(0, 10) || '',
+                email: formData.email?.trim() || '',
+                date_of_birth: formData.date_of_birth || '',
+                id_proof_number: formData.id_proof_number?.trim() || '',
+                id_proof_type: formData.id_proof_type_id || '',
+                id_proof_type_id: formData.id_proof_type_id || '',
+                guardian_name: formData.guardian_name?.trim() || '',
+                guardian_phone: formData.guardian_phone?.replace(/\D/g, '').slice(0, 10) || '',
+                guardian_relation: formData.guardian_relation_id || '',
+                admission_date: formData.admission_date || '',
+                permanent_address: formData.permanent_address?.trim() || '',
+                present_working_address: formData.present_working_address?.trim() || '',
                 admission_fee: formData.is_old_student ? 0 : parseFloat(formData.admission_fee || '0'),
                 admission_status: (formData.is_old_student || formData.admission_status === 'Paid') ? 1 : 0,
                 status: (isEdit && !quickAllocate) ? student.status : 1,
-                room_id: formData.room_id ? parseInt(formData.room_id) : null,
-                bed_id: formData.bed_id || null,
-                bed_number: formData.bed_id || null,
-                floor_number: formData.floor_number ? parseInt(formData.floor_number) : null,
-                id_proof_type: formData.id_proof_type_id || null,
-                guardian_relation: formData.guardian_relation_id || null,
+                room_id: formData.room_id ? parseInt(formData.room_id) : '',
+                bed_id: formData.bed_id || '',
+                bed_number: formData.bed_id || '',
+                floor_number: formData.floor_number ? parseInt(formData.floor_number) : '',
                 id_proof_status: 1,
                 monthly_rent: parseFloat(formData.monthly_rent || '0'),
                 refundable_deposit: parseFloat(formData.refundable_deposit || '0'),
                 is_old_student: formData.is_old_student ? 1 : 0,
                 fee_plan: parseInt(formData.fee_plan || '1'),
-                plan_amount: formData.fee_plan !== '1' && formData.plan_amount ? parseFloat(formData.plan_amount) : null,
-                plan_start_date: formData.admission_date || null,
+                plan_amount: formData.fee_plan !== '1' && formData.plan_amount ? parseFloat(formData.plan_amount) : '',
+                plan_start_date: formData.admission_date || '',
                 plan_end_date: (() => {
-                    if (formData.fee_plan === '1' || !formData.admission_date) return null;
+                    if (formData.fee_plan === '1' || !formData.admission_date) return '';
                     const end = new Date(formData.admission_date);
                     end.setMonth(end.getMonth() + parseInt(formData.fee_plan));
                     return end.toISOString().split('T')[0];
                 })(),
             };
-            const hasNewProfilePhoto = profilePhoto && profilePhoto.startsWith('file:');
-            const hasNewAadhaarFront = aadhaarFront && aadhaarFront.startsWith('file:');
-            const hasNewAadhaarBack = aadhaarBack && aadhaarBack.startsWith('file:');
+
+            const hasNewProfilePhoto = isLocalUri(profilePhoto);
+            const hasNewAadhaarFront = isLocalUri(aadhaarFront);
+            const hasNewAadhaarBack = isLocalUri(aadhaarBack);
             const hasNewFiles = hasNewProfilePhoto || hasNewAadhaarFront || hasNewAadhaarBack;
 
             let res;
             if (hasNewFiles) {
                 const bodyFormData = new FormData();
                 Object.keys(payload).forEach(key => {
-                    const val = (payload as any)[key];
-                    if (val !== null && val !== undefined) {
+                    const val = payload[key];
+                    if (val !== null && val !== undefined && val !== '') {
                         bodyFormData.append(key, String(val));
                     }
                 });
 
-                if (hasNewProfilePhoto) {
-                    const filename = profilePhoto.split('/').pop() || 'profile.jpg';
-                    const match = /\.(\w+)$/.exec(filename);
-                    const type = match ? `image/${match[1]}` : 'image/jpeg';
-                    bodyFormData.append('profile_photo', {
-                        uri: profilePhoto,
-                        name: filename,
-                        type,
-                    } as any);
+                if (hasNewProfilePhoto && profilePhoto) {
+                    appendImageToFormData(bodyFormData, 'profile_photo', profilePhoto, 'profile.jpg');
                 }
 
-                if (hasNewAadhaarFront) {
-                    const filename = aadhaarFront.split('/').pop() || 'id_proof_front.jpg';
-                    const match = /\.(\w+)$/.exec(filename);
-                    const type = match ? `image/${match[1]}` : 'image/jpeg';
-                    bodyFormData.append('id_proof_front', {
-                        uri: aadhaarFront,
-                        name: filename,
-                        type,
-                    } as any);
+                if (hasNewAadhaarFront && aadhaarFront) {
+                    appendImageToFormData(bodyFormData, 'id_proof_front', aadhaarFront, 'id_proof_front.jpg');
                 }
 
-                if (hasNewAadhaarBack) {
-                    const filename = aadhaarBack.split('/').pop() || 'id_proof_back.jpg';
-                    const match = /\.(\w+)$/.exec(filename);
-                    const type = match ? `image/${match[1]}` : 'image/jpeg';
-                    bodyFormData.append('id_proof_back', {
-                        uri: aadhaarBack,
-                        name: filename,
-                        type,
-                    } as any);
+                if (hasNewAadhaarBack && aadhaarBack) {
+                    appendImageToFormData(bodyFormData, 'id_proof_back', aadhaarBack, 'id_proof_back.jpg');
                 }
+
+                const multipartConfig = {
+                    headers: { 'Content-Type': 'multipart/form-data' },
+                    transformRequest: (data: any) => data,
+                };
 
                 res = isEdit
-                    ? await api.put(`/students/${student.student_id}`, bodyFormData)
-                    : await api.post('/students', bodyFormData);
+                    ? await api.put(`/students/${student.student_id}`, bodyFormData, multipartConfig)
+                    : await api.post('/students', bodyFormData, multipartConfig);
             } else {
+                // Remove empty strings for clean JSON
+                const cleanJsonPayload: Record<string, any> = {};
+                Object.keys(payload).forEach(key => {
+                    const val = payload[key];
+                    if (val !== '') {
+                        cleanJsonPayload[key] = val;
+                    }
+                });
+
                 res = isEdit
-                    ? await api.put(`/students/${student.student_id}`, payload)
-                    : await api.post('/students', payload);
+                    ? await api.put(`/students/${student.student_id}`, cleanJsonPayload)
+                    : await api.post('/students', cleanJsonPayload);
             }
 
             if (res.status === 200 || res.status === 201 || res.data?.success || res.data?.data) {
@@ -1146,7 +1177,7 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
                 setTimeout(() => triggerRefresh({ studentAllocated: !!payload.room_id }), 50);
             }
         } catch (error: any) {
-            const msg = error.response?.data?.error || '';
+            const msg = error.response?.data?.error || error.response?.data?.message || '';
             if (msg.toLowerCase().includes('phone') || msg.toLowerCase().includes('mobile')) {
                 setErrors(prev => ({ ...prev, phone: msg }));
             }

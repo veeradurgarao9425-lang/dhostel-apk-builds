@@ -14,6 +14,7 @@ import {
   Platform,
   StatusBar,
   Animated,
+  KeyboardAvoidingView,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
@@ -667,190 +668,262 @@ export default function DeveloperFinanceScreen() {
       )}
 
       {/* ── MODAL: EDIT BILLING AGREEMENT ── */}
-      <Modal visible={!!editBillingModal} transparent animationType="slide">
+      <Modal visible={!!editBillingModal} transparent animationType="fade" onRequestClose={() => setEditBillingModal(null)}>
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Hostel Billing Agreement</Text>
-              <TouchableOpacity onPress={() => setEditBillingModal(null)}>
-                <Ionicons name="close" size={20} color="#6B7280" />
-              </TouchableOpacity>
-            </View>
-
-            <Text style={styles.modalSub}>{editBillingModal?.hostel_name}</Text>
-
-            <Text style={styles.inputLabel}>Agreed Amount (₹)</Text>
-            <TextInput
-              style={styles.modalInput}
-              keyboardType="numeric"
-              placeholder="e.g. 3000"
-              value={editAmount}
-              onChangeText={setEditAmount}
-            />
-
-            <Text style={styles.inputLabel}>Billing Frequency</Text>
-            <View style={styles.frequencyRow}>
-              {FREQUENCIES.map((freq) => (
-                <TouchableOpacity
-                  key={freq}
-                  style={[styles.freqChip, editFrequency === freq && styles.freqChipActive]}
-                  onPress={() => setEditFrequency(freq)}
-                >
-                  <Text style={[styles.freqChipText, editFrequency === freq && styles.freqChipTextActive]}>
-                    {freq.replace('_', ' ')}
-                  </Text>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            style={{ width: '100%', maxHeight: '90%' }}
+          >
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Hostel Billing Agreement</Text>
+                <TouchableOpacity onPress={() => setEditBillingModal(null)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                  <Ionicons name="close" size={20} color="#6B7280" />
                 </TouchableOpacity>
-              ))}
-            </View>
+              </View>
 
-            <Text style={styles.inputLabel}>Status</Text>
-            <View style={styles.frequencyRow}>
-              {(['ACTIVE', 'PAUSED', 'CANCELLED'] as BillingStatus[]).map((st) => (
+              <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+                <Text style={styles.modalSub}>{editBillingModal?.hostel_name}</Text>
+
+                <Text style={styles.inputLabel}>Agreed Amount (₹)</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  keyboardType="numeric"
+                  placeholder="e.g. 3000"
+                  value={editAmount}
+                  onChangeText={setEditAmount}
+                />
+
+                <Text style={styles.inputLabel}>Billing Frequency</Text>
+                <View style={styles.frequencyRow}>
+                  {FREQUENCIES.map((freq) => (
+                    <TouchableOpacity
+                      key={freq}
+                      style={[styles.freqChip, editFrequency === freq && styles.freqChipActive]}
+                      onPress={() => setEditFrequency(freq)}
+                    >
+                      <Text style={[styles.freqChipText, editFrequency === freq && styles.freqChipTextActive]}>
+                        {freq.replace('_', ' ')}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                <Text style={styles.inputLabel}>Status</Text>
+                <View style={styles.frequencyRow}>
+                  {(['ACTIVE', 'PAUSED', 'CANCELLED'] as BillingStatus[]).map((st) => (
+                    <TouchableOpacity
+                      key={st}
+                      style={[styles.freqChip, editStatus === st && styles.freqChipActive]}
+                      onPress={() => setEditStatus(st)}
+                    >
+                      <Text style={[styles.freqChipText, editStatus === st && styles.freqChipTextActive]}>{st}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                <Text style={styles.inputLabel}>Internal Notes</Text>
+                <TextInput
+                  style={[styles.modalInput, { height: 60 }]}
+                  placeholder="Optional notes or agreed terms"
+                  value={editNotes}
+                  onChangeText={setEditNotes}
+                  multiline
+                />
+
                 <TouchableOpacity
-                  key={st}
-                  style={[styles.freqChip, editStatus === st && styles.freqChipActive]}
-                  onPress={() => setEditStatus(st)}
+                  style={[styles.modalSaveBtn, { marginTop: 14 }]}
+                  onPress={handleSaveBilling}
+                  disabled={isSavingBilling}
+                  activeOpacity={0.8}
                 >
-                  <Text style={[styles.freqChipText, editStatus === st && styles.freqChipTextActive]}>{st}</Text>
+                  {isSavingBilling ? (
+                    <ActivityIndicator size="small" color="#FFF" />
+                  ) : (
+                    <Text style={styles.modalSaveBtnText}>Save Agreement</Text>
+                  )}
                 </TouchableOpacity>
-              ))}
+              </ScrollView>
             </View>
-
-            <Text style={styles.inputLabel}>Internal Notes</Text>
-            <TextInput
-              style={[styles.modalInput, { height: 60 }]}
-              placeholder="Optional notes or agreed terms"
-              value={editNotes}
-              onChangeText={setEditNotes}
-              multiline
-            />
-
-            <TouchableOpacity
-              style={styles.modalSaveBtn}
-              onPress={handleSaveBilling}
-              disabled={isSavingBilling}
-            >
-              {isSavingBilling ? (
-                <ActivityIndicator size="small" color="#FFF" />
-              ) : (
-                <Text style={styles.modalSaveBtnText}>Save Agreement</Text>
-              )}
-            </TouchableOpacity>
-          </View>
+          </KeyboardAvoidingView>
         </View>
       </Modal>
 
       {/* ── MODAL: RECORD PAYMENT ── */}
-      <Modal visible={!!paymentModal} transparent animationType="slide">
+      <Modal visible={!!paymentModal} transparent animationType="fade" onRequestClose={() => setPaymentModal(null)}>
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Record Received Payment</Text>
-              <TouchableOpacity onPress={() => setPaymentModal(null)}>
-                <Ionicons name="close" size={20} color="#6B7280" />
-              </TouchableOpacity>
-            </View>
-
-            <Text style={styles.modalSub}>{paymentModal?.hostel_name}</Text>
-
-            <Text style={styles.inputLabel}>Amount Received (₹)</Text>
-            <TextInput
-              style={styles.modalInput}
-              keyboardType="numeric"
-              placeholder="e.g. 3000"
-              value={payAmount}
-              onChangeText={setPayAmount}
-            />
-
-            <Text style={styles.inputLabel}>Payment Method</Text>
-            <View style={styles.frequencyRow}>
-              {['UPI', 'BANK_TRANSFER', 'CASH', 'CHEQUE'].map((m) => (
-                <TouchableOpacity
-                  key={m}
-                  style={[styles.freqChip, payMethod === m && styles.freqChipActive]}
-                  onPress={() => setPayMethod(m)}
-                >
-                  <Text style={[styles.freqChipText, payMethod === m && styles.freqChipTextActive]}>{m}</Text>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            style={{ width: '100%', maxHeight: '90%' }}
+          >
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Record Received Payment</Text>
+                <TouchableOpacity onPress={() => setPaymentModal(null)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                  <Ionicons name="close" size={20} color="#6B7280" />
                 </TouchableOpacity>
-              ))}
+              </View>
+
+              <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+                <Text style={styles.modalSub}>{paymentModal?.hostel_name}</Text>
+
+                <Text style={styles.inputLabel}>Amount Received (₹)</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  keyboardType="numeric"
+                  placeholder="e.g. 3000"
+                  value={payAmount}
+                  onChangeText={setPayAmount}
+                />
+
+                <Text style={styles.inputLabel}>Payment Method</Text>
+                <View style={styles.frequencyRow}>
+                  {['UPI', 'BANK_TRANSFER', 'CASH', 'CHEQUE'].map((m) => (
+                    <TouchableOpacity
+                      key={m}
+                      style={[styles.freqChip, payMethod === m && styles.freqChipActive]}
+                      onPress={() => setPayMethod(m)}
+                    >
+                      <Text style={[styles.freqChipText, payMethod === m && styles.freqChipTextActive]}>{m}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                <Text style={styles.inputLabel}>Reference / Transaction ID</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  placeholder="e.g. UPI Ref / UTR / Receipt #"
+                  value={payRef}
+                  onChangeText={setPayRef}
+                />
+
+                <TouchableOpacity
+                  style={[styles.modalSaveBtn, { backgroundColor: '#059669', marginTop: 14 }]}
+                  onPress={handleRecordPayment}
+                  disabled={isSavingPayment}
+                  activeOpacity={0.8}
+                >
+                  {isSavingPayment ? (
+                    <ActivityIndicator size="small" color="#FFF" />
+                  ) : (
+                    <Text style={styles.modalSaveBtnText}>Confirm & Mark Received</Text>
+                  )}
+                </TouchableOpacity>
+              </ScrollView>
             </View>
-
-            <Text style={styles.inputLabel}>Reference / Transaction ID</Text>
-            <TextInput
-              style={styles.modalInput}
-              placeholder="e.g. UPI Ref / UTR / Receipt #"
-              value={payRef}
-              onChangeText={setPayRef}
-            />
-
-            <TouchableOpacity
-              style={[styles.modalSaveBtn, { backgroundColor: '#059669' }]}
-              onPress={handleRecordPayment}
-              disabled={isSavingPayment}
-            >
-              {isSavingPayment ? (
-                <ActivityIndicator size="small" color="#FFF" />
-              ) : (
-                <Text style={styles.modalSaveBtnText}>Confirm & Mark Received</Text>
-              )}
-            </TouchableOpacity>
-          </View>
+          </KeyboardAvoidingView>
         </View>
       </Modal>
 
       {/* ── MODAL: ADD EXPENSE ── */}
-      <Modal visible={expenseModal} transparent animationType="slide">
+      <Modal visible={expenseModal} transparent animationType="fade" onRequestClose={() => setExpenseModal(false)}>
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Record Platform Expense</Text>
-              <TouchableOpacity onPress={() => setExpenseModal(false)}>
-                <Ionicons name="close" size={20} color="#6B7280" />
-              </TouchableOpacity>
-            </View>
-
-            <Text style={styles.inputLabel}>Category</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.frequencyRow}>
-              {EXPENSE_CATS.map((cat) => (
-                <TouchableOpacity
-                  key={cat}
-                  style={[styles.freqChip, expCategory === cat && styles.freqChipActive]}
-                  onPress={() => setExpCategory(cat)}
-                >
-                  <Text style={[styles.freqChipText, expCategory === cat && styles.freqChipTextActive]}>{cat}</Text>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            style={{ width: '100%', maxHeight: '90%' }}
+          >
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <View style={{ width: 32, height: 32, borderRadius: 10, backgroundColor: '#FFF7ED', alignItems: 'center', justifyContent: 'center' }}>
+                    <Ionicons name="card" size={17} color="#EA580C" />
+                  </View>
+                  <Text style={styles.modalTitle}>Record Platform Expense</Text>
+                </View>
+                <TouchableOpacity onPress={() => setExpenseModal(false)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                  <Ionicons name="close" size={20} color="#6B7280" />
                 </TouchableOpacity>
-              ))}
-            </ScrollView>
+              </View>
 
-            <Text style={styles.inputLabel}>Amount (₹)</Text>
-            <TextInput
-              style={styles.modalInput}
-              keyboardType="numeric"
-              placeholder="e.g. 1500"
-              value={expAmount}
-              onChangeText={setExpAmount}
-            />
+              <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+                <Text style={styles.inputLabel}>Expense Category</Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
+                  {[
+                    { name: 'Server', icon: 'server-outline' as const, color: '#2563EB', bg: '#EFF6FF' },
+                    { name: 'Database', icon: 'layers-outline' as const, color: '#0D9488', bg: '#CCFBF1' },
+                    { name: 'Storage', icon: 'cloud-outline' as const, color: '#7C3AED', bg: '#F3E8FF' },
+                    { name: 'Email', icon: 'mail-outline' as const, color: '#EA580C', bg: '#FFF7ED' },
+                    { name: 'Domain', icon: 'globe-outline' as const, color: '#059669', bg: '#ECFDF5' },
+                    { name: 'Hosting', icon: 'hardware-chip-outline' as const, color: '#4F46E5', bg: '#EEF2FF' },
+                    { name: 'Marketing', icon: 'megaphone-outline' as const, color: '#DB2777', bg: '#FCE7F3' },
+                    { name: 'Other', icon: 'receipt-outline' as const, color: '#64748B', bg: '#F1F5F9' },
+                  ].map((cat) => {
+                    const isSel = expCategory === cat.name;
+                    return (
+                      <TouchableOpacity
+                        key={cat.name}
+                        style={[
+                          styles.freqChip,
+                          { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 7 },
+                          isSel && { backgroundColor: cat.bg, borderColor: cat.color },
+                        ]}
+                        onPress={() => setExpCategory(cat.name)}
+                        activeOpacity={0.75}
+                      >
+                        <Ionicons name={cat.icon} size={13} color={isSel ? cat.color : '#6B7280'} />
+                        <Text style={[styles.freqChipText, isSel && { color: cat.color, fontWeight: '800' }]}>
+                          {cat.name}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
 
-            <Text style={styles.inputLabel}>Description</Text>
-            <TextInput
-              style={styles.modalInput}
-              placeholder="e.g. Render server hosting / Postmark email / Supabase DB"
-              value={expDesc}
-              onChangeText={setExpDesc}
-            />
+                <Text style={styles.inputLabel}>Expense Amount (₹)</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', borderWidth: 1.5, borderColor: '#E2E8F0', borderRadius: 12, backgroundColor: '#F8FAFC', paddingHorizontal: 12, marginBottom: 12 }}>
+                  <Text style={{ fontSize: 18, fontWeight: '900', color: '#EA580C', marginRight: 6 }}>₹</Text>
+                  <TextInput
+                    style={{ flex: 1, fontSize: 16, fontWeight: '800', color: '#0F172A', paddingVertical: 10 }}
+                    keyboardType="numeric"
+                    placeholder="e.g. 1500"
+                    placeholderTextColor="#94A3B8"
+                    value={expAmount}
+                    onChangeText={setExpAmount}
+                  />
+                </View>
 
-            <TouchableOpacity
-              style={styles.modalSaveBtn}
-              onPress={handleCreateExpense}
-              disabled={isSavingExpense}
-            >
-              {isSavingExpense ? (
-                <ActivityIndicator size="small" color="#FFF" />
-              ) : (
-                <Text style={styles.modalSaveBtnText}>Save Expense</Text>
-              )}
-            </TouchableOpacity>
-          </View>
+                <Text style={styles.inputLabel}>Payment Method</Text>
+                <View style={{ flexDirection: 'row', gap: 6, marginBottom: 12 }}>
+                  {['UPI', 'BANK_TRANSFER', 'CARD', 'CASH'].map((m) => (
+                    <TouchableOpacity
+                      key={m}
+                      style={[
+                        styles.freqChip,
+                        { flex: 1, alignItems: 'center', paddingVertical: 8 },
+                        expCategory === m && styles.freqChipActive,
+                      ]}
+                      onPress={() => {}}
+                    >
+                      <Text style={styles.freqChipText}>{m.replace('_', ' ')}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                <Text style={styles.inputLabel}>Description / Notes</Text>
+                <TextInput
+                  style={[styles.modalInput, { height: 65, textAlignVertical: 'top' }]}
+                  placeholder="e.g. Render server hosting / Postmark email / Supabase DB"
+                  placeholderTextColor="#94A3B8"
+                  value={expDesc}
+                  onChangeText={setExpDesc}
+                  multiline
+                />
+
+                <TouchableOpacity
+                  style={[styles.modalSaveBtn, { marginTop: 14 }]}
+                  onPress={handleCreateExpense}
+                  disabled={isSavingExpense}
+                  activeOpacity={0.8}
+                >
+                  {isSavingExpense ? (
+                    <ActivityIndicator size="small" color="#FFF" />
+                  ) : (
+                    <Text style={styles.modalSaveBtnText}>Save Expense</Text>
+                  )}
+                </TouchableOpacity>
+              </ScrollView>
+            </View>
+          </KeyboardAvoidingView>
         </View>
       </Modal>
 

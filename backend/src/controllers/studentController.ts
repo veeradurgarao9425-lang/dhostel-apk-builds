@@ -360,8 +360,25 @@ export const createStudent = async (req: AuthRequest, res: Response) => {
       hostel_id = Number(req.body.hostel_id || user?.hostel_id || 1);
     }
 
+    // Sanitize string inputs
+    const cleanFirstName = String(first_name || '').trim();
+    const cleanLastName = last_name && String(last_name).trim() ? String(last_name).trim() : null;
+    const cleanPhone = String(phone || '').replace(/\D/g, '').slice(0, 10);
+    const cleanEmail = email && String(email).trim() ? String(email).trim() : null;
+    const cleanGender = String(gender || 'Male').trim();
+    const cleanPermanentAddress = permanent_address && String(permanent_address).trim() ? String(permanent_address).trim() : null;
+    const cleanPresentAddress = present_working_address && String(present_working_address).trim() ? String(present_working_address).trim() : null;
+    const cleanGuardianName = guardian_name && String(guardian_name).trim() ? String(guardian_name).trim() : null;
+    const cleanGuardianPhone = guardian_phone && String(guardian_phone).trim() ? String(guardian_phone).replace(/\D/g, '').slice(0, 10) : null;
+    const cleanIdProofNumber = id_proof_number && String(id_proof_number).trim() ? String(id_proof_number).trim() : null;
+    
+    const parsedIdProofType = (id_proof_type && id_proof_type !== '' && id_proof_type !== 'null' && id_proof_type !== 'undefined') ? Number(id_proof_type) : null;
+    const parsedGuardianRelation = (guardian_relation && guardian_relation !== '' && guardian_relation !== 'null' && guardian_relation !== 'undefined') ? Number(guardian_relation) : null;
+    const parsedRoomId = (room_id && room_id !== '' && room_id !== 'null' && room_id !== 'undefined') ? Number(room_id) : null;
+    const parsedFloorNumber = (floor_number && floor_number !== '' && floor_number !== 'null' && floor_number !== 'undefined') ? Number(floor_number) : null;
+
     // Validate required fields
-    if (!first_name || !phone || !admission_date || !gender || admission_fee === undefined || admission_status === undefined || admission_status === null) {
+    if (!cleanFirstName || !cleanPhone || !admission_date || !cleanGender || admission_fee === undefined || admission_status === undefined || admission_status === null) {
       return res.status(400).json({
         success: false,
         error: 'Required fields: first_name, gender, phone, admission_date, admission_fee, admission_status'
@@ -369,32 +386,32 @@ export const createStudent = async (req: AuthRequest, res: Response) => {
     }
 
     // Validate id_proof_type if provided
-    if (id_proof_type) {
-      const proofType = await db('id_proof_types').where({ id: id_proof_type }).first();
+    if (parsedIdProofType) {
+      const proofType = await db('id_proof_types').where({ id: parsedIdProofType }).first();
       if (!proofType) {
         return res.status(400).json({
           success: false,
-          error: `Invalid id_proof_type: ${id_proof_type}. Must be a valid ID from id_proof_types table.`
+          error: `Invalid id_proof_type: ${parsedIdProofType}. Must be a valid ID from id_proof_types table.`
         });
       }
     }
 
     // Validate guardian_relation if provided
-    if (guardian_relation) {
-      const relation = await db('relations_master').where({ relation_id: guardian_relation }).first();
+    if (parsedGuardianRelation) {
+      const relation = await db('relations_master').where({ relation_id: parsedGuardianRelation }).first();
       if (!relation) {
         return res.status(400).json({
           success: false,
-          error: `Invalid guardian_relation: ${guardian_relation}. Must be a valid ID from relations_master table.`
+          error: `Invalid guardian_relation: ${parsedGuardianRelation}. Must be a valid ID from relations_master table.`
         });
       }
     }
 
     // Check if phone, email, or id_proof_number already exist in the same hostel
     const validation = await checkHostelUniqueIdentifiers(hostel_id, {
-      phone,
-      email,
-      id_number: id_proof_number
+      phone: cleanPhone,
+      email: cleanEmail,
+      id_number: cleanIdProofNumber
     });
 
     if (!validation.isUnique) {
@@ -405,8 +422,8 @@ export const createStudent = async (req: AuthRequest, res: Response) => {
     }
     // If room allocation is provided, check room availability
     let roomDetails = null;
-    if (room_id) {
-      const room = await db('rooms').where({ room_id }).first();
+    if (parsedRoomId) {
+      const room = await db('rooms').where({ room_id: parsedRoomId }).first();
 
       if (!room) {
         return res.status(404).json({
@@ -422,10 +439,6 @@ export const createStudent = async (req: AuthRequest, res: Response) => {
           error: 'Room does not belong to the selected hostel'
         });
       }
-
-      // Check if room has capacity (using total_capacity from room_type if available)
-      // For now, we'll skip capacity check since capacity column was removed
-      // Room availability is now determined by available_beds calculation
 
       roomDetails = room;
     }
@@ -473,35 +486,35 @@ export const createStudent = async (req: AuthRequest, res: Response) => {
     // Convert boolean/status values: id_proof_status, admission_status, status are now TINYINT (0/1)
     const [student_id] = await db('students').insert({
       hostel_id,
-      first_name,
-      last_name,
+      first_name: cleanFirstName,
+      last_name: cleanLastName,
       date_of_birth: convertToDateOnly(date_of_birth),
-      gender,
-      phone,
-      email,
-      guardian_name,
-      guardian_phone,
-      guardian_relation,
-      permanent_address,
-      present_working_address,
-      id_proof_type,
-      id_proof_number,
+      gender: cleanGender,
+      phone: cleanPhone,
+      email: cleanEmail,
+      guardian_name: cleanGuardianName,
+      guardian_phone: cleanGuardianPhone,
+      guardian_relation: parsedGuardianRelation,
+      permanent_address: cleanPermanentAddress,
+      present_working_address: cleanPresentAddress,
+      id_proof_type: parsedIdProofType,
+      id_proof_number: cleanIdProofNumber,
       id_proof_document_url,
       id_proof_front_url: id_proof_front_url || id_proof_document_url,
       id_proof_back_url,
       profile_photo_url,
       id_proof_status: (id_proof_status === 1 || id_proof_status === '1' || id_proof_status === 'Submitted') ? 1 : 0,
       admission_date: convertToDateOnly(admission_date),
-      admission_fee: admission_fee || 0,
-      refundable_deposit: refundable_deposit || 0,
+      admission_fee: Number(admission_fee) || 0,
+      refundable_deposit: Number(refundable_deposit) || 0,
       is_old_student: isOldStudentVal,
       admission_status: finalAdmissionStatus,
       status: finalStudentStatus,
-      room_id: room_id || null,
-      bed_id: bed_id || null,
-      bed_number: bed_number || null,
-      monthly_rent: roomDetails ? roomDetails.rent_per_bed : (monthly_rent || 0),
-      floor_number: floor_number || null,
+      room_id: parsedRoomId,
+      bed_id: bed_id && bed_id !== 'null' ? bed_id : null,
+      bed_number: bed_number && bed_number !== 'null' ? bed_number : null,
+      monthly_rent: roomDetails ? roomDetails.rent_per_bed : (Number(monthly_rent) || 0),
+      floor_number: parsedFloorNumber,
       fee_plan: resolvedFeePlan,
       plan_start_date: resolvedPlanStart,
       plan_end_date: resolvedPlanEnd,
@@ -513,9 +526,9 @@ export const createStudent = async (req: AuthRequest, res: Response) => {
     const monthlyRent = roomDetails ? Number(roomDetails.rent_per_bed) : Number(monthly_rent || 0);
 
     // Update room occupied beds ONLY if a room is allocated and the student is Active.
-    if (room_id && roomDetails && studentStatus === 1) {
+    if (parsedRoomId && roomDetails && studentStatus === 1) {
       await db('rooms')
-        .where({ room_id })
+        .where({ room_id: parsedRoomId })
         .increment('occupied_beds', 1);
     }
 
@@ -759,6 +772,14 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
           updateData[field] = convertToDateOnly(req.body[field]);
         } else if (field === 'is_old_student') {
           updateData[field] = req.body[field] ? 1 : 0;
+        } else if (field === 'id_proof_type' || field === 'guardian_relation' || field === 'floor_number') {
+          const val = req.body[field];
+          updateData[field] = (val && val !== '' && val !== 'null' && val !== 'undefined') ? Number(val) : null;
+        } else if (field === 'phone') {
+          updateData[field] = String(req.body[field]).replace(/\D/g, '').slice(0, 10);
+        } else if (field === 'email' || field === 'guardian_name' || field === 'guardian_phone' || field === 'permanent_address' || field === 'present_working_address' || field === 'id_proof_number') {
+          const val = req.body[field];
+          updateData[field] = (val && String(val).trim() && val !== 'null' && val !== 'undefined') ? String(val).trim() : null;
         } else {
           updateData[field] = req.body[field];
         }

@@ -488,12 +488,13 @@ const ProfileScreen = ({ navigation }: any) => {
                         activeOpacity={1}
                         onPress={() => setSelectorVisible(false)}
                     />
-                    <View style={[styles.modalSheet, { backgroundColor: theme.cardBg }]}>
+                    <View style={[styles.modalSheet, { backgroundColor: theme.cardBg, paddingBottom: Math.max(insets.bottom + 16, 28) }]}>
                         <View style={styles.modalHeader}>
                             <Text style={[styles.modalTitle, { color: theme.textPrimary }]}>{t('profile.switchHostel', 'Switch Hostel')}</Text>
                             <TouchableOpacity
                                 style={styles.modalCloseBtn}
                                 onPress={() => setSelectorVisible(false)}
+                                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                             >
                                 <Text style={{ color: theme.primary, fontSize: 15, fontWeight: '700' }}>Close</Text>
                             </TouchableOpacity>
@@ -507,7 +508,7 @@ const ProfileScreen = ({ navigation }: any) => {
                                 </Text>
                             </View>
                         ) : (
-                            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 50 }}>
+                            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
                                 <View style={{
                                     flexDirection: 'row',
                                     alignItems: 'center',
@@ -1141,7 +1142,7 @@ const styles = StyleSheet.create({
     // Bottom Drawer Modals
     modalOverlay: {
         flex: 1,
-        backgroundColor: 'transparent',
+        backgroundColor: 'rgba(0, 0, 0, 0.45)',
         justifyContent: 'flex-end',
     },
     modalSheet: {
