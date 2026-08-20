@@ -796,18 +796,16 @@ export const authController = {
         });
       }
 
-      // Accept matching OTP or universal test OTP 123456
-      const isMasterOtp = otp === '123456';
-      if (!isMasterOtp && user.password_reset_otp !== otp) {
+      // Strictly verify OTP generated for this account
+      if (user.password_reset_otp !== otp) {
         return res.status(400).json({
           success: false,
           error: 'Invalid OTP code',
         });
       }
 
-      // Check if OTP has expired (unless master OTP)
+      // Check if OTP has expired
       if (
-        !isMasterOtp &&
         user.password_reset_expires_at &&
         new Date(user.password_reset_expires_at) < new Date()
       ) {
@@ -986,24 +984,6 @@ export const authController = {
         });
       }
 
-      const isMasterOtp = otp === '123456';
-
-      if (isMasterOtp) {
-        // Universal test OTP: ensure email has a verified entry in otps table
-        await db('otps').where('email', email).del();
-        await db('otps').insert({
-          email,
-          otp: '123456',
-          verified: 1,
-          expires_at: new Date(Date.now() + 15 * 60 * 1000),
-        });
-
-        return res.status(200).json({
-          success: true,
-          message: 'Email verified successfully',
-        });
-      }
-
       // Find the latest active OTP for this email
       const record = await db('otps')
         .where('email', email)
@@ -1172,17 +1152,13 @@ export const authController = {
         return res.status(400).json({ success: false, error: 'Identifier, otp, and hostel_id are required' });
       }
 
-      const isMasterOtp = otp === '123456';
+      const record = await db('otps').where('email', identifier).where('otp', otp).first();
+      if (!record) {
+        return res.status(400).json({ success: false, error: 'Invalid OTP' });
+      }
 
-      if (!isMasterOtp) {
-        const record = await db('otps').where('email', identifier).where('otp', otp).first();
-        if (!record) {
-          return res.status(400).json({ success: false, error: 'Invalid OTP' });
-        }
-
-        if (new Date(record.expires_at) < new Date()) {
-          return res.status(400).json({ success: false, error: 'OTP has expired' });
-        }
+      if (new Date(record.expires_at) < new Date()) {
+        return res.status(400).json({ success: false, error: 'OTP has expired' });
       }
 
       const tenant = await db('students')

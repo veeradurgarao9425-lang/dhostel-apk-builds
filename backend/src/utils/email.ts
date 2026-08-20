@@ -44,7 +44,102 @@ const createTransporter = () => {
   });
 };
 
-// ─── Direct Core send function using standard Nodemailer SMTP ────────────────
+// Helper to parse sender
+const parseSender = () => {
+  const rawFrom = process.env.EMAIL_FROM || process.env.EMAIL_USER || 'hostixhelp@gmail.com';
+  const match = rawFrom.match(/^(?:"?([^"]*)"?\s)?(?:<?(.+@[^>]+)>?)$/);
+  if (match) {
+    return { name: match[1]?.trim() || 'Hostix Support', email: match[2]?.trim() || rawFrom };
+  }
+  return { name: 'Hostix Support', email: rawFrom };
+};
+
+// ─── Send via Brevo HTTP API (port 443) ────────────────────────────────────────
+const sendViaBrevo = async (options: EmailOptions): Promise<boolean> => {
+  const apiKey = (process.env.BREVO_API_KEY || '').trim();
+  if (!apiKey) return false;
+
+  const sender = parseSender();
+  const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: {
+      'accept': 'application/json',
+      'api-key': apiKey,
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({
+      sender: { name: sender.name, email: sender.email },
+      to: [{ email: options.to }],
+      subject: options.subject,
+      htmlContent: options.html,
+    }),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Brevo HTTP API ${res.status}: ${text}`);
+  }
+  console.log(`✅ Email sent via Brevo HTTP API to: ${options.to}`);
+  return true;
+};
+
+// ─── Send via Resend HTTP API (port 443) ───────────────────────────────────────
+const sendViaResend = async (options: EmailOptions): Promise<boolean> => {
+  const apiKey = (process.env.RESEND_API_KEY || '').trim();
+  if (!apiKey) return false;
+
+  const sender = parseSender();
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from: `${sender.name} <${sender.email}>`,
+      to: [options.to],
+      subject: options.subject,
+      html: options.html,
+    }),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Resend HTTP API ${res.status}: ${text}`);
+  }
+  console.log(`✅ Email sent via Resend HTTP API to: ${options.to}`);
+  return true;
+};
+
+// ─── Send via SendGrid HTTP API (port 443) ─────────────────────────────────────
+const sendViaSendGrid = async (options: EmailOptions): Promise<boolean> => {
+  const apiKey = (process.env.SENDGRID_API_KEY || '').trim();
+  if (!apiKey) return false;
+
+  const sender = parseSender();
+  const res = await fetch('https://api.sendgrid.com/v3/mail/send', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      personalizations: [{ to: [{ email: options.to }] }],
+      from: { email: sender.email, name: sender.name },
+      subject: options.subject,
+      content: [{ type: 'text/html', value: options.html }],
+    }),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`SendGrid HTTP API ${res.status}: ${text}`);
+  }
+  console.log(`✅ Email sent via SendGrid HTTP API to: ${options.to}`);
+  return true;
+};
+
+// ─── Direct Core send function with HTTPS API and SMTP Fallback ──────────────
 export const sendEmail = async (options: EmailOptions): Promise<void> => {
   const from = process.env.EMAIL_FROM || `"Hostix Support" <${process.env.EMAIL_USER || 'hostixhelp@gmail.com'}>`;
 
@@ -54,6 +149,33 @@ export const sendEmail = async (options: EmailOptions): Promise<void> => {
   const plainText = options.html ? options.html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim() : '';
 
   try {
+    // 1. Try HTTPS APIs first (never blocked by DigitalOcean / cloud firewalls)
+    if (process.env.BREVO_API_KEY) {
+      try {
+        await sendViaBrevo(options);
+        return;
+      } catch (brevoErr: any) {
+        console.warn('⚠️ Brevo API delivery notice:', brevoErr.message);
+      }
+    }
+    if (process.env.RESEND_API_KEY) {
+      try {
+        await sendViaResend(options);
+        return;
+      } catch (resendErr: any) {
+        console.warn('⚠️ Resend API delivery notice:', resendErr.message);
+      }
+    }
+    if (process.env.SENDGRID_API_KEY) {
+      try {
+        await sendViaSendGrid(options);
+        return;
+      } catch (sgErr: any) {
+        console.warn('⚠️ SendGrid API delivery notice:', sgErr.message);
+      }
+    }
+
+    // 2. SMTP Transporter fallback
     const transporter = createTransporter();
     const info = await transporter.sendMail({
       from,
@@ -70,10 +192,9 @@ export const sendEmail = async (options: EmailOptions): Promise<void> => {
       attachments: options.attachments,
     });
 
-    console.log(`✅ Email delivered successfully: ${info.messageId}`);
+    console.log(`✅ Email delivered successfully via SMTP: ${info.messageId}`);
   } catch (err: any) {
-    console.warn(`⚠️ Email delivery failed for ${options.to} (${err.message}). Logged for fallback.`);
-    // Non-fatal — do not throw so backend flow can continue smoothly
+    console.warn(`⚠️ Email delivery failed for ${options.to} (${err.message}).`);
   }
 };
 
