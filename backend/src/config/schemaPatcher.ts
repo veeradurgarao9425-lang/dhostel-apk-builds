@@ -262,6 +262,33 @@ export async function patchDatabaseSchema() {
       console.error('[schema-patch] Error creating email_logs table:', e.message);
     }
 
+    // Ensure otps table exists
+    try {
+      if (!tableNamesLower.includes('otps')) {
+        console.log('[schema-patch] creating missing otps table...');
+        await db.raw(`
+          CREATE TABLE otps (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            email VARCHAR(255) NOT NULL,
+            otp VARCHAR(10) NOT NULL,
+            verified TINYINT DEFAULT 0,
+            expires_at DATETIME NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_otps_email (email)
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        `);
+      } else {
+        const [columns] = await db.raw("SHOW COLUMNS FROM otps");
+        const columnNames = (columns as any[]).map(col => col.Field.toLowerCase());
+        if (!columnNames.includes('verified')) {
+          console.log('[schema-patch] adding verified column to otps table...');
+          await db.raw("ALTER TABLE otps ADD COLUMN verified TINYINT DEFAULT 0");
+        }
+      }
+    } catch (e: any) {
+      console.error('[schema-patch] Error creating/updating otps table:', e.message);
+    }
+
     // 1.45 Ensure id_proof_types table exists
     try {
       if (!tableNamesLower.includes('id_proof_types')) {
@@ -707,6 +734,18 @@ export async function patchDatabaseSchema() {
         if (!columnNames.includes('last_login')) {
           console.log('[schema-patch] adding last_login to users...');
           await db.raw("ALTER TABLE users ADD COLUMN last_login DATETIME NULL");
+        }
+        if (!columnNames.includes('password_reset_token')) {
+          console.log('[schema-patch] adding password_reset_token to users...');
+          await db.raw("ALTER TABLE users ADD COLUMN password_reset_token VARCHAR(500) NULL");
+        }
+        if (!columnNames.includes('password_reset_otp')) {
+          console.log('[schema-patch] adding password_reset_otp to users...');
+          await db.raw("ALTER TABLE users ADD COLUMN password_reset_otp VARCHAR(10) NULL");
+        }
+        if (!columnNames.includes('password_reset_expires_at')) {
+          console.log('[schema-patch] adding password_reset_expires_at to users...');
+          await db.raw("ALTER TABLE users ADD COLUMN password_reset_expires_at DATETIME NULL");
         }
       }
     } catch (e: any) {

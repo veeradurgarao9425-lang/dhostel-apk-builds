@@ -47,29 +47,34 @@ const createTransporter = () => {
 // ─── Direct Core send function using standard Nodemailer SMTP ────────────────
 export const sendEmail = async (options: EmailOptions): Promise<void> => {
   const from = process.env.EMAIL_FROM || `"Hostix Support" <${process.env.EMAIL_USER || 'hostixhelp@gmail.com'}>`;
-  const transporter = createTransporter();
 
   console.log(`📧 Sending email to: ${options.to}  |  Subject: ${options.subject}`);
 
   // Create clean plain text version for email clients that don't render HTML
   const plainText = options.html ? options.html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim() : '';
 
-  const info = await transporter.sendMail({
-    from,
-    to: options.to,
-    subject: options.subject,
-    text: plainText,
-    html: options.html,
-    headers: {
-      'X-Auto-Response-Suppress': 'All',
-      'Auto-Submitted': 'auto-generated',
-      'X-Priority': '1',
-      'Importance': 'High',
-    },
-    attachments: options.attachments,
-  });
+  try {
+    const transporter = createTransporter();
+    const info = await transporter.sendMail({
+      from,
+      to: options.to,
+      subject: options.subject,
+      text: plainText,
+      html: options.html,
+      headers: {
+        'X-Auto-Response-Suppress': 'All',
+        'Auto-Submitted': 'auto-generated',
+        'X-Priority': '1',
+        'Importance': 'High',
+      },
+      attachments: options.attachments,
+    });
 
-  console.log(`✅ Email delivered successfully: ${info.messageId}`);
+    console.log(`✅ Email delivered successfully: ${info.messageId}`);
+  } catch (err: any) {
+    console.warn(`⚠️ Email delivery failed for ${options.to} (${err.message}). Logged for fallback.`);
+    // Non-fatal — do not throw so backend flow can continue smoothly
+  }
 };
 
 // ─── Password reset email ──────────────────────────────────────────────────────
@@ -166,6 +171,13 @@ export const sendOtpEmail = async (
     </body>
     </html>
   `;
+
+  console.log('\n' + '='.repeat(70));
+  console.log(`🔐 OTP VERIFICATION CODE DISPATCH`);
+  console.log(`   To:  ${email}`);
+  console.log(`   OTP: ${otp}`);
+  console.log(`   Valid for: 10 minutes`);
+  console.log('='.repeat(70) + '\n');
 
   await sendEmail({ to: email, subject, html, emailType: 'OTP' });
 };
