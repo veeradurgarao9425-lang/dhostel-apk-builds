@@ -152,6 +152,7 @@ const sendViaEmailJS = async (options: EmailOptions): Promise<boolean> => {
 
   const otpMatch = options.subject.match(/\d{6}/) || options.html.match(/\d{6}/);
   const passcode = otpMatch ? otpMatch[0] : '';
+  const sender = parseSender();
 
   const res = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
     method: 'POST',
@@ -168,12 +169,18 @@ const sendViaEmailJS = async (options: EmailOptions): Promise<boolean> => {
         to_email: options.to,
         email: options.to,
         recipient: options.to,
+        to_name: options.to.split('@')[0],
         passcode: passcode,
         otp: passcode,
+        code: passcode,
+        verification_code: passcode,
         subject: options.subject,
         message: options.html,
+        html_message: options.html,
         from_name: 'Hostix Support',
+        reply_to: sender.email || 'hostixhelp@gmail.com',
         time: '10 minutes',
+        expiry: '10 minutes',
       },
     }),
   });
@@ -323,6 +330,10 @@ export const sendOtpEmail = async (
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
     </head>
     <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f8fafc; margin: 0; padding: 24px;">
+      <!-- Hidden Preheader to prevent spam classification -->
+      <div style="display:none;font-size:1px;color:#f8fafc;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;">
+        Your Hostix verification code is ${otp}. Valid for 10 minutes.
+      </div>
       <div style="max-width: 500px; margin: 0 auto; background-color: #ffffff; padding: 32px; border-radius: 16px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
         <div style="text-align: center; margin-bottom: 24px;">
           <h2 style="color: #6366f1; margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -0.5px;">Hostix</h2>
