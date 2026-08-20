@@ -1,8 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ShieldCheck, ChevronLeft } from 'lucide-react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { ShieldCheck, ChevronLeft, Lock, Trash2, Camera, Bell, FileText } from 'lucide-react-native';
 
 const BLUE = '#2245D4';
 const WHITE = '#FFFFFF';
@@ -22,10 +21,9 @@ export default function PrivacyPolicyScreen({ navigation }: any) {
           <ChevronLeft size={28} color={WHITE} strokeWidth={2.5} />
         </TouchableOpacity>
         <View style={styles.headerTitleWrap}>
-          <Text style={styles.headerTitle}>Security & Policy</Text>
-          <Text style={styles.headerSub}>Terms of Service</Text>
+          <Text style={styles.headerTitle}>Privacy & Data Policy</Text>
+          <Text style={styles.headerSub}>Hostix Security & Safety</Text>
         </View>
-        {/* Placeholder to balance the back button exactly */}
         <View style={styles.rightBtn} />
       </View>
 
@@ -36,28 +34,35 @@ export default function PrivacyPolicyScreen({ navigation }: any) {
           </View>
         </View>
 
-        <Text style={styles.title}>Privacy & Security Policy</Text>
-        <Text style={styles.lastUpdated}>Last updated: July 2026</Text>
+        <Text style={styles.title}>Privacy Policy & Data Safety</Text>
+        <Text style={styles.lastUpdated}>Package: com.durgarao2.hostixmobile • Last updated: August 2026</Text>
 
         <View style={styles.card}>
-          <Text style={styles.sectionTitle}>1. Data Collection</Text>
+          <Text style={styles.sectionTitle}>1. Personal & Tenancy Data Collection</Text>
           <Text style={styles.paragraph}>
-            We collect personal information such as your name, contact details, and identification documents solely for the purpose of managing your hostel accommodation and ensuring the safety of all residents.
+            We collect personal information including your full name, phone number, emergency contacts, room allocation details, and KYC identity verification solely to administer your hostel stay and ensure resident safety.
           </Text>
 
-          <Text style={styles.sectionTitle}>2. How We Use Your Data</Text>
+          <Text style={styles.sectionTitle}>2. Device Permissions & Usage</Text>
           <Text style={styles.paragraph}>
-            Your data is used to process rent payments, manage room allocations, and facilitate communication between you and the hostel management. We do not sell your personal data to third parties.
+            • <Text style={{ fontWeight: '700', color: TEXT_DARK }}>Camera & Storage:</Text> For KYC document verification, profile pictures, and maintenance complaint photos.{"\n"}
+            • <Text style={{ fontWeight: '700', color: TEXT_DARK }}>Notifications:</Text> To deliver dues reminders, gate pass status, and notice board bulletins.{"\n"}
+            • <Text style={{ fontWeight: '700', color: TEXT_DARK }}>Internet:</Text> Secure real-time synchronization with Hostix servers.
           </Text>
 
-          <Text style={styles.sectionTitle}>3. Security Measures</Text>
+          <Text style={styles.sectionTitle}>3. Financial Records & Rent</Text>
           <Text style={styles.paragraph}>
-            We implement industry-standard security measures to protect your personal information from unauthorized access, disclosure, or alteration. All digital payments and sensitive data are encrypted.
+            We track monthly rent payments, receipts, and dues balances. No raw credit/debit card numbers or netbanking passwords are saved on Hostix systems.
           </Text>
 
-          <Text style={styles.sectionTitle}>4. Your Rights</Text>
+          <Text style={styles.sectionTitle}>4. Security Measures</Text>
           <Text style={styles.paragraph}>
-            You have the right to request access to your personal data, ask for corrections, or request deletion of your account once your tenancy agreement has concluded and all dues are cleared.
+            All network communication is secured with 256-bit TLS/SSL encryption. Account passwords are encrypted using industry-standard bcrypt hashing. We never sell your personal records to third parties.
+          </Text>
+
+          <Text style={styles.sectionTitle}>5. Account & Data Deletion</Text>
+          <Text style={styles.paragraph}>
+            You have the right to request permanent deletion of your account and personal records. You can request deletion directly in Settings or by contacting support@hostix.app / privacy@hostix.app.
           </Text>
         </View>
       </ScrollView>
@@ -75,21 +80,21 @@ const styles = StyleSheet.create({
   headerTitle: { color: WHITE, fontSize: 18, fontWeight: '700' },
   headerSub: { color: 'rgba(255,255,255,0.7)', fontSize: 12, marginTop: 2 },
   backBtn: { padding: 8 },
-  rightBtn: { padding: 8, width: 40 }, // matches backBtn size (24 + 16)
+  rightBtn: { padding: 8, width: 40 },
   
   content: { flex: 1, backgroundColor: BG },
   contentContainer: { padding: 20, paddingBottom: 60 },
-  iconContainer: { alignItems: 'center', marginVertical: 24 },
+  iconContainer: { alignItems: 'center', marginVertical: 20 },
   iconCircle: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 68,
+    height: 68,
+    borderRadius: 34,
     backgroundColor: '#EEF2FF',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  title: { fontSize: 22, fontWeight: '800', color: TEXT_DARK, textAlign: 'center', marginBottom: 4 },
-  lastUpdated: { fontSize: 13, color: TEXT_MID, textAlign: 'center', marginBottom: 24 },
+  title: { fontSize: 20, fontWeight: '800', color: TEXT_DARK, textAlign: 'center', marginBottom: 4 },
+  lastUpdated: { fontSize: 12, color: TEXT_MID, textAlign: 'center', marginBottom: 20 },
   card: {
     backgroundColor: WHITE,
     borderRadius: 16,
@@ -102,6 +107,6 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     elevation: 2,
   },
-  sectionTitle: { fontSize: 15, fontWeight: '700', color: TEXT_DARK, marginBottom: 8, marginTop: 16 },
-  paragraph: { fontSize: 14, color: TEXT_MID, lineHeight: 22 },
+  sectionTitle: { fontSize: 14.5, fontWeight: '700', color: TEXT_DARK, marginBottom: 6, marginTop: 14 },
+  paragraph: { fontSize: 13.5, color: TEXT_MID, lineHeight: 21 },
 });

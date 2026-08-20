@@ -29,6 +29,7 @@ import { ProfilePage } from './pages/ProfilePage';
 import { ActivityLogsPage } from './pages/ActivityLogsPage';
 import { QRSignupPage } from './pages/QRSignupPage';
 import { SystemLogsPage } from './pages/SystemLogsPage';
+import { PrivacyPolicyPage } from './pages/PrivacyPolicyPage';
 
 // Create Query Client
 const queryClient = new QueryClient({
@@ -73,12 +74,16 @@ function App() {
         <QueryClientProvider client={queryClient}>
           <BrowserRouter>
         <Routes>
-          {/* Public Routes - Landing and Login Pages */}
+          {/* Public Routes - Landing, Auth, and Legal Pages */}
           <Route path="/" element={<LandingPage />} />
           <Route path="/admin/login" element={<AdminLogin />} />
           <Route path="/owner/login" element={<OwnerLogin />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/register" element={<QRSignupPage />} />
+          <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
+          <Route path="/privacy" element={<PrivacyPolicyPage />} />
+          <Route path="/terms" element={<PrivacyPolicyPage />} />
+          <Route path="/data-deletion" element={<PrivacyPolicyPage />} />
 
           {/* Admin Dashboard Route */}
           <Route
