@@ -152,7 +152,20 @@ export function TenantLoginScreen({ navigation }: any) {
   };
 
   const handleOtpChange = (val: string, index: number) => {
-    const digit = val.replace(/[^0-9]/g, '').slice(-1);
+    const digitsOnly = val.replace(/[^0-9]/g, '');
+    if (digitsOnly.length > 1) {
+      const next = [...otp];
+      for (let i = 0; i < 6; i++) {
+        if (digitsOnly[i]) next[i] = digitsOnly[i];
+      }
+      setOtp(next);
+      setOtpError(false);
+      const focusIndex = Math.min(digitsOnly.length, 5);
+      inputRefs.current[focusIndex]?.focus();
+      return;
+    }
+
+    const digit = digitsOnly.slice(-1);
     const next = [...otp];
     next[index] = digit;
     setOtp(next);
