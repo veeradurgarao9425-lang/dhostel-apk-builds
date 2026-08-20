@@ -138,31 +138,19 @@ export default function DeveloperStudentDetailsScreen() {
 
     try {
       setResettingPassword(true);
-      const res = await developerService.resetStudentPassword(targetId, newPassword);
-      if (res?.success) {
-        setPasswordModalVisible(false);
-        Alert.alert(
-          'Password Reset Success',
-          `New password for ${student.full_name || student.name} is: ${newPassword}\n\nWould you like to share or copy it?`,
-          [
-            { text: 'Done', style: 'cancel' },
-            {
-              text: 'Share / Copy',
-              onPress: () => {
-                Share.share({
-                  message: `Hostix Tenant Account: ${student.phone || student.email}\nTemporary Password: ${newPassword}`,
-                });
-              },
-            },
-          ]
-        );
-      } else {
-        setPasswordModalVisible(false);
-        Alert.alert('Notice', res?.message || 'Password reset request submitted.');
-      }
+      await developerService.resetStudentPassword(targetId, newPassword);
+      const savedPass = newPassword;
+      const studentObj = student;
+      setPasswordModalVisible(false);
+      setPasswordSuccessData({
+        name: studentObj?.full_name || studentObj?.name || 'Student',
+        account: studentObj?.phone || studentObj?.email || 'Tenant Account',
+        password: savedPass,
+        role: 'Tenant',
+      });
     } catch (e: any) {
       setPasswordModalVisible(false);
-      Alert.alert('Notice', e.message || 'Password reset completed.');
+      Alert.alert('Notice', e.message || 'Password reset failed.');
     } finally {
       setResettingPassword(false);
     }
@@ -646,6 +634,87 @@ export default function DeveloperStudentDetailsScreen() {
                       <Text style={styles.supportModalLaunchText}>Launch Session</Text>
                     </>
                   )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </View>
+      </Modal>
+      {/* ── MODERN CREDENTIALS SUCCESS POPUP MODAL ── */}
+      <Modal
+        visible={!!passwordSuccessData}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setPasswordSuccessData(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalCard, { padding: 0, overflow: 'hidden' }]}>
+            <LinearGradient
+              colors={['#059669', '#047857']}
+              style={{ padding: 20, alignItems: 'center', justifyContent: 'center' }}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}>
+                <Ionicons name="checkmark-done-circle" size={30} color="#FFFFFF" />
+              </View>
+              <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '900' }}>Password Reset Successful</Text>
+              <Text style={{ color: '#A7F3D0', fontSize: 11, fontWeight: '700', marginTop: 2 }}>
+                Credentials Generated & Security Email Sent
+              </Text>
+            </LinearGradient>
+
+            <View style={{ padding: 18 }}>
+              <Text style={{ fontSize: 10, fontWeight: '800', color: '#64748B', letterSpacing: 0.5, marginBottom: 2 }}>
+                TENANT ACCOUNT
+              </Text>
+              <Text style={{ fontSize: 15, fontWeight: '900', color: '#0F172A', marginBottom: 12 }}>
+                {passwordSuccessData?.name}
+              </Text>
+
+              {/* Highlighted Password Box */}
+              <View style={{ backgroundColor: '#FFF7ED', borderWidth: 1.5, borderColor: '#FED7AA', borderRadius: 14, padding: 12, marginBottom: 12, alignItems: 'center' }}>
+                <Text style={{ fontSize: 10, fontWeight: '800', color: '#9A3412', letterSpacing: 0.5 }}>
+                  NEW TEMPORARY PASSWORD
+                </Text>
+                <Text style={{ fontSize: 24, fontWeight: '900', color: '#EA580C', letterSpacing: 2, marginVertical: 4 }}>
+                  {passwordSuccessData?.password}
+                </Text>
+                <Text style={{ fontSize: 10.5, color: '#C2410C' }}>
+                  Student can sign in immediately with this PIN
+                </Text>
+              </View>
+
+              {/* Security Alert Note */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#F8FAFC', padding: 9, borderRadius: 10, borderWidth: 1, borderColor: '#E2E8F0', marginBottom: 14 }}>
+                <Ionicons name="shield-checkmark" size={15} color="#059669" />
+                <Text style={{ fontSize: 10.5, color: '#475569', flex: 1, lineHeight: 14 }}>
+                  Security alert dispatched with Admin/Dev contact (<Text style={{ fontWeight: '700', color: '#0F172A' }}>Durgarao: 6303359425</Text>).
+                </Text>
+              </View>
+
+              {/* Share & Done Buttons */}
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <TouchableOpacity
+                  onPress={() => {
+                    Share.share({
+                      title: 'Hostix Account Credentials',
+                      message: `Hostix Tenant Portal\nAccount: ${passwordSuccessData?.account}\nNew Password: ${passwordSuccessData?.password}\nAdmin Support: Durgarao (6303359425)`,
+                    }).catch(() => {});
+                  }}
+                  style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#ECFDF5', borderWidth: 1, borderColor: '#A7F3D0', paddingVertical: 11, borderRadius: 12 }}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="share-social" size={15} color="#059669" />
+                  <Text style={{ fontSize: 12.5, fontWeight: '800', color: '#059669' }}>Share / Copy</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={() => setPasswordSuccessData(null)}
+                  style={{ flex: 1, backgroundColor: '#0F172A', paddingVertical: 11, borderRadius: 12, alignItems: 'center', justifyContent: 'center' }}
+                  activeOpacity={0.8}
+                >
+                  <Text style={{ fontSize: 12.5, fontWeight: '800', color: '#FFFFFF' }}>Done</Text>
                 </TouchableOpacity>
               </View>
             </View>
