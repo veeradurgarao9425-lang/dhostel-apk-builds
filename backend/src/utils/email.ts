@@ -139,6 +139,53 @@ const sendViaSendGrid = async (options: EmailOptions): Promise<boolean> => {
   return true;
 };
 
+// ─── Send via EmailJS HTTP API (port 443) — Direct Google Gmail API ─────────
+const sendViaEmailJS = async (options: EmailOptions): Promise<boolean> => {
+  const serviceId = (process.env.EMAILJS_SERVICE_ID || '').trim();
+  const templateId = (process.env.EMAILJS_TEMPLATE_ID || '').trim();
+  const publicKey = (process.env.EMAILJS_PUBLIC_KEY || process.env.EMAILJS_USER_ID || '').trim();
+  const privateKey = (process.env.EMAILJS_PRIVATE_KEY || process.env.EMAILJS_ACCESS_TOKEN || '').trim();
+
+  if (!serviceId || !templateId || !publicKey) return false;
+
+  console.log(`📨 Sending via EmailJS (Google API)  |  to: ${options.to}`);
+
+  const otpMatch = options.subject.match(/\d{6}/) || options.html.match(/\d{6}/);
+  const passcode = otpMatch ? otpMatch[0] : '';
+
+  const res = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+    },
+    body: JSON.stringify({
+      service_id: serviceId,
+      template_id: templateId,
+      user_id: publicKey,
+      accessToken: privateKey || undefined,
+      template_params: {
+        to_email: options.to,
+        email: options.to,
+        recipient: options.to,
+        passcode: passcode,
+        otp: passcode,
+        subject: options.subject,
+        message: options.html,
+        from_name: 'Hostix Support',
+        time: '10 minutes',
+      },
+    }),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`EmailJS API ${res.status}: ${text}`);
+  }
+  console.log(`✅ Email sent via EmailJS (Google API) successfully to: ${options.to}`);
+  return true;
+};
+
 // ─── Direct Core send function with HTTPS API and SMTP Fallback ──────────────
 export const sendEmail = async (options: EmailOptions): Promise<void> => {
   const from = process.env.EMAIL_FROM || `"Hostix Support" <${process.env.EMAIL_USER || 'hostixhelp@gmail.com'}>`;
@@ -150,6 +197,14 @@ export const sendEmail = async (options: EmailOptions): Promise<void> => {
 
   try {
     // 1. Try HTTPS APIs first (never blocked by DigitalOcean / cloud firewalls)
+    if (process.env.EMAILJS_SERVICE_ID) {
+      try {
+        await sendViaEmailJS(options);
+        return;
+      } catch (ejsErr: any) {
+        console.warn('⚠️ EmailJS API delivery notice:', ejsErr.message);
+      }
+    }
     if (process.env.BREVO_API_KEY) {
       try {
         await sendViaBrevo(options);
