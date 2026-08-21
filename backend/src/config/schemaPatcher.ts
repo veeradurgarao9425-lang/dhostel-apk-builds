@@ -2031,6 +2031,45 @@ export async function patchDatabaseSchema() {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
       `);
 
+      // ── Centralized notifications enhancements ──────────────────────────────
+      if (tableNamesLower.includes('notifications')) {
+        try {
+          const [notifCols] = await db.raw("SHOW COLUMNS FROM notifications");
+          const notifColNames = (notifCols as any[]).map(c => (c.Field || c.field || '').toLowerCase());
+          
+          if (!notifColNames.includes('screen')) {
+            console.log('[schema-patch] adding screen column to notifications...');
+            await db.raw("ALTER TABLE notifications ADD COLUMN screen VARCHAR(100) NULL");
+          }
+          if (!notifColNames.includes('params')) {
+            console.log('[schema-patch] adding params column to notifications...');
+            await db.raw("ALTER TABLE notifications ADD COLUMN params TEXT NULL");
+          }
+          if (!notifColNames.includes('reference_type')) {
+            console.log('[schema-patch] adding reference_type column to notifications...');
+            await db.raw("ALTER TABLE notifications ADD COLUMN reference_type VARCHAR(100) NULL");
+          }
+          if (!notifColNames.includes('reference_id')) {
+            console.log('[schema-patch] adding reference_id column to notifications...');
+            await db.raw("ALTER TABLE notifications ADD COLUMN reference_id VARCHAR(100) NULL");
+          }
+          if (!notifColNames.includes('deep_link')) {
+            console.log('[schema-patch] adding deep_link column to notifications...');
+            await db.raw("ALTER TABLE notifications ADD COLUMN deep_link VARCHAR(255) NULL");
+          }
+          if (!notifColNames.includes('metadata')) {
+            console.log('[schema-patch] adding metadata column to notifications...');
+            await db.raw("ALTER TABLE notifications ADD COLUMN metadata JSON NULL");
+          }
+          if (!notifColNames.includes('deduplicate_key')) {
+            console.log('[schema-patch] adding deduplicate_key column to notifications...');
+            await db.raw("ALTER TABLE notifications ADD COLUMN deduplicate_key VARCHAR(150) NULL");
+          }
+        } catch (notifErr: any) {
+          console.warn('[schema-patch] notifications table patch warning:', notifErr.message);
+        }
+      }
+
       // Developer-facing notification centre. Separate from `notifications`
       // (which is hostel-scoped, NOT NULL hostel_id, and consumed by the owner /
       // tenant apps) because platform events like "new owner registered" have no

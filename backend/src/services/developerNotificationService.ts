@@ -19,6 +19,10 @@ import { sendEmail } from '../utils/email.js';
 export type DeveloperNotificationType =
   | 'NEW_OWNER'
   | 'NEW_HOSTEL'
+  | 'NEW_STUDENT'
+  | 'STUDENT_ACTIVATED'
+  | 'SUBSCRIPTION_EXPIRED'
+  | 'CRON_FAILURE'
   | 'PAYMENT_RECEIVED'
   | 'PAYMENT_OVERDUE'
   | 'PAYMENT_DUE_SOON'
@@ -46,6 +50,10 @@ const superAdminEmail = () => process.env.SUPER_ADMIN_EMAIL || 'hostixhelp@gmail
 const ACCENT: Record<DeveloperNotificationType, string> = {
   NEW_OWNER: '#EA580C',
   NEW_HOSTEL: '#EA580C',
+  NEW_STUDENT: '#3B82F6',
+  STUDENT_ACTIVATED: '#10B981',
+  SUBSCRIPTION_EXPIRED: '#EF4444',
+  CRON_FAILURE: '#DC2626',
   PAYMENT_RECEIVED: '#059669',
   PAYMENT_OVERDUE: '#DC2626',
   PAYMENT_DUE_SOON: '#D97706',
@@ -207,4 +215,63 @@ export function notifyNewHostelRegistered(params: {
   });
 }
 
-export default { notifyDeveloper, notifyNewOwnerRegistered, notifyNewHostelRegistered };
+/** A new tenant/student registered on the platform. */
+export function notifyNewStudentRegistered(params: {
+  studentId: number;
+  studentName: string;
+  phone?: string | null;
+  email?: string | null;
+  hostelId: number;
+  hostelName?: string | null;
+}): void {
+  void notifyDeveloper({
+    type: 'NEW_STUDENT',
+    title: 'New Tenant Registered',
+    message: `${params.studentName} registered at "${params.hostelName || 'Hostel #' + params.hostelId}" (Pending Room Allocation).`,
+    priority: 'NORMAL',
+    relatedEntity: 'STUDENT',
+    relatedEntityId: params.studentId,
+    metadata: {
+      student_id: params.studentId,
+      student_name: params.studentName,
+      phone: params.phone || null,
+      email: params.email || null,
+      hostel_id: params.hostelId,
+      hostel_name: params.hostelName || null,
+    },
+    email: false,
+  });
+}
+
+/** A tenant was assigned a room and activated. */
+export function notifyStudentActivated(params: {
+  studentId: number;
+  studentName: string;
+  roomNumber?: string | number | null;
+  hostelId: number;
+  hostelName?: string | null;
+}): void {
+  void notifyDeveloper({
+    type: 'STUDENT_ACTIVATED',
+    title: 'Tenant Check-In & Activated',
+    message: `${params.studentName} was allocated Room ${params.roomNumber || 'N/A'} at "${params.hostelName || 'Hostel #' + params.hostelId}".`,
+    priority: 'LOW',
+    relatedEntity: 'STUDENT',
+    relatedEntityId: params.studentId,
+    metadata: {
+      student_id: params.studentId,
+      student_name: params.studentName,
+      room_number: params.roomNumber || null,
+      hostel_id: params.hostelId,
+    },
+    email: false,
+  });
+}
+
+export default {
+  notifyDeveloper,
+  notifyNewOwnerRegistered,
+  notifyNewHostelRegistered,
+  notifyNewStudentRegistered,
+  notifyStudentActivated,
+};

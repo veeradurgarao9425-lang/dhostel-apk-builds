@@ -6,6 +6,8 @@ import {
   getSubscriptionExpiredTemplate, 
   getSuperAdminExpiryTemplate 
 } from '../utils/emailTemplates.js';
+import { sendNotificationToHostelOwner } from '../utils/notification.js';
+import { notifyDeveloper } from '../services/developerNotificationService.js';
 
 export const startSubscriptionCheckJob = () => {
   // Run daily at midnight
@@ -56,15 +58,16 @@ export const startSubscriptionCheckJob = () => {
               hostelId: hostel.hostel_id
             });
 
-            // Owner in-app notification
-            await db('notifications').insert({
-                user_id: hostel.owner_id,
-                hostel_id: hostel.hostel_id,
-                notification_type: 'Subscription Alert',
-                title: 'Subscription Expired',
-                message: `Your subscription for ${hostel.hostel_name} has expired. Access is restricted.`,
-                priority: 'High'
-            });
+            // Owner in-app + push notification
+            await sendNotificationToHostelOwner(
+              hostel.hostel_id,
+              'Subscription Alert',
+              'Subscription Expired',
+              `Your subscription for ${hostel.hostel_name} has expired. Access is restricted.`,
+              'High',
+              { hostel_id: hostel.hostel_id },
+              { screen: 'Subscription', params: { hostelId: hostel.hostel_id }, referenceType: 'hostel', referenceId: hostel.hostel_id }
+            );
           }
 
           // Email Super Admin
@@ -76,14 +79,22 @@ export const startSubscriptionCheckJob = () => {
             hostelId: hostel.hostel_id
           });
 
-          // Super Admin in-app notification
-          await db('notifications').insert({
-              user_id: 1, // Super Admin
+          // Developer Notification Centre
+          notifyDeveloper({
+            type: 'SUBSCRIPTION_EXPIRED',
+            title: 'Hostel Subscription Expired',
+            message: `Subscription for "${hostel.hostel_name}" has expired (Owner: ${hostel.full_name || 'N/A'}).`,
+            priority: 'HIGH',
+            relatedEntity: 'HOSTEL',
+            relatedEntityId: hostel.hostel_id,
+            metadata: {
               hostel_id: hostel.hostel_id,
-              notification_type: 'System Alert',
-              title: 'Hostel Expired',
-              message: `${hostel.hostel_name} subscription has expired.`,
-              priority: 'High'
+              hostel_name: hostel.hostel_name,
+              owner_id: hostel.owner_id,
+              owner_name: hostel.full_name,
+              owner_email: hostel.email,
+            },
+            email: false,
           });
         }
         console.log(`[Cron] Expired ${expiredHostels.length} hostels.`);
@@ -116,14 +127,15 @@ export const startSubscriptionCheckJob = () => {
                  hostelId: hostel.hostel_id
                });
 
-               await db('notifications').insert({
-                 user_id: hostel.user_id,
-                 hostel_id: hostel.hostel_id,
-                 notification_type: 'Subscription Alert',
-                 title: 'Subscription Expiring Soon',
-                 message: `Your subscription for ${hostel.hostel_name} expires in ${days} day(s).`,
-                 priority: 'Medium'
-               });
+               await sendNotificationToHostelOwner(
+                 hostel.hostel_id,
+                 'Subscription Alert',
+                 'Subscription Expiring Soon',
+                 `Your subscription for ${hostel.hostel_name} expires in ${days} day(s). Renew to avoid disruption.`,
+                 'Medium',
+                 { hostel_id: hostel.hostel_id, days_left: days },
+                 { screen: 'Subscription', params: { hostelId: hostel.hostel_id }, referenceType: 'hostel', referenceId: hostel.hostel_id, deduplicateKey: `sub_exp_${hostel.hostel_id}_${days}d` }
+               );
              }
           } catch (e) {
             console.error(`[Cron] Failed to send ${days}-day warning to ${hostel.email}`, e);

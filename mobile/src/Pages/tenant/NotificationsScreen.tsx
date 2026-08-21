@@ -39,14 +39,24 @@ export default function NotificationsScreen({ navigation }: any) {
     try {
       const res = await api.get('/notifications');
       if (res.data.success) {
-        const formatted = res.data.data.map((n: any) => ({
-          id: n.notification_id,
-          title: n.title,
-          body: n.message,
-          type: n.notification_type || 'system',
-          date: n.created_at,
-          read: !!n.is_read
-        }));
+        const formatted = res.data.data.map((n: any) => {
+          let parsedParams = null;
+          try {
+            if (n.params) parsedParams = typeof n.params === 'string' ? JSON.parse(n.params) : n.params;
+          } catch {}
+          return {
+            id: n.notification_id,
+            title: n.title,
+            body: n.message,
+            type: n.notification_type || 'system',
+            date: n.created_at,
+            read: !!n.is_read,
+            screen: n.screen,
+            params: parsedParams,
+            referenceType: n.reference_type,
+            referenceId: n.reference_id,
+          };
+        });
         setItems(formatted);
       }
     } catch (err) {
@@ -89,6 +99,36 @@ export default function NotificationsScreen({ navigation }: any) {
       await api.put(`/notifications/${id}/read`);
     } catch (_) {
       // silently ignore
+    }
+  };
+
+  const handleItemPress = (item: any) => {
+    markOneRead(item.id);
+
+    // 1. Direct screen payload if present
+    if (item.screen) {
+      try {
+        navigation.navigate(item.screen, item.params);
+        return;
+      } catch (navErr) {
+        console.warn('Navigation error for screen:', item.screen, navErr);
+      }
+    }
+
+    // 2. Intelligent fallback based on type/title
+    const title = (item.title || '').toLowerCase();
+    const type = (item.type || '').toLowerCase();
+
+    if (type.includes('due') || type.includes('payment') || title.includes('rent') || title.includes('due') || title.includes('fee')) {
+      navigation.navigate('RentPayment', item.params || { feeId: item.referenceId });
+    } else if (type.includes('expense') || type.includes('budget') || title.includes('expense') || title.includes('spend') || title.includes('budget')) {
+      navigation.navigate('Expenses');
+    } else if (type.includes('notice') || title.includes('notice') || title.includes('announcement')) {
+      navigation.navigate('Notices');
+    } else if (type.includes('complaint') || title.includes('complaint')) {
+      navigation.navigate('Complaints');
+    } else if (type.includes('admission') || title.includes('room') || title.includes('allocated')) {
+      navigation.navigate('TenantHome');
     }
   };
 
@@ -171,7 +211,7 @@ export default function NotificationsScreen({ navigation }: any) {
               <TouchableOpacity
                 key={n.id}
                 style={[styles.card, idx !== groupData.length - 1 && styles.cardBorder]}
-                onPress={() => markOneRead(n.id)}
+                onPress={() => handleItemPress(n)}
                 activeOpacity={0.7}
               >
                 <View style={[styles.iconWrap, { backgroundColor: meta.soft }]}>

@@ -13,7 +13,7 @@ import { sendNotificationToStudent } from '../utils/notification.js';
  */
 
 const DUE_SOON_DAYS = [7, 3, 1, 0];
-const OVERDUE_RENAG_DAYS = 1;
+const OVERDUE_RENAG_DAYS = 7;
 
 const todayStr = () => new Date().toISOString().split('T')[0];
 
@@ -41,11 +41,24 @@ export const runFeeReminders = async () => {
       const balance = Number(fee.balance || 0);
       const title = daysLeft === 0 ? 'Rent Due Today' : `Rent Due in ${daysLeft} Day${daysLeft === 1 ? '' : 's'}`;
       const message = daysLeft === 0
-        ? `₹${balance} is due today. Avoid late fees — pay now.`
-        : `₹${balance} is due in ${daysLeft} day${daysLeft === 1 ? '' : 's'}.`;
+        ? `₹${balance.toLocaleString('en-IN')} is due today. Avoid late fees — pay now.`
+        : `₹${balance.toLocaleString('en-IN')} is due in ${daysLeft} day${daysLeft === 1 ? '' : 's'}.`;
 
-      await sendNotificationToStudent(fee.student_id, 'Payment Due', title, message, daysLeft <= 1 ? 'High' : 'Medium', { fee_id: fee.fee_id })
-        .catch((err) => console.error('[feeReminders] due-soon notify failed:', err?.message));
+      await sendNotificationToStudent(
+        fee.student_id,
+        'Payment Due',
+        title,
+        message,
+        daysLeft <= 1 ? 'High' : 'Medium',
+        { fee_id: fee.fee_id },
+        {
+          screen: 'RentPayment',
+          params: { feeId: fee.fee_id },
+          referenceType: 'monthly_fee',
+          referenceId: fee.fee_id,
+          deduplicateKey: `fee_due_${fee.fee_id}_${daysLeft}d`
+        }
+      ).catch((err) => console.error('[feeReminders] due-soon notify failed:', err?.message));
 
       await db('monthly_fees').where('fee_id', fee.fee_id).update({ due_reminder_sent_date: today });
       dueSoonNotified++;
@@ -67,9 +80,16 @@ export const runFeeReminders = async () => {
         fee.student_id,
         'Payment Due',
         'Rent Overdue',
-        `₹${balance} is overdue. Please pay as soon as possible to avoid further delay.`,
+        `₹${balance.toLocaleString('en-IN')} is overdue. Please pay as soon as possible to avoid further delay.`,
         'High',
-        { fee_id: fee.fee_id }
+        { fee_id: fee.fee_id },
+        {
+          screen: 'RentPayment',
+          params: { feeId: fee.fee_id },
+          referenceType: 'monthly_fee',
+          referenceId: fee.fee_id,
+          deduplicateKey: `fee_overdue_${fee.fee_id}_${today}`
+        }
       ).catch((err) => console.error('[feeReminders] overdue notify failed:', err?.message));
 
       await db('monthly_fees').where('fee_id', fee.fee_id).update({ overdue_reminder_sent_date: today });

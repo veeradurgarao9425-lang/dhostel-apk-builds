@@ -7,6 +7,7 @@ import { sendNewJoinerStudentEmail, sendNewJoinerOwnerAlertEmail } from '../util
 import { kickUserFromRoomChat } from '../socket/index.js';
 import { checkHostelUniqueIdentifiers } from '../utils/validation.js';
 import { resolveScopedHostelId, resolveOwnerHostelId, canAccessHostel, getAuthenticatedStudent } from '../utils/scope.js';
+import { notifyStudentActivated } from '../services/developerNotificationService.js';
 
 // Helper function to convert ISO datetime string to date-only format (YYYY-MM-DD)
 const convertToDateOnly = (dateValue: any): string | null => {
@@ -965,6 +966,37 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
             .where({ room_id: finalRoomId })
             .increment('occupied_beds', 1);
           console.log(`Assigned room ${finalRoomId} to student ${studentId}`);
+
+          // Notify student of room allocation & check-in approval
+          const room = await db('rooms').where({ room_id: finalRoomId }).first();
+          const roomNumber = room?.room_number || '';
+          const studentName = `${updatedStudent.first_name}${updatedStudent.last_name ? ' ' + updatedStudent.last_name : ''}`.trim();
+
+          sendNotificationToStudent(
+            Number(studentId),
+            'New Admission',
+            'Room Allocated & Check-In Approved! 🎉',
+            `Welcome! Room ${roomNumber ? roomNumber : ''} has been assigned to you. Your tenant portal is now active.`,
+            'High',
+            { room_id: finalRoomId, room_number: roomNumber },
+            {
+              screen: 'TenantHome',
+              referenceType: 'room',
+              referenceId: finalRoomId,
+            }
+          ).catch((err) => console.error('Failed to send room allocation notification to student:', err));
+
+          // Notify Developer
+          try {
+            notifyStudentActivated({
+              studentId: Number(studentId),
+              studentName,
+              roomNumber,
+              hostelId: updatedStudent.hostel_id,
+            });
+          } catch (devErr) {
+            console.error('Failed to notify developer of student activation:', devErr);
+          }
         } catch (bedError: any) {
           console.error('Error incrementing room occupied_beds:', bedError);
         }

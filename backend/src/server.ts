@@ -54,6 +54,7 @@ import { startMonthlyReportsJob } from './jobs/monthlyReports.js';
 import { startFeeRemindersJob } from './jobs/feeReminders.js';
 import { startOwnerDailyAlertsJob } from './jobs/ownerDailyAlerts.js';
 import { startDailyExcelReportsJob } from './jobs/dailyExcelReports.js';
+import { startTenantFriendlyRemindersJob } from './jobs/tenantFriendlyReminders.js';
 import { sendNotificationToHostelOwner } from './utils/notification.js';
 import { checkHostelUniqueIdentifiers } from './utils/validation.js';
 import { sanitizeInputMiddleware, developerLoginLimiter } from './middleware/security.js';
@@ -69,6 +70,7 @@ startMonthlyReportsJob();
 startFeeRemindersJob();
 startOwnerDailyAlertsJob();
 startDailyExcelReportsJob();
+startTenantFriendlyRemindersJob();
 
 
 const app = express();

@@ -11,7 +11,7 @@ import crypto from 'crypto';
 import { checkHostelUniqueIdentifiers } from '../utils/validation.js';
 import { sendDailyOwnerReportEmail } from '../utils/excelReport.js';
 import { generateDeveloperToken, logDeveloperAction } from '../middleware/developerAuth.js';
-import { notifyNewOwnerRegistered } from '../services/developerNotificationService.js';
+import { notifyNewOwnerRegistered, notifyNewStudentRegistered } from '../services/developerNotificationService.js';
 
 export const authController = {
   // Login
@@ -1325,13 +1325,16 @@ export const authController = {
       // Clear OTP just in case
       await db('otps').where('email', identifier).del();
 
+      const tenantFullName = `${first_name}${last_name ? ' ' + last_name : ''}`.trim();
+
       sendNotificationToHostelOwner(
         hostel_id,
         'General',
         'New Registration Awaiting Approval',
-        `${first_name}${last_name ? ' ' + last_name : ''} registered via QR code and is awaiting room allocation.`,
+        `${tenantFullName} registered via QR code and is awaiting room allocation.`,
         'Medium',
-        { id: student_id }
+        { id: student_id, student_id },
+        { screen: 'Students', params: { tab: 'pending', studentId: student_id }, referenceType: 'student', referenceId: student_id }
       ).catch(err => console.error('Failed to send tenant registration notification:', err));
 
       sendNotificationToStudent(
@@ -1340,8 +1343,22 @@ export const authController = {
         'Registration Submitted',
         'Your registration is pending owner approval. We will notify you as soon as a room is allocated.',
         'Medium',
-        { id: student_id }
+        { id: student_id, student_id },
+        { screen: 'TenantHome', referenceType: 'student', referenceId: student_id }
       ).catch(err => console.error('Failed to send registration-pending notification to tenant:', err));
+
+      // Notify developer of new tenant signup
+      try {
+        notifyNewStudentRegistered({
+          studentId: student_id,
+          studentName: tenantFullName,
+          phone: finalPhone,
+          email: finalEmail || null,
+          hostelId: hostel_id,
+        });
+      } catch (devNotifErr) {
+        console.error('Failed to send developer tenant registration notification:', devNotifErr);
+      }
 
       // Dispatch Email Alert to Hostel Owner
       (async () => {
