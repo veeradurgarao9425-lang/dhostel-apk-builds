@@ -41,7 +41,9 @@ export default function AddStaffScreen() {
     const { showSuccess, showApiError, showError } = useToast();
 
     const [loading, setLoading] = useState(false);
+    const [loadingMessage, setLoadingMessage] = useState('Saving staff member...');
     const [isKeyboardVisible, setKeyboardVisible] = useState(false);
+    const checkUniqueTimer = React.useRef<NodeJS.Timeout | null>(null);
 
     // Form fields
     const [fullName, setFullName] = useState('');
@@ -175,7 +177,7 @@ export default function AddStaffScreen() {
         return errs;
     };
 
-    const checkUnique = async (field: 'phone' | 'email' | 'idProofNumber', value: string) => {
+    const checkUnique = (field: 'phone' | 'email' | 'idProofNumber', value: string) => {
         if (!value || !value.trim()) return;
 
         if (field === 'phone' && !/^\d{10}$/.test(value.trim())) return;
@@ -185,29 +187,35 @@ export default function AddStaffScreen() {
             if (isPan && value.trim().length !== 10) return;
         }
 
-        try {
-            const res = await api.get('/staff/check-unique', {
-                params: {
-                    ...(field === 'phone' ? { phone: value.trim() } : {}),
-                    ...(field === 'email' ? { email: value.trim() } : {}),
-                    ...(field === 'idProofNumber' ? { idProofNumber: value.trim() } : {}),
-                    ...(isEdit ? { staffId } : {})
-                }
-            });
-            if (res.data?.success) {
-                if (field === 'phone' && res.data.phoneExists) {
-                    setErrors(prev => ({ ...prev, phone: 'This phone number is already registered' }));
-                }
-                if (field === 'email' && res.data.emailExists) {
-                    setErrors(prev => ({ ...prev, email: 'This email is already registered' }));
-                }
-                if (field === 'idProofNumber' && res.data.idProofExists) {
-                    setErrors(prev => ({ ...prev, idProofNumber: 'This ID proof number is already registered' }));
-                }
-            }
-        } catch (e) {
-            console.log('Check unique staff error', e);
+        if (checkUniqueTimer.current) {
+            clearTimeout(checkUniqueTimer.current);
         }
+
+        checkUniqueTimer.current = setTimeout(async () => {
+            try {
+                const res = await api.get('/staff/check-unique', {
+                    params: {
+                        ...(field === 'phone' ? { phone: value.trim() } : {}),
+                        ...(field === 'email' ? { email: value.trim() } : {}),
+                        ...(field === 'idProofNumber' ? { idProofNumber: value.trim() } : {}),
+                        ...(isEdit ? { staffId } : {})
+                    }
+                });
+                if (res.data?.success) {
+                    if (field === 'phone' && res.data.phoneExists) {
+                        setErrors(prev => ({ ...prev, phone: 'This phone number is already registered' }));
+                    }
+                    if (field === 'email' && res.data.emailExists) {
+                        setErrors(prev => ({ ...prev, email: 'This email is already registered' }));
+                    }
+                    if (field === 'idProofNumber' && res.data.idProofExists) {
+                        setErrors(prev => ({ ...prev, idProofNumber: 'This ID proof number is already registered' }));
+                    }
+                }
+            } catch (e) {
+                // Silently ignore background check errors
+            }
+        }, 350);
     };
 
     const handleSave = async () => {
@@ -219,6 +227,7 @@ export default function AddStaffScreen() {
 
         try {
             setLoading(true);
+            setLoadingMessage(isEdit ? 'Updating staff profile...' : 'Registering staff member...');
             const payload = {
                 hostel_id: user?.hostel_id,
                 full_name: fullName.trim(),
@@ -291,7 +300,7 @@ export default function AddStaffScreen() {
                 subtitle="Manage hostel employee records"
                 onBack={() => navigation.goBack()} 
             />
-            <FullScreenLoader visible={loading} />
+            <FullScreenLoader visible={loading} message={loadingMessage} />
 
             <ScrollView
                 style={styles.content}

@@ -32,6 +32,7 @@ import api from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { COLORS } from '../theme/index';
 import { AppHeader } from '../components/AppHeader';
+import { FullScreenLoader } from '../components/FullScreenLoader';
 import { toLocalDateStr } from '../utils/dateUtils';
 
 const todayStr = () => toLocalDateStr(new Date());
@@ -677,6 +678,13 @@ export default function AddGuestScreen({ navigation, route }: any) {
         setTouched({});
     };
 
+    const isLocalUri = (uri: string | null | undefined): boolean => {
+        if (!uri || typeof uri !== 'string') return false;
+        const clean = uri.trim();
+        if (!clean) return false;
+        return !clean.startsWith('http://') && !clean.startsWith('https://') && !clean.startsWith('/uploads');
+    };
+
     const handleSave = async () => {
         const validationErrors = validateAll();
         if (Object.keys(validationErrors).length > 0) {
@@ -686,9 +694,9 @@ export default function AddGuestScreen({ navigation, route }: any) {
 
         setLoading(true);
         try {
-            const hasLocalProfilePhoto = profilePhoto && profilePhoto.startsWith('file:');
-            const hasLocalIdFront = idProofFront && idProofFront.startsWith('file:');
-            const hasLocalIdBack = idProofBack && idProofBack.startsWith('file:');
+            const hasLocalProfilePhoto = isLocalUri(profilePhoto);
+            const hasLocalIdFront = isLocalUri(idProofFront);
+            const hasLocalIdBack = isLocalUri(idProofBack);
             const hasFiles = hasLocalProfilePhoto || hasLocalIdFront || hasLocalIdBack;
 
             let res;
@@ -708,25 +716,25 @@ export default function AddGuestScreen({ navigation, route }: any) {
                 bodyFormData.append('id_proof_number', formData.id_proof_number.trim());
                 if (formData.remarks.trim()) bodyFormData.append('remarks', formData.remarks.trim());
 
-                if (hasLocalProfilePhoto) {
+                if (hasLocalProfilePhoto && profilePhoto) {
                     const filename = profilePhoto.split('/').pop() || 'profile.jpg';
                     const match = /\.(\w+)$/.exec(filename);
                     const type = match ? `image/${match[1]}` : 'image/jpeg';
-                    bodyFormData.append('profile_photo', { uri: profilePhoto, name: filename, type } as any);
+                    bodyFormData.append('profile_photo', { uri: Platform.OS === 'android' ? profilePhoto : profilePhoto.replace('file://', ''), name: filename, type } as any);
                 }
 
-                if (hasLocalIdFront) {
+                if (hasLocalIdFront && idProofFront) {
                     const filename = idProofFront.split('/').pop() || 'id_front.jpg';
                     const match = /\.(\w+)$/.exec(filename);
                     const type = match ? `image/${match[1]}` : 'image/jpeg';
-                    bodyFormData.append('id_proof_front', { uri: idProofFront, name: filename, type } as any);
+                    bodyFormData.append('id_proof_front', { uri: Platform.OS === 'android' ? idProofFront : idProofFront.replace('file://', ''), name: filename, type } as any);
                 }
 
-                if (hasLocalIdBack) {
+                if (hasLocalIdBack && idProofBack) {
                     const filename = idProofBack.split('/').pop() || 'id_back.jpg';
                     const match = /\.(\w+)$/.exec(filename);
                     const type = match ? `image/${match[1]}` : 'image/jpeg';
-                    bodyFormData.append('id_proof_back', { uri: idProofBack, name: filename, type } as any);
+                    bodyFormData.append('id_proof_back', { uri: Platform.OS === 'android' ? idProofBack : idProofBack.replace('file://', ''), name: filename, type } as any);
                 }
 
                 res = isEdit
@@ -780,6 +788,7 @@ export default function AddGuestScreen({ navigation, route }: any) {
             style={[styles.container, { backgroundColor: theme.background }]}
         >
             <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+            <FullScreenLoader visible={loading} message={isEdit ? 'Updating guest record...' : 'Checking in guest & uploading documents...'} />
             <AppHeader
                 title={isEdit ? 'Edit Guest' : 'Add Guest'}
                 subtitle="Record short-stay & daily visitor details"

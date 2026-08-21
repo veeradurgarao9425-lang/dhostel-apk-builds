@@ -419,12 +419,7 @@ export default function RegistrationScreen({ route, navigation }: any) {
       appendImage('id_proof_front', aadhaarFront);
       appendImage('id_proof_back', aadhaarBack);
 
-      const response = await api.post('/auth/tenant/register', formData, {
-        headers: {
-          'Accept': 'application/json',
-        },
-        transformRequest: (data) => data,
-      });
+      const response = await api.post('/auth/tenant/register', formData);
 
       if (response.data?.success) {
         const { token, tenant } = response.data.data;
