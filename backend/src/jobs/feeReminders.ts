@@ -87,12 +87,12 @@ export const runFeeReminders = async () => {
 };
 
 export const startFeeRemindersJob = () => {
-  // Production: daily at 09:00. Development: every hour at minute 15.
-  const pattern = process.env.NODE_ENV === 'production' ? '0 9 * * *' : '15 * * * *';
+  // Run daily at 09:00 AM
+  const pattern = '0 9 * * *';
   const job = cron.schedule(pattern, () => {
     runFeeReminders().catch((e) => console.error('[feeReminders] cron run failed:', e?.message));
   });
 
-  console.log(`✓ Fee reminders job scheduled (${process.env.NODE_ENV === 'production' ? 'daily 09:00' : 'hourly :15'})`);
+  console.log('✓ Fee reminders job scheduled (daily 09:00 AM)');
   return job;
 };

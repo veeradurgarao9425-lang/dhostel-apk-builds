@@ -60,6 +60,20 @@ const sendViaBrevo = async (options: EmailOptions): Promise<boolean> => {
   if (!apiKey) return false;
 
   const sender = parseSender();
+  const payload: any = {
+    sender: { name: sender.name, email: sender.email },
+    to: [{ email: options.to }],
+    subject: options.subject,
+    htmlContent: options.html,
+  };
+
+  if (options.attachments && options.attachments.length > 0) {
+    payload.attachment = options.attachments.map((a) => ({
+      name: a.filename,
+      content: Buffer.isBuffer(a.content) ? a.content.toString('base64') : Buffer.from(a.content).toString('base64'),
+    }));
+  }
+
   const res = await fetch('https://api.brevo.com/v3/smtp/email', {
     method: 'POST',
     headers: {
@@ -67,12 +81,7 @@ const sendViaBrevo = async (options: EmailOptions): Promise<boolean> => {
       'api-key': apiKey,
       'content-type': 'application/json',
     },
-    body: JSON.stringify({
-      sender: { name: sender.name, email: sender.email },
-      to: [{ email: options.to }],
-      subject: options.subject,
-      htmlContent: options.html,
-    }),
+    body: JSON.stringify(payload),
   });
 
   if (!res.ok) {
@@ -89,18 +98,27 @@ const sendViaResend = async (options: EmailOptions): Promise<boolean> => {
   if (!apiKey) return false;
 
   const sender = parseSender();
+  const payload: any = {
+    from: `${sender.name} <${sender.email}>`,
+    to: [options.to],
+    subject: options.subject,
+    html: options.html,
+  };
+
+  if (options.attachments && options.attachments.length > 0) {
+    payload.attachments = options.attachments.map((a) => ({
+      filename: a.filename,
+      content: Buffer.isBuffer(a.content) ? a.content.toString('base64') : Buffer.from(a.content).toString('base64'),
+    }));
+  }
+
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({
-      from: `${sender.name} <${sender.email}>`,
-      to: [options.to],
-      subject: options.subject,
-      html: options.html,
-    }),
+    body: JSON.stringify(payload),
   });
 
   if (!res.ok) {
@@ -117,18 +135,29 @@ const sendViaSendGrid = async (options: EmailOptions): Promise<boolean> => {
   if (!apiKey) return false;
 
   const sender = parseSender();
+  const payload: any = {
+    personalizations: [{ to: [{ email: options.to }] }],
+    from: { email: sender.email, name: sender.name },
+    subject: options.subject,
+    content: [{ type: 'text/html', value: options.html }],
+  };
+
+  if (options.attachments && options.attachments.length > 0) {
+    payload.attachments = options.attachments.map((a) => ({
+      content: Buffer.isBuffer(a.content) ? a.content.toString('base64') : Buffer.from(a.content).toString('base64'),
+      filename: a.filename,
+      type: a.contentType || 'application/octet-stream',
+      disposition: 'attachment',
+    }));
+  }
+
   const res = await fetch('https://api.sendgrid.com/v3/mail/send', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({
-      personalizations: [{ to: [{ email: options.to }] }],
-      from: { email: sender.email, name: sender.name },
-      subject: options.subject,
-      content: [{ type: 'text/html', value: options.html }],
-    }),
+    body: JSON.stringify(payload),
   });
 
   if (!res.ok) {
@@ -139,7 +168,7 @@ const sendViaSendGrid = async (options: EmailOptions): Promise<boolean> => {
   return true;
 };
 
-// ─── Send via EmailJS HTTP API (port 443) — Direct Google Gmail API ─────────
+// ─── Send via EmailJS HTTP API (port 443) — Dedicated for OTP Verification ────
 const sendViaEmailJS = async (options: EmailOptions): Promise<boolean> => {
   const serviceId = (process.env.EMAILJS_SERVICE_ID || '').trim();
   const templateId = (process.env.EMAILJS_TEMPLATE_ID || '').trim();
@@ -148,7 +177,7 @@ const sendViaEmailJS = async (options: EmailOptions): Promise<boolean> => {
 
   if (!serviceId || !templateId || !publicKey) return false;
 
-  console.log(`📨 Sending via EmailJS (Google API)  |  to: ${options.to}`);
+  console.log(`📨 Sending OTP via EmailJS (Google API) | to: ${options.to}`);
 
   const otpMatch = options.subject.match(/\d{6}/) || options.html.match(/\d{6}/);
   const passcode = otpMatch ? otpMatch[0] : '';
@@ -189,7 +218,7 @@ const sendViaEmailJS = async (options: EmailOptions): Promise<boolean> => {
     const text = await res.text();
     throw new Error(`EmailJS API ${res.status}: ${text}`);
   }
-  console.log(`✅ Email sent via EmailJS (Google API) successfully to: ${options.to}`);
+  console.log(`✅ OTP email sent via EmailJS successfully to: ${options.to}`);
   return true;
 };
 
@@ -197,47 +226,49 @@ const sendViaEmailJS = async (options: EmailOptions): Promise<boolean> => {
 export const sendEmail = async (options: EmailOptions): Promise<void> => {
   const from = process.env.EMAIL_FROM || `"Hostix Support" <${process.env.EMAIL_USER || 'hostixhelp@gmail.com'}>`;
 
-  console.log(`📧 Sending email to: ${options.to}  |  Subject: ${options.subject}`);
+  console.log(`📧 Sending email (${options.emailType || 'General'}) to: ${options.to} | Subject: ${options.subject}`);
 
   // Create clean plain text version for email clients that don't render HTML
   const plainText = options.html ? options.html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim() : '';
 
   try {
-    // 1. Try HTTPS APIs first (never blocked by DigitalOcean / cloud firewalls)
-    if (process.env.EMAILJS_SERVICE_ID) {
+    // 1. For OTP emails: Use dedicated EmailJS provider first
+    if (options.emailType === 'OTP' && process.env.EMAILJS_SERVICE_ID) {
       try {
-        await sendViaEmailJS(options);
-        return;
+        const sent = await sendViaEmailJS(options);
+        if (sent) return;
       } catch (ejsErr: any) {
-        console.warn('⚠️ EmailJS API delivery notice:', ejsErr.message);
+        console.warn('⚠️ EmailJS OTP delivery notice:', ejsErr.message);
       }
     }
+
+    // 2. For Reports, Notifications, and general emails: Use Brevo / Resend / SendGrid (with full HTML and Attachment support)
     if (process.env.BREVO_API_KEY) {
       try {
-        await sendViaBrevo(options);
-        return;
+        const sent = await sendViaBrevo(options);
+        if (sent) return;
       } catch (brevoErr: any) {
         console.warn('⚠️ Brevo API delivery notice:', brevoErr.message);
       }
     }
     if (process.env.RESEND_API_KEY) {
       try {
-        await sendViaResend(options);
-        return;
+        const sent = await sendViaResend(options);
+        if (sent) return;
       } catch (resendErr: any) {
         console.warn('⚠️ Resend API delivery notice:', resendErr.message);
       }
     }
     if (process.env.SENDGRID_API_KEY) {
       try {
-        await sendViaSendGrid(options);
-        return;
+        const sent = await sendViaSendGrid(options);
+        if (sent) return;
       } catch (sgErr: any) {
         console.warn('⚠️ SendGrid API delivery notice:', sgErr.message);
       }
     }
 
-    // 2. SMTP Transporter fallback
+    // 3. SMTP Transporter fallback (supports attachments and custom HTML)
     const transporter = createTransporter();
     const info = await transporter.sendMail({
       from,

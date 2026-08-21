@@ -118,12 +118,12 @@ export const runOwnerDailyAlerts = async () => {
 };
 
 export const startOwnerDailyAlertsJob = () => {
-  // Production: daily at 08:30. Development: every hour at minute 20.
-  const pattern = process.env.NODE_ENV === 'production' ? '30 8 * * *' : '20 * * * *';
+  // Run daily at 08:30 AM
+  const pattern = '30 8 * * *';
   const job = cron.schedule(pattern, () => {
     runOwnerDailyAlerts().catch((e) => console.error('[ownerDailyAlerts] cron run failed:', e?.message));
   });
 
-  console.log(`✓ Owner daily alerts job scheduled (${process.env.NODE_ENV === 'production' ? 'daily 08:30' : 'hourly :20'})`);
+  console.log('✓ Owner daily alerts job scheduled (daily 08:30 AM)');
   return job;
 };

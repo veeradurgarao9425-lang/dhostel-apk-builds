@@ -104,15 +104,12 @@ export const checkGuestOverstays = async () => {
 };
 
 export const startGuestOverstayJob = () => {
-  // Run schema-ensure once at boot so the columns always exist.
-  ensureGuestSchema().catch((e) => console.error('[guestOverstay] ensureGuestSchema failed:', e?.message));
-
-  // Production: every day at 09:00. Development: every hour at minute 10.
-  const pattern = process.env.NODE_ENV === 'production' ? '0 9 * * *' : '10 * * * *';
+  // Run daily at 09:00 AM
+  const pattern = '0 9 * * *';
   const job = cron.schedule(pattern, () => {
     checkGuestOverstays().catch((e) => console.error('[guestOverstay] cron run failed:', e?.message));
   });
 
-  console.log(`✓ Guest overstay job scheduled (${process.env.NODE_ENV === 'production' ? 'daily 09:00' : 'hourly :10'})`);
+  console.log('✓ Guest overstay job scheduled (daily 09:00 AM)');
   return job;
 };
