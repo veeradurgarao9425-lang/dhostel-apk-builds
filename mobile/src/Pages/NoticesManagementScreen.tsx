@@ -18,6 +18,7 @@ import api from '../services/api';
 import { HeaderNotification } from '../components/HeaderNotification';
 import { ProfileMenu } from '../components/ProfileMenu';
 import DateTimePickerModal from "react-native-modal-datetime-picker";
+import { getResolvedImageUrl } from '../utils/imageHelper';
 
 const DEFAULT_CATEGORIES = [
     { category_name: 'General', emoji: '📢', color: '#6366F1' },
@@ -142,6 +143,8 @@ export default function NoticesManagementScreen({ navigation }: any) {
             <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
             <AppHeader
                 title="Notices"
+                subtitle="Broadcast announcement to all tenants"
+                alignLeft={true}
                 rightComponent={
                     <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
                         <HeaderNotification navigation={navigation} />
@@ -233,7 +236,7 @@ export default function NoticesManagementScreen({ navigation }: any) {
                                         
                                         {n.image_url && (
                                             <Image 
-                                                source={{ uri: `http://143.244.131.69:8081${n.image_url}` }} 
+                                                source={{ uri: getResolvedImageUrl(n.image_url) || '' }} 
                                                 style={styles.noticeImage} 
                                             />
                                         )}

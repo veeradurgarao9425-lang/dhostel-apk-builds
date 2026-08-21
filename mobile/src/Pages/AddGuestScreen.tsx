@@ -16,6 +16,7 @@ import {
     Animated,
     ActivityIndicator,
     Pressable,
+    Switch,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -36,6 +37,19 @@ import { FullScreenLoader } from '../components/FullScreenLoader';
 import { toLocalDateStr } from '../utils/dateUtils';
 
 const todayStr = () => toLocalDateStr(new Date());
+
+const renderLabelWithAsterisk = (label: string, style: any) => {
+    if (!label) return null;
+    if (typeof label === 'string' && label.includes('*')) {
+        const parts = label.split('*');
+        return (
+            <Text style={style}>
+                {parts[0]}<Text style={{ color: '#EF4444', fontWeight: '800' }}>*</Text>{parts.slice(1).join('*')}
+            </Text>
+        );
+    }
+    return <Text style={style}>{label}</Text>;
+};
 
 // ─── Smooth bottom-sheet modal ────────────────────────────────────────────────
 const ModalSheet = ({ visible, onClose, maxHeight = '85%', children }: any) => {
@@ -283,7 +297,7 @@ const DocumentUploadBox = ({ label, uri, onCapture, onRemove, isFront, error }: 
                         </View>
 
                         <View style={{ marginTop: 8 }}>
-                            <Text style={[styles.docBoxTitle, { color: error ? '#EF4444' : (isDark ? '#F1F5F9' : '#1E293B') }]}>{label}</Text>
+                            {renderLabelWithAsterisk(label, [styles.docBoxTitle, { color: error ? '#EF4444' : (isDark ? '#F1F5F9' : '#1E293B') }])}
                             <Text style={styles.docBoxSubtitle}>JPG, PNG or PDF{"\n"}Max. 5MB</Text>
                         </View>
 
@@ -402,7 +416,7 @@ const FormInput = ({ label, icon: Icon, placeholder, value, onChangeText, keyboa
     const { theme, isDark, fontSize } = useTheme();
     return (
         <View style={styles.inputGroup}>
-            <Text style={[styles.inputLabel, { fontSize: fontSize - 1, color: theme.textSecondary }]}>{label}</Text>
+            {renderLabelWithAsterisk(label, [styles.inputLabel, { fontSize: fontSize - 1, color: theme.textSecondary }])}
             <View style={[styles.inputContainer, { backgroundColor: isDark ? '#1E293B' : '#F9FAFB', borderColor: isDark ? '#334155' : '#F1F5F9' }, multiline && styles.multilineContainer, error && styles.inputError, !editable && { opacity: 0.6 }]}>
                 {Icon && <View style={styles.inputIcon}><Icon size={18} color={error ? '#EF4444' : theme.primary} /></View>}
                 <TextInput
@@ -430,10 +444,10 @@ const SelectField = ({ label, value, placeholder, icon: Icon, onPress, error }: 
     const { theme, isDark, fontSize } = useTheme();
     return (
         <View style={styles.inputGroup}>
-            <Text style={[styles.inputLabel, { fontSize: fontSize - 1, color: theme.textSecondary }]}>{label}</Text>
+            {renderLabelWithAsterisk(label, [styles.inputLabel, { fontSize: fontSize - 1, color: theme.textSecondary }])}
             <TouchableOpacity style={[styles.inputContainer, { backgroundColor: isDark ? '#1E293B' : '#F9FAFB', borderColor: isDark ? '#334155' : '#F1F5F9' }, error && styles.inputError]} onPress={onPress} activeOpacity={0.7}>
-                <View style={styles.inputIcon}><Icon size={18} color={error ? '#EF4444' : theme.primary} /></View>
-                <Text style={[styles.inputText, { color: theme.textPrimary, fontSize }, !value && { color: isDark ? '#475569' : '#BBBBBB' }]}>{value || placeholder}</Text>
+                {Icon && <View style={styles.inputIcon}><Icon size={18} color={error ? '#EF4444' : theme.primary} /></View>}
+                <Text style={[styles.inputText, { color: theme.textPrimary, fontSize, flex: 1 }, !value && { color: isDark ? '#475569' : '#BBBBBB' }]}>{value || placeholder}</Text>
                 <ChevronDown size={18} color={theme.textSecondary} />
             </TouchableOpacity>
             {error ? <Text style={styles.errorText}>{error}</Text> : null}
@@ -445,7 +459,7 @@ const Selector = ({ label, options, selected, onSelect }: any) => {
     const { theme, isDark, fontSize } = useTheme();
     return (
         <View style={styles.inputGroup}>
-            <Text style={[styles.inputLabel, { fontSize: fontSize - 1, color: theme.textSecondary }]}>{label}</Text>
+            {renderLabelWithAsterisk(label, [styles.inputLabel, { fontSize: fontSize - 1, color: theme.textSecondary }])}
             <View style={[styles.selectorContainer, { backgroundColor: isDark ? '#1E293B' : '#F1F5F9', borderColor: isDark ? '#334155' : '#E2E8F0' }]}>
                 {options.map((opt: string) => {
                     const isAct = selected === opt;
@@ -515,6 +529,46 @@ export default function AddGuestScreen({ navigation, route }: any) {
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [touched, setTouched] = useState<Record<string, boolean>>({});
+
+    // Room allocation mode & available rooms list
+    const [roomMode, setRoomMode] = useState<'available' | 'manual'>('available');
+    const [availableRoomsList, setAvailableRoomsList] = useState<any[]>([]);
+    const [roomDrawerVisible, setRoomDrawerVisible] = useState(false);
+
+    // Fetch available rooms
+    useEffect(() => {
+        const fetchRooms = async () => {
+            try {
+                const res = await api.get('/rooms?limit=200');
+                if (res.data?.success && Array.isArray(res.data.data)) {
+                    const raw = res.data.data;
+                    const mapped = raw
+                        .map((r: any) => {
+                            const cap = Number(r.capacity) || 1;
+                            const occ = Number(r.occupied_count) || 0;
+                            const avail = Math.max(0, cap - occ);
+                            return {
+                                room_id: r.room_id,
+                                room_number: String(r.room_number),
+                                floor_number: r.floor_number ?? '0',
+                                capacity: cap,
+                                occupied_count: occ,
+                                available_beds: avail,
+                                label: `Room ${r.room_number} (Floor ${r.floor_number ?? '0'}) — ${avail} ${avail === 1 ? 'bed' : 'beds'} free`,
+                            };
+                        })
+                        .filter((r: any) => r.available_beds > 0);
+                    setAvailableRoomsList(mapped);
+                    if (mapped.length === 0 && !isEdit) {
+                        setRoomMode('manual');
+                    }
+                }
+            } catch (err) {
+                console.error('Failed to fetch rooms for guest allocation:', err);
+            }
+        };
+        fetchRooms();
+    }, [isEdit]);
 
     // Populate on edit
     useEffect(() => {
@@ -898,14 +952,55 @@ export default function AddGuestScreen({ navigation, route }: any) {
                         onChangeText={(t: string) => up('amount_paid', t.replace(/[^0-9.]/g, ''))}
                     />
 
-                    {/* Direct Room Input */}
-                    <FormInput
-                        label="Assigned Room No (Optional)"
-                        icon={Home}
-                        placeholder="e.g. 101"
-                        value={formData.room_number}
-                        onChangeText={(t: string) => up('room_number', t)}
-                    />
+                    {/* Room Allocation Mode Switch */}
+                    <View style={[styles.roomModeContainer, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0' }]}>
+                        <View style={{ flex: 1, paddingRight: 8 }}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                <Home size={15} color={theme.primary} />
+                                <Text style={[styles.roomModeTitle, { color: theme.textPrimary }]}>Choose from Available Beds</Text>
+                            </View>
+                            <Text style={[styles.roomModeSub, { color: theme.textSecondary }]}>
+                                {roomMode === 'available' ? 'Showing only vacant rooms & beds' : 'Switch ON to select from vacant beds'}
+                            </Text>
+                        </View>
+                        <Switch
+                            value={roomMode === 'available'}
+                            onValueChange={(val) => setRoomMode(val ? 'available' : 'manual')}
+                            trackColor={{ false: isDark ? '#334155' : '#CBD5E1', true: theme.primary }}
+                            thumbColor="#FFFFFF"
+                        />
+                    </View>
+
+                    {roomMode === 'available' ? (
+                        <SelectField
+                            label="Assigned Room / Bed (Available Beds Only)"
+                            value={
+                                formData.room_number
+                                    ? (availableRoomsList.find(r => r.room_number === formData.room_number)?.label || `Room ${formData.room_number}`)
+                                    : ''
+                            }
+                            placeholder={availableRoomsList.length > 0 ? "Select an available room" : "No vacant beds found (switch to manual)"}
+                            icon={Home}
+                            onPress={() => {
+                                if (availableRoomsList.length === 0) {
+                                    Alert.alert('No Available Rooms', 'All rooms are currently full. Would you like to enter room number manually?', [
+                                        { text: 'Cancel', style: 'cancel' },
+                                        { text: 'Switch to Manual', onPress: () => setRoomMode('manual') }
+                                    ]);
+                                    return;
+                                }
+                                setRoomDrawerVisible(true);
+                            }}
+                        />
+                    ) : (
+                        <FormInput
+                            label="Assigned Room No (Manual Entry)"
+                            icon={Home}
+                            placeholder="e.g. 101, 204B"
+                            value={formData.room_number}
+                            onChangeText={(t: string) => up('room_number', t)}
+                        />
+                    )}
 
                     {/* Purpose of Stay */}
                     <View style={styles.inputGroup}>
@@ -995,14 +1090,14 @@ export default function AddGuestScreen({ navigation, route }: any) {
                                 </Text>
                                 <View style={{ flexDirection: 'row', gap: 12 }}>
                                     <DocumentUploadBox
-                                        label="Front Side"
+                                        label="Front Side *"
                                         uri={idProofFront}
                                         onCapture={(uri: string) => setIdProofFront(uri)}
                                         onRemove={() => setIdProofFront(null)}
                                         isFront={true}
                                     />
                                     <DocumentUploadBox
-                                        label="Back Side"
+                                        label="Back Side (Optional)"
                                         uri={idProofBack}
                                         onCapture={(uri: string) => setIdProofBack(uri)}
                                         onRemove={() => setIdProofBack(null)}
@@ -1062,6 +1157,20 @@ export default function AddGuestScreen({ navigation, route }: any) {
                 labelExtractor={(item: any) => item.name}
                 onSelect={(item: any) => up('id_proof_type', item.id)}
                 onClose={() => setProofModal(false)}
+            />
+
+            <OptionsDrawer
+                visible={roomDrawerVisible}
+                title="Select Available Room / Bed"
+                data={availableRoomsList}
+                selectedId={formData.room_number}
+                keyExtractor={(item: any) => item.room_number}
+                labelExtractor={(item: any) => item.label}
+                onSelect={(selectedRoom: any) => {
+                    up('room_number', selectedRoom.room_number);
+                }}
+                onClose={() => setRoomDrawerVisible(false)}
+                searchable={true}
             />
 
             <DateTimePickerModal
@@ -1362,4 +1471,23 @@ const styles = StyleSheet.create({
         elevation: 4,
     },
     saveBtnText: { color: '#FFF', fontSize: 15, fontWeight: '800' },
+    roomModeContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 14,
+        paddingVertical: 12,
+        borderRadius: 14,
+        borderWidth: 1,
+        marginBottom: 12,
+        marginTop: 4,
+    },
+    roomModeTitle: {
+        fontSize: 13,
+        fontWeight: '800',
+    },
+    roomModeSub: {
+        fontSize: 11,
+        marginTop: 2,
+    },
 });

@@ -423,7 +423,10 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
         let isDestructive = false;
 
         if (currentStatus === 1) {
-            setSettleDepositAmount(student?.refundable_deposit !== undefined && student?.refundable_deposit !== null ? student.refundable_deposit.toString() : '0');
+            const deposit = student?.refundable_deposit !== undefined && student?.refundable_deposit !== null && Number(student.refundable_deposit) > 0
+                ? student.refundable_deposit.toString()
+                : (student?.default_deposit && Number(student.default_deposit) > 0 ? student.default_deposit.toString() : '1000');
+            setSettleDepositAmount(deposit);
             setVacateModalVisible(true);
             return;
         } else if (currentStatus === 2) {
@@ -481,27 +484,40 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
             showError('Please provide a reason for the deduction.');
             return;
         }
-        try {
-            setVacateLoading(true);
-            const res = await api.post(`/students/${studentId}/vacate-settlement`, {
-                damageDeductions: damageDeductions ? parseFloat(damageDeductions) : 0,
-                deductionReason: deductionReason || null,
-                refundableDeposit: settleDepositAmount ? parseFloat(settleDepositAmount) : 0
-            });
-            if (res.data.success) {
-                showSuccess(`${student.first_name} has been vacated successfully.`);
-                setVacateModalVisible(false);
-                setDamageDeductions('');
-                setDeductionReason('');
-                setSettleDepositAmount('');
-                setStudent((prev: any) => ({ ...prev, status: 0 }));
-                fetchStudentDetails();
+        const depositNum = parseFloat(settleDepositAmount || '0') || 0;
+        const dedNum = parseFloat(damageDeductions || '0') || 0;
+        const finalRefund = Math.max(0, depositNum - dedNum);
+
+        confirm({
+            title: 'Confirm Vacate & Settle',
+            message: `Are you sure you want to finalize settlement of ₹${finalRefund.toLocaleString('en-IN')} refund and vacate ${student.first_name}?`,
+            confirmText: 'Yes, Settle & Vacate',
+            cancelText: 'Cancel',
+            variant: 'danger',
+            onConfirm: async () => {
+                try {
+                    setVacateLoading(true);
+                    const res = await api.post(`/students/${studentId}/vacate-settlement`, {
+                        damageDeductions: dedNum,
+                        deductionReason: deductionReason || null,
+                        refundableDeposit: depositNum
+                    });
+                    if (res.data.success) {
+                        showSuccess(`${student.first_name} has been vacated successfully.`);
+                        setVacateModalVisible(false);
+                        setDamageDeductions('');
+                        setDeductionReason('');
+                        setSettleDepositAmount('');
+                        setStudent((prev: any) => ({ ...prev, status: 0 }));
+                        fetchStudentDetails();
+                    }
+                } catch (e: any) {
+                    showApiError(e, 'Failed to process vacate settlement');
+                } finally {
+                    setVacateLoading(false);
+                }
             }
-        } catch (e: any) {
-            showApiError(e, 'Failed to process vacate settlement');
-        } finally {
-            setVacateLoading(false);
-        }
+        });
     };
 
     // ── Pay Admission Fee ─────────────────────────────────────────────────

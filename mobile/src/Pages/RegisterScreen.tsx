@@ -243,21 +243,25 @@ export default function RegisterScreen({ navigation }: any) {
         // Run validation for all fields
         const e1 = validateField('fullName', trimmedName);
         const e2 = validateField('email', trimmedEmail);
-        const e3 = validateField('password', password);
+        const e3 = validateField('phone', trimmedPhone);
         const e4 = validateField('hostelName', trimmedHostelName);
         const eFloors = validateField('floors', trimmedFloors);
         const eAddress = validateField('address', trimmedAddress);
         const e5 = validateField('password', password);
 
-        // Additional email verification check
-        let emailVerifyError = '';
-        if (trimmedEmail && !emailVerified) {
-            emailVerifyError = 'Please verify your email to receive OTP and continue';
-            setFieldErrors(prev => ({ ...prev, email: emailVerifyError }));
-        }
+        // Collect all missing/invalid fields for a clear, user-friendly message
+        const missing: string[] = [];
+        if (e1) missing.push('Full Name');
+        if (e2) missing.push('Email');
+        else if (trimmedEmail && !emailVerified) missing.push('Email Verification (OTP)');
+        if (e3) missing.push('Mobile Number');
+        if (e4) missing.push('PG Name');
+        if (eFloors) missing.push('Floors');
+        if (eAddress) missing.push('Address');
+        if (e5) missing.push('Password (min 6 chars)');
 
-        if (e1 || e2 || e3 || e4 || eFloors || eAddress || e5 || emailVerifyError) {
-            setSubmitError('Please fix the errors above.');
+        if (missing.length > 0) {
+            setSubmitError(`Please fill all required details: ${missing.join(', ')}.`);
             return;
         }
 
@@ -764,15 +768,17 @@ const styles = StyleSheet.create({
     alertBox: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#F3EEFF',
+        backgroundColor: '#FEF2F2',
         borderRadius: 12,
         padding: 14,
         marginBottom: 18,
+        borderWidth: 1,
+        borderColor: '#FEE2E2',
         borderLeftWidth: 4,
-        borderLeftColor: '#5F2EEA',
+        borderLeftColor: '#EF4444',
         gap: 10,
     },
-    alertText: { fontSize: 13, color: '#5F2EEA', flex: 1, fontWeight: '500' },
+    alertText: { fontSize: 13, color: '#DC2626', flex: 1, fontWeight: '600' },
     inputGroup: { marginBottom: 16 },
     label: {
         fontSize: 12,

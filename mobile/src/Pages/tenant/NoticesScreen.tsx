@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  StyleSheet, Text, TouchableOpacity, View, ScrollView, StatusBar, FlatList, Animated, Dimensions
+  StyleSheet, Text, TouchableOpacity, View, ScrollView, StatusBar, FlatList, Animated, Dimensions, Image
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,6 +12,7 @@ import { Phase3EmptyState } from '../../components/tenant/UIComponents';
 import { SkeletonNotificationRow } from '../../components/tenant/ui';
 import AppHeader from '../../components/tenant/ui/AppHeader';
 import { TenantHeaderNotification } from '../../components/tenant/TenantHeaderNotification';
+import { getResolvedImageUrl } from '../../utils/imageHelper';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 
@@ -45,6 +46,7 @@ export default function NoticesScreen({ navigation }: any) {
           body: n.content,
           category: n.notice_type || 'General',
           date: n.created_at.slice(0, 10),
+          image_url: n.image_url,
         }));
         setNotices(formatted);
       }
@@ -179,6 +181,13 @@ export default function NoticesScreen({ navigation }: any) {
 
                       <Text style={styles.noticeTitle} numberOfLines={2}>{notice.title}</Text>
                       <Text style={styles.noticeBody} numberOfLines={3}>{notice.body}</Text>
+
+                      {notice.image_url && (
+                        <Image
+                          source={{ uri: getResolvedImageUrl(notice.image_url) || '' }}
+                          style={styles.noticeImage}
+                        />
+                      )}
                     </View>
                   </View>
                 </TouchableOpacity>
@@ -314,5 +323,12 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: theme.colors.textSubtle,
     lineHeight: 18,
+  },
+  noticeImage: {
+    width: '100%',
+    height: 140,
+    borderRadius: 10,
+    marginTop: 8,
+    resizeMode: 'cover',
   },
 });

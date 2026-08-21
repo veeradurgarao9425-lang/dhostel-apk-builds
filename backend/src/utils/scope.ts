@@ -81,8 +81,17 @@ export const resolveOwnerHostelId = async (
       return { hostelId: requestedId, error: null };
     }
 
-    // No hostelId requested — use primary hostel from JWT
-    const primaryHostelId = user.hostel_id ?? null;
+    // No hostelId requested — use primary hostel from JWT or lookup active hostel
+    let primaryHostelId = user.hostel_id ?? null;
+    if (!primaryHostelId && user.user_id) {
+      const firstHostel = await db('hostel_master')
+        .where('owner_id', user.user_id)
+        .where('is_active', 1)
+        .first();
+      if (firstHostel) {
+        primaryHostelId = firstHostel.hostel_id;
+      }
+    }
     return { hostelId: primaryHostelId, error: null };
   }
 

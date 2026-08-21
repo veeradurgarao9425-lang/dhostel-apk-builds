@@ -197,20 +197,10 @@ export const FullScreenLoader: React.FC<FullScreenLoaderProps> = ({ visible, mes
     };
 
     return (
-        <Modal transparent visible={visible} animationType="fade" statusBarTranslucent>
+        <Modal transparent visible={visible} animationType="fade" statusBarTranslucent pointerEvents="auto">
             <View style={styles.overlay}>
-                {/* Center stage (No enclosing box) */}
+                {/* Center stage — Pure Floating Morphing Dots */}
                 <View style={styles.centerStage}>
-                    {/* Soft ambient colorful aura behind dots */}
-                    <Animated.View
-                        style={[
-                            styles.ambientAura,
-                            {
-                                transform: [{ scale: auraPulse }],
-                            },
-                        ]}
-                    />
-
                     {/* Rotating motion anchor */}
                     <Animated.View
                         style={[
@@ -222,17 +212,6 @@ export const FullScreenLoader: React.FC<FullScreenLoaderProps> = ({ visible, mes
                     >
                         {renderDots()}
                     </Animated.View>
-
-                    {/* Floating status message directly on backdrop */}
-                    {message ? (
-                        <Animated.Text style={[styles.floatingMessage, { opacity: textOpacity }]} numberOfLines={2}>
-                            {message}
-                        </Animated.Text>
-                    ) : (
-                        <Animated.Text style={[styles.floatingMessage, { opacity: textOpacity }]}>
-                            Please wait...
-                        </Animated.Text>
-                    )}
                 </View>
             </View>
         </Modal>
@@ -242,22 +221,15 @@ export const FullScreenLoader: React.FC<FullScreenLoaderProps> = ({ visible, mes
 const styles = StyleSheet.create({
     overlay: {
         flex: 1,
-        backgroundColor: 'rgba(8, 12, 24, 0.78)', // sleek dark frosted overlay blocking background
+        backgroundColor: 'rgba(0, 0, 0, 0.05)', // Transparent overlay that completely blocks user interaction across the app
         justifyContent: 'center',
         alignItems: 'center',
-        paddingHorizontal: 32,
     },
     centerStage: {
         alignItems: 'center',
         justifyContent: 'center',
-        width: SCREEN_WIDTH * 0.8,
-    },
-    ambientAura: {
-        position: 'absolute',
-        width: 130,
-        height: 130,
-        borderRadius: 65,
-        backgroundColor: 'rgba(109, 74, 255, 0.16)',
+        width: 100,
+        height: 100,
     },
     motionAnchor: {
         width: 100,
@@ -272,26 +244,16 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     dot: {
-        width: 14,
-        height: 14,
-        borderRadius: 7,
-        elevation: 8,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.65,
-        shadowRadius: 8,
-    },
-    floatingMessage: {
-        marginTop: 28,
-        fontSize: 15,
-        fontWeight: '600',
-        color: '#FFFFFF',
-        textAlign: 'center',
-        lineHeight: 22,
-        letterSpacing: 0.3,
-        textShadowColor: 'rgba(0, 0, 0, 0.6)',
-        textShadowOffset: { width: 0, height: 2 },
-        textShadowRadius: 6,
+        width: 15,
+        height: 15,
+        borderRadius: 7.5,
+        elevation: 10,
+        shadowColor: '#000000',
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.45,
+        shadowRadius: 6,
     },
 });
+
 
 

@@ -19,13 +19,13 @@ import { ErrorState } from '../components/ui/ErrorState';
 import { SkeletonList } from '../components/ui/SkeletonCard';
 import { DangerModal } from '../components/ui/DangerModal';
 import { LoadMoreFooter } from '../components/ui/LoadMoreFooter';
+import { CustomMonthYearPicker } from '../components/ui/pickers/CustomMonthYearPicker';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../context/ToastContext';
 import api from '../services/api';
 import { ProfileMenu } from '../components/ProfileMenu';
 import { useTheme } from '../../contexts/ThemeContext';
 import { HeaderNotification } from '../components/HeaderNotification';
-import DateTimePickerModal from "react-native-modal-datetime-picker";
 
 const CAT_COLORS: Record<string, string> = {
     'Electricity': '#F59E0B',
@@ -39,6 +39,9 @@ const CAT_COLORS: Record<string, string> = {
     'Internet': '#06B6D4',
     'Internet Bill': '#06B6D4',
     'Cleaning': '#EC4899',
+    'Deposit Refund': '#D97706',
+    'Deposit Refunds': '#D97706',
+    'Rent': '#15803D',
     'Other': '#64748B',
     'Others': '#64748B',
     'Others Bill': '#64748B',
@@ -68,6 +71,7 @@ export const ExpenseScreen = ({ navigation }: any) => {
     const [loadingMore, setLoadingMore] = useState(false);
     const [hasMore, setHasMore] = useState(true);
     const [totalExpenses, setTotalExpenses] = useState(0);
+    const [totalCount, setTotalCount] = useState(0);
     const [monthExpensesTotal, setMonthExpensesTotal] = useState(0);
 
     const searchTimeout = useRef<NodeJS.Timeout | null>(null);
@@ -105,8 +109,16 @@ export const ExpenseScreen = ({ navigation }: any) => {
             const response = await api.get('/expenses', { params });
             if (response.data.success) {
                 const newData = response.data.data || [];
-                if (newData.length < 10) setHasMore(false);
-                else setHasMore(true);
+                const count = response.data.pagination?.total !== undefined 
+                    ? response.data.pagination.total 
+                    : (response.data.totalExpenses || 0);
+
+                setTotalCount(count);
+                if (newData.length < 10 || (pageNum === 1 ? newData.length : expenses.length + newData.length) >= count) {
+                    setHasMore(false);
+                } else {
+                    setHasMore(true);
+                }
 
                 setExpenses(prev => {
                     if (pageNum === 1) return newData;
@@ -298,10 +310,26 @@ export const ExpenseScreen = ({ navigation }: any) => {
                         onPress={() => setDatePickerVisibility(true)}
                     >
                         <Calendar size={14} color={theme.textSecondary} />
-                        <Text style={[styles.filterChipText, { color: theme.textSecondary }]}>Custom Month</Text>
+                        <Text style={[styles.filterChipText, { color: theme.textSecondary }]}>
+                            {currentDate ? currentDate.toLocaleString('default', { month: 'short', year: 'numeric' }) : 'Custom Month'}
+                        </Text>
                     </TouchableOpacity>
                 </ScrollView>
             </View>
+
+            {/* Records count & active filter summary */}
+            {expenses.length > 0 && !loading && (
+                <View style={{ paddingHorizontal: 16, paddingBottom: 8, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Text style={{ fontSize: 12, fontWeight: '700', color: theme.textSecondary }}>
+                        Showing {expenses.length} of {totalCount || totalExpenses || expenses.length} expenses
+                    </Text>
+                    {currentDate && (
+                        <TouchableOpacity onPress={() => setCurrentDate(null)} activeOpacity={0.7}>
+                            <Text style={{ fontSize: 11, fontWeight: '700', color: theme.primary }}>Clear Filter</Text>
+                        </TouchableOpacity>
+                    )}
+                </View>
+            )}
 
             {loading ? (
                 <SkeletonList count={5} />
@@ -440,13 +468,14 @@ export const ExpenseScreen = ({ navigation }: any) => {
                 <Plus color="#FFFFFF" size={22} strokeWidth={3.2} />
             </TouchableOpacity>
 
-            <DateTimePickerModal
-                isVisible={isDatePickerVisible}
-                mode="date"
-                date={currentDate || new Date()}
-                maximumDate={new Date()}
-                onConfirm={handleConfirmDate}
-                onCancel={() => setDatePickerVisibility(false)}
+            <CustomMonthYearPicker
+                visible={isDatePickerVisible}
+                onClose={() => setDatePickerVisibility(false)}
+                onConfirm={(d: Date) => {
+                    setCurrentDate(d);
+                    setDatePickerVisibility(false);
+                }}
+                initialDate={currentDate || new Date()}
             />
 
             <DangerModal

@@ -232,100 +232,116 @@ const qrSignupUpload = multer({
     }
     cb(null, true);
   },
-});
-
-// Public QR tenant signup â€” serves self-contained HTML (works on any device/IP)
-app.get('/api/public/qr-signup', (req, res) => {
+});// Public QR tenant signup — serves self-contained HTML (works on any device/IP)
+app.get('/api/public/qr-signup', async (req, res) => {
   const hostelId = req.query.hostelId as string;
   const roomId   = req.query.roomId   as string | undefined;
   const bedId    = req.query.bedId    as string | undefined;
   const bedName  = req.query.bedName  as string | undefined;
 
   if (!hostelId) {
-    return res.status(400).send('<h2 style="font-family:sans-serif;color:#7f1d1d;">Missing hostelId</h2>');
+    return res.status(400).send('<h2 style="font-family:sans-serif;color:#7f1d1d;text-align:center;margin-top:40px;">Missing hostel ID link</h2>');
+  }
+
+  const numHostelId = parseInt(hostelId, 10);
+  let hostelName = 'Hostel Admission';
+  let hostelCity = '';
+  let hostelAddress = '';
+
+  if (!isNaN(numHostelId)) {
+    try {
+      const hostel = await db('hostel_master').where('hostel_id', numHostelId).first();
+      if (hostel) {
+        hostelName = hostel.hostel_name || hostelName;
+        hostelCity = hostel.city || '';
+        hostelAddress = hostel.address || '';
+      }
+    } catch (e) {
+      console.error('Error fetching hostel details for QR signup:', e);
+    }
   }
 
   const roomBanner = roomId
-    ? `<div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:12px;padding:14px 16px;margin-bottom:18px;"><div style="font-size:11px;color:#166534;font-weight:800;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px;">ðŸ  Pre-assigned Allocation</div><div style="font-size:14px;color:#15803d;font-weight:600;">Room: <strong style="color:#14532d;">${roomId}</strong>${bedName ? ` &nbsp;Bed: <strong style="color:#14532d;">${bedName}</strong>` : ''}</div></div>`
+    ? `<div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:12px;padding:12px 16px;margin-bottom:18px;"><div style="font-size:11px;color:#166534;font-weight:800;text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px;">🏠 Pre-assigned Allocation</div><div style="font-size:14px;color:#15803d;font-weight:700;">Room: <strong style="color:#14532d;">${roomId}</strong>${bedName ? ` &nbsp;•&nbsp; Bed: <strong style="color:#14532d;">${bedName}</strong>` : ''}</div></div>`
     : '';
 
   const postUrl = `/api/public/qr-signup?hostelId=${encodeURIComponent(hostelId)}${roomId ? `&roomId=${encodeURIComponent(roomId)}` : ''}${bedId ? `&bedId=${encodeURIComponent(bedId)}` : ''}${bedName ? `&bedName=${encodeURIComponent(bedName)}` : ''}`;
 
-  // NOTE: Inside this template literal, \\d renders as \d in the browser (digit regex class) - correct!
   const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=0"/>
-  <title>Tenant Registration</title>
+  <title>${hostelName} - Tenant Registration</title>
   <script src="https://unpkg.com/lucide@latest"></script>
   <style>
     *,*::before,*::after{box-sizing:border-box;}
-    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;background:#ffffff;margin:0;min-height:100vh;padding:16px 12px 48px;}
-    .card{max-width:500px;margin:0 auto;padding:32px 24px;position:relative;}
-    h1{margin:0 0 4px;color:#0F172A;font-size:21px;font-weight:800;text-align:center;}
-    .sub{color:#64748B;font-size:13px;margin-bottom:18px;text-align:center;}
-    .stepper{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;position:relative;padding:0 8px;}
-    .stepper::before{content:'';position:absolute;top:14px;left:28px;right:28px;height:3px;background:#E2E8F0;z-index:1;border-radius:3px;}
-    .sp{position:absolute;top:14px;left:28px;height:3px;background:#7C3AED;z-index:2;border-radius:3px;transition:width .3s ease;max-width:calc(100% - 56px);}
-    .stp{position:relative;z-index:3;display:flex;flex-direction:column;align-items:center;gap:5px;width:56px;}
-    .sc{width:30px;height:30px;border-radius:50%;background:#F1F5F9;border:2.5px solid #E2E8F0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#94A3B8;transition:all .4s cubic-bezier(.4,0,.2,1);}
-    .stp.active .sc{background:#fff;border-color:#7C3AED;color:#7C3AED;box-shadow:0 0 0 4px rgba(124,58,237,.15);transform:scale(1.1);}
-    .stp.done .sc{background:#7C3AED;border-color:#7C3AED;color:#fff;}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;background:#F8FAFC;margin:0;min-height:100vh;padding:16px 12px 60px;color:#1E293B;}
+    .card{max-width:520px;margin:0 auto;padding:24px 20px;background:#ffffff;border-radius:24px;box-shadow:0 10px 30px -10px rgba(0,0,0,0.08);border:1px solid #E2E8F0;position:relative;}
+    .brand-hero{background:linear-gradient(135deg,#6366F1,#4F46E5);padding:18px 20px;border-radius:18px;margin-bottom:20px;color:#FFF;box-shadow:0 8px 24px -6px rgba(79,70,229,0.35);display:flex;align-items:center;gap:14px;}
+    .brand-logo{width:46px;height:46px;border-radius:12px;background:rgba(255,255,255,0.22);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;}
+    .brand-title{font-size:17px;font-weight:800;line-height:1.25;margin-bottom:2px;}
+    .brand-sub{font-size:12px;opacity:0.9;font-weight:500;}
+    .stepper{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;position:relative;padding:0 12px;}
+    .stepper::before{content:'';position:absolute;top:15px;left:34px;right:34px;height:3px;background:#E2E8F0;z-index:1;border-radius:3px;}
+    .sp{position:absolute;top:15px;left:34px;height:3px;background:#4F46E5;z-index:2;border-radius:3px;transition:width .3s ease;max-width:calc(100% - 68px);}
+    .stp{position:relative;z-index:3;display:flex;flex-direction:column;align-items:center;gap:5px;width:64px;}
+    .sc{width:30px;height:30px;border-radius:50%;background:#F1F5F9;border:2.5px solid #E2E8F0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#94A3B8;transition:all .3s ease;}
+    .stp.active .sc{background:#fff;border-color:#4F46E5;color:#4F46E5;box-shadow:0 0 0 4px rgba(79,70,229,.15);transform:scale(1.08);}
+    .stp.done .sc{background:#4F46E5;border-color:#4F46E5;color:#fff;}
     .sl{font-size:10px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:.5px;transition:color .3s;text-align:center;}
-    .stp.active .sl{color:#7C3AED;}.stp.done .sl{color:#1e293b;}
+    .stp.active .sl{color:#4F46E5;}.stp.done .sl{color:#1E293B;}
     .step{display:none;animation:si .25s ease;}.step.active{display:block;}
-    @keyframes si{from{opacity:0;transform:translateX(8px)}to{opacity:1;transform:none}}
-    .field{margin-bottom:14px;}
-    lbl{display:block;font-size:11px;font-weight:700;color:#475569;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px;}
-    .req{color:#EF4444;margin-left:2px;}
-    .ig{position:relative;display:flex;align-items:center;}
-    .ig i{position:absolute;left:12px;color:#94A3B8;width:20px;height:20px;pointer-events:none;transition:color .2s;}
-    input,select,textarea{width:100%;padding:12px;border:1px solid #CBD5E1;border-radius:6px;font-size:15px;color:#1E293B;outline:none;transition:border-color .2s;background:#fff;font-family:inherit;}
-    textarea{padding:12px;resize:vertical;min-height:80px;}
-    input:focus,select:focus,textarea:focus{border-color:#7C3AED;box-shadow:0 0 0 2px rgba(124,58,237,.15);}
+    @keyframes si{from{opacity:0;transform:translateX(6px)}to{opacity:1;transform:none}}
+    .field{margin-bottom:15px;}
+    lbl{display:block;font-size:11.5px;font-weight:700;color:#475569;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px;}
+    .req{color:#EF4444;margin-left:3px;}
+    input,select,textarea{width:100%;padding:12px 14px;border:1.5px solid #CBD5E1;border-radius:12px;font-size:14.5px;color:#1E293B;outline:none;transition:all .2s;background:#fff;font-family:inherit;}
+    textarea{resize:vertical;min-height:75px;}
+    input:focus,select:focus,textarea:focus{border-color:#4F46E5;box-shadow:0 0 0 3px rgba(79,70,229,.15);}
     .ef input,.ef select,.ef textarea{border-color:#EF4444;background:#FEF2F2;}
     .em{display:block;color:#EF4444;font-size:11.5px;margin-top:4px;font-weight:600;min-height:14px;}
-    .btns{display:flex;gap:10px;margin-top:20px;}
-    .btn{flex:1;padding:12px;border-radius:14px;font-weight:700;font-size:15px;cursor:pointer;border:none;transition:all .2s cubic-bezier(.4,0,.2,1);display:flex;align-items:center;justify-content:center;gap:6px;}
-    .bp{background:linear-gradient(135deg,#7C3AED,#5F2EEA);color:#fff;box-shadow:0 8px 20px -6px rgba(124,58,237,.4);}
-    .bp:hover{transform:translateY(-2px);box-shadow:0 12px 24px -8px rgba(124,58,237,.5);}.bp:active{transform:translateY(0);}
-    .bo{background:transparent;border:2px solid #E2E8F0;color:#475569;}
-    .bo:hover{background:#F8FAFC;border-color:#CBD5E1;}
+    .btns{display:flex;gap:12px;margin-top:24px;}
+    .btn{flex:1;padding:13px;border-radius:14px;font-weight:700;font-size:15px;cursor:pointer;border:none;transition:all .2s ease;display:flex;align-items:center;justify-content:center;gap:6px;}
+    .bp{background:linear-gradient(135deg,#6366F1,#4F46E5);color:#fff;box-shadow:0 6px 18px -4px rgba(79,70,229,.4);}
+    .bp:hover{box-shadow:0 8px 22px -4px rgba(79,70,229,.5);transform:translateY(-1px);}
+    .bo{background:#F8FAFC;border:1.5px solid #E2E8F0;color:#475569;}
+    .bo:hover{background:#F1F5F9;border-color:#CBD5E1;}
     .fw input[type=file]{position:absolute;width:1px;height:1px;opacity:0;}
-    .fb{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;width:100%;padding:20px 10px;border:2px dashed #C4B5FD;border-radius:16px;background:#FAF5FF;color:#7C3AED;font-size:13px;font-weight:700;cursor:pointer;transition:all .3s cubic-bezier(.4,0,.2,1);text-align:center;}
-    .fb:hover{background:#F3E8FF;border-color:#A78BFA;transform:translateY(-2px);box-shadow:0 8px 16px -4px rgba(124,58,237,.15);}
-    .fb.has{border-style:solid;border-color:#7C3AED;background:#F5F3FF;}
-    .fb i{width:24px;height:24px;}
-    .fb span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;display:block;}
-    #toast{position:fixed;top:16px;left:50%;transform:translateX(-50%) translateY(-120px);background:#EF4444;color:#fff;padding:12px 24px;border-radius:100px;font-size:14px;font-weight:700;box-shadow:0 8px 24px rgba(239,68,68,.3);transition:transform .4s cubic-bezier(.34,1.56,.64,1);z-index:1000;display:flex;align-items:center;gap:8px;white-space:nowrap;max-width:90%;text-align:center;}
+    .fb{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;width:100%;padding:14px 10px;border:2px dashed #CBD5E1;border-radius:14px;background:#F8FAFC;color:#6366F1;font-size:12.5px;font-weight:700;cursor:pointer;transition:all .2s;text-align:center;position:relative;overflow:hidden;min-height:110px;}
+    .fb:hover{background:#EEF2FF;border-color:#818CF8;}
+    .fb.has{border-style:solid;border-color:#4F46E5;background:#F5F3FF;padding:6px;}
+    .preview-img{width:100%;height:100px;object-fit:cover;border-radius:10px;display:none;}
+    .loc-btn{display:inline-flex;align-items:center;gap:5px;background:#EEF2FF;color:#4F46E5;border:1px solid #C7D2FE;padding:6px 12px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;margin-top:6px;transition:all .2s;}
+    .loc-btn:hover{background:#E0E7FF;}
+    #toast{position:fixed;top:16px;left:50%;transform:translateX(-50%) translateY(-120px);background:#1E293B;color:#fff;padding:12px 20px;border-radius:100px;font-size:13.5px;font-weight:700;box-shadow:0 8px 24px rgba(0,0,0,.2);transition:transform .4s cubic-bezier(.34,1.56,.64,1);z-index:1000;display:flex;align-items:center;gap:8px;white-space:nowrap;max-width:90%;text-align:center;}
     #toast.show{transform:translateX(-50%) translateY(0);}
-    #ldr{position:absolute;inset:0;background:rgba(255,255,255,.94);z-index:99;display:flex;flex-direction:column;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .25s;border-radius:24px;backdrop-filter:blur(4px);}
+    #ldr{position:absolute;inset:0;background:rgba(255,255,255,.95);z-index:99;display:flex;flex-direction:column;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .25s;border-radius:24px;backdrop-filter:blur(4px);}
     #ldr.show{opacity:1;pointer-events:all;}
-    .spin{width:46px;height:46px;border:4px solid #EDE9FE;border-top-color:#7C3AED;border-radius:50%;animation:sp .7s linear infinite;margin-bottom:16px;}
+    .spin{width:44px;height:44px;border:4px solid #EEF2FF;border-top-color:#4F46E5;border-radius:50%;animation:sp .7s linear infinite;margin-bottom:14px;}
     @keyframes sp{to{transform:rotate(360deg)}}
-    #ok{display:none;text-align:center;padding:50px 10px 30px;}
-    .ck{width:86px;height:86px;background:linear-gradient(135deg,#10B981,#059669);border-radius:50%;display:inline-flex;align-items:center;justify-content:center;margin:0 auto 24px;color:#fff;box-shadow:0 12px 32px rgba(16,185,129,.35);animation:pop .6s cubic-bezier(.34,1.56,.64,1);}
-    .ck i{width:46px;height:46px;color:#fff;}
-    @keyframes pop{0%{transform:scale(.4);opacity:0}70%{transform:scale(1.1)}to{transform:scale(1);opacity:1}}
-    #ok h2{color:#0F172A;font-size:24px;margin:0 0 12px;font-weight:800;}
-    #ok p{color:#64748B;font-size:15px;line-height:1.6;margin-bottom:32px;}
-    .logo{width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#7C3AED,#5F2EEA);display:inline-flex;align-items:center;justify-content:center;box-shadow:0 8px 24px rgba(124,58,237,.3);margin-bottom:16px;}
-    .logo i{width:32px;height:32px;color:#fff;}
+    #ok{display:none;text-align:center;padding:40px 10px 20px;}
+    .ck{width:80px;height:80px;background:linear-gradient(135deg,#10B981,#059669);border-radius:50%;display:inline-flex;align-items:center;justify-content:center;margin:0 auto 20px;color:#fff;box-shadow:0 12px 30px rgba(16,185,129,.35);}
+    .ck i{width:42px;height:42px;color:#fff;}
   </style>
 </head>
 <body>
-  <div id="toast"><i data-lucide="alert-circle" style="width:18px;height:18px;color:#fff;"></i> <span id="tm">Error</span></div>
+  <div id="toast"><i data-lucide="alert-circle" style="width:16px;height:16px;color:#F87171;"></i> <span id="tm">Error</span></div>
+  
   <div class="card" id="mc">
-    <div id="ldr"><div class="spin"></div><div style="color:#5B21B6;font-weight:700;font-size:16px;">Submitting...</div></div>
+    <div id="ldr"><div class="spin"></div><div style="color:#4F46E5;font-weight:700;font-size:15px;">Submitting your application...</div></div>
+    
     <div id="fc">
-      <div style="display:flex;align-items:center;gap:16px;margin-bottom:24px;">
-        <div class="logo" style="font-size:24px;margin-bottom:0;">🏠</div>
-        <div style="text-align:left;">
-          <h1 style="text-align:left;margin-bottom:4px;">Tenant Registration</h1>
-          <p class="sub" style="text-align:left;margin-bottom:0;">Complete the steps below to request admission</p>
+      <!-- Branded Header with Hostel Name -->
+      <div class="brand-hero">
+        <div class="brand-logo">🏢</div>
+        <div>
+          <div style="font-size:10.5px;text-transform:uppercase;letter-spacing:0.8px;opacity:0.85;font-weight:800;">Self Registration</div>
+          <div class="brand-title">${hostelName}</div>
+          ${hostelCity ? `<div class="brand-sub">📍 ${hostelCity}</div>` : `<div class="brand-sub">Hostix Smart Admission</div>`}
         </div>
       </div>
+
       ${roomBanner}
 
       <div class="stepper">
@@ -336,7 +352,7 @@ app.get('/api/public/qr-signup', (req, res) => {
       </div>
 
       <form id="frm" novalidate>
-        <!-- STEP 1 -->
+        <!-- STEP 1: Personal Details -->
         <div class="step active" id="p1">
           <div class="field">
             <lbl>First Name<span class="req">*</span></lbl>
@@ -357,43 +373,48 @@ app.get('/api/public/qr-signup', (req, res) => {
             <input id="email" name="email" type="email" placeholder="your@email.com"/>
             <span class="em" id="e3"></span>
           </div>
-          <div class="field">
-            <lbl>Date of Birth<span class="req">*</span></lbl>
-            <input id="dob" name="date_of_birth" type="date"/>
-            <span class="em" id="e_dob"></span>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div class="field">
+              <lbl>Date of Birth<span class="req">*</span></lbl>
+              <input id="dob" name="date_of_birth" type="date"/>
+              <span class="em" id="e_dob"></span>
+            </div>
+            <div class="field">
+              <lbl>Gender<span class="req">*</span></lbl>
+              <select id="gender" name="gender">
+                <option value="">Select...</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+                <option value="Other">Other</option>
+              </select>
+              <span class="em" id="e_gender"></span>
+            </div>
           </div>
-          <div class="field">
-            <lbl>Gender<span class="req">*</span></lbl>
-            <select id="gender" name="gender"><option value="">Select Gender...</option><option value="Male">Male</option><option value="Female">Female</option><option value="Other">Other</option></select>
-            <span class="em" id="e_gender"></span>
+          <div class="btns">
+            <button type="button" class="btn bp" id="b1">Continue <i data-lucide="chevron-right" style="width:16px;height:16px;"></i></button>
           </div>
-          <div class="field">
-            <lbl>Permanent Address<span class="req">*</span></lbl>
-            <textarea id="addr" name="permanent_address" placeholder="Full home address"></textarea>
-            <span class="em" id="e4"></span>
-          </div>
-          <div class="btns"><button type="button" class="btn bp" id="b1">Next</button></div>
         </div>
 
-        <!-- STEP 2 -->
+        <!-- STEP 2: Guardian Details -->
         <div class="step" id="p2">
-          <p style="font-size:14px;color:#64748B;margin:0 0 16px;line-height:1.5;">Guardian details are optional but recommended.</p>
+          <p style="font-size:13px;color:#64748B;margin:0 0 16px;line-height:1.4;">Emergency guardian contact information is required for admission.</p>
           <div class="field">
-            <lbl>Guardian Name</lbl>
-            <input id="gname" name="guardian_name" placeholder="Parent / Guardian name"/>
+            <lbl>Guardian Name<span class="req">*</span></lbl>
+            <input id="gname" name="guardian_name" placeholder="Parent / Guardian full name"/>
+            <span class="em" id="e_gname"></span>
           </div>
           <div class="field">
-            <lbl>Guardian Phone</lbl>
-            <input id="gphone" name="guardian_phone" inputmode="numeric" maxlength="10" placeholder="10-digit number"/>
+            <lbl>Guardian Phone<span class="req">*</span></lbl>
+            <input id="gphone" name="guardian_phone" inputmode="numeric" maxlength="10" placeholder="10-digit guardian number"/>
             <span class="em" id="e5"></span>
           </div>
           <div class="btns">
             <button type="button" class="btn bo" id="bk2">Back</button>
-            <button type="button" class="btn bp" id="b2">Next</button>
+            <button type="button" class="btn bp" id="b2">Continue <i data-lucide="chevron-right" style="width:16px;height:16px;"></i></button>
           </div>
         </div>
 
-        <!-- STEP 3 -->
+        <!-- STEP 3: Identity & Address -->
         <div class="step" id="p3">
           <div class="field">
             <lbl>ID Proof Type<span class="req">*</span></lbl>
@@ -407,28 +428,65 @@ app.get('/api/public/qr-signup', (req, res) => {
           </div>
           <div class="field">
             <lbl>ID Document Number<span class="req">*</span></lbl>
-            <input id="aadhaar" name="id_proof_number" inputmode="numeric" maxlength="12" placeholder="e.g. 123456789012"/>
+            <input id="aadhaar" name="id_proof_number" inputmode="numeric" maxlength="12" placeholder="e.g. 1234 5678 9012"/>
             <span class="em" id="e6"></span>
           </div>
-          <p style="font-size:13px;color:#64748B;margin:0 0 14px;">Upload clear ID photos (optional).</p>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;">
-            <div class="fw"><label class="fb" id="ffb" for="af"><i data-lucide="camera" id="fi"></i> <span id="ffl">Front</span></label><input type="file" id="af" name="aadhaar_front" accept="image/*"/></div>
-            <div class="fw"><label class="fb" id="bfb" for="ab"><i data-lucide="camera" id="bi"></i> <span id="bfl">Back</span></label><input type="file" id="ab" name="aadhaar_back" accept="image/*"/></div>
+          
+          <div class="field">
+            <lbl>ID Photos (Front & Back)</lbl>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:6px;">
+              <div class="fw">
+                <label class="fb" id="ffb" for="af">
+                  <img id="fprev" class="preview-img" alt="Front Preview"/>
+                  <div id="fplaceholder" style="display:flex;flex-direction:column;align-items:center;gap:6px;">
+                    <i data-lucide="camera" id="fi" style="width:22px;height:22px;"></i>
+                    <span id="ffl">Upload Front</span>
+                  </div>
+                </label>
+                <input type="file" id="af" name="aadhaar_front" accept="image/*"/>
+              </div>
+              <div class="fw">
+                <label class="fb" id="bfb" for="ab">
+                  <img id="bprev" class="preview-img" alt="Back Preview"/>
+                  <div id="bplaceholder" style="display:flex;flex-direction:column;align-items:center;gap:6px;">
+                    <i data-lucide="camera" id="bi" style="width:22px;height:22px;"></i>
+                    <span id="bfl">Upload Back</span>
+                  </div>
+                </label>
+                <input type="file" id="ab" name="aadhaar_back" accept="image/*"/>
+              </div>
+            </div>
           </div>
-          <div style="display: flex; justify-content: space-between; gap: 15px; margin-top: 25px;">
-            <button type="button" class="btn bo" id="bk3" style="flex: 1;">Back</button>
-            <button type="submit" class="btn bp" id="sub" style="flex: 1;">Submit</button>
+
+          <div class="field" style="margin-top:16px;">
+            <lbl>Permanent Address<span class="req">*</span></lbl>
+            <textarea id="addr" name="permanent_address" placeholder="Full home / permanent address with pincode"></textarea>
+            <span class="em" id="e4"></span>
+          </div>
+
+          <div class="field">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <lbl style="margin-bottom:0;">Current Location / Present Address</lbl>
+              <button type="button" class="loc-btn" id="btn_gps"><i data-lucide="map-pin" style="width:13px;height:13px;"></i> Auto-detect GPS</button>
+            </div>
+            <textarea id="curr_addr" name="present_working_address" style="margin-top:6px;" placeholder="Workplace / College or current residence address"></textarea>
+          </div>
+
+          <div class="btns">
+            <button type="button" class="btn bo" id="bk3">Back</button>
+            <button type="submit" class="btn bp" id="sub"><i data-lucide="check-circle" style="width:16px;height:16px;"></i> Submit Application</button>
           </div>
         </div>
       </form>
     </div>
 
-    <div id="ok" style="text-align: center; padding: 50px 10px 30px; display: none;">
-      <div class="ck"><i data-lucide="check-circle-2" style="width:46px;height:46px;stroke-width:2.5;"></i></div>
-      <h2>Application Sent!</h2>
-      <p>Your details have been submitted successfully. The owner will verify and activate your account in the app.</p>
-      <div style="display: flex; justify-content: center; width: 100%; margin-top: 20px;">
-        <button class="btn bp" onclick="window.location.reload()" style="max-width: 250px;"><i data-lucide="refresh-cw" style="width:18px;height:18px;"></i> Submit Another</button>
+    <!-- Success Screen -->
+    <div id="ok">
+      <div class="ck"><i data-lucide="check-circle-2"></i></div>
+      <h2 style="font-size:22px;font-weight:800;color:#0F172A;margin:0 0 8px;">Application Submitted!</h2>
+      <p style="color:#64748B;font-size:14px;line-height:1.5;margin-bottom:24px;">Your registration details have been sent to <strong>${hostelName}</strong>. The management will review and allocate your room shortly.</p>
+      <div style="display:flex;justify-content:center;">
+        <button class="btn bp" onclick="window.location.reload()" style="max-width:240px;"><i data-lucide="refresh-cw" style="width:16px;height:16px;"></i> Submit Another</button>
       </div>
     </div>
   </div>
@@ -451,15 +509,17 @@ app.get('/api/public/qr-signup', (req, res) => {
       document.getElementById('p'+n).classList.add('active');
       try{window.scrollTo({top:0,behavior:'smooth'});}catch(e){window.scrollTo(0,0);}
     }
+
     function toast(m) {
       var t=document.getElementById('toast');
       document.getElementById('tm').textContent=m;
       t.className='show';
       setTimeout(function(){t.className='';},3500);
     }
+
     function setErr(id,inp,m){
       var el=document.getElementById(id), i=document.getElementById(inp);
-      el.textContent=m;
+      if(el) el.textContent=m;
       if(i) i.parentElement.className='field'+(m?' ef':'');
     }
     function val(id){ return (document.getElementById(id)||{}).value||''; }
@@ -506,87 +566,151 @@ app.get('/api/public/qr-signup', (req, res) => {
       });
     }
 
-    // Step 1 next
-    document.getElementById('b1').addEventListener('click',function(){
-      var ok=true;
-      if(!val('first_name').trim()){setErr('e1','first_name','First name is required');ok=false;}else{setErr('e1','first_name','');}
-      var p = val('phone').trim();
-      if(!/^[6-9]\\d{9}$/.test(p)){
-        if(p.length > 0 && /^[1-5]/.test(p)) {
-          setErr('e2','phone','Mobile number must start with 6, 7, 8, or 9');
-        } else {
-          setErr('e2','phone','Enter a valid 10-digit mobile number starting with 6-9');
+    // Live File Upload Previews
+    function setupFilePreview(inpId, boxId, prevId, holderId, labelId, sideText) {
+      var inp = document.getElementById(inpId);
+      var box = document.getElementById(boxId);
+      var prev = document.getElementById(prevId);
+      var holder = document.getElementById(holderId);
+      var lbl = document.getElementById(labelId);
+      if (!inp) return;
+      inp.addEventListener('change', function() {
+        if (inp.files && inp.files[0]) {
+          var file = inp.files[0];
+          var reader = new FileReader();
+          reader.onload = function(e) {
+            prev.src = e.target.result;
+            prev.style.display = 'block';
+            if (holder) holder.style.display = 'none';
+            box.className = 'fb has';
+            if (lbl) lbl.textContent = 'Change ' + sideText;
+          };
+          reader.readAsDataURL(file);
         }
-        ok=false;
-      }else{setErr('e2','phone','');}
+      });
+    }
+    setupFilePreview('af', 'ffb', 'fprev', 'fplaceholder', 'ffl', 'Front');
+    setupFilePreview('ab', 'bfb', 'bprev', 'bplaceholder', 'bfl', 'Back');
+
+    // Auto-detect GPS Location
+    var btnGps = document.getElementById('btn_gps');
+    if (btnGps) {
+      btnGps.addEventListener('click', function() {
+        if (!navigator.geolocation) {
+          toast('Geolocation is not supported by your browser');
+          return;
+        }
+        btnGps.innerHTML = '<i data-lucide="loader" style="width:13px;height:13px;"></i> Locating...';
+        lucide.createIcons();
+        navigator.geolocation.getCurrentPosition(
+          function(pos) {
+            var lat = pos.coords.latitude;
+            var lon = pos.coords.longitude;
+            fetch('https://nominatim.openstreetmap.org/reverse?format=json&lat='+lat+'&lon='+lon)
+              .then(function(r){return r.json();})
+              .then(function(data){
+                var formatted = data.display_name || ('Lat: ' + lat.toFixed(4) + ', Lon: ' + lon.toFixed(4));
+                var currEl = document.getElementById('curr_addr');
+                if (currEl) currEl.value = formatted;
+                btnGps.innerHTML = '<i data-lucide="check" style="width:13px;height:13px;"></i> Located!';
+                lucide.createIcons();
+                setTimeout(function(){
+                  btnGps.innerHTML = '<i data-lucide="map-pin" style="width:13px;height:13px;"></i> Auto-detect GPS';
+                  lucide.createIcons();
+                }, 3000);
+              })
+              .catch(function() {
+                var currEl = document.getElementById('curr_addr');
+                if (currEl) currEl.value = 'Lat: ' + lat.toFixed(4) + ', Lon: ' + lon.toFixed(4);
+                btnGps.innerHTML = '<i data-lucide="map-pin" style="width:13px;height:13px;"></i> Auto-detect GPS';
+                lucide.createIcons();
+              });
+          },
+          function(err) {
+            toast('Unable to retrieve location. Please type manually.');
+            btnGps.innerHTML = '<i data-lucide="map-pin" style="width:13px;height:13px;"></i> Auto-detect GPS';
+            lucide.createIcons();
+          },
+          { enableHighAccuracy: true, timeout: 10000 }
+        );
+      });
+    }
+
+    // Step 1 Next
+    document.getElementById('b1').addEventListener('click', function() {
+      var ok = true;
+      if (!val('first_name').trim()) { setErr('e1','first_name','First name is required'); ok = false; } else { setErr('e1','first_name',''); }
+      var p = val('phone').trim();
+      if (!/^[6-9]\\d{9}$/.test(p)) {
+        setErr('e2','phone','Enter a valid 10-digit mobile number starting with 6-9');
+        ok = false;
+      } else { setErr('e2','phone',''); }
       var em = val('email').trim();
-      if(em&&!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(em)){setErr('e3','email','Enter a valid email');ok=false;}else{setErr('e3','email','');}
-      if(!val('dob').trim()){setErr('e_dob','dob','Date of Birth is required');ok=false;}else{setErr('e_dob','dob','');}
-      if(!val('gender').trim()){setErr('e_gender','gender','Gender is required');ok=false;}else{setErr('e_gender','gender','');}
-      if(!val('addr').trim()){setErr('e4','addr','Permanent address is required');ok=false;}else{setErr('e4','addr','');}
-      if(!ok){toast('Please fix the errors to continue.');return;}
+      if (em && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(em)) { setErr('e3','email','Enter a valid email'); ok = false; } else { setErr('e3','email',''); }
+      if (!val('dob').trim()) { setErr('e_dob','dob','Date of Birth is required'); ok = false; } else { setErr('e_dob','dob',''); }
+      if (!val('gender').trim()) { setErr('e_gender','gender','Gender is required'); ok = false; } else { setErr('e_gender','gender',''); }
+      if (!ok) { toast('Please fill all required fields correctly.'); return; }
       go(2);
     });
 
-    document.getElementById('bk2').addEventListener('click',function(){go(1);});
-    document.getElementById('b2').addEventListener('click',function(){
-      var gp=val('gphone').trim();
-      if(gp&&!/^\\d{10}$/.test(gp)){setErr('e5','gphone','Enter a valid 10-digit number');toast('Please fix the errors to continue.');return;}
-      setErr('e5','gphone',''); go(3);
+    document.getElementById('bk2').addEventListener('click', function() { go(1); });
+
+    // Step 2 Next (Guardian Phone is mandatory)
+    document.getElementById('b2').addEventListener('click', function() {
+      var ok = true;
+      if (!val('gname').trim()) { setErr('e_gname','gname','Guardian name is required'); ok = false; } else { setErr('e_gname','gname',''); }
+      var gp = val('gphone').trim();
+      if (!/^[6-9]\\d{9}$/.test(gp)) {
+        setErr('e5','gphone','Enter a valid 10-digit guardian number starting with 6-9');
+        ok = false;
+      } else { setErr('e5','gphone',''); }
+      if (!ok) { toast('Guardian contact details are required.'); return; }
+      go(3);
     });
 
-    document.getElementById('bk3').addEventListener('click',function(){go(2);});
+    document.getElementById('bk3').addEventListener('click', function() { go(2); });
 
-    // File inputs
-    var cfgs = [{inp:'af',fb:'ffb',lbl:'ffl',icon:'fi',side:'Front'},{inp:'ab',fb:'bfb',lbl:'bfl',icon:'bi',side:'Back'}];
-    for(var m=0; m<cfgs.length; m++){
-      (function(cfg){
-        var f=document.getElementById(cfg.inp),b=document.getElementById(cfg.fb),l=document.getElementById(cfg.lbl),i=document.getElementById(cfg.icon);
-        if(f)f.addEventListener('change',function(){
-          var has=f.files&&f.files.length;
-          b.className='fb'+(has?' has':'');
-          l.textContent=has?f.files[0].name:'Upload Aadhaar '+cfg.side;
-          if(has){ i.setAttribute('data-lucide','check'); i.style.color='#7C3AED'; }
-          else{ i.setAttribute('data-lucide','camera'); i.style.color='#94A3B8'; }
-          lucide.createIcons();
-        });
-      })(cfgs[m]);
-    }
-
-    // Submit
-    document.getElementById('frm').addEventListener('submit',function(e){
+    // Step 3 Submit
+    document.getElementById('frm').addEventListener('submit', function(e) {
       e.preventDefault();
-      var idnum=val('aadhaar').trim();
-      var idtype=val('id_type');
-      if(!idnum){setErr('e6','aadhaar','ID Number is required');toast('Please fix the errors to submit.');return;}
-      if(idtype == '1' && !/^\\d{12}$/.test(idnum)){setErr('e6','aadhaar','Aadhaar must be exactly 12 digits');toast('Please fix the errors to submit.');return;}
-      if(idtype == '2' && !/^[A-Z0-9]{10}$/.test(idnum)){setErr('e6','aadhaar','PAN must be exactly 10 characters');toast('Please fix the errors to submit.');return;}
-      if(idtype == '3' && !/^[A-Z0-9]{10}$/.test(idnum)){setErr('e6','aadhaar','Voter ID must be exactly 10 characters');toast('Please fix the errors to submit.');return;}
-      if(idtype == '4' && !/^[A-Z0-9]{15}$/.test(idnum)){setErr('e6','aadhaar','Driving License must be exactly 15 characters');toast('Please fix the errors to submit.');return;}
-      if(idtype == '5' && !/^[A-Z0-9]{8}$/.test(idnum)){setErr('e6','aadhaar','Passport must be exactly 8 characters');toast('Please fix the errors to submit.');return;}
+      var idnum = val('aadhaar').trim();
+      var idtype = val('id_type');
+      if (!idnum) { setErr('e6','aadhaar','ID Number is required'); toast('ID document number is required.'); return; }
+      if (idtype == '1' && !/^\\d{12}$/.test(idnum)) { setErr('e6','aadhaar','Aadhaar must be exactly 12 digits'); toast('Aadhaar must be 12 digits'); return; }
+      if (idtype == '2' && !/^[A-Z0-9]{10}$/.test(idnum)) { setErr('e6','aadhaar','PAN must be exactly 10 characters'); toast('PAN must be 10 characters'); return; }
+      if (idtype == '3' && !/^[A-Z0-9]{10}$/.test(idnum)) { setErr('e6','aadhaar','Voter ID must be exactly 10 characters'); toast('Voter ID must be 10 characters'); return; }
+      if (idtype == '4' && !/^[A-Z0-9]{15}$/.test(idnum)) { setErr('e6','aadhaar','Driving License must be exactly 15 characters'); toast('Driving License must be 15 characters'); return; }
+      if (idtype == '5' && !/^[A-Z0-9]{8}$/.test(idnum)) { setErr('e6','aadhaar','Passport must be exactly 8 characters'); toast('Passport must be 8 characters'); return; }
       setErr('e6','aadhaar','');
-      
-      document.getElementById('ldr').className='show';
-      var d=new FormData(this);
-      fetch('${postUrl}',{
-        method:'POST',
+
+      if (!val('addr').trim()) { setErr('e4','addr','Permanent address is required'); toast('Permanent address is required.'); return; } else { setErr('e4','addr',''); }
+
+      document.getElementById('ldr').className = 'show';
+      var d = new FormData(this);
+
+      fetch('${postUrl}', {
+        method: 'POST',
         headers: { 'Accept': 'application/json' },
-        body:d
+        body: d
       })
-        .then(function(r){return r.json();})
-        .then(function(res){
-          document.getElementById('ldr').className='';
-          if(res.success){
-            document.getElementById('fc').style.display='none';
-            document.getElementById('ok').style.display='block';
-          }else{
-            if((res.error||'').toLowerCase().indexOf('aadhaar')!==-1){setErr('e6','aadhaar',res.error);go(3);}
-            toast(res.error||'Upload failed. Try again.');
+        .then(function(r) {
+          return r.json().catch(function() {
+            return { success: false, error: 'Server error during submission. Please try again.' };
+          });
+        })
+        .then(function(res) {
+          document.getElementById('ldr').className = '';
+          if (res.success) {
+            document.getElementById('fc').style.display = 'none';
+            document.getElementById('ok').style.display = 'block';
+            lucide.createIcons();
+          } else {
+            toast(res.error || 'Submission failed. Please check your details.');
           }
         })
-        .catch(function(err){
-          document.getElementById('ldr').className='';
-          toast('Network error. Try again.');
+        .catch(function(err) {
+          document.getElementById('ldr').className = '';
+          toast('Network or connection issue. Please check your internet and retry.');
         });
     });
   </script>
@@ -594,16 +718,14 @@ app.get('/api/public/qr-signup', (req, res) => {
 </html>`;
 
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
-  // Prevent browser caching
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
   res.setHeader('Pragma', 'no-cache');
   res.setHeader('Expires', '0');
-  res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.status(200).send(html);
 });
 
 const qrSignupErrorPage = (message: string) =>
-  `<div style="background:#fef2f2;color:#7f1d1d;padding:14px;border-radius:10px;font-family:sans-serif;">âš ï¸ ${message}</div>`;
+  `<div style="background:#fef2f2;color:#7f1d1d;padding:14px;border-radius:10px;font-family:sans-serif;">⚠️ ${message}</div>`;
 
 app.post('/api/public/qr-signup', qrSignupUpload.fields([
   { name: 'aadhaar_front', maxCount: 1 },
@@ -615,15 +737,15 @@ app.post('/api/public/qr-signup', qrSignupUpload.fields([
     const bedId    = req.query.bedId    as string | undefined;
     const bedName  = req.query.bedName  as string | undefined;
 
-    const wantsJson = req.headers.accept?.includes('application/json');
+    const wantsJson = req.headers.accept?.includes('application/json') || req.xhr;
     const sendError = (msg: string) => wantsJson ? res.status(400).json({ success: false, error: msg }) : res.status(400).send(qrSignupErrorPage(msg));
 
     if (!hostelId) {
-      return sendError('Missing hostelId');
+      return sendError('Missing hostel ID');
     }
     const {
       first_name, last_name, phone, email,
-      date_of_birth, gender, permanent_address,
+      date_of_birth, gender, permanent_address, present_working_address,
       guardian_name, guardian_phone, id_proof_number, id_proof_type
     } = req.body || {};
 
@@ -632,9 +754,10 @@ app.post('/api/public/qr-signup', qrSignupUpload.fields([
     const aadhaarBackFile  = files?.aadhaar_back?.[0];
 
     if (!first_name || !String(first_name).trim()) return sendError('First Name is required');
-    if (!phone || !/^\d{10}$/.test(String(phone).trim())) return sendError('A valid 10-digit Phone number is required');
+    if (!phone || !/^[6-9]\d{9}$/.test(String(phone).trim())) return sendError('A valid 10-digit Phone number starting with 6-9 is required');
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email).trim())) return sendError('Enter a valid email address');
-    if (guardian_phone && !/^\d{10}$/.test(String(guardian_phone).trim())) return sendError('Guardian Phone must be a valid 10-digit number');
+    if (!guardian_name || !String(guardian_name).trim()) return sendError('Guardian Name is required');
+    if (!guardian_phone || !/^[6-9]\d{9}$/.test(String(guardian_phone).trim())) return sendError('A valid 10-digit Guardian Phone number starting with 6-9 is required');
     if (!permanent_address || !String(permanent_address).trim()) return sendError('Permanent Address is required');
     if (!id_proof_number || !String(id_proof_number).trim()) return sendError('ID Number is required');
     
@@ -666,24 +789,26 @@ app.post('/api/public/qr-signup', qrSignupUpload.fields([
     const now = new Date();
     const insertData: any = {
       hostel_id:        numHostelId,
-      first_name,
-      last_name:        last_name || null,
-      phone,
-      email:            email || null,
+      first_name:       String(first_name).trim(),
+      last_name:        last_name ? String(last_name).trim() : null,
+      phone:            String(phone).trim(),
+      email:            email ? String(email).trim() : null,
       date_of_birth:    new Date(date_of_birth),
       gender:           String(gender).trim(),
-      permanent_address: permanent_address || null,
-      guardian_name:    guardian_name || null,
-      guardian_phone:   guardian_phone || null,
+      permanent_address: permanent_address ? String(permanent_address).trim() : null,
+      present_working_address: present_working_address ? String(present_working_address).trim() : null,
+      guardian_name:    guardian_name ? String(guardian_name).trim() : null,
+      guardian_phone:   guardian_phone ? String(guardian_phone).trim() : null,
       admission_date:   now,
       admission_fee:    0,
       admission_status: 0,
-      status:           3, // QR Signup â€” owner must activate
+      status:           3, // QR Signup — owner must activate
       room_id:          roomId ? parseInt(roomId, 10) : null,
+      bed_id:           bedId || null,
       floor_number:     null,
       monthly_rent:     null,
       id_proof_type:    typeId,
-      id_proof_number:  String(id_proof_number).trim(),
+      id_proof_number:  cleanId,
       id_proof_status:  1, // Submitted
       id_proof_front_url: aadhaarFrontFile ? `/uploads/${aadhaarFrontFile.filename}` : null,
       id_proof_back_url:  aadhaarBackFile  ? `/uploads/${aadhaarBackFile.filename}`  : null,
@@ -710,20 +835,24 @@ app.post('/api/public/qr-signup', qrSignupUpload.fields([
       <html><body><h2>Success!</h2></body></html>
     `;
     res.status(200).send(successHtml);
-  } catch (error) {
+  } catch (error: any) {
     console.error('QR Signup POST Error:', error);
-    const wantsJson = req.headers.accept?.includes('application/json');
+    const wantsJson = req.headers.accept?.includes('application/json') || req.xhr;
     if (wantsJson) {
-      res.status(500).json({ success: false, error: 'Internal server error' });
+      res.status(500).json({ success: false, error: error.message || 'Internal server error' });
     } else {
-      res.status(500).send(qrSignupErrorPage('Internal server error'));
+      res.status(500).send(qrSignupErrorPage(error.message || 'Internal server error'));
     }
   }
 });
 
 app.use('/api/public/qr-signup', (err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
   if (!err) return next();
-  const message = err.code === 'LIMIT_FILE_SIZE' ? 'Each Aadhaar photo must be under 5MB' : (err.message || 'Upload failed. Please try again.');
+  const message = err.code === 'LIMIT_FILE_SIZE' ? 'Each ID photo must be under 5MB' : (err.message || 'Upload failed. Please try again.');
+  const wantsJson = req.headers.accept?.includes('application/json') || req.xhr;
+  if (wantsJson) {
+    return res.status(400).json({ success: false, error: message });
+  }
   res.status(400).send(qrSignupErrorPage(message));
 });
 

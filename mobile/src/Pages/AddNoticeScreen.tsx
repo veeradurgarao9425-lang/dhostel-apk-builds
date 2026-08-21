@@ -36,6 +36,7 @@ import {
 } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FullScreenLoader } from '../components/FullScreenLoader';
+import { appendImageFileToFormData } from '../utils/imageHelper';
 
 const DEFAULT_CATEGORIES = [
     { category_name: 'General', emoji: '📢', color: '#6366F1' },
@@ -268,18 +269,17 @@ export const AddNoticeScreen = ({ navigation, route }: any) => {
             formDataPayload.append('content', formData.content.trim());
             formDataPayload.append('notice_type', formData.notice_type);
             
-            if (formData.image) {
-                const localUri = formData.image.uri;
-                const filename = localUri.split('/').pop() || 'notice.jpg';
-                const match = /\.(\w+)$/.exec(filename);
-                const type = match ? `image/${match[1]}` : `image/jpeg`;
-                
-                formDataPayload.append('image', { uri: localUri, name: filename, type } as any);
+            if (formData.image?.uri) {
+                appendImageFileToFormData(formDataPayload, 'image', formData.image.uri, 'notice.jpg');
             }
 
             const response = isEdit
-                ? await api.put(`/notices/${noticeToEdit.notice_id}`, formDataPayload)
-                : await api.post('/notices', formDataPayload);
+                ? await api.put(`/notices/${noticeToEdit.notice_id}`, formDataPayload, {
+                    headers: { 'Content-Type': 'multipart/form-data' },
+                  })
+                : await api.post('/notices', formDataPayload, {
+                    headers: { 'Content-Type': 'multipart/form-data' },
+                  });
 
             if (response.data.success) {
                 Toast.show({ type: 'success', text1: 'Success', text2: `Notice ${isEdit ? 'updated' : 'posted'} successfully!` });
@@ -331,6 +331,7 @@ export const AddNoticeScreen = ({ navigation, route }: any) => {
             <AppHeader
                 title={isEdit ? 'Edit Notice' : 'New Notice'}
                 subtitle="Broadcast announcement to all tenants"
+                alignLeft={true}
             />
             <FullScreenLoader visible={loading} />
 

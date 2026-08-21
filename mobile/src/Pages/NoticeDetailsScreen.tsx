@@ -7,6 +7,7 @@ import ImageViewer from 'react-native-image-zoom-viewer';
 import { AppHeader } from '../components/AppHeader';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
+import { getResolvedImageUrl } from '../utils/imageHelper';
 
 const { width } = Dimensions.get('window');
 
@@ -31,7 +32,7 @@ export default function NoticeDetailsScreen({ route, navigation }: any) {
     };
 
     const dateTime = formatDate(notice.created_at);
-    const imageUrl = notice.image_url ? `http://143.244.131.69:8081${notice.image_url}` : null;
+    const imageUrl = getResolvedImageUrl(notice.image_url);
 
     // Convert hex color to rgba for soft backgrounds
     const hexToRgba = (hex: string, alpha: number) => {
@@ -58,6 +59,8 @@ export default function NoticeDetailsScreen({ route, navigation }: any) {
             
             <AppHeader
                 title="Notice Details"
+                subtitle="Broadcast announcement"
+                alignLeft={true}
                 showBack={true}
                 onBack={() => navigation.goBack()}
                 rightComponent={

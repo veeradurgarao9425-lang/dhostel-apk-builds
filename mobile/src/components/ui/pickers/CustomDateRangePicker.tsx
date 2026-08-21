@@ -259,7 +259,7 @@ export function CustomDateRangePicker({
                     { 
                         backgroundColor: isDark ? '#1E293B' : '#FFFFFF', 
                         borderTopColor: isDark ? '#334155' : '#F1F5F9',
-                        paddingBottom: Math.max(insets.bottom, 16),
+                        paddingBottom: Math.max(insets.bottom + 14, 24),
                     }
                 ]}>
                     <TouchableOpacity 

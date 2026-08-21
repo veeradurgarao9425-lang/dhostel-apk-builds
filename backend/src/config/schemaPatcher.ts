@@ -864,6 +864,10 @@ export async function patchDatabaseSchema() {
           console.log('[schema-patch] adding updated_at to expenses...');
           await db.raw("ALTER TABLE expenses ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP");
         }
+        if (!columnNames.includes('attachment_url')) {
+          console.log('[schema-patch] adding attachment_url to expenses...');
+          await db.raw("ALTER TABLE expenses ADD COLUMN attachment_url TEXT NULL");
+        }
       }
     } catch (e: any) {
       console.error('[schema-patch] Error checking/updating expenses columns:', e.message);
@@ -1272,7 +1276,9 @@ export async function patchDatabaseSchema() {
           { name: 'Salary', desc: 'Staff salaries' },
           { name: 'Maintenance', desc: 'Repairs and maintenance' },
           { name: 'Internet Bill', desc: 'Internet and WiFi charges' },
-          { name: 'Lift Bill', desc: 'Lift maintenance and electricity charges' }
+          { name: 'Lift Bill', desc: 'Lift maintenance and electricity charges' },
+          { name: 'Deposit Refund', desc: 'Tenant security deposit refunds' },
+          { name: 'Rent', desc: 'Property and building rent' }
         ];
 
         for (const cat of defaultCats) {
@@ -1283,6 +1289,19 @@ export async function patchDatabaseSchema() {
               description: cat.desc
             });
           }
+        }
+
+        // Re-link any miscategorized deposit refund expenses to Deposit Refund category
+        const depRefundCat = await db('expense_categories')
+          .whereRaw('LOWER(category_name) LIKE ?', ['%deposit refund%'])
+          .orWhereRaw('LOWER(category_name) LIKE ?', ['%deposit%'])
+          .first();
+
+        if (depRefundCat && (depRefundCat.category_id || depRefundCat.id)) {
+          const targetCatId = depRefundCat.category_id || depRefundCat.id;
+          await db('expenses')
+            .whereRaw("LOWER(description) LIKE ? OR LOWER(description) LIKE ?", ['%deposit refund%', '%vacate%'])
+            .update({ category_id: targetCatId });
         }
       }
     } catch (e: any) {

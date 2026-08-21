@@ -1489,15 +1489,30 @@ export const vacateSettlement = async (req: AuthRequest, res: Response) => {
 
       // If there is a refund to be given back to the student, record it as an expense automatically
       if (refundAmount > 0) {
-        let refundCat = await trx('expense_categories').where({ category_name: 'Deposit Refunds' }).first().catch(() => null);
-        if (!refundCat) {
-          refundCat = await trx('expense_categories').where({ name: 'Deposit Refunds' }).first().catch(() => null);
-        }
-        if (!refundCat) {
-          refundCat = await trx('expense_categories').where('category_name', 'like', '%refund%').first().catch(() => null);
-        }
+        let refundCat = await trx('expense_categories')
+          .whereRaw('LOWER(category_name) LIKE ?', ['%deposit refund%'])
+          .orWhereRaw('LOWER(category_name) LIKE ?', ['%deposit%'])
+          .orWhereRaw('LOWER(category_name) LIKE ?', ['%refund%'])
+          .first()
+          .catch(() => null);
 
-        const categoryId = refundCat?.category_id || refundCat?.id || 6;
+        let categoryId = refundCat?.category_id || refundCat?.id;
+
+        if (!categoryId) {
+          try {
+            const [insertedId] = await trx('expense_categories').insert({
+              category_name: 'Deposit Refund',
+              description: 'Tenant security deposit refunds'
+            });
+            categoryId = insertedId;
+          } catch {
+            const found = await trx('expense_categories')
+              .whereRaw('LOWER(category_name) LIKE ?', ['%deposit%'])
+              .first()
+              .catch(() => null);
+            categoryId = found?.category_id || found?.id;
+          }
+        }
 
         await trx('expenses').insert({
           hostel_id: student.hostel_id,

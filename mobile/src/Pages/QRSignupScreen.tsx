@@ -494,35 +494,61 @@ export default function QRSignupScreen({ navigation }: any) {
                     ) : (
                         <View style={{ alignItems: 'center', marginBottom: 16 }}>
                             <ViewShot ref={viewShotRef} options={{ format: 'png', quality: 1 }}>
-                                <View style={{ backgroundColor: '#FFFFFF', padding: 24, borderRadius: 16, alignItems: 'center', borderWidth: 1, borderColor: '#F1F5F9', width: 280 }}>
+                                <View style={{ backgroundColor: '#FFFFFF', borderRadius: 20, alignItems: 'center', borderWidth: 1.5, borderColor: '#E2E8F0', width: 300, overflow: 'hidden', shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 10, elevation: 4 }}>
                                     
-                                    <View style={{ backgroundColor: '#FFFFFF', padding: 8, borderRadius: 12, borderWidth: 1, borderColor: '#F1F5F9' }}>
-                                        <QRCode
-                                            value={activeUrl}
-                                            size={180}
-                                            color="#1E293B"
-                                            backgroundColor="#FFFFFF"
-                                        />
-                                    </View>
-                                    
-                                    <Text style={{ fontSize: 12, color: '#64748B', textAlign: 'center', marginTop: 16, marginBottom: 4 }}>
-                                        Anyone who scans this QR can register only for
-                                    </Text>
-                                    
-                                    {mode === 'room' && selectedRoom ? (
-                                        <Text style={{ fontSize: 13, fontWeight: '700', color: theme.primary, textAlign: 'center' }}>
-                                            Room {selectedRoom.room_number} {selectedBed ? `• Bed ${selectedBed.bed_name ?? ''}` : ''}
+                                    {/* Standee Header Banner */}
+                                    <LinearGradient
+                                        colors={['#6366F1', '#4F46E5']}
+                                        start={{ x: 0, y: 0 }}
+                                        end={{ x: 1, y: 1 }}
+                                        style={{ width: '100%', paddingVertical: 14, paddingHorizontal: 16, alignItems: 'center' }}
+                                    >
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                                            <Image source={require('../../assets/HostixNew.png')} style={{ width: 18, height: 18, borderRadius: 4 }} resizeMode="contain" />
+                                            <Text style={{ fontSize: 11, fontWeight: '800', color: 'rgba(255,255,255,0.9)', letterSpacing: 0.8, textTransform: 'uppercase' }}>
+                                                {mode === 'room' ? 'Room Allocation QR' : 'Self Registration QR'}
+                                            </Text>
+                                        </View>
+                                        <Text style={{ fontSize: 16, fontWeight: '900', color: '#FFFFFF', textAlign: 'center' }} numberOfLines={1}>
+                                            {user?.hostel_name || 'Hostel Admission'}
                                         </Text>
-                                    ) : (
-                                        <Text style={{ fontSize: 13, fontWeight: '700', color: theme.primary, textAlign: 'center' }}>
-                                            {user?.hostel_name || 'Your Hostel'}
+                                        {mode === 'room' && selectedRoom && (
+                                            <View style={{ backgroundColor: 'rgba(255,255,255,0.22)', paddingHorizontal: 10, paddingVertical: 3, borderRadius: 20, marginTop: 4 }}>
+                                                <Text style={{ fontSize: 12, fontWeight: '800', color: '#FFFFFF' }}>
+                                                    Room {selectedRoom.room_number} {selectedBed ? `• Bed ${selectedBed.bed_name ?? ''}` : ''}
+                                                </Text>
+                                            </View>
+                                        )}
+                                    </LinearGradient>
+                                    
+                                    {/* QR Code Container */}
+                                    <View style={{ padding: 20, alignItems: 'center', backgroundColor: '#FFFFFF' }}>
+                                        <View style={{ backgroundColor: '#FFFFFF', padding: 12, borderRadius: 16, borderWidth: 1, borderColor: '#F1F5F9', shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 6, elevation: 1 }}>
+                                            <QRCode
+                                                value={activeUrl}
+                                                size={185}
+                                                color="#0F172A"
+                                                backgroundColor="#FFFFFF"
+                                                logo={require('../../assets/HostixNew.png')}
+                                                logoSize={38}
+                                                logoMargin={3}
+                                                logoBackgroundColor="#FFFFFF"
+                                                logoBorderRadius={8}
+                                            />
+                                        </View>
+                                        
+                                        <Text style={{ fontSize: 12, fontWeight: '700', color: '#334155', textAlign: 'center', marginTop: 14 }}>
+                                            📷 Scan with phone camera to register
                                         </Text>
-                                    )}
-
-                                    {/* Product Branding Pill */}
-                                    <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 16, opacity: 0.8 }}>
-                                        <Image source={require('../../assets/HostixNew.png')} style={{ width: 12, height: 12, borderRadius: 2, marginRight: 4 }} resizeMode="contain" />
-                                        <Text style={{ fontSize: 9, fontWeight: '700', color: '#64748B', letterSpacing: 0.5 }}>POWERED BY DHOSTEL</Text>
+                                        <Text style={{ fontSize: 10.5, color: '#64748B', textAlign: 'center', marginTop: 2 }}>
+                                            No app download required • Instant profile submission
+                                        </Text>
+                                        
+                                        {/* Product Branding Pill */}
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 14, paddingTop: 10, borderTopWidth: 1, borderTopColor: '#F1F5F9', width: '100%', justifyContent: 'center' }}>
+                                            <Image source={require('../../assets/HostixNew.png')} style={{ width: 12, height: 12, borderRadius: 3, marginRight: 5 }} resizeMode="contain" />
+                                            <Text style={{ fontSize: 9.5, fontWeight: '800', color: '#94A3B8', letterSpacing: 0.6 }}>POWERED BY HOSTIX</Text>
+                                        </View>
                                     </View>
                                 </View>
                             </ViewShot>

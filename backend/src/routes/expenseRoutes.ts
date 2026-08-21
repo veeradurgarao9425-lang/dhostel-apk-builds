@@ -1,4 +1,5 @@
 import express from 'express';
+import multer from 'multer';
 import { authMiddleware, isOwnerOrAdmin } from '../middleware/auth.js';
 import { requireActiveSubscription } from '../middleware/subscriptionAuth.js';
 import {
@@ -12,6 +13,15 @@ import {
   getExpenseSummary
 } from '../controllers/expenseController.js';
 
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, 'uploads/'),
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+    cb(null, 'expense-' + uniqueSuffix + '-' + (file.originalname || 'receipt.jpg').replace(/\s+/g, '_'));
+  }
+});
+const upload = multer({ storage, limits: { fileSize: 10 * 1024 * 1024 } });
+
 const router = express.Router();
 
 // All routes require authentication and owner/admin access
@@ -23,8 +33,9 @@ router.get('/categories', getExpenseCategories);
 router.post('/categories', createExpenseCategory);
 router.get('/summary', getExpenseSummary);
 router.get('/:expenseId', getExpenseById);
-router.post('/', createExpense);
-router.put('/:expenseId', updateExpense);
+router.post('/', upload.single('attachment'), createExpense);
+router.put('/:expenseId', upload.single('attachment'), updateExpense);
 router.delete('/:expenseId', deleteExpense);
 
 export default router;
+
