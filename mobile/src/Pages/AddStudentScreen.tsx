@@ -608,8 +608,10 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
     const { showSuccess, showError, showApiError } = useToast();
     const insets = useSafeAreaInsets();
     const [loading, setLoading] = useState(false);
+    const [loadingMessage, setLoadingMessage] = useState('Saving tenant details...');
     const [isKeyboardVisible, setKeyboardVisible] = useState(false);
     const scrollViewRef = useRef<ScrollView>(null);
+    const checkUniqueTimer = useRef<NodeJS.Timeout | null>(null);
 
     const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
     const [aadhaarFront, setAadhaarFront] = useState<string | null>(null);
@@ -736,32 +738,37 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
         }
     };
 
-    const checkUnique = async (field: 'phone' | 'email' | 'id_proof_number', value: string) => {
+    const checkUnique = useCallback((field: 'phone' | 'email' | 'id_proof_number', value: string) => {
         if (!value) return;
-        try {
-            const res = await api.get('/students/check-unique', {
-                params: {
-                    ...(field === 'phone' ? { phone: value } : {}),
-                    ...(field === 'email' ? { email: value } : {}),
-                    ...(field === 'id_proof_number' ? { id_proof_number: value } : {}),
-                    ...(isEdit ? { studentId: student.student_id } : {})
-                }
-            });
-            if (res.data?.success) {
-                if (field === 'phone' && res.data.phoneExists) {
-                    setErrors(prev => ({ ...prev, phone: 'This phone number is already registered' }));
-                }
-                if (field === 'email' && res.data.emailExists) {
-                    setErrors(prev => ({ ...prev, email: 'This email is already registered' }));
-                }
-                if (field === 'id_proof_number' && res.data.idProofExists) {
-                    setErrors(prev => ({ ...prev, id_proof_number: 'This ID proof number is already registered' }));
-                }
-            }
-        } catch (e) {
-            console.log('Check unique error', e);
+        if (checkUniqueTimer.current) {
+            clearTimeout(checkUniqueTimer.current);
         }
-    };
+        checkUniqueTimer.current = setTimeout(async () => {
+            try {
+                const res = await api.get('/students/check-unique', {
+                    params: {
+                        ...(field === 'phone' ? { phone: value } : {}),
+                        ...(field === 'email' ? { email: value } : {}),
+                        ...(field === 'id_proof_number' ? { id_proof_number: value } : {}),
+                        ...(isEdit ? { studentId: student.student_id } : {})
+                    }
+                });
+                if (res.data?.success) {
+                    if (field === 'phone' && res.data.phoneExists) {
+                        setErrors(prev => ({ ...prev, phone: 'This phone number is already registered' }));
+                    }
+                    if (field === 'email' && res.data.emailExists) {
+                        setErrors(prev => ({ ...prev, email: 'This email is already registered' }));
+                    }
+                    if (field === 'id_proof_number' && res.data.idProofExists) {
+                        setErrors(prev => ({ ...prev, id_proof_number: 'This ID proof number is already registered' }));
+                    }
+                }
+            } catch (e) {
+                // Silently ignore background validation network issues
+            }
+        }, 350);
+    }, [isEdit, student?.student_id]);
 
     const selectedRoom = availableRooms.find(r => r.room_id?.toString() === formData.room_id);
     const selectedBed = beds.find(b => b.bed_id?.toString() === formData.bed_id);
@@ -1081,6 +1088,7 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
 
     const executeSave = async (forceStatus?: 'Unpaid') => {
         setLoading(true);
+        setLoadingMessage(isEdit ? 'Updating tenant profile...' : 'Registering tenant & allocating room...');
         try {
             const payload: Record<string, any> = {
                 hostel_id: String(user?.hostel_id || ''),
@@ -1206,7 +1214,7 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
                 subtitle="Note: Please ensure the name matches the ID proof exactly."
                 alignLeft={true}
             />
-            <FullScreenLoader visible={loading} />
+            <FullScreenLoader visible={loading} message={loadingMessage} />
 
             <ScrollView
                 ref={scrollViewRef}
