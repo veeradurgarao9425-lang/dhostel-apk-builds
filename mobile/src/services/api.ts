@@ -37,13 +37,13 @@ api.interceptors.request.use(
 
       if (isFormData) {
         if (config.headers) {
-          if (typeof (config.headers as any).delete === 'function') {
-            (config.headers as any).delete('Content-Type');
-            (config.headers as any).delete('content-type');
+          if (typeof (config.headers as any).set === 'function') {
+            (config.headers as any).set('Content-Type', 'multipart/form-data');
+          } else {
+            config.headers['Content-Type'] = 'multipart/form-data';
           }
-          delete (config.headers as any)['Content-Type'];
-          delete (config.headers as any)['content-type'];
         }
+        config.timeout = 120000; // 2 min timeout for file uploads
       }
     } catch {
       // Token read failed — proceed without token

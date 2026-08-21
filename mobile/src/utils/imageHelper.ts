@@ -56,17 +56,27 @@ export function appendImageFileToFormData(
   uri: string,
   fallbackName = 'photo.jpg'
 ) {
-  let filename = uri.split('/').pop() || fallbackName;
+  if (!uri || typeof uri !== 'string') return;
+  const cleanUri = uri.trim();
+  if (!cleanUri) return;
+
+  let filename = cleanUri.split('/').pop() || fallbackName;
   filename = filename.split('?')[0];
 
   const match = /\.(\w+)$/.exec(filename);
   const ext = match ? match[1].toLowerCase() : 'jpg';
   const mimeType = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
-
   const finalName = !/\.(jpg|jpeg|png|webp|gif)$/i.test(filename) ? `${filename}.${ext}` : filename;
 
+  let finalUri = cleanUri;
+  if (Platform.OS === 'android') {
+    finalUri = cleanUri.startsWith('file://') || cleanUri.startsWith('content://') ? cleanUri : `file://${cleanUri}`;
+  } else {
+    finalUri = cleanUri.replace('file://', '');
+  }
+
   formData.append(fieldName, {
-    uri: Platform.OS === 'android' ? uri : uri.replace('file://', ''),
+    uri: finalUri,
     name: finalName,
     type: mimeType,
   } as any);

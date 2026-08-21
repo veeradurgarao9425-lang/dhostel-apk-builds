@@ -249,8 +249,11 @@ export const sendEmail = async (options: EmailOptions): Promise<void> => {
   const plainText = options.html ? options.html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim() : '';
 
   try {
-    // 1. For OTP & Password Reset emails: Use EmailJS template
-    if ((options.emailType === 'OTP' || options.emailType === 'ForgotPassword' || /otp|code|reset/i.test(options.subject)) && process.env.EMAILJS_SERVICE_ID) {
+    // 1. For OTP & Password Reset emails: Use EmailJS template ONLY when it is strictly an OTP/reset
+    const isStrictOtp = options.emailType === 'OTP' || options.emailType === 'ForgotPassword' || /\b(otp|verification code|password reset)\b/i.test(options.subject);
+    const isNonOtpType = options.emailType === 'NewJoiner' || options.emailType === 'NewJoinerOwnerAlert' || options.emailType === 'Super Admin Alert' || options.emailType === 'DailyReport';
+
+    if (isStrictOtp && !isNonOtpType && process.env.EMAILJS_SERVICE_ID) {
       try {
         const sent = await sendViaEmailJS(options);
         if (sent) return;

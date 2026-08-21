@@ -82,7 +82,7 @@ const DocumentUploadBox = ({ label, uri, onCapture, onRemove, isFront, error }: 
                 Alert.alert('Permission Required', 'Camera permission is needed to upload documents.');
                 return;
             }
-            const r = await ImagePicker.launchCameraAsync({ quality: 0.6 });
+            const r = await ImagePicker.launchCameraAsync({ quality: 0.5 });
             if (!r.canceled && r.assets && r.assets.length > 0) {
                 onCapture(r.assets[0].uri);
             }
@@ -98,7 +98,7 @@ const DocumentUploadBox = ({ label, uri, onCapture, onRemove, isFront, error }: 
                 Alert.alert('Permission Required', 'Media library permission is needed to upload documents.');
                 return;
             }
-            const r = await ImagePicker.launchImageLibraryAsync({ quality: 0.6 });
+            const r = await ImagePicker.launchImageLibraryAsync({ quality: 0.5 });
             if (!r.canceled && r.assets && r.assets.length > 0) {
                 onCapture(r.assets[0].uri);
             }
@@ -393,7 +393,7 @@ export default function AddStaffScreen() {
                 return;
             }
             const res = await ImagePicker.launchCameraAsync({
-                quality: 0.7,
+                quality: 0.5,
                 allowsEditing: target === 'photo',
                 aspect: target === 'photo' ? [1, 1] : undefined,
             });
@@ -416,7 +416,7 @@ export default function AddStaffScreen() {
                 return;
             }
             const res = await ImagePicker.launchImageLibraryAsync({
-                quality: 0.7,
+                quality: 0.5,
                 allowsEditing: target === 'photo',
                 aspect: target === 'photo' ? [1, 1] : undefined,
             });
