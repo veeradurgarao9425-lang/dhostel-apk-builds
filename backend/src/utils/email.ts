@@ -168,16 +168,22 @@ const sendViaSendGrid = async (options: EmailOptions): Promise<boolean> => {
   return true;
 };
 
-// ─── Send via EmailJS HTTP API (port 443) — Dedicated for OTP Verification ────
+// ─── Send via EmailJS HTTP API (port 443) ────────────────────────────────────
 const sendViaEmailJS = async (options: EmailOptions): Promise<boolean> => {
   const serviceId = (process.env.EMAILJS_SERVICE_ID || '').trim();
-  const templateId = (process.env.EMAILJS_TEMPLATE_ID || '').trim();
   const publicKey = (process.env.EMAILJS_PUBLIC_KEY || process.env.EMAILJS_USER_ID || '').trim();
   const privateKey = (process.env.EMAILJS_PRIVATE_KEY || process.env.EMAILJS_ACCESS_TOKEN || '').trim();
 
+  // Determine template ID based on email type
+  const isOtp = options.emailType === 'OTP';
+  const otpTemplateId = (process.env.EMAILJS_OTP_TEMPLATE_ID || process.env.EMAILJS_TEMPLATE_ID || '').trim();
+  const reportTemplateId = (process.env.EMAILJS_REPORT_TEMPLATE_ID || process.env.EMAILJS_GENERAL_TEMPLATE_ID || '').trim();
+  
+  const templateId = isOtp ? otpTemplateId : reportTemplateId;
+
   if (!serviceId || !templateId || !publicKey) return false;
 
-  console.log(`📨 Sending OTP via EmailJS (Google API) | to: ${options.to}`);
+  console.log(`📨 Sending ${isOtp ? 'OTP' : 'General/Report'} via EmailJS | to: ${options.to}`);
 
   const otpMatch = options.subject.match(/\d{6}/) || options.html.match(/\d{6}/);
   const passcode = otpMatch ? otpMatch[0] : '';
@@ -218,7 +224,7 @@ const sendViaEmailJS = async (options: EmailOptions): Promise<boolean> => {
     const text = await res.text();
     throw new Error(`EmailJS API ${res.status}: ${text}`);
   }
-  console.log(`✅ OTP email sent via EmailJS successfully to: ${options.to}`);
+  console.log(`✅ Email sent via EmailJS successfully to: ${options.to}`);
   return true;
 };
 
@@ -232,7 +238,7 @@ export const sendEmail = async (options: EmailOptions): Promise<void> => {
   const plainText = options.html ? options.html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim() : '';
 
   try {
-    // 1. For OTP emails: Use dedicated EmailJS provider first
+    // 1. For OTP emails: Use dedicated EmailJS OTP template
     if (options.emailType === 'OTP' && process.env.EMAILJS_SERVICE_ID) {
       try {
         const sent = await sendViaEmailJS(options);
@@ -242,7 +248,17 @@ export const sendEmail = async (options: EmailOptions): Promise<void> => {
       }
     }
 
-    // 2. For Reports, Notifications, and general emails: Use Brevo / Resend / SendGrid (with full HTML and Attachment support)
+    // 2. For Reports / General emails: Try EmailJS General Template if configured
+    if (options.emailType !== 'OTP' && process.env.EMAILJS_SERVICE_ID && (process.env.EMAILJS_REPORT_TEMPLATE_ID || process.env.EMAILJS_GENERAL_TEMPLATE_ID)) {
+      try {
+        const sent = await sendViaEmailJS(options);
+        if (sent) return;
+      } catch (ejsErr: any) {
+        console.warn('⚠️ EmailJS Report delivery notice:', ejsErr.message);
+      }
+    }
+
+    // 3. For Reports, Notifications, and general emails: Try Brevo / Resend / SendGrid if available
     if (process.env.BREVO_API_KEY) {
       try {
         const sent = await sendViaBrevo(options);
@@ -268,7 +284,7 @@ export const sendEmail = async (options: EmailOptions): Promise<void> => {
       }
     }
 
-    // 3. SMTP Transporter fallback (supports attachments and custom HTML)
+    // 4. SMTP Transporter fallback (uses standard Gmail SMTP credentials)
     const transporter = createTransporter();
     const info = await transporter.sendMail({
       from,
