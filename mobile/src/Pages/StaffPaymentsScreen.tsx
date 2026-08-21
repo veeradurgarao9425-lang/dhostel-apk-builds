@@ -50,43 +50,41 @@ function PaymentDrawerModal({
     staffName: string;
     suggestedAmount: number;
     onConfirm: (data: { amount: string; date: string; note: string; payMode: string; transactionId: string }) => void;
-    themeColor: string;
+    themeColor?: string;
     loading: boolean;
 }) {
+    const { isDark } = useTheme();
+    const isAdvance = mode === 'advance';
+    const accentColor = themeColor || (isAdvance ? '#D97706' : '#16A34A');
+    const title = isAdvance ? 'Give Salary Advance' : 'Pay Staff Salary';
+    const icon = isAdvance ? 'cash-outline' : 'checkmark-circle-outline';
+
     const [amount, setAmount] = useState('');
     const [date, setDate] = useState(todayStr());
     const [note, setNote] = useState('');
     const [payMode, setPayMode] = useState('Cash');
     const [transactionId, setTransactionId] = useState('');
     const [datePickerVisible, setDatePickerVisible] = useState(false);
-    const [errors, setErrors] = useState<Record<string, string>>({});
+    const [errors, setErrors] = useState<{ amount?: string }>({});
 
-    const isAdvance = mode === 'advance';
-    const accentColor = isAdvance ? '#F59E0B' : '#16A34A';
-    const bgColor = isAdvance ? '#FFFBEB' : '#F0FDF4';
-    const title = isAdvance ? 'Give Advance' : 'Pay Salary';
-    const icon = isAdvance ? 'cash-outline' : 'checkmark-circle-outline';
-
-    // Pre-fill salary amount
+    // Reset fields whenever modal opens with clean fresh inputs
     React.useEffect(() => {
-        if (visible && mode === 'salary' && suggestedAmount > 0) {
-            setAmount(String(suggestedAmount));
-        } else if (!visible) {
-            setAmount('');
-            setNote('');
-            setTransactionId('');
-            setPayMode('Cash');
+        if (visible) {
+            setAmount(suggestedAmount > 0 ? String(suggestedAmount) : '');
             setDate(todayStr());
+            setNote('');
+            setPayMode('Cash');
+            setTransactionId('');
             setErrors({});
         }
-    }, [visible, mode, suggestedAmount]);
+    }, [visible, suggestedAmount]);
 
     const handleSubmit = () => {
-        const errs: Record<string, string> = {};
         if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) {
-            errs.amount = 'Enter a valid amount.';
+            setErrors({ amount: 'Enter a valid amount' });
+            return;
         }
-        if (Object.keys(errs).length > 0) { setErrors(errs); return; }
+        setErrors({});
         onConfirm({ amount, date, note, payMode, transactionId });
     };
 
@@ -100,31 +98,28 @@ function PaymentDrawerModal({
 
     return (
         <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-            <KeyboardAvoidingView style={S.modalRoot} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+            <KeyboardAvoidingView style={{ flex: 1, backgroundColor: 'transparent', justifyContent: 'flex-end' }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
                 <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={onClose} />
-                <View style={S.drawerSheet}>
-                    <CardWatermark opacity={0.05} color={accentColor} />
-
-                    {/* Handle bar */}
-                    <View style={S.handleBar} />
-
+                <View style={[S.drawerSheet, { backgroundColor: isDark ? '#0F172A' : '#FFFFFF' }]}>
                     {/* Header */}
                     <View style={S.drawerHeader}>
-                        <View style={[S.drawerIconCircle, { backgroundColor: accentColor + '20' }]}>
-                            <Ionicons name={icon as any} size={22} color={accentColor} />
-                        </View>
-                        <View style={{ flex: 1, marginLeft: 12 }}>
-                            <Text style={S.drawerTitle}>{title}</Text>
-                            <Text style={S.drawerSub}>{staffName}</Text>
+                        <View style={{ flex: 1 }}>
+                            <Text style={[S.drawerTitle, { color: isDark ? '#F8FAFC' : '#0F172A' }]}>{title}</Text>
+                            <Text style={{ fontSize: 13, fontWeight: '700', color: accentColor, marginTop: 3 }}>
+                                👤 {staffName}
+                            </Text>
+                            <Text style={{ fontSize: 11, color: isDark ? '#94A3B8' : '#64748B', marginTop: 2 }}>
+                                {isAdvance ? 'Record salary advance given to staff' : 'Record full/partial salary payout'}
+                            </Text>
                         </View>
                         <TouchableOpacity onPress={onClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                            <X color="#94A3B8" size={22} />
+                            <X color="#64748B" size={20} />
                         </TouchableOpacity>
                     </View>
 
                     {/* Suggested amount banner (salary mode) */}
                     {mode === 'salary' && suggestedAmount > 0 && (
-                        <View style={[S.suggestedBanner, { backgroundColor: '#F0FDF4' }]}>
+                        <View style={[S.suggestedBanner, { backgroundColor: '#F0FDF4', borderColor: '#BBF7D0' }]}>
                             <CheckCircle size={16} color="#16A34A" />
                             <Text style={{ fontSize: 13, color: '#16A34A', fontWeight: '700', marginLeft: 8 }}>
                                 Suggested: {fmtAmount(suggestedAmount)} (Balance after advances)
@@ -135,36 +130,34 @@ function PaymentDrawerModal({
                     <ScrollView
                         showsVerticalScrollIndicator={false}
                         keyboardShouldPersistTaps="handled"
-                        contentContainerStyle={{ paddingBottom: 260 }}
+                        contentContainerStyle={{ paddingBottom: 350 }}
                     >
                         {/* Amount */}
-                        <Text style={S.label}>Amount (₹) <Text style={{ color: '#EF4444' }}>*</Text></Text>
-                        <View style={[S.amountBox, errors.amount && { borderColor: '#EF4444' }]}>
+                        <Text style={[S.label, { color: isDark ? '#CBD5E1' : '#475569' }]}>Amount (₹) <Text style={{ color: '#EF4444' }}>*</Text></Text>
+                        <View style={[
+                            S.amountBox,
+                            { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0' },
+                            errors.amount ? { borderColor: '#EF4444' } : {}
+                        ]}>
                             <IndianRupee size={18} color={accentColor} />
                             <TextInput
-                                style={S.amountInput}
+                                style={[S.amountInput, { color: isDark ? '#F8FAFC' : '#0F172A' }]}
                                 keyboardType="numeric"
                                 value={amount}
                                 onChangeText={t => { setAmount(t.replace(/[^0-9.]/g, '')); setErrors({}); }}
                                 placeholder="0"
-                                placeholderTextColor="#CBD5E1"
+                                placeholderTextColor={isDark ? '#475569' : '#CBD5E1'}
                             />
                         </View>
                         {errors.amount && <Text style={S.errText}>{errors.amount}</Text>}
 
-                        {/* Date */}
-                        <Text style={S.label}>Date <Text style={{ color: '#EF4444' }}>*</Text></Text>
-                        <TouchableOpacity style={S.dateField} onPress={() => setDatePickerVisible(true)}>
-                            <Calendar size={16} color="#64748B" />
-                            <Text style={S.dateText}>{date}</Text>
-                        </TouchableOpacity>
-
                         {/* Payment Mode */}
-                        <Text style={S.label}>Payment Method</Text>
+                        <Text style={[S.label, { color: isDark ? '#CBD5E1' : '#475569' }]}>Payment Method</Text>
                         <ScrollView
                             horizontal
                             showsHorizontalScrollIndicator={false}
-                            contentContainerStyle={{ gap: 8, paddingVertical: 4, marginBottom: 8 }}
+                            contentContainerStyle={{ gap: 8, paddingVertical: 4, paddingHorizontal: 2, marginBottom: 8 }}
+                            keyboardShouldPersistTaps="handled"
                         >
                             {MODES.map(m => {
                                 const active = payMode === m.id;
@@ -173,17 +166,27 @@ function PaymentDrawerModal({
                                         key={m.id}
                                         style={[
                                             S.modeChip,
-                                            active && { backgroundColor: accentColor, borderColor: accentColor }
+                                            {
+                                                backgroundColor: active ? accentColor + '15' : (isDark ? '#1E293B' : '#F8FAFC'),
+                                                borderColor: active ? accentColor : (isDark ? '#334155' : '#E2E8F0'),
+                                                borderWidth: active ? 1.5 : 1,
+                                            }
                                         ]}
                                         onPress={() => setPayMode(m.id)}
-                                        activeOpacity={0.8}
+                                        activeOpacity={0.75}
                                     >
                                         <Ionicons
                                             name={m.icon as any}
-                                            size={16}
-                                            color={active ? '#FFF' : '#64748B'}
+                                            size={15}
+                                            color={active ? accentColor : (isDark ? '#94A3B8' : '#64748B')}
                                         />
-                                        <Text style={[S.modeChipText, active && { color: '#FFF', fontWeight: '800' }]}>
+                                        <Text style={[
+                                            S.modeChipText,
+                                            {
+                                                color: active ? accentColor : (isDark ? '#CBD5E1' : '#475569'),
+                                                fontWeight: active ? '800' : '600'
+                                            }
+                                        ]}>
                                             {m.label}
                                         </Text>
                                     </TouchableOpacity>
@@ -191,29 +194,35 @@ function PaymentDrawerModal({
                             })}
                         </ScrollView>
 
+                        {/* Date */}
+                        <Text style={[S.label, { color: isDark ? '#CBD5E1' : '#475569' }]}>Payment Date <Text style={{ color: '#EF4444' }}>*</Text></Text>
+                        <TouchableOpacity
+                            style={[S.dateField, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0' }]}
+                            onPress={() => setDatePickerVisible(true)}
+                        >
+                            <Calendar size={15} color="#64748B" />
+                            <Text style={[S.dateText, { color: isDark ? '#F8FAFC' : '#0F172A' }]}>{date}</Text>
+                        </TouchableOpacity>
+
                         {/* Transaction ID (for UPI/Bank) */}
-                        {payMode !== 'Cash' && (
-                            <>
-                                <Text style={S.label}>Transaction ID (Optional)</Text>
-                                <TextInput
-                                    style={S.inputField}
-                                    value={transactionId}
-                                    onChangeText={setTransactionId}
-                                    placeholder="e.g. UPI-123456789"
-                                    placeholderTextColor="#CBD5E1"
-                                />
-                            </>
-                        )}
+                        <Text style={[S.label, { color: isDark ? '#CBD5E1' : '#475569' }]}>Transaction ID (Optional)</Text>
+                        <TextInput
+                            style={[S.inputField, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0', color: isDark ? '#F8FAFC' : '#0F172A' }]}
+                            value={transactionId}
+                            onChangeText={setTransactionId}
+                            placeholder="e.g. UPI-123456789"
+                            placeholderTextColor={isDark ? '#475569' : '#CBD5E1'}
+                        />
 
                         {/* Note */}
-                        <Text style={S.label}>Reason / Note</Text>
+                        <Text style={[S.label, { color: isDark ? '#CBD5E1' : '#475569' }]}>Reason / Note (Optional)</Text>
                         <TextInput
-                            style={[S.inputField, { height: 72, textAlignVertical: 'top' }]}
+                            style={[S.inputField, { height: 75, textAlignVertical: 'top', backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0', color: isDark ? '#F8FAFC' : '#0F172A' }]}
                             value={note}
                             onChangeText={setNote}
                             multiline
-                            placeholder={isAdvance ? 'e.g. Medical emergency, urgent need...' : 'e.g. Full month salary payment'}
-                            placeholderTextColor="#CBD5E1"
+                            placeholder={isAdvance ? 'e.g. Medical emergency, urgent festival advance...' : 'e.g. Full month wage payout'}
+                            placeholderTextColor={isDark ? '#475569' : '#CBD5E1'}
                         />
 
                         <View style={{ height: 16 }} />
@@ -223,13 +232,16 @@ function PaymentDrawerModal({
                             style={[S.submitBtn, { backgroundColor: accentColor }, loading && { opacity: 0.6 }]}
                             onPress={handleSubmit}
                             disabled={loading}
+                            activeOpacity={0.8}
                         >
                             {loading ? (
                                 <ActivityIndicator color="#FFF" />
                             ) : (
-                                <Text style={S.submitBtnText}>{isAdvance ? 'Record Advance' : 'Record Salary Payment'}</Text>
+                                <Text style={S.submitBtnText}>{isAdvance ? `Record Advance for ${staffName}` : `Pay Salary to ${staffName}`}</Text>
                             )}
                         </TouchableOpacity>
+
+                        <View style={{ height: 180 }} />
                     </ScrollView>
                 </View>
             </KeyboardAvoidingView>

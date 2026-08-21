@@ -78,79 +78,65 @@ export function StaffPaymentDrawer({
 
             <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
                 <KeyboardAvoidingView
-                    style={S.modalRoot}
+                    style={{ flex: 1, backgroundColor: 'transparent', justifyContent: 'flex-end' }}
                     behavior={Platform.OS === 'ios' ? 'padding' : undefined}
                 >
                     <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={onClose} />
-                    <View style={S.drawerContent}>
-                        {/* Beautiful building watermark background */}
-                        <CardWatermark opacity={0.06} color={themeColor} />
-
+                    <View style={[S.drawerContent, { backgroundColor: isDark ? '#0F172A' : '#FFFFFF' }]}>
                         {/* Header */}
                         <View style={S.drawerHeader}>
-                            <Text style={S.drawerTitle}>Record Wage Payment</Text>
-                            <TouchableOpacity
-                                onPress={onClose}
-                                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                            >
+                            <View style={{ flex: 1 }}>
+                                <Text style={[S.drawerTitle, { color: isDark ? '#F8FAFC' : '#0F172A' }]}>Record Wage Payment</Text>
+                                <Text style={{ fontSize: 13, fontWeight: '700', color: themeColor, marginTop: 3 }}>
+                                    👤 {staffName}
+                                </Text>
+                                <Text style={{ fontSize: 11, color: isDark ? '#94A3B8' : '#64748B', marginTop: 2 }}>
+                                    Staff Salary & Advance Payment
+                                </Text>
+                            </View>
+                            <TouchableOpacity onPress={onClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
                                 <X color="#64748B" size={20} />
                             </TouchableOpacity>
                         </View>
 
-                        {/* Summary banner */}
-                        <View style={[S.infoSummary, { backgroundColor: themeColor + '10' }]}>
-                            <Text style={[S.summaryAmtLabel, { color: themeColor }]}>Paying to {staffName}</Text>
+                        {/* Banner */}
+                        <View style={[S.infoSummary, { backgroundColor: themeColor + '12' }]}>
+                            <View>
+                                <Text style={{ fontSize: 13, fontWeight: '800', color: themeColor }}>Amount to Pay</Text>
+                                <Text style={{ fontSize: 11, color: isDark ? '#94A3B8' : '#64748B' }}>Enter amount given</Text>
+                            </View>
+                            <Text style={{ fontSize: 22, fontWeight: '900', color: isDark ? '#F8FAFC' : '#0F172A' }}>
+                                ₹{payAmount ? Number(payAmount).toLocaleString('en-IN') : '0'}
+                            </Text>
                         </View>
 
                         <ScrollView
                             showsVerticalScrollIndicator={false}
                             keyboardShouldPersistTaps="handled"
-                            contentContainerStyle={{ paddingBottom: 240 }}
+                            contentContainerStyle={{ paddingBottom: 350 }}
                         >
                             {/* Amount */}
-                            <Text style={S.label}>Amount (₹) <Text style={{ color: '#EF4444' }}>*</Text></Text>
+                            <Text style={[S.label, { color: isDark ? '#CBD5E1' : '#475569' }]}>Amount (₹) <Text style={{ color: '#EF4444' }}>*</Text></Text>
                             <TextInput
-                                style={[S.inputField, errors.amount && { borderColor: '#EF4444', borderWidth: 1.5, backgroundColor: '#FEF2F2' }]}
+                                style={[
+                                    S.inputField,
+                                    { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0', color: isDark ? '#F8FAFC' : '#0F172A' },
+                                    errors.amount && { borderColor: '#EF4444', borderWidth: 1.5, backgroundColor: isDark ? '#3B1A1A' : '#FEF2F2' }
+                                ]}
                                 keyboardType="numeric"
                                 value={payAmount}
                                 onChangeText={(t) => setPayAmount(t.replace(/[^0-9.]/g, ''))}
-                                placeholder="Enter amount"
-                                placeholderTextColor="#CBD5E1"
+                                placeholder="e.g. 5000"
+                                placeholderTextColor={isDark ? '#475569' : '#CBD5E1'}
                             />
-                            {errors.amount && <Text style={{ color: '#EF4444', fontSize: 12, marginTop: -2, marginBottom: 8, fontWeight: '500' }}>{errors.amount}</Text>}
-
-                            {/* Date and Days Row */}
-                            <View style={S.row}>
-                                <View style={{ flex: 1, marginRight: 6 }}>
-                                    <Text style={S.label}>Payment Date <Text style={{ color: '#EF4444' }}>*</Text></Text>
-                                    <TouchableOpacity
-                                        style={[S.dateField, errors.date && { borderColor: '#EF4444', borderWidth: 1.5, backgroundColor: '#FEF2F2' }]}
-                                        onPress={() => setDatePickerVisibility(true)}
-                                    >
-                                        <Calendar size={14} color="#64748B" />
-                                        <Text style={S.dateTextLabel}>{payDate}</Text>
-                                    </TouchableOpacity>
-                                    {errors.date && <Text style={{ color: '#EF4444', fontSize: 12, marginTop: -2, marginBottom: 8, fontWeight: '500' }}>{errors.date}</Text>}
-                                </View>
-                                <View style={{ flex: 1, marginLeft: 6 }}>
-                                    <Text style={S.label}>Days Worked</Text>
-                                    <TextInput
-                                        style={S.inputField}
-                                        keyboardType="numeric"
-                                        value={payDays}
-                                        onChangeText={(t) => setPayDays(t.replace(/[^0-9]/g, ''))}
-                                        placeholder="Optional"
-                                        placeholderTextColor="#CBD5E1"
-                                    />
-                                </View>
-                            </View>
+                            {errors.amount && <Text style={{ color: '#EF4444', fontSize: 12, marginTop: 4, marginBottom: 4, fontWeight: '600' }}>{errors.amount}</Text>}
 
                             {/* Payment Mode Scroll */}
-                            <Text style={S.label}>Payment Method</Text>
+                            <Text style={[S.label, { color: isDark ? '#CBD5E1' : '#475569' }]}>Payment Method</Text>
                             <ScrollView
                                 horizontal
                                 showsHorizontalScrollIndicator={false}
-                                contentContainerStyle={S.modeScrollContainer}
+                                contentContainerStyle={{ gap: 8, paddingVertical: 4, paddingHorizontal: 2, marginBottom: 8 }}
                                 keyboardShouldPersistTaps="handled"
                             >
                                 {paymentModes.map((item) => {
@@ -171,14 +157,14 @@ export function StaffPaymentDrawer({
                                         >
                                             <Ionicons
                                                 name={item.icon as any}
-                                                size={16}
+                                                size={15}
                                                 color={active ? themeColor : (isDark ? '#94A3B8' : '#64748B')}
                                             />
                                             <Text style={[
                                                 S.modeChipText,
                                                 {
                                                     color: active ? themeColor : (isDark ? '#CBD5E1' : '#475569'),
-                                                    fontWeight: active ? '700' : '500'
+                                                    fontWeight: active ? '800' : '600'
                                                 }
                                             ]}>
                                                 {item.label}
@@ -188,38 +174,68 @@ export function StaffPaymentDrawer({
                                 })}
                             </ScrollView>
 
+                            {/* Date and Days Row */}
+                            <View style={S.row}>
+                                <View style={{ flex: 1, marginRight: 6 }}>
+                                    <Text style={[S.label, { color: isDark ? '#CBD5E1' : '#475569' }]}>Payment Date <Text style={{ color: '#EF4444' }}>*</Text></Text>
+                                    <TouchableOpacity
+                                        style={[
+                                            S.dateField,
+                                            { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0' },
+                                            errors.date && { borderColor: '#EF4444', borderWidth: 1.5, backgroundColor: isDark ? '#3B1A1A' : '#FEF2F2' }
+                                        ]}
+                                        onPress={() => setDatePickerVisibility(true)}
+                                    >
+                                        <Calendar size={14} color="#64748B" />
+                                        <Text style={[S.dateTextLabel, { color: isDark ? '#F8FAFC' : '#0F172A' }]}>{payDate}</Text>
+                                    </TouchableOpacity>
+                                    {errors.date && <Text style={{ color: '#EF4444', fontSize: 12, marginTop: 4, marginBottom: 4, fontWeight: '600' }}>{errors.date}</Text>}
+                                </View>
+                                <View style={{ flex: 1, marginLeft: 6 }}>
+                                    <Text style={[S.label, { color: isDark ? '#CBD5E1' : '#475569' }]}>Days Worked</Text>
+                                    <TextInput
+                                        style={[S.inputField, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0', color: isDark ? '#F8FAFC' : '#0F172A' }]}
+                                        keyboardType="numeric"
+                                        value={payDays}
+                                        onChangeText={(t) => setPayDays(t.replace(/[^0-9]/g, ''))}
+                                        placeholder="e.g. 30"
+                                        placeholderTextColor={isDark ? '#475569' : '#CBD5E1'}
+                                    />
+                                </View>
+                            </View>
+
                             {/* Transaction ID */}
-                            <Text style={S.label}>Transaction ID (Optional)</Text>
+                            <Text style={[S.label, { color: isDark ? '#CBD5E1' : '#475569' }]}>Transaction ID (Optional)</Text>
                             <TextInput
-                                style={S.inputField}
+                                style={[S.inputField, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0', color: isDark ? '#F8FAFC' : '#0F172A' }]}
                                 value={payTransactionId}
                                 onChangeText={setPayTransactionId}
                                 placeholder="e.g. UPI-123456"
-                                placeholderTextColor="#CBD5E1"
+                                placeholderTextColor={isDark ? '#475569' : '#CBD5E1'}
                             />
 
                             {/* Receipt Number */}
-                            <Text style={S.label}>Receipt Number (Optional)</Text>
+                            <Text style={[S.label, { color: isDark ? '#CBD5E1' : '#475569' }]}>Receipt Number (Optional)</Text>
                             <TextInput
-                                style={S.inputField}
+                                style={[S.inputField, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0', color: isDark ? '#F8FAFC' : '#0F172A' }]}
                                 value={payReceiptNumber}
                                 onChangeText={setPayReceiptNumber}
                                 placeholder="e.g. REC-789"
-                                placeholderTextColor="#CBD5E1"
+                                placeholderTextColor={isDark ? '#475569' : '#CBD5E1'}
                             />
 
                             {/* Notes */}
-                            <Text style={S.label}>Notes</Text>
+                            <Text style={[S.label, { color: isDark ? '#CBD5E1' : '#475569' }]}>Notes / Reason (Optional)</Text>
                             <TextInput
-                                style={[S.inputField, { height: 64, textAlignVertical: 'top' }]}
+                                style={[S.inputField, { height: 75, textAlignVertical: 'top', backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0', color: isDark ? '#F8FAFC' : '#0F172A' }]}
                                 value={payNotes}
                                 onChangeText={setPayNotes}
                                 multiline
-                                placeholder="Any remarks..."
-                                placeholderTextColor="#CBD5E1"
+                                placeholder="Any remarks or advance reason..."
+                                placeholderTextColor={isDark ? '#475569' : '#CBD5E1'}
                             />
 
-                            <View style={{ height: 14 }} />
+                            <View style={{ height: 16 }} />
 
                             {/* Submit */}
                             <TouchableOpacity
@@ -237,9 +253,11 @@ export function StaffPaymentDrawer({
                                         <Text style={S.submitBtnText}>Processing...</Text>
                                     </View>
                                 ) : (
-                                    <Text style={S.submitBtnText}>Proceed to Pay</Text>
+                                    <Text style={S.submitBtnText}>Record Payment for {staffName}</Text>
                                 )}
                             </TouchableOpacity>
+
+                            <View style={{ height: 180 }} />
                         </ScrollView>
                     </View>
                 </KeyboardAvoidingView>

@@ -734,11 +734,11 @@ export default function AddStaffScreen() {
                 {/* Additional Notes */}
                 <View style={styles.formCard}>
                     <Text style={styles.sectionTitle}>📝 Additional Notes</Text>
-                    <View style={[styles.inputContainer, { height: 80, alignItems: 'flex-start', paddingTop: 10 }]}>
+                    <View style={[styles.inputContainer, { height: 85, alignItems: 'flex-start', paddingTop: 10 }]}>
                         <Ionicons name="document-text-outline" size={18} color={theme.primary} style={[styles.inputIcon, { marginTop: 2 }]} />
                         <TextInput
-                            style={[styles.input, { height: 60, textAlignVertical: 'top' }]}
-                            placeholder="Add any internal remarks..."
+                            style={[styles.input, { height: 65, textAlignVertical: 'top' }]}
+                            placeholder="Add any internal remarks, address, emergency contact..."
                             placeholderTextColor="#A0AEC0"
                             multiline
                             value={notes}
@@ -746,6 +746,9 @@ export default function AddStaffScreen() {
                         />
                     </View>
                 </View>
+
+                {/* Generous bottom spacing so sticky footer and keyboard never block notes or last inputs */}
+                <View style={{ height: 260 }} />
             </ScrollView>
 
             {/* Sticky Footer */}
