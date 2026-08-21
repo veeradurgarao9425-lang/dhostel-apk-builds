@@ -63,29 +63,41 @@ export const runOwnerDailyAlerts = async () => {
       reminderNotified++;
     }
 
-    // 3. Daily dues and overdues summary for owners
+    // 3. Daily dues and overdues summary for owners (Active residents only)
     const hostels = await db('hostel_master').where('is_active', 1);
     let duesSummariesNotified = 0;
     for (const h of hostels) {
       try {
-        const overdueStats = await db('monthly_fees')
-          .where('hostel_id', h.hostel_id)
-          .whereNot('fee_status', 'Fully Paid')
-          .whereRaw('due_date < CURDATE()')
-          .count('fee_id as count')
-          .first();
-        
-        const dueTodayStats = await db('monthly_fees')
-          .where('hostel_id', h.hostel_id)
-          .whereNot('fee_status', 'Fully Paid')
-          .whereRaw('due_date = CURDATE()')
-          .count('fee_id as count')
+        // Find active students only (status = 1) who have an overdue balance
+        const overdueStats = await db('monthly_fees as mf')
+          .join('students as s', 'mf.student_id', 's.student_id')
+          .where('mf.hostel_id', h.hostel_id)
+          .where('s.status', 1)
+          .where('mf.balance', '>', 0)
+          .whereIn('mf.fee_status', ['Pending', 'Partially Paid', 'Overdue'])
+          .whereRaw('mf.due_date < CURDATE()')
+          .count('mf.fee_id as count')
           .first();
 
-        const totalPendingStats = await db('monthly_fees')
-          .where('hostel_id', h.hostel_id)
-          .whereNot('fee_status', 'Fully Paid')
-          .sum('balance as total')
+        // Find active students with due today
+        const dueTodayStats = await db('monthly_fees as mf')
+          .join('students as s', 'mf.student_id', 's.student_id')
+          .where('mf.hostel_id', h.hostel_id)
+          .where('s.status', 1)
+          .where('mf.balance', '>', 0)
+          .whereIn('mf.fee_status', ['Pending', 'Partially Paid', 'Overdue'])
+          .whereRaw('mf.due_date = CURDATE()')
+          .count('mf.fee_id as count')
+          .first();
+
+        // Total pending for active students
+        const totalPendingStats = await db('monthly_fees as mf')
+          .join('students as s', 'mf.student_id', 's.student_id')
+          .where('mf.hostel_id', h.hostel_id)
+          .where('s.status', 1)
+          .where('mf.balance', '>', 0)
+          .whereIn('mf.fee_status', ['Pending', 'Partially Paid', 'Overdue'])
+          .sum('mf.balance as total')
           .first();
 
         const overdueCount = Number(overdueStats?.count || 0);
@@ -93,14 +105,22 @@ export const runOwnerDailyAlerts = async () => {
         const pendingAmount = Number(totalPendingStats?.total || 0);
 
         if (overdueCount > 0 || dueTodayCount > 0) {
-          await sendNotificationToHostelOwner(
-            h.hostel_id,
-            'System Alert',
-            'Daily Dues Summary',
-            `Dues summary: ${dueTodayCount} due today, ${overdueCount} overdue. Total pending: ₹${pendingAmount.toLocaleString('en-IN')}.`,
-            'High'
-          );
-          duesSummariesNotified++;
+          // Check if already notified today for this hostel to prevent duplicate notifications
+          const alreadyNotified = await db('notifications')
+            .where({ hostel_id: h.hostel_id, title: 'Daily Dues Summary' })
+            .whereRaw('DATE(created_at) = CURDATE()')
+            .first();
+
+          if (!alreadyNotified) {
+            await sendNotificationToHostelOwner(
+              h.hostel_id,
+              'System Alert',
+              'Daily Dues Summary',
+              `Dues summary: ${dueTodayCount} due today, ${overdueCount} overdue. Total pending: ₹${pendingAmount.toLocaleString('en-IN')}.`,
+              'High'
+            );
+            duesSummariesNotified++;
+          }
         }
       } catch (err: any) {
         console.error(`[ownerDailyAlerts] dues summary notify failed for hostel ${h.hostel_id}:`, err?.message);
