@@ -1444,13 +1444,14 @@ export const vacateSettlement = async (req: AuthRequest, res: Response) => {
       const refundAmount = Math.max(0, originalDeposit - Number(damageDeductions));
 
       // If there are damages, record it as income (Deposit Deduction)
+      const todayDateStr = new Date().toISOString().split('T')[0];
       if (Number(damageDeductions) > 0) {
         await trx('income').insert({
           hostel_id: student.hostel_id,
           amount: Number(damageDeductions),
           source: `Deposit Deduction (${studentFullName}) - ${finalReason}`,
           payment_mode_id: 1, // Default Cash
-          income_date: new Date(),
+          income_date: todayDateStr,
           created_at: new Date()
         });
       }
@@ -1459,18 +1460,26 @@ export const vacateSettlement = async (req: AuthRequest, res: Response) => {
       if (refundAmount > 0) {
         let refundCat = await trx('expense_categories').where({ category_name: 'Deposit Refunds' }).first().catch(() => null);
         if (!refundCat) {
-          refundCat = await trx('expense_categories').where({ name: 'Deposit Refunds' }).first().catch(() => null);
-        }
-        if (!refundCat) {
           refundCat = await trx('expense_categories').where('category_name', 'like', '%refund%').first().catch(() => null);
         }
+        if (!refundCat) {
+          try {
+            const [newCatId] = await trx('expense_categories').insert({
+              category_name: 'Deposit Refunds',
+              description: 'Refund of security deposits upon vacate'
+            });
+            refundCat = { category_id: newCatId };
+          } catch {
+            refundCat = await trx('expense_categories').where({ category_id: 7 }).first().catch(() => null);
+          }
+        }
 
-        const categoryId = refundCat?.category_id || refundCat?.id || 6;
+        const categoryId = refundCat?.category_id || refundCat?.id || 7;
 
         await trx('expenses').insert({
           hostel_id: student.hostel_id,
           category_id: categoryId,
-          expense_date: new Date(),
+          expense_date: todayDateStr,
           amount: refundAmount,
           payment_mode_id: 1, // Defaulting to Cash
           vendor_name: studentFullName,

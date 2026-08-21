@@ -35,6 +35,8 @@ const CAT_COLORS: Record<string, string> = {
     'cleaning': '#EF4444',
     'water': '#0EA5E9',
     'lift': '#6366F1',
+    'refund': '#EF4444',
+    'deposit': '#F43F5E',
     'other': '#64748B',
     'others': '#64748B',
     'misc': '#64748B',
@@ -54,6 +56,8 @@ const CAT_ICONS: Record<string, string> = {
     'cleaning': 'brush-sharp',
     'water': 'water-sharp',
     'lift': 'swap-vertical-sharp',
+    'refund': 'arrow-undo-sharp',
+    'deposit': 'cash-sharp',
     'other': 'receipt-sharp',
     'others': 'receipt-sharp',
     'misc': 'receipt-sharp',
@@ -470,13 +474,20 @@ export default function OverviewScreen() {
 
                     {/* ── Expense Breakdown ── */}
                     <View style={[s.card, darkCard]}>
-                        <View style={s.cardHeader}>
+                        <TouchableOpacity 
+                            style={s.cardHeader}
+                            onPress={() => navigation.navigate('Expenses')}
+                            activeOpacity={0.7}
+                        >
                             <View style={s.cardHeaderLeft}>
                                 <Ionicons name="pie-chart-outline" size={18} color="#7C3AED" />
                                 <Text style={[s.cardTitle, { color: isDark ? '#F1F5F9' : '#1E293B' }]}>{t('overview.expenseBreakdown')}</Text>
                             </View>
-                            <Text style={s.cardMeta}>{fmtFull(cm.totalExpenses || 0)}</Text>
-                        </View>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                <Text style={s.cardMeta}>{fmtFull(cm.totalExpenses || 0)}</Text>
+                                <Ionicons name="chevron-forward" size={16} color={isDark ? '#94A3B8' : '#64748B'} />
+                            </View>
+                        </TouchableOpacity>
 
                         {(cm.expenseBreakdown || []).length === 0 ? (
                             <View style={s.emptyBlock}>
@@ -485,24 +496,33 @@ export default function OverviewScreen() {
                             </View>
                         ) : (
                             <View style={{ gap: 14 }}>
-                                {(cm.expenseBreakdown || []).map((cat: any, i: number) => {
+                                {(cm.expenseBreakdown || []).slice(0, 5).map((cat: any, i: number) => {
                                     const color = getColor(cat.category_name);
                                     const lightColor = getLightColor(color);
                                     const iconName = getIcon(cat.category_name);
                                     return (
-                                        <View key={cat.category_id || i}>
+                                        <TouchableOpacity 
+                                            key={cat.category_id || i}
+                                            onPress={() => navigation.navigate('Expenses', { categoryId: cat.category_id > 0 ? cat.category_id : undefined })}
+                                            activeOpacity={0.7}
+                                        >
                                             <View style={s.catRow}>
                                                 <View style={s.catLeft}>
                                                     <View style={[s.catIconBox, { backgroundColor: isDark ? color + '30' : lightColor }]}>
                                                         <Ionicons name={iconName as any} size={15} color={color} />
                                                     </View>
-                                                    <Text style={[s.catName, { color: isDark ? '#E2E8F0' : '#334155' }]}>{cat.category_name}</Text>
+                                                    <View>
+                                                        <Text style={[s.catName, { color: isDark ? '#E2E8F0' : '#334155' }]}>{cat.category_name}</Text>
+                                                        {cat.percentage > 0 && (
+                                                            <Text style={{ fontSize: 11, color: isDark ? '#94A3B8' : '#64748B', fontWeight: '500' }}>{cat.percentage}% of total</Text>
+                                                        )}
+                                                    </View>
                                                 </View>
                                                 <View style={s.catRight}>
                                                     <Text style={[s.catAmount, { color: isDark ? '#F8FAFC' : '#1E293B' }]}>{fmtFull(cat.amount)}</Text>
                                                 </View>
                                             </View>
-                                        </View>
+                                        </TouchableOpacity>
                                     );
                                 })}
                             </View>

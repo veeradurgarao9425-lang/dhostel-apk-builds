@@ -218,6 +218,22 @@ export async function patchDatabaseSchema() {
       console.error('[schema-patch] Error creating core parent tables:', e.message);
     }
 
+    // Ensure 'Deposit Refunds' category exists in expense_categories
+    try {
+      if (tableNamesLower.includes('expense_categories')) {
+        const cat = await db('expense_categories').where({ category_name: 'Deposit Refunds' }).first();
+        if (!cat) {
+          await db('expense_categories').insert({
+            category_name: 'Deposit Refunds',
+            description: 'Refund of security deposits upon vacate'
+          });
+          console.log('[schema-patch] Seeded Deposit Refunds into expense_categories');
+        }
+      }
+    } catch (e: any) {
+      console.warn('[schema-patch] Could not seed Deposit Refunds:', e.message);
+    }
+
     // 1. Ensure fee_history exists
     try {
       if (!tableNamesLower.includes('fee_history')) {
