@@ -4,9 +4,9 @@ import { sendEmail } from '../utils/email.js';
 import { getMonthlyReportTemplate } from '../utils/emailTemplates.js';
 
 export const startMonthlyReportsJob = () => {
-  // Run 1st of every month at 9:00 AM
-  cron.schedule('0 9 1 * *', async () => {
-    console.log('[Cron] Running monthly business report job...');
+  // Run 10th of every month at 12:00 AM Midnight
+  cron.schedule('0 0 10 * *', async () => {
+    console.log('[Cron] Running 10th of month business report job...');
     try {
       const hostels = await db('hostel_master')
         .join('users', 'hostel_master.owner_id', '=', 'users.user_id')

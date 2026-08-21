@@ -59,6 +59,13 @@ const sendViaBrevo = async (options: EmailOptions): Promise<boolean> => {
   const apiKey = (process.env.BREVO_API_KEY || '').trim();
   if (!apiKey) return false;
 
+  // Brevo HTTP API requires a REST API key (starts with 'xkeysib-').
+  // If user configured an SMTP password (starts with 'xsmtpsib-'), log a helpful note.
+  if (apiKey.startsWith('xsmtpsib-')) {
+    console.warn('⚠️ BREVO_API_KEY starts with "xsmtpsib-", which is an SMTP key. Brevo REST API requires an API key starting with "xkeysib-".');
+    return false;
+  }
+
   const sender = parseSender();
   const payload: any = {
     sender: { name: sender.name, email: sender.email },
@@ -76,6 +83,7 @@ const sendViaBrevo = async (options: EmailOptions): Promise<boolean> => {
 
   const res = await fetch('https://api.brevo.com/v3/smtp/email', {
     method: 'POST',
+    signal: AbortSignal.timeout(6000),
     headers: {
       'accept': 'application/json',
       'api-key': apiKey,
@@ -114,6 +122,7 @@ const sendViaResend = async (options: EmailOptions): Promise<boolean> => {
 
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
+    signal: AbortSignal.timeout(6000),
     headers: {
       'Authorization': `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
@@ -153,6 +162,7 @@ const sendViaSendGrid = async (options: EmailOptions): Promise<boolean> => {
 
   const res = await fetch('https://api.sendgrid.com/v3/mail/send', {
     method: 'POST',
+    signal: AbortSignal.timeout(6000),
     headers: {
       'Authorization': `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
@@ -191,6 +201,7 @@ const sendViaEmailJS = async (options: EmailOptions): Promise<boolean> => {
 
   const res = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
     method: 'POST',
+    signal: AbortSignal.timeout(6000),
     headers: {
       'Content-Type': 'application/json',
       'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
