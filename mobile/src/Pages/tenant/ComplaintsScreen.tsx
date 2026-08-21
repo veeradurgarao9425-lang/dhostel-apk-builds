@@ -11,6 +11,7 @@ import { useToast } from '../../../contexts/ToastContext';
 import api from '../../services/api';
 import { AppHeader, SkeletonListRow, EmptyState } from '../../components/tenant/ui';
 import { LinearGradient } from 'expo-linear-gradient';
+import { getResolvedImageUrl } from '../../utils/imageHelper';
 
 const { width } = Dimensions.get('window');
 
@@ -103,6 +104,7 @@ function ComplaintDetailView({ complaint, onClose }: { complaint: any; onClose: 
   const status = statusConfig[statusKey] ?? statusConfig['Open'];
   const statusColor = status.text;
   const statusBg = status.bg;
+  const [zoomImage, setZoomImage] = useState<string | null>(null);
 
   return (
     <View style={{ flex: 1, backgroundColor: WHITE }}>
@@ -157,24 +159,70 @@ function ComplaintDetailView({ complaint, onClose }: { complaint: any; onClose: 
         <View style={s.detailSection}>
           <Text style={s.detailLbl}>Description</Text>
           <View style={{ backgroundColor: WHITE, padding: 16, borderRadius: 16, borderWidth: 1, borderColor: '#F1F5F9', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 8, elevation: 1 }}>
-            <Text style={s.detailValText}>{complaint.note || 'No description provided.'}</Text>
+            <Text style={s.detailValText}>{complaint.description || complaint.note || 'No description provided.'}</Text>
           </View>
         </View>
 
-        <View style={s.detailSection}>
-          <Text style={s.detailLbl}>Attachments</Text>
-          <View style={s.attachmentsRow}>
-            {/* Mock Image Previews */}
-            <View style={s.largeImgBox}>
-              <FileImage size={32} color={TEXT_MID} />
+        {/* Attachments Section */}
+        {(() => {
+          let attachedList: string[] = [];
+          if (complaint.image_urls) {
+            try {
+              if (Array.isArray(complaint.image_urls)) {
+                attachedList = complaint.image_urls;
+              } else if (typeof complaint.image_urls === 'string') {
+                if (complaint.image_urls.startsWith('[')) {
+                  attachedList = JSON.parse(complaint.image_urls);
+                } else {
+                  attachedList = complaint.image_urls.split(',').map((u: string) => u.trim());
+                }
+              }
+            } catch (e) {
+              attachedList = [complaint.image_urls];
+            }
+          }
+
+          if (attachedList.length === 0) return null;
+
+          return (
+            <View style={s.detailSection}>
+              <Text style={s.detailLbl}>Attachments ({attachedList.length})</Text>
+              <View style={s.attachmentsRow}>
+                {attachedList.map((imgUri: string, idx: number) => {
+                  const resolved = getResolvedImageUrl(imgUri);
+                  return (
+                    <TouchableOpacity 
+                      key={idx} 
+                      style={s.largeImgBox} 
+                      onPress={() => setZoomImage(resolved)}
+                      activeOpacity={0.8}
+                    >
+                      {resolved ? (
+                        <Image source={{ uri: resolved }} style={s.attachmentImg} />
+                      ) : (
+                        <FileImage size={32} color={TEXT_MID} />
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
             </View>
-            <View style={s.largeImgBox}>
-              <FileImage size={32} color={TEXT_MID} />
-            </View>
-          </View>
-        </View>
+          );
+        })()}
         
       </ScrollView>
+
+      {/* Fullscreen Image Zoom Modal */}
+      <Modal visible={!!zoomImage} transparent animationType="fade" onRequestClose={() => setZoomImage(null)}>
+        <View style={s.zoomModalContainer}>
+          <TouchableOpacity style={s.zoomCloseBtn} onPress={() => setZoomImage(null)}>
+            <X size={24} color="#FFF" />
+          </TouchableOpacity>
+          {zoomImage && (
+            <Image source={{ uri: zoomImage }} style={s.zoomedImage} resizeMode="contain" />
+          )}
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -208,21 +256,52 @@ function StepperForm({ visible, onClose, onSubmit, hostelId }: { visible: boolea
 
   if (!visible) return null;
 
-  const handleUpload = async () => {
-    try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsMultipleSelection: true,
-        selectionLimit: 3 - images.length,
-        quality: 0.8,
-      });
-      if (!result.canceled && result.assets) {
-        const newImages = result.assets.map(a => a.uri);
-        setImages(prev => [...prev, ...newImages].slice(0, 3));
-      }
-    } catch (e) {
-      console.log('Image picker error', e);
-    }
+  const handleUpload = () => {
+    Alert.alert('Add Photo Attachment', 'Choose an option', [
+      {
+        text: '📷 Take Photo',
+        onPress: async () => {
+          try {
+            const perm = await ImagePicker.requestCameraPermissionsAsync();
+            if (!perm.granted) {
+              Alert.alert('Permission Required', 'Camera permission is needed.');
+              return;
+            }
+            const res = await ImagePicker.launchCameraAsync({ quality: 0.7 });
+            if (!res.canceled && res.assets && res.assets.length > 0) {
+              setImages(prev => [...prev, res.assets[0].uri].slice(0, 3));
+            }
+          } catch (e) {
+            console.error('Camera error', e);
+          }
+        }
+      },
+      {
+        text: '🖼️ Choose from Gallery',
+        onPress: async () => {
+          try {
+            const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+            if (!perm.granted) {
+              Alert.alert('Permission Required', 'Media library access is needed.');
+              return;
+            }
+            const result = await ImagePicker.launchImageLibraryAsync({
+              mediaTypes: ImagePicker.MediaTypeOptions.Images,
+              allowsMultipleSelection: true,
+              selectionLimit: 3 - images.length,
+              quality: 0.7,
+            });
+            if (!result.canceled && result.assets) {
+              const newImages = result.assets.map(a => a.uri);
+              setImages(prev => [...prev, ...newImages].slice(0, 3));
+            }
+          } catch (e) {
+            console.error('Gallery error', e);
+          }
+        }
+      },
+      { text: 'Cancel', style: 'cancel' }
+    ]);
   };
 
   const removeImage = (index: number) => {
@@ -247,16 +326,18 @@ function StepperForm({ visible, onClose, onSubmit, hostelId }: { visible: boolea
       images.forEach((uri, i) => {
         const ext = uri.split('.').pop() || 'jpg';
         formData.append('images', {
-          uri,
+          uri: Platform.OS === 'android' ? uri : uri.replace('file://', ''),
           name: `complaint-${i}.${ext}`,
           type: `image/${ext === 'jpg' ? 'jpeg' : ext}`,
         } as any);
       });
       await api.post('/complaints/tenant', formData);
+      showSuccess('Complaint submitted successfully!');
       onSubmit();
       onClose();
     } catch (e) {
       console.error('Failed to submit complaint', e);
+      showError('Failed to submit complaint');
     } finally {
       setSubmitting(false);
     }
@@ -674,7 +755,11 @@ const s = StyleSheet.create({
   detailLbl: { fontSize: 14, fontWeight: '800', color: TEXT_DARK, marginBottom: 8 },
   detailValText: { fontSize: 15, color: TEXT_MID, lineHeight: 24 },
   attachmentsRow: { flexDirection: 'row', gap: 16 },
-  largeImgBox: { flex: 1, height: 120, borderRadius: 16, backgroundColor: '#F3F4F6', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#E5E7EB' },
+  largeImgBox: { flex: 1, height: 120, borderRadius: 16, backgroundColor: '#F3F4F6', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#E5E7EB', overflow: 'hidden' },
+  attachmentImg: { width: '100%', height: '100%', borderRadius: 14, resizeMode: 'cover' },
+  zoomModalContainer: { flex: 1, backgroundColor: 'rgba(0,0,0,0.92)', justifyContent: 'center', alignItems: 'center' },
+  zoomCloseBtn: { position: 'absolute', top: 48, right: 20, zIndex: 10, backgroundColor: 'rgba(255,255,255,0.2)', padding: 8, borderRadius: 20 },
+  zoomedImage: { width: '90%', height: '80%' },
   
   bottomBar: { padding: 20, paddingBottom: Platform.OS === 'ios' ? 50 : 36, backgroundColor: WHITE, borderTopWidth: 1, borderTopColor: BORDER },
   btnBlue: { backgroundColor: BLUE, paddingVertical: 16, borderRadius: 16, alignItems: 'center' },

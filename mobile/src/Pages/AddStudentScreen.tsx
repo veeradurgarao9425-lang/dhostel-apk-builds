@@ -1220,7 +1220,7 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
                 ref={scrollViewRef}
                 style={styles.content}
                 showsVerticalScrollIndicator={false}
-                contentContainerStyle={[styles.scrollContent, { paddingBottom: (isKeyboardVisible ? 180 : 100) + insets.bottom }]}
+                contentContainerStyle={[styles.scrollContent, { paddingBottom: (isKeyboardVisible ? 320 : 180) + insets.bottom }]}
                 keyboardShouldPersistTaps="handled"
             >
                 {/* Self-registration QR Option */}

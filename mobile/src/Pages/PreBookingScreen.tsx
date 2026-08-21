@@ -682,7 +682,7 @@ export default function PreBookingScreen({ navigation, route }: any) {
         if (!formData.expected_join_date) e.expected_join_date = 'Expected join date is required';
         if (!formData.room_id) e.room_id = 'Room allocation is strictly mandatory';
         setErrors(e);
-        return Object.keys(e).length === 0;
+        return e;
     };
 
     const checkUnique = async (field: 'phone' | 'email' | 'id_proof_number', value: string) => {
@@ -731,8 +731,24 @@ export default function PreBookingScreen({ navigation, route }: any) {
     };
 
     const handleSave = async () => {
-        if (!validate()) {
-            Toast.show({ type: 'error', text1: 'Validation Error', text2: 'Please complete the highlighted fields.' });
+        const validationErrors = validate();
+        if (Object.keys(validationErrors).length > 0) {
+            const labels: Record<string, string> = {
+                first_name: 'First Name',
+                phone: 'Mobile Number',
+                room_id: 'Room Allocation',
+                bed_id: 'Bed Selection',
+                id_proof_number: 'ID Number',
+                email: 'Valid Email',
+            };
+            const missingList = Object.keys(validationErrors)
+                .map(k => labels[k] || validationErrors[k] || k)
+                .join(', ');
+            Toast.show({ 
+                type: 'error', 
+                text1: 'Required Fields Missing', 
+                text2: `Please complete: ${missingList}` 
+            });
             return;
         }
         setLoading(true);

@@ -12,7 +12,7 @@ const BASE_URL = 'http://143.244.131.69:8081/api';
 // ─── Axios Instance ───────────────────────────────────────────────────────────
 export const api = axios.create({
   baseURL: BASE_URL,
-  timeout: 30000, // 30s timeout for image uploads
+  timeout: 45000, // 45s timeout for multi-image uploads & cold-starts
   headers: {
     'Content-Type': 'application/json',
   },

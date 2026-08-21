@@ -150,7 +150,7 @@ export async function patchDatabaseSchema() {
         `);
         await db.raw(`
           INSERT IGNORE INTO expense_categories (category_id, category_name) VALUES
-          (1, 'Maintenance & Repairs'), (2, 'Utilities & Electricity'), (3, 'Food & Groceries'), (4, 'Staff Wages & Salaries'), (5, 'Rent & Taxes'), (6, 'Miscellaneous')
+          (1, 'Maintenance & Repairs'), (2, 'Utilities & Electricity'), (3, 'Food & Groceries'), (4, 'Staff Wages & Salaries'), (5, 'Rent & Taxes'), (6, 'Deposit Refunds'), (7, 'Miscellaneous')
         `);
       }
       if (!tableNamesLower.includes('expenses')) {
@@ -1069,6 +1069,22 @@ export async function patchDatabaseSchema() {
         await db.raw("CREATE INDEX idx_staff_payments_hostel ON staff_payments(hostel_id)");
         await db.raw("CREATE INDEX idx_staff_payments_staff ON staff_payments(staff_id)");
         await db.raw("CREATE INDEX idx_staff_payments_date ON staff_payments(payment_date)");
+      } else {
+        // Ensure for_month, mode, transaction_id, receipt_number columns exist
+        const [spCols] = await db.raw("SHOW COLUMNS FROM staff_payments");
+        const spColNames = (spCols as any[]).map((c: any) => c.Field);
+        if (!spColNames.includes('for_month')) {
+          await db.raw("ALTER TABLE staff_payments ADD COLUMN for_month VARCHAR(7) NULL");
+        }
+        if (!spColNames.includes('mode')) {
+          await db.raw("ALTER TABLE staff_payments ADD COLUMN mode VARCHAR(50) DEFAULT 'Cash'");
+        }
+        if (!spColNames.includes('transaction_id')) {
+          await db.raw("ALTER TABLE staff_payments ADD COLUMN transaction_id VARCHAR(100) NULL");
+        }
+        if (!spColNames.includes('receipt_number')) {
+          await db.raw("ALTER TABLE staff_payments ADD COLUMN receipt_number VARCHAR(100) NULL");
+        }
       }
     } catch (e: any) {
       console.error('[schema-patch] Error checking/creating staff_payments table:', e.message);

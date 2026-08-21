@@ -63,7 +63,13 @@ export function StaffPaymentDrawer({
         setDatePickerVisibility(false);
     };
 
-    const paymentModes = ['Cash', 'UPI', 'Bank'];
+    const paymentModes = [
+        { id: 'Cash', label: 'Cash', icon: 'cash-outline', iconFamily: 'ionicons' },
+        { id: 'UPI', label: 'UPI / QR', icon: 'scan-outline', iconFamily: 'ionicons' },
+        { id: 'Bank', label: 'Bank Transfer', icon: 'business-outline', iconFamily: 'ionicons' },
+        { id: 'Cheque', label: 'Cheque', icon: 'document-text-outline', iconFamily: 'ionicons' },
+        { id: 'Card', label: 'Card', icon: 'card-outline', iconFamily: 'ionicons' },
+    ];
 
     return (
         <>
@@ -99,6 +105,7 @@ export function StaffPaymentDrawer({
                         <ScrollView
                             showsVerticalScrollIndicator={false}
                             keyboardShouldPersistTaps="handled"
+                            contentContainerStyle={{ paddingBottom: 240 }}
                         >
                             {/* Amount */}
                             <Text style={S.label}>Amount (₹) <Text style={{ color: '#EF4444' }}>*</Text></Text>
@@ -138,38 +145,39 @@ export function StaffPaymentDrawer({
                                 </View>
                             </View>
 
-                            {/* Payment Mode */}
+                            {/* Payment Mode Scroll */}
                             <Text style={S.label}>Payment Method</Text>
-                            <View style={S.modeList}>
-                                {paymentModes.map((mName: string, index: number) => {
-                                    const active = payMode === mName;
-
-                                    // Determine icon based on name
-                                    let iconName = 'cash-outline';
-                                    const nLower = mName.toLowerCase();
-                                    if (nLower.includes('upi')) iconName = 'scan-outline';
-                                    else if (nLower.includes('bank')) iconName = 'business-outline';
-
+                            <ScrollView
+                                horizontal
+                                showsHorizontalScrollIndicator={false}
+                                contentContainerStyle={S.modeScrollContainer}
+                            >
+                                {paymentModes.map((item) => {
+                                    const active = payMode === item.id;
                                     return (
                                         <TouchableOpacity
-                                            key={mName}
+                                            key={item.id}
                                             style={[
-                                                S.modeItem,
-                                                index !== paymentModes.length - 1 && S.modeItemBorder
+                                                S.modeCard,
+                                                active && { borderColor: themeColor, backgroundColor: themeColor + '12' }
                                             ]}
-                                            onPress={() => setPayMode(mName)}
+                                            onPress={() => setPayMode(item.id)}
+                                            activeOpacity={0.8}
                                         >
-                                            <View style={S.modeLeft}>
-                                                <Ionicons name={iconName as any} size={20} color="#64748B" />
-                                                <Text style={S.modeItemText}>{mName}</Text>
+                                            <View style={[S.modeIconCircle, active && { backgroundColor: themeColor }]}>
+                                                <Ionicons
+                                                    name={item.icon as any}
+                                                    size={18}
+                                                    color={active ? '#FFF' : '#64748B'}
+                                                />
                                             </View>
-                                            <View style={[S.radioCircle, active && { borderColor: themeColor }]}>
-                                                {active && <View style={[S.radioInner, { backgroundColor: themeColor }]} />}
-                                            </View>
+                                            <Text style={[S.modeCardText, active && { color: themeColor, fontWeight: '800' }]}>
+                                                {item.label}
+                                            </Text>
                                         </TouchableOpacity>
                                     );
                                 })}
-                            </View>
+                            </ScrollView>
 
                             {/* Transaction ID */}
                             <Text style={S.label}>Transaction ID (Optional)</Text>
@@ -223,7 +231,6 @@ export function StaffPaymentDrawer({
                                     <Text style={S.submitBtnText}>Proceed to Pay</Text>
                                 )}
                             </TouchableOpacity>
-                            <View style={{ height: 100 }} />
                         </ScrollView>
                     </View>
                 </KeyboardAvoidingView>
@@ -322,47 +329,34 @@ const S = StyleSheet.create({
         fontSize: 14,
         color: '#0F172A',
     },
-    modeList: {
-        backgroundColor: '#FFFFFF',
-        borderWidth: 1,
+    modeScrollContainer: {
+        gap: 10,
+        paddingVertical: 4,
+        marginBottom: 8,
+    },
+    modeCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        paddingHorizontal: 14,
+        paddingVertical: 10,
+        borderRadius: 12,
+        backgroundColor: '#F8FAFC',
+        borderWidth: 1.5,
         borderColor: '#E2E8F0',
+    },
+    modeIconCircle: {
+        width: 32,
+        height: 32,
         borderRadius: 16,
-        overflow: 'hidden',
-    },
-    modeItem: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
+        backgroundColor: '#E2E8F0',
         alignItems: 'center',
-        paddingVertical: 16,
-        paddingHorizontal: 16,
-    },
-    modeItemBorder: {
-        borderBottomWidth: 1,
-        borderBottomColor: '#F1F5F9',
-    },
-    modeLeft: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 12,
-    },
-    modeItemText: {
-        fontSize: 14,
-        fontWeight: '600',
-        color: '#475569',
-    },
-    radioCircle: {
-        width: 20,
-        height: 20,
-        borderRadius: 10,
-        borderWidth: 2,
-        borderColor: '#CBD5E1',
         justifyContent: 'center',
-        alignItems: 'center',
     },
-    radioInner: {
-        width: 10,
-        height: 10,
-        borderRadius: 5,
+    modeCardText: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: '#475569',
     },
     submitBtn: {
         borderRadius: 14,

@@ -185,23 +185,23 @@ const sendViaEmailJS = async (options: EmailOptions): Promise<boolean> => {
   const privateKey = (process.env.EMAILJS_PRIVATE_KEY || process.env.EMAILJS_ACCESS_TOKEN || '').trim();
 
   // Determine template ID based on email type
-  const isOtp = options.emailType === 'OTP';
+  const isOtp = options.emailType === 'OTP' || options.emailType === 'ForgotPassword' || /otp|code|reset|verification/i.test(options.subject);
   const otpTemplateId = (process.env.EMAILJS_OTP_TEMPLATE_ID || process.env.EMAILJS_TEMPLATE_ID || '').trim();
-  const reportTemplateId = (process.env.EMAILJS_REPORT_TEMPLATE_ID || process.env.EMAILJS_GENERAL_TEMPLATE_ID || '').trim();
+  const reportTemplateId = (process.env.EMAILJS_REPORT_TEMPLATE_ID || process.env.EMAILJS_GENERAL_TEMPLATE_ID || process.env.EMAILJS_TEMPLATE_ID || '').trim();
   
-  const templateId = isOtp ? otpTemplateId : reportTemplateId;
+  const templateId = isOtp ? (otpTemplateId || reportTemplateId) : (reportTemplateId || otpTemplateId);
 
   if (!serviceId || !templateId || !publicKey) return false;
 
-  console.log(`📨 Sending ${isOtp ? 'OTP' : 'General/Report'} via EmailJS | to: ${options.to}`);
+  console.log(`📨 Sending ${isOtp ? 'OTP/Password-Reset' : 'General/Report'} via EmailJS | to: ${options.to}`);
 
-  const otpMatch = options.subject.match(/\d{6}/) || options.html.match(/\d{6}/);
+  const otpMatch = options.subject.match(/\d{6}/) || options.html.match(/\b\d{6}\b/);
   const passcode = otpMatch ? otpMatch[0] : '';
   const sender = parseSender();
 
   const res = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
     method: 'POST',
-    signal: AbortSignal.timeout(6000),
+    signal: AbortSignal.timeout(8000),
     headers: {
       'Content-Type': 'application/json',
       'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
@@ -249,18 +249,18 @@ export const sendEmail = async (options: EmailOptions): Promise<void> => {
   const plainText = options.html ? options.html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim() : '';
 
   try {
-    // 1. For OTP emails: Use dedicated EmailJS OTP template
-    if (options.emailType === 'OTP' && process.env.EMAILJS_SERVICE_ID) {
+    // 1. For OTP & Password Reset emails: Use EmailJS template
+    if ((options.emailType === 'OTP' || options.emailType === 'ForgotPassword' || /otp|code|reset/i.test(options.subject)) && process.env.EMAILJS_SERVICE_ID) {
       try {
         const sent = await sendViaEmailJS(options);
         if (sent) return;
       } catch (ejsErr: any) {
-        console.warn('⚠️ EmailJS OTP delivery notice:', ejsErr.message);
+        console.warn('⚠️ EmailJS OTP/Reset delivery notice:', ejsErr.message);
       }
     }
 
     // 2. For Reports / General emails: Try EmailJS General Template if configured
-    if (options.emailType !== 'OTP' && process.env.EMAILJS_SERVICE_ID && (process.env.EMAILJS_REPORT_TEMPLATE_ID || process.env.EMAILJS_GENERAL_TEMPLATE_ID)) {
+    if (process.env.EMAILJS_SERVICE_ID && (process.env.EMAILJS_REPORT_TEMPLATE_ID || process.env.EMAILJS_GENERAL_TEMPLATE_ID || process.env.EMAILJS_TEMPLATE_ID)) {
       try {
         const sent = await sendViaEmailJS(options);
         if (sent) return;
@@ -325,7 +325,7 @@ export const sendPasswordResetEmail = async (
   userName: string,
   otp?: string
 ): Promise<void> => {
-  const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
+  const resetLink = `${process.env.FRONTEND_URL || 'https://hostix.in'}/reset-password?token=${resetToken}`;
 
   const html = `
     <div style="font-family: Arial, sans-serif; background-color: #f5f5f5; padding: 20px;">
@@ -371,7 +371,16 @@ export const sendPasswordResetEmail = async (
     console.log('='.repeat(80) + '\n');
   }
 
-  await sendEmail({ to: email, subject: 'Password Reset Request - Hostix', html, emailType: 'ForgotPassword' });
+  const subject = otp 
+    ? `${otp} is your Hostix Password Reset Code` 
+    : 'Password Reset Request - Hostix';
+
+  await sendEmail({ 
+    to: email, 
+    subject, 
+    html, 
+    emailType: 'OTP' 
+  });
 };
 
 // ─── OTP verification email ────────────────────────────────────────────────────

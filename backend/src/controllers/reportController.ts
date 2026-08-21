@@ -176,7 +176,7 @@ export const getDashboardStats = async (req: AuthRequest, res: Response) => {
     const lastDay = new Date(year, month, 0).getDate();
     const monthEnd = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
 
-    // Get monthly income from income table only (matches Income page)
+    // Get monthly income from income table (other income / deposit deductions)
     let incomeQuery = db('income')
       .whereBetween('income_date', [monthStart, monthEnd])
       .sum('amount as total');
@@ -184,14 +184,10 @@ export const getDashboardStats = async (req: AuthRequest, res: Response) => {
       incomeQuery = incomeQuery.whereIn('hostel_id', hostelIds);
     }
     const monthlyIncome = await incomeQuery.first();
+    const totalMonthlyOther = Number(monthlyIncome?.total || 0);
 
-    const totalMonthlyIncome = Number(monthlyIncome?.total || 0);
-
-    // Get fee collection for current month (from fee_payments table)
+    // Get fee collection for current month (from fee_payments table - includes all collected tenant rent)
     let feeCollectionQuery = db('fee_payments as fp')
-      .join('students as s', 'fp.student_id', 's.student_id')
-      .whereNotNull('s.room_id')
-      .where('s.status', 1)
       .whereBetween('fp.payment_date', [monthStart, monthEnd])
       .sum('fp.amount as total')
       .count('* as count');
@@ -199,6 +195,26 @@ export const getDashboardStats = async (req: AuthRequest, res: Response) => {
       feeCollectionQuery = feeCollectionQuery.whereIn('fp.hostel_id', hostelIds);
     }
     const feeCollection = await feeCollectionQuery.first();
+    const totalMonthlyRentCollected = Number(feeCollection?.total || 0);
+
+    // Get guest payments for current month
+    let guestMonthlyAmount = 0;
+    try {
+      let guestQuery = db('guests')
+        .where('amount_paid', '>', 0)
+        .whereBetween('check_in_date', [monthStart, monthEnd])
+        .sum('amount_paid as total');
+      if (hostelIds.length > 0) {
+        guestQuery = guestQuery.whereIn('hostel_id', hostelIds);
+      }
+      const guestRes = await guestQuery.first();
+      guestMonthlyAmount = Number(guestRes?.total || 0);
+    } catch (e) {
+      // guests table may not exist
+    }
+
+    // Total income is rent collections + other income + guest payments
+    const income = totalMonthlyRentCollected + totalMonthlyOther + guestMonthlyAmount;
 
     // Get monthly expenses
     let expensesQuery = db('expenses')
@@ -225,7 +241,6 @@ export const getDashboardStats = async (req: AuthRequest, res: Response) => {
     }
 
     // Calculate net profit
-    const income = Number(totalMonthlyIncome);
     const expenses = Number(monthlyExpenses?.total || 0) + staffWages;
     const netProfit = income - expenses;
 
@@ -364,9 +379,6 @@ export const getDashboardStats = async (req: AuthRequest, res: Response) => {
     // Get breakdown of today's collections by mode
     let todaySplitQuery = db('fee_payments as fp')
       .join('payment_modes as pm', 'fp.payment_mode_id', 'pm.payment_mode_id')
-      .join('students as s', 'fp.student_id', 's.student_id')
-      .whereNotNull('s.room_id')
-      .where('s.status', 1)
       .whereRaw('DATE(fp.payment_date) = ?', [today])
       .select('pm.payment_mode_name as mode')
       .sum('fp.amount as total')
@@ -458,8 +470,6 @@ export const getIncomeReport = async (req: AuthRequest, res: Response) => {
         db.raw('SUM(fp.amount) as total_amount'),
         db.raw('COUNT(*) as payment_count')
       )
-      .whereNotNull('s.room_id')
-      .where('s.status', 1)
       .groupBy('month', 'pm.payment_mode_name')
       .orderBy('month', 'desc');
 
@@ -598,11 +608,8 @@ export const getProfitLoss = async (req: AuthRequest, res: Response) => {
       }
     }
 
-    // Get income by month
+    // Get income by month from rent payments (fee_payments)
     let incomeQuery = db('fee_payments as fp')
-      .join('students as s', 'fp.student_id', 's.student_id')
-      .whereNotNull('s.room_id')
-      .where('s.status', 1)
       .whereBetween('fp.payment_date', [dateStart, dateEnd])
       .select(
         db.raw("DATE_FORMAT(fp.payment_date, '%Y-%m') as month"),
@@ -618,6 +625,25 @@ export const getProfitLoss = async (req: AuthRequest, res: Response) => {
     }
 
     const incomeByMonth = await incomeQuery;
+
+    // Also get other income (from income table) by month
+    let otherIncomeByMonth: any[] = [];
+    try {
+      let otherIncomeQuery = db('income')
+        .whereBetween('income_date', [dateStart, dateEnd])
+        .select(
+          db.raw("DATE_FORMAT(income_date, '%Y-%m') as month"),
+          db.raw('SUM(amount) as total')
+        )
+        .groupBy('month')
+        .orderBy('month');
+      if (hostelId && user?.role_id !== 2) {
+        otherIncomeQuery = otherIncomeQuery.where('hostel_id', hostelId);
+      } else if (hostelIds.length > 0) {
+        otherIncomeQuery = otherIncomeQuery.whereIn('hostel_id', hostelIds);
+      }
+      otherIncomeByMonth = await otherIncomeQuery;
+    } catch (e) {}
 
     // Get expenses by month
     let expensesQuery = db('expenses')
@@ -668,6 +694,20 @@ export const getProfitLoss = async (req: AuthRequest, res: Response) => {
         expenses: 0,
         profit: 0
       });
+    });
+
+    otherIncomeByMonth.forEach(item => {
+      const existing = monthsMap.get(item.month);
+      if (existing) {
+        existing.income += Number(item.total);
+      } else {
+        monthsMap.set(item.month, {
+          month: item.month,
+          income: Number(item.total),
+          expenses: 0,
+          profit: 0
+        });
+      }
     });
 
     expensesByMonth.forEach(item => {
@@ -851,9 +891,6 @@ export const getPaymentCollectionReport = async (req: AuthRequest, res: Response
 
     // Get total collected
     let collectedQuery = db('fee_payments as fp')
-      .join('students as s', 'fp.student_id', 's.student_id')
-      .whereNotNull('s.room_id')
-      .where('s.status', 1)
       .whereBetween('fp.payment_date', [dateStart, dateEnd])
       .sum('fp.amount as total');
 
@@ -869,10 +906,7 @@ export const getPaymentCollectionReport = async (req: AuthRequest, res: Response
     let totalDuesAmount = 0;
     try {
       let pendingQuery = db('monthly_fees as mf')
-        .join('students as s', 'mf.student_id', 's.student_id')
-        .whereNotNull('s.room_id')
-        .where('s.status', 1)
-        .whereIn('mf.fee_status_id', [3, 4])
+        .whereIn('mf.fee_status_id', [3, 4, 5])
         .sum('mf.balance as total');
       
       if (hostelId && user?.role_id !== 2) {
@@ -889,9 +923,6 @@ export const getPaymentCollectionReport = async (req: AuthRequest, res: Response
     // Get collections grouped by payment mode
     let modeQuery = db('fee_payments as fp')
       .join('payment_modes as pm', 'fp.payment_mode_id', 'pm.payment_mode_id')
-      .join('students as s', 'fp.student_id', 's.student_id')
-      .whereNotNull('s.room_id')
-      .where('s.status', 1)
       .whereBetween('fp.payment_date', [dateStart, dateEnd])
       .select('pm.payment_mode_name as mode')
       .sum('fp.amount as total')

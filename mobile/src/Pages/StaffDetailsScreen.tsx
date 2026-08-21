@@ -1,13 +1,13 @@
 import React, { useState, useCallback, useRef } from 'react';
 import {
     View, Text, StyleSheet, ScrollView, TouchableOpacity,
-    Linking, ActivityIndicator, Animated, Image, StatusBar
+    Linking, ActivityIndicator, Animated, Image, StatusBar, Modal
 } from 'react-native';
 import { Card } from '../components/Card';
 import {
     Phone, Mail, Calendar, CreditCard,
     User, IndianRupee, Clock, Check, X,
-    Receipt, Edit, Briefcase, Plus, MessageCircle, MessageSquare, ArrowRight
+    Receipt, Edit, Briefcase, Plus, MessageCircle, MessageSquare, ArrowRight, Eye
 } from 'lucide-react-native';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../services/api';
@@ -19,6 +19,7 @@ import { AppHeader } from '../components/AppHeader';
 import { useFocusEffect } from '@react-navigation/native';
 import { useConfirmation } from '../../contexts/ConfirmationContext';
 import { StaffPaymentDrawer } from '../components/StaffPaymentDrawer';
+import { getResolvedImageUrl } from '../utils/imageHelper';
 
 const todayStr = () => new Date().toISOString().split('T')[0];
 
@@ -76,6 +77,7 @@ export default function StaffDetailsScreen({ route, navigation }: any) {
     const [paymentHistory, setPaymentHistory] = useState<any[]>([]);
     const [historyLoading, setHistoryLoading] = useState(true);
     const [avatarError, setAvatarError] = useState(false);
+    const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
 
     // Payment Drawer State
     const [modalVisible, setModalVisible] = useState(false);
@@ -216,6 +218,18 @@ export default function StaffDetailsScreen({ route, navigation }: any) {
         }
     };
 
+    const openPaymentDrawer = () => {
+        setPayAmount('');
+        setPayDays('');
+        setPayNote('');
+        setPayDate(todayStr());
+        setPayMode('Cash');
+        setPayTransactionId('');
+        setPayReceiptNumber('');
+        setErrors({});
+        setModalVisible(true);
+    };
+
     const handleDeletePayment = (p: any) => {
         confirm({
             title: 'Delete Payment',
@@ -264,9 +278,9 @@ export default function StaffDetailsScreen({ route, navigation }: any) {
                     <Card style={[styles.profileCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}>
                         <View style={styles.profileSection}>
                             <View style={styles.avatarWrapper}>
-                                {staff.photo && !avatarError ? (
+                                {staff.photo && getResolvedImageUrl(staff.photo) && !avatarError ? (
                                     <Image 
-                                        source={{ uri: staff.photo }} 
+                                        source={{ uri: getResolvedImageUrl(staff.photo)! }} 
                                         style={styles.avatar} 
                                         onError={() => setAvatarError(true)}
                                     />
@@ -532,6 +546,41 @@ export default function StaffDetailsScreen({ route, navigation }: any) {
                                                 <Text style={[styles.infoRowValue, { color: theme.textPrimary }]}>{staff.id_proof_number || staff.aadhaar_number || 'N/A'}</Text>
                                             </View>
                                         </View>
+
+                                        {(staff.aadhaar_front || staff.aadhaar_back) && (
+                                            <>
+                                                <View style={styles.infoRowDivider} />
+                                                <Text style={[styles.infoRowLabel, { marginBottom: 8, marginTop: 4 }]}>ID Proof Documents</Text>
+                                                <View style={{ flexDirection: 'row', gap: 12 }}>
+                                                    {staff.aadhaar_front && (
+                                                        <TouchableOpacity 
+                                                            style={styles.docCard} 
+                                                            onPress={() => setPreviewImageUrl(getResolvedImageUrl(staff.aadhaar_front))}
+                                                            activeOpacity={0.8}
+                                                        >
+                                                            <Image source={{ uri: getResolvedImageUrl(staff.aadhaar_front)! }} style={styles.docCardImg} />
+                                                            <View style={styles.docCardOverlay}>
+                                                                <Eye size={14} color="#FFF" />
+                                                                <Text style={styles.docCardText}>Front View</Text>
+                                                            </View>
+                                                        </TouchableOpacity>
+                                                    )}
+                                                    {staff.aadhaar_back && (
+                                                        <TouchableOpacity 
+                                                            style={styles.docCard} 
+                                                            onPress={() => setPreviewImageUrl(getResolvedImageUrl(staff.aadhaar_back))}
+                                                            activeOpacity={0.8}
+                                                        >
+                                                            <Image source={{ uri: getResolvedImageUrl(staff.aadhaar_back)! }} style={styles.docCardImg} />
+                                                            <View style={styles.docCardOverlay}>
+                                                                <Eye size={14} color="#FFF" />
+                                                                <Text style={styles.docCardText}>Back View</Text>
+                                                            </View>
+                                                        </TouchableOpacity>
+                                                    )}
+                                                </View>
+                                            </>
+                                        )}
                                     </View>
                                 </View>
 
@@ -592,6 +641,14 @@ export default function StaffDetailsScreen({ route, navigation }: any) {
                                 {/* Recent history preview */}
                                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, marginTop: 8 }}>
                                     <Text style={[(styles as any).cardTitle, { color: theme.textPrimary, marginBottom: 0 }]}>Recent Payments</Text>
+                                    <TouchableOpacity
+                                        style={[styles.addPayBtn, { backgroundColor: theme.primary }]}
+                                        onPress={openPaymentDrawer}
+                                        activeOpacity={0.8}
+                                    >
+                                        <Plus size={14} color="#FFF" />
+                                        <Text style={styles.addPayText}>Record Wage</Text>
+                                    </TouchableOpacity>
                                 </View>
 
                                 {historyLoading ? (
@@ -644,12 +701,77 @@ export default function StaffDetailsScreen({ route, navigation }: any) {
                 themeColor={theme.primary}
                 errors={errors}
             />
+
+            {/* Image Preview Zoom Modal */}
+            <Modal visible={!!previewImageUrl} transparent animationType="fade" onRequestClose={() => setPreviewImageUrl(null)}>
+                <View style={styles.zoomModalContainer}>
+                    <TouchableOpacity style={styles.zoomCloseBtn} onPress={() => setPreviewImageUrl(null)}>
+                        <X size={24} color="#FFF" />
+                    </TouchableOpacity>
+                    {previewImageUrl && (
+                        <Image source={{ uri: previewImageUrl }} style={styles.zoomedImage} resizeMode="contain" />
+                    )}
+                </View>
+            </Modal>
         </View>
     );
 }
 
 const styles = StyleSheet.create({
     root: { flex: 1 },
+
+    docCard: {
+        flex: 1,
+        height: 110,
+        borderRadius: 14,
+        overflow: 'hidden',
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+        backgroundColor: '#F8FAFC',
+        position: 'relative',
+    },
+    docCardImg: {
+        width: '100%',
+        height: '100%',
+        resizeMode: 'cover',
+    },
+    docCardOverlay: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        backgroundColor: 'rgba(0,0,0,0.6)',
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 4,
+        paddingVertical: 5,
+    },
+    docCardText: {
+        color: '#FFF',
+        fontSize: 11,
+        fontWeight: '700',
+    },
+
+    zoomModalContainer: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.92)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    zoomCloseBtn: {
+        position: 'absolute',
+        top: 48,
+        right: 20,
+        zIndex: 10,
+        backgroundColor: 'rgba(255,255,255,0.2)',
+        padding: 8,
+        borderRadius: 20,
+    },
+    zoomedImage: {
+        width: '90%',
+        height: '80%',
+    },
     
     // Profile Header Styles Matches Student
     profileCard: { borderRadius: 20, padding: 0, marginBottom: 16, overflow: 'hidden', borderWidth: 1 },

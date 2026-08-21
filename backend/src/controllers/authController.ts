@@ -541,9 +541,11 @@ export const authController = {
         });
       }
 
-      // Find user by email
+      const cleanEmail = email.trim().toLowerCase();
+
+      // Find user by email (case-insensitive)
       const user = await db('users')
-        .where('email', email)
+        .whereRaw('LOWER(email) = ?', [cleanEmail])
         .where('is_active', true)
         .first();
 
@@ -576,7 +578,7 @@ export const authController = {
           password_reset_expires_at: resetExpiresAt,
         });
 
-      // Send email (passing otp as well if we update the email utility)
+      // Send email (passing otp as well)
       try {
         await sendPasswordResetEmail(user.email, resetToken, user.full_name, otp);
       } catch (emailError: any) {
@@ -776,9 +778,11 @@ export const authController = {
         });
       }
 
+      const cleanEmail = email.trim().toLowerCase();
+
       // Find user by email
       const user = await db('users')
-        .where('email', email)
+        .whereRaw('LOWER(email) = ?', [cleanEmail])
         .where('is_active', true)
         .first();
 

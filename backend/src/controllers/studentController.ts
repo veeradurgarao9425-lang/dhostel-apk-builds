@@ -1440,16 +1440,8 @@ export const vacateSettlement = async (req: AuthRequest, res: Response) => {
         ? Number(refundableDeposit)
         : Number(student.refundable_deposit || 0);
 
-      // Calculate pending rent dues
-      const pendingDuesQuery = await trx('monthly_fees')
-        .where({ student_id: studentId })
-        .whereIn('fee_status_id', [4, 5]) // Pending, Partial
-        .sum('balance as total_dues')
-        .first();
-
-      const pendingDues = Number(pendingDuesQuery?.total_dues || 0);
       const studentFullName = `${student.first_name || ''} ${student.last_name || ''}`.trim() || 'Student';
-      const refundAmount = originalDeposit - pendingDues - Number(damageDeductions);
+      const refundAmount = Math.max(0, originalDeposit - Number(damageDeductions));
 
       // If there are damages, record it as income (Deposit Deduction)
       if (Number(damageDeductions) > 0) {
@@ -1469,8 +1461,11 @@ export const vacateSettlement = async (req: AuthRequest, res: Response) => {
         if (!refundCat) {
           refundCat = await trx('expense_categories').where({ name: 'Deposit Refunds' }).first().catch(() => null);
         }
+        if (!refundCat) {
+          refundCat = await trx('expense_categories').where('category_name', 'like', '%refund%').first().catch(() => null);
+        }
 
-        const categoryId = refundCat?.category_id || refundCat?.id || 1;
+        const categoryId = refundCat?.category_id || refundCat?.id || 6;
 
         await trx('expenses').insert({
           hostel_id: student.hostel_id,
@@ -1479,7 +1474,7 @@ export const vacateSettlement = async (req: AuthRequest, res: Response) => {
           amount: refundAmount,
           payment_mode_id: 1, // Defaulting to Cash
           vendor_name: studentFullName,
-          description: `Deposit Refund to ${studentFullName} on vacate`,
+          description: `Vacate Deposit Refund - ${studentFullName}`,
           created_at: new Date()
         });
       }

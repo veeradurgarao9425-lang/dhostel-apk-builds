@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
     View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity,
     StatusBar, LayoutAnimation, Platform, UIManager,
-    Linking, ScrollView, SectionList, Modal
+    Linking, ScrollView, SectionList, Modal, Image
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -19,6 +19,7 @@ import { SkeletonList } from '../components/ui/SkeletonCard';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SPACING } from '../theme/index';
 import { Plus } from 'lucide-react-native';
+import { getResolvedImageUrl } from '../utils/imageHelper';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
     UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -39,12 +40,22 @@ const ROLES = ['Cook', 'Housekeeping', 'Security', 'Warden', 'Cleaner', 'Others'
 const StaffCard = React.memo(({ item, onCall, onWhatsApp, onToggleStatus, onPayments, onPressCard }: any) => {
     const isActive = item.status === 'ACTIVE';
     const initials = item.full_name ? item.full_name[0].toUpperCase() : 'S';
+    const [imgErr, setImgErr] = useState(false);
+    const photoUrl = getResolvedImageUrl(item.photo);
 
     return (
         <TouchableOpacity style={s.card} activeOpacity={0.9} onPress={() => onPressCard(item)}>
             <View style={s.cardMain}>
                 <View style={s.avatarBox}>
-                    <Text style={s.avatarInitials}>{initials}</Text>
+                    {photoUrl && !imgErr ? (
+                        <Image
+                            source={{ uri: photoUrl }}
+                            style={s.avatarImg}
+                            onError={() => setImgErr(true)}
+                        />
+                    ) : (
+                        <Text style={s.avatarInitials}>{initials}</Text>
+                    )}
                 </View>
                 <View style={s.infoContainer}>
                     <Text style={s.nameText} numberOfLines={1}>{item.full_name}</Text>
@@ -385,7 +396,9 @@ const s = StyleSheet.create({
         width: 50, height: 50, borderRadius: 25,
         backgroundColor: '#E0E7FF',
         justifyContent: 'center', alignItems: 'center',
+        overflow: 'hidden',
     },
+    avatarImg: { width: 50, height: 50, borderRadius: 25 },
     avatarInitials: { fontSize: 20, fontWeight: '900', color: '#4F46E5' },
     infoContainer: { flex: 1, marginLeft: 15 },
     nameText: { fontSize: 15, fontWeight: '800', color: '#1E293B', marginBottom: 2 },

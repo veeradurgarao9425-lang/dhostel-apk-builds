@@ -3,6 +3,7 @@ import db from '../config/database.js';
 import { AuthRequest } from '../middleware/auth.js';
 import { checkHostelUniqueIdentifiers } from '../utils/validation.js';
 import { resolveScopedHostelId, resolveOwnerHostelId, canAccessHostel } from '../utils/scope.js';
+import { processFileUpload } from '../utils/fileUpload.js';
 
 // Get all staff (Owner sees only their hostel staff)
 export const getStaff = async (req: AuthRequest, res: Response) => {
@@ -107,6 +108,25 @@ export const createStaff = async (req: AuthRequest, res: Response) => {
       });
     }
 
+    // Process file uploads if present
+    const files = req.files as { [fieldname: string]: Express.Multer.File[] } | undefined;
+    let finalPhoto = photo || null;
+    let finalFront = aadhaar_front || null;
+    let finalBack = aadhaar_back || null;
+
+    if (files?.photo?.[0] || files?.profile_photo?.[0]) {
+      const file = files.photo?.[0] || files.profile_photo?.[0];
+      finalPhoto = await processFileUpload(file, 'avatars');
+    }
+    if (files?.aadhaar_front?.[0] || files?.id_proof_front?.[0]) {
+      const file = files.aadhaar_front?.[0] || files.id_proof_front?.[0];
+      finalFront = await processFileUpload(file, 'id_proofs');
+    }
+    if (files?.aadhaar_back?.[0] || files?.id_proof_back?.[0]) {
+      const file = files.aadhaar_back?.[0] || files.id_proof_back?.[0];
+      finalBack = await processFileUpload(file, 'id_proofs');
+    }
+
     // Uniqueness validation within hostel
     const validation = await checkHostelUniqueIdentifiers(
       hostelId,
@@ -134,9 +154,9 @@ export const createStaff = async (req: AuthRequest, res: Response) => {
       join_date: join_date || new Date(),
       monthly_salary: monthly_salary || 0,
       aadhaar_number: aadhaar_number || null,
-      photo: photo || null,
-      aadhaar_front: aadhaar_front || null,
-      aadhaar_back: aadhaar_back || null,
+      photo: finalPhoto,
+      aadhaar_front: finalFront,
+      aadhaar_back: finalBack,
       notes: notes || null,
       created_at: new Date(),
       updated_at: new Date()
@@ -189,6 +209,24 @@ export const updateStaff = async (req: AuthRequest, res: Response) => {
       notes
     } = req.body;
 
+    const files = req.files as { [fieldname: string]: Express.Multer.File[] } | undefined;
+    let finalPhoto = photo;
+    let finalFront = aadhaar_front;
+    let finalBack = aadhaar_back;
+
+    if (files?.photo?.[0] || files?.profile_photo?.[0]) {
+      const file = files.photo?.[0] || files.profile_photo?.[0];
+      finalPhoto = await processFileUpload(file, 'avatars');
+    }
+    if (files?.aadhaar_front?.[0] || files?.id_proof_front?.[0]) {
+      const file = files.aadhaar_front?.[0] || files.id_proof_front?.[0];
+      finalFront = await processFileUpload(file, 'id_proofs');
+    }
+    if (files?.aadhaar_back?.[0] || files?.id_proof_back?.[0]) {
+      const file = files.aadhaar_back?.[0] || files.id_proof_back?.[0];
+      finalBack = await processFileUpload(file, 'id_proofs');
+    }
+
     const updateData: any = {
       updated_at: new Date()
     };
@@ -201,9 +239,9 @@ export const updateStaff = async (req: AuthRequest, res: Response) => {
     if (join_date !== undefined) updateData.join_date = join_date;
     if (monthly_salary !== undefined) updateData.monthly_salary = monthly_salary;
     if (aadhaar_number !== undefined) updateData.aadhaar_number = aadhaar_number || null;
-    if (photo !== undefined) updateData.photo = photo;
-    if (aadhaar_front !== undefined) updateData.aadhaar_front = aadhaar_front;
-    if (aadhaar_back !== undefined) updateData.aadhaar_back = aadhaar_back;
+    if (finalPhoto !== undefined) updateData.photo = finalPhoto;
+    if (finalFront !== undefined) updateData.aadhaar_front = finalFront;
+    if (finalBack !== undefined) updateData.aadhaar_back = finalBack;
     if (notes !== undefined) updateData.notes = notes;
 
     // Validate uniqueness if phone/email/aadhaar changed
@@ -304,21 +342,40 @@ export const addStaffPayment = async (req: AuthRequest, res: Response) => {
     // Derive for_month from payment_date if not provided
     const resolvedMonth = for_month || payment_date.substring(0, 7); // YYYY-MM
 
-    const [payment_id] = await db('staff_payments').insert({
-      hostel_id: staff.hostel_id,
-      staff_id: Number(staffId),
-      amount: Number(amount),
-      payment_date,
-      days_worked: days_worked ? Number(days_worked) : null,
-      payment_type: payment_type || 'Advance',
-      note: note || null,
-      for_month: resolvedMonth,
-      mode: mode || 'Cash',
-      transaction_id: transaction_id || null,
-      receipt_number: receipt_number || null,
-      created_by: req.user?.user_id || null,
-      created_at: new Date(),
-    });
+    let payment_id: any;
+    try {
+      const result = await db('staff_payments').insert({
+        hostel_id: staff.hostel_id,
+        staff_id: Number(staffId),
+        amount: Number(amount),
+        payment_date,
+        days_worked: days_worked ? Number(days_worked) : null,
+        payment_type: payment_type || 'Advance',
+        note: note || null,
+        for_month: resolvedMonth,
+        mode: mode || 'Cash',
+        transaction_id: transaction_id || null,
+        receipt_number: receipt_number || null,
+        created_by: req.user?.user_id || null,
+        created_at: new Date(),
+      });
+      payment_id = Array.isArray(result) ? result[0] : result;
+    } catch (insertErr: any) {
+      console.warn('Full staff_payment insert failed, attempting minimal insert fallback:', insertErr?.message);
+      // Fallback for minimal legacy schema
+      const result = await db('staff_payments').insert({
+        hostel_id: staff.hostel_id,
+        staff_id: Number(staffId),
+        amount: Number(amount),
+        payment_date,
+        days_worked: days_worked ? Number(days_worked) : null,
+        payment_type: payment_type || 'Advance',
+        note: [note, mode ? `Mode: ${mode}` : '', transaction_id ? `Txn: ${transaction_id}` : ''].filter(Boolean).join(' | ') || null,
+        created_by: req.user?.user_id || null,
+        created_at: new Date(),
+      });
+      payment_id = Array.isArray(result) ? result[0] : result;
+    }
 
     // Also auto-sync into expenses table so it shows up in Hostel Expenses
     try {

@@ -90,7 +90,13 @@ function PaymentDrawerModal({
         onConfirm({ amount, date, note, payMode, transactionId });
     };
 
-    const MODES = ['Cash', 'UPI', 'Bank'];
+    const MODES = [
+        { id: 'Cash', label: 'Cash', icon: 'cash-outline' },
+        { id: 'UPI', label: 'UPI / QR', icon: 'scan-outline' },
+        { id: 'Bank', label: 'Bank Transfer', icon: 'business-outline' },
+        { id: 'Cheque', label: 'Cheque', icon: 'document-text-outline' },
+        { id: 'Card', label: 'Card', icon: 'card-outline' },
+    ];
 
     return (
         <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -126,7 +132,11 @@ function PaymentDrawerModal({
                         </View>
                     )}
 
-                    <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+                    <ScrollView
+                        showsVerticalScrollIndicator={false}
+                        keyboardShouldPersistTaps="handled"
+                        contentContainerStyle={{ paddingBottom: 260 }}
+                    >
                         {/* Amount */}
                         <Text style={S.label}>Amount (₹) <Text style={{ color: '#EF4444' }}>*</Text></Text>
                         <View style={[S.amountBox, errors.amount && { borderColor: '#EF4444' }]}>
@@ -151,17 +161,35 @@ function PaymentDrawerModal({
 
                         {/* Payment Mode */}
                         <Text style={S.label}>Payment Method</Text>
-                        <View style={S.modeRow}>
-                            {MODES.map(m => (
-                                <TouchableOpacity
-                                    key={m}
-                                    style={[S.modeChip, payMode === m && { backgroundColor: accentColor, borderColor: accentColor }]}
-                                    onPress={() => setPayMode(m)}
-                                >
-                                    <Text style={[S.modeChipText, payMode === m && { color: '#FFF' }]}>{m}</Text>
-                                </TouchableOpacity>
-                            ))}
-                        </View>
+                        <ScrollView
+                            horizontal
+                            showsHorizontalScrollIndicator={false}
+                            contentContainerStyle={{ gap: 8, paddingVertical: 4, marginBottom: 8 }}
+                        >
+                            {MODES.map(m => {
+                                const active = payMode === m.id;
+                                return (
+                                    <TouchableOpacity
+                                        key={m.id}
+                                        style={[
+                                            S.modeChip,
+                                            active && { backgroundColor: accentColor, borderColor: accentColor }
+                                        ]}
+                                        onPress={() => setPayMode(m.id)}
+                                        activeOpacity={0.8}
+                                    >
+                                        <Ionicons
+                                            name={m.icon as any}
+                                            size={16}
+                                            color={active ? '#FFF' : '#64748B'}
+                                        />
+                                        <Text style={[S.modeChipText, active && { color: '#FFF', fontWeight: '800' }]}>
+                                            {m.label}
+                                        </Text>
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </ScrollView>
 
                         {/* Transaction ID (for UPI/Bank) */}
                         {payMode !== 'Cash' && (
@@ -202,7 +230,6 @@ function PaymentDrawerModal({
                                 <Text style={S.submitBtnText}>{isAdvance ? 'Record Advance' : 'Record Salary Payment'}</Text>
                             )}
                         </TouchableOpacity>
-                        <View style={{ height: 80 }} />
                     </ScrollView>
                 </View>
             </KeyboardAvoidingView>
