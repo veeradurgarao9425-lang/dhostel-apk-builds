@@ -41,16 +41,18 @@ export default function LoginScreen({ navigation }: any) {
     const scrollRef = useRef<ScrollView>(null);
     const passwordRef = useRef<TextInput>(null);
 
-    // If user is already authenticated when landing on LoginScreen, route immediately
+    // If user is already authenticated when landing on LoginScreen, route immediately (initial mount only)
+    const navigatedRef = useRef(false);
     React.useEffect(() => {
-        if (user) {
+        if (user && !isLoading && !navigatedRef.current) {
+            navigatedRef.current = true;
             if (user.role === 'DEVELOPER' || (user as any).is_developer) {
                 navigation.reset({ index: 0, routes: [{ name: 'DeveloperMain' }] });
             } else {
                 navigation.reset({ index: 0, routes: [{ name: 'Main' }] });
             }
         }
-    }, [user, navigation]);
+    }, [user, isLoading, navigation]);
 
     // Keyboard handling. Replaces KeyboardAvoidingView(behavior="height"), whose
     // stale container height was leaving a grey band along the bottom of this

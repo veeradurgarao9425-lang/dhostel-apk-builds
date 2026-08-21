@@ -585,8 +585,8 @@ const styles = StyleSheet.create({
     borderColor: '#E2E8F0',
   },
   ownerTabChipActive: {
-    backgroundColor: '#EA580C',
-    borderColor: '#EA580C',
+    backgroundColor: '#FFF7ED',
+    borderColor: '#FED7AA',
   },
   ownerTabChipText: {
     color: '#475569',
@@ -594,7 +594,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   ownerTabChipTextActive: {
-    color: '#FFFFFF',
+    color: '#C2410C',
     fontWeight: '800',
   },
   statusTabsSection: {
@@ -617,8 +617,8 @@ const styles = StyleSheet.create({
     borderColor: '#E2E8F0',
   },
   statusFilterChipActive: {
-    backgroundColor: '#EA580C',
-    borderColor: '#EA580C',
+    backgroundColor: '#FFF7ED',
+    borderColor: '#FED7AA',
   },
   statusFilterChipText: {
     color: '#64748B',
@@ -626,7 +626,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   statusFilterChipTextActive: {
-    color: '#FFFFFF',
+    color: '#C2410C',
     fontWeight: '800',
   },
   listContent: {

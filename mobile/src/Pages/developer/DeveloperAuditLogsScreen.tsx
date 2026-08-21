@@ -37,14 +37,17 @@ export default function DeveloperAuditLogsScreen() {
       });
 
       if (res.success && res.data) {
+        const rawList = Array.isArray(res.data) ? res.data : (res.data.logs || []);
+        const pagination = res.data.pagination || res.pagination;
+
         if (pageNum === 1) {
-          setLogs(res.data);
+          setLogs(rawList);
         } else {
-          setLogs((prev) => [...prev, ...res.data]);
+          setLogs((prev) => [...prev, ...rawList]);
         }
-        if (res.pagination) {
-          setTotalPages(res.pagination.total_pages);
-          setPage(res.pagination.page);
+        if (pagination) {
+          setTotalPages(pagination.totalPages || pagination.total_pages || 1);
+          setPage(pagination.page || 1);
         }
       }
     } catch (err) {

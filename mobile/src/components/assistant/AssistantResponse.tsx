@@ -78,8 +78,50 @@ export type ContentBlock =
   | { type: 'room_detail_card'; room: any }
   | { type: 'floor_detail_card'; floor: any }
   | { type: 'student_list_card'; title: string; students: any[] }
+  | { type: 'owner_list_card'; title: string; owners: any[] }
   | { type: 'income_breakdown_card'; data: any }
   | { type: 'app_info_card'; topic: 'owner' | 'goal' | 'usage' }
+  | {
+      type: 'distribution_donut_card';
+      title: string;
+      subtitle?: string;
+      centerIcon: string;
+      centerIconColor?: string;
+      centerIconBg?: string;
+      statusIcon?: string;
+      statusIconColor?: string;
+      segments: Array<{
+        percentage: number;
+        color: string;
+        label: string;
+        badge?: string;
+      }>;
+      highlightText?: string;
+      actionButtons?: Array<{
+        label: string;
+        onPress: () => void;
+        variant?: 'primary' | 'outline';
+      }>;
+    }
+  | {
+      type: 'profile_match_checklist_card';
+      title: string;
+      score: string;
+      avatarUri?: string;
+      icon?: string;
+      items: Array<{
+        label: string;
+        matched: boolean;
+      }>;
+    }
+  | {
+      type: 'stat_pill_actions';
+      question?: string;
+      actions: Array<{
+        label: string;
+        onPress: () => void;
+      }>;
+    }
   | { type: 'loading' };
 
 
@@ -1839,33 +1881,69 @@ const StudentListCardBlock = ({ title, students }: { title: string; students: an
         <Text style={{ fontSize: 12, color: '#94A3B8', fontStyle: 'italic', paddingVertical: 6 }}>No records found for this category.</Text>
       ) : (
         <View style={{ gap: 8 }}>
-          {students.slice(0, 6).map((s, idx) => {
-            const studentId = s.student_id || s.studentId || s.id;
+          {students.slice(0, 8).map((s, idx) => {
+            const fullName = s.name || `${s.first_name || ''} ${s.last_name || ''}`.trim() || 'Resident';
+            const isActive = String(s.status).toLowerCase() === 'active' || s.status === 1 || s.status === true;
             return (
-              <TouchableOpacity
-                key={idx}
-                style={st.listItem}
-                activeOpacity={0.75}
-                onPress={() => {
-                  if (studentId) {
-                    RootNavigation.navigate('StudentDetails', { studentId });
-                    DeviceEventEmitter.emit('CLOSE_ASSISTANT');
-                  }
-                }}
-              >
+              <View key={idx} style={st.listItem}>
+                <View style={[st.avatarCircle, { backgroundColor: '#ECFDF5', width: 34, height: 34, borderRadius: 17, marginRight: 8 }]}>
+                  <Ionicons name="school" size={16} color="#059669" />
+                </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={st.listItemName}>{s.name || `${s.first_name || ''} ${s.last_name || ''}`.trim()}</Text>
+                  <Text style={st.listItemName}>{fullName}</Text>
                   <Text style={st.listItemSub}>
-                    Room: {s.roomNumber || s.room_number || 'N/A'} {s.paidAmount ? `• Paid: ${INR(s.paidAmount)}` : ''} {s.phone ? `• ${s.phone}` : ''}
+                    Room: {s.roomNumber || s.room_number || 'N/A'} {s.monthly_rent || s.paidAmount ? `• ₹${Number(s.monthly_rent || s.paidAmount || 0).toLocaleString('en-IN')}` : ''} {s.phone ? `• ${s.phone}` : ''}
                   </Text>
                 </View>
                 {s.badgeText ? (
                   <View style={[st.listItemBadge, { backgroundColor: s.badgeColor || '#EEF2FF', marginRight: 6 }]}>
                     <Text style={[st.listItemBadgeText, { color: s.badgeTextColor || '#4F46E5' }]}>{s.badgeText}</Text>
                   </View>
-                ) : null}
-                <Ionicons name="chevron-forward" size={14} color="#94A3B8" />
-              </TouchableOpacity>
+                ) : (
+                  <View style={[st.listItemBadge, { backgroundColor: isActive ? '#ECFDF5' : '#FEE2E2' }]}>
+                    <Text style={[st.listItemBadgeText, { color: isActive ? '#059669' : '#DC2626' }]}>
+                      {isActive ? 'Active' : 'Vacated'}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            );
+          })}
+        </View>
+      )}
+    </View>
+  );
+};
+
+// ─── Owner List Card Block ──────────────────────────────────────────────────
+const OwnerListBlock = ({ title, owners }: { title: string; owners: any[] }) => {
+  return (
+    <View style={st.listContainer}>
+      <Text style={st.listHeader}>{title} ({owners.length})</Text>
+      {owners.length === 0 ? (
+        <Text style={{ fontSize: 12, color: '#94A3B8', fontStyle: 'italic', paddingVertical: 6 }}>No owner records found.</Text>
+      ) : (
+        <View style={{ gap: 8 }}>
+          {owners.slice(0, 8).map((o, idx) => {
+            const fullName = o.full_name || o.name || `${o.first_name || ''} ${o.last_name || ''}`.trim() || 'Hostel Owner';
+            const isActive = o.is_active || o.status === 'ACTIVE' || o.status === 1 || o.status === true;
+            return (
+              <View key={idx} style={st.listItem}>
+                <View style={[st.avatarCircle, { backgroundColor: '#FFF7ED', width: 34, height: 34, borderRadius: 17, marginRight: 8 }]}>
+                  <Ionicons name="business" size={16} color="#EA580C" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={st.listItemName}>{fullName}</Text>
+                  <Text style={st.listItemSub}>
+                    {o.phone || o.email || 'No contact'} {o.hostel_name ? `• ${o.hostel_name}` : ''}
+                  </Text>
+                </View>
+                <View style={[st.listItemBadge, { backgroundColor: isActive ? '#ECFDF5' : '#FEE2E2' }]}>
+                  <Text style={[st.listItemBadgeText, { color: isActive ? '#059669' : '#DC2626' }]}>
+                    {isActive ? 'Active' : 'Inactive'}
+                  </Text>
+                </View>
+              </View>
             );
           })}
         </View>
@@ -1910,6 +1988,278 @@ const IncomeBreakdownCardBlock = ({ data }: { data: any }) => {
             <Text style={{ fontSize: 13, fontWeight: '700', color: '#1E293B' }}>{INR(data.otherIncome)}</Text>
           </View>
         )}
+      </View>
+    </View>
+  );
+};
+
+// ─── Visual Reference Donut Card Block (Images 1, 3, 4, 5) ──────────────────
+const DistributionDonutCardBlock = ({
+  title,
+  subtitle,
+  centerIcon,
+  centerIconColor = '#7C3AED',
+  centerIconBg = '#FFFFFF',
+  statusIcon = 'checkmark-circle',
+  statusIconColor = '#10B981',
+  segments,
+  highlightText,
+  actionButtons,
+}: {
+  title: string;
+  subtitle?: string;
+  centerIcon: string;
+  centerIconColor?: string;
+  centerIconBg?: string;
+  statusIcon?: string;
+  statusIconColor?: string;
+  segments: Array<{
+    percentage: number;
+    color: string;
+    label: string;
+    badge?: string;
+  }>;
+  highlightText?: string;
+  actionButtons?: Array<{
+    label: string;
+    onPress: () => void;
+    variant?: 'primary' | 'outline';
+  }>;
+}) => {
+  const radius = 38;
+  const strokeWidth = 11;
+  const circumference = 2 * Math.PI * radius;
+
+  const cumulativePctList: number[] = [];
+  let runningSum = 0;
+  segments.forEach((seg) => {
+    runningSum += seg.percentage;
+    cumulativePctList.push(Math.min(runningSum, 100));
+  });
+  const reversedPcts = [...cumulativePctList].reverse();
+
+  return (
+    <View style={st.refCardContainer}>
+      {/* Top Header Row */}
+      <View style={st.refCardHeaderRow}>
+        <Ionicons name={(statusIcon as any) || 'checkmark-circle'} size={18} color={statusIconColor} />
+        <View style={{ flex: 1 }}>
+          <Text style={st.refCardTitle}>{title}</Text>
+          {subtitle ? <Text style={st.refCardSubtitle}>{subtitle}</Text> : null}
+        </View>
+      </View>
+
+      {/* Donut Chart + Right-Side Dot Legend */}
+      <View style={st.refDonutBodyRow}>
+        <View style={st.refDonutChartWrap}>
+          <Svg width={105} height={105} style={{ transform: [{ rotate: '-90deg' }] }}>
+            <Circle
+              cx={52.5}
+              cy={52.5}
+              r={radius}
+              stroke="#F1F5F9"
+              strokeWidth={strokeWidth}
+              fill="transparent"
+            />
+            {reversedPcts.map((pct, idx) => {
+              const segIndex = segments.length - 1 - idx;
+              const color = segments[segIndex]?.color || '#64748B';
+              const offset = circumference - (pct / 100) * circumference;
+              return (
+                <Circle
+                  key={idx}
+                  cx={52.5}
+                  cy={52.5}
+                  r={radius}
+                  stroke={color}
+                  strokeWidth={strokeWidth}
+                  fill="transparent"
+                  strokeDasharray={circumference}
+                  strokeDashoffset={offset}
+                  strokeLinecap="round"
+                />
+              );
+            })}
+          </Svg>
+
+          {/* Center Circular Icon Badge */}
+          <View style={[st.refDonutCenterBadge, { backgroundColor: centerIconBg }]}>
+            <Ionicons name={(centerIcon as any) || 'stats-chart'} size={20} color={centerIconColor} />
+          </View>
+        </View>
+
+        {/* Right Side Dots Legend */}
+        <View style={st.refLegendColumn}>
+          {segments.map((seg, idx) => (
+            <View key={idx} style={st.refLegendItemRow}>
+              <View style={[st.refLegendDot, { backgroundColor: seg.color }]} />
+              <Text style={st.refLegendLabelText} numberOfLines={1}>
+                {seg.label}: <Text style={st.refLegendPctBold}>{seg.percentage}%</Text>
+              </Text>
+              {seg.badge ? (
+                <View style={st.refYouBadge}>
+                  <Text style={st.refYouBadgeText}>{seg.badge}</Text>
+                </View>
+              ) : null}
+            </View>
+          ))}
+        </View>
+      </View>
+
+      {/* Optional Highlight Stat Note */}
+      {highlightText ? (
+        <View style={st.refHighlightBox}>
+          <Text style={st.refHighlightText}>{highlightText}</Text>
+        </View>
+      ) : null}
+
+      {/* Action buttons (like ( Yes ) ( No )) */}
+      {actionButtons && actionButtons.length > 0 ? (
+        <View style={st.refPillsRow}>
+          {actionButtons.map((btn, idx) => (
+            <TouchableOpacity
+              key={idx}
+              style={[
+                st.refPillBtn,
+                btn.variant === 'primary' ? st.refPillBtnPrimary : st.refPillBtnOutline,
+              ]}
+              onPress={() => {
+                Haptics.selectionAsync().catch(() => {});
+                btn.onPress?.();
+              }}
+              activeOpacity={0.8}
+            >
+              <Text
+                style={[
+                  st.refPillBtnText,
+                  btn.variant === 'primary' ? st.refPillBtnTextPrimary : st.refPillBtnTextOutline,
+                ]}
+              >
+                {btn.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      ) : null}
+    </View>
+  );
+};
+
+// ─── Visual Reference Profile Match Checklist Card (Image 2) ────────────────
+const ProfileMatchChecklistBlock = ({
+  title,
+  score,
+  avatarUri,
+  icon = 'school',
+  items,
+}: {
+  title: string;
+  score: string;
+  avatarUri?: string;
+  icon?: string;
+  items: Array<{
+    label: string;
+    matched: boolean;
+  }>;
+}) => {
+  const midpoint = Math.ceil(items.length / 2);
+  const leftCol = items.slice(0, midpoint);
+  const rightCol = items.slice(midpoint);
+
+  return (
+    <View style={st.refCardContainer}>
+      {/* Top Profile Header */}
+      <View style={st.refMatchHeaderRow}>
+        <View style={st.refAvatarWrap}>
+          {avatarUri ? (
+            <Image source={{ uri: avatarUri }} style={st.refAvatarImg} />
+          ) : (
+            <Image source={require('../../../assets/chatbot.jpeg')} style={st.refAvatarImg} />
+          )}
+          <View style={st.refAvatarBadge}>
+            <Ionicons name={(icon as any) || 'school'} size={10} color="#7C3AED" />
+          </View>
+        </View>
+
+        <View style={{ flex: 1 }}>
+          <Text style={st.refMatchTitle}>{title}</Text>
+          <Text style={st.refMatchScore}>{score}</Text>
+        </View>
+      </View>
+
+      {/* 2-Column Checklist */}
+      <View style={st.refChecklistGrid}>
+        <View style={st.refChecklistCol}>
+          {leftCol.map((item, idx) => (
+            <View key={idx} style={st.refChecklistItem}>
+              <Ionicons
+                name={item.matched ? 'checkmark-circle' : 'close-circle'}
+                size={16}
+                color={item.matched ? '#10B981' : '#94A3B8'}
+              />
+              <Text
+                style={[
+                  st.refChecklistLabel,
+                  !item.matched && { color: '#64748B' },
+                ]}
+                numberOfLines={1}
+              >
+                {item.label}
+              </Text>
+            </View>
+          ))}
+        </View>
+
+        <View style={st.refChecklistCol}>
+          {rightCol.map((item, idx) => (
+            <View key={idx} style={st.refChecklistItem}>
+              <Ionicons
+                name={item.matched ? 'checkmark-circle' : 'close-circle'}
+                size={16}
+                color={item.matched ? '#10B981' : '#94A3B8'}
+              />
+              <Text
+                style={[
+                  st.refChecklistLabel,
+                  !item.matched && { color: '#64748B' },
+                ]}
+                numberOfLines={1}
+              >
+                {item.label}
+              </Text>
+            </View>
+          ))}
+        </View>
+      </View>
+    </View>
+  );
+};
+
+// ─── Stat Pill Action Buttons Block (Image 5) ───────────────────────────────
+const StatPillActionsBlock = ({
+  question,
+  actions,
+}: {
+  question?: string;
+  actions: Array<{ label: string; onPress: () => void }>;
+}) => {
+  return (
+    <View style={{ marginTop: 4 }}>
+      {question ? <Text style={st.refQuestionText}>{question}</Text> : null}
+      <View style={st.refPillsRow}>
+        {actions.map((act, idx) => (
+          <TouchableOpacity
+            key={idx}
+            style={st.refPillBtnOutline}
+            onPress={() => {
+              Haptics.selectionAsync().catch(() => {});
+              act.onPress?.();
+            }}
+            activeOpacity={0.8}
+          >
+            <Text style={st.refPillBtnTextOutline}>{act.label}</Text>
+          </TouchableOpacity>
+        ))}
       </View>
     </View>
   );
@@ -2070,12 +2420,49 @@ export const AssistantResponse: React.FC<AssistantResponseProps> = ({ blocks }) 
         case 'student_list_card':
           return <StudentListCardBlock key={i} title={block.title} students={block.students} />;
 
+        case 'owner_list_card':
+          return <OwnerListBlock key={i} title={block.title} owners={block.owners} />;
+
         case 'income_breakdown_card':
           return <IncomeBreakdownCardBlock key={i} data={block.data} />;
 
-        case 'app_info_card':
-          return <AppInfoCardBlock key={i} topic={block.topic} />;
+        case 'distribution_donut_card':
+          return (
+            <DistributionDonutCardBlock
+              key={i}
+              title={block.title}
+              subtitle={block.subtitle}
+              centerIcon={block.centerIcon}
+              centerIconColor={block.centerIconColor}
+              centerIconBg={block.centerIconBg}
+              statusIcon={block.statusIcon}
+              statusIconColor={block.statusIconColor}
+              segments={block.segments}
+              highlightText={block.highlightText}
+              actionButtons={block.actionButtons}
+            />
+          );
 
+        case 'profile_match_checklist_card':
+          return (
+            <ProfileMatchChecklistBlock
+              key={i}
+              title={block.title}
+              score={block.score}
+              avatarUri={block.avatarUri}
+              icon={block.icon}
+              items={block.items}
+            />
+          );
+
+        case 'stat_pill_actions':
+          return (
+            <StatPillActionsBlock
+              key={i}
+              question={block.question}
+              actions={block.actions}
+            />
+          );
 
         default:
           return null;
@@ -2092,6 +2479,219 @@ const st = StyleSheet.create({
     lineHeight: 22,
     color: '#334155',
     letterSpacing: 0.1,
+  },
+
+  // Visual Reference Cards (Images 1-5)
+  refCardContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  refCardHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    marginBottom: 10,
+  },
+  refCardTitle: {
+    fontSize: 13.5,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  refCardSubtitle: {
+    fontSize: 11,
+    color: '#64748B',
+    marginTop: 1,
+  },
+  refDonutBodyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    marginVertical: 4,
+  },
+  refDonutChartWrap: {
+    position: 'relative',
+    width: 105,
+    height: 105,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  refDonutCenterBadge: {
+    position: 'absolute',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  refLegendColumn: {
+    flex: 1,
+    gap: 7,
+  },
+  refLegendItemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  refLegendDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  refLegendLabelText: {
+    fontSize: 11.5,
+    color: '#475569',
+    flex: 1,
+  },
+  refLegendPctBold: {
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  refYouBadge: {
+    backgroundColor: '#F3E8FF',
+    paddingHorizontal: 6,
+    paddingVertical: 1.5,
+    borderRadius: 6,
+  },
+  refYouBadgeText: {
+    fontSize: 9.5,
+    fontWeight: '800',
+    color: '#7C3AED',
+  },
+  refHighlightBox: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 10,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginTop: 10,
+  },
+  refHighlightText: {
+    fontSize: 11.5,
+    color: '#334155',
+    lineHeight: 16,
+    fontWeight: '600',
+  },
+  refPillsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 10,
+  },
+  refPillBtn: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  refPillBtnOutline: {
+    paddingHorizontal: 16,
+    paddingVertical: 7,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: '#2563EB',
+    backgroundColor: '#FFFFFF',
+  },
+  refPillBtnPrimary: {
+    backgroundColor: '#2563EB',
+  },
+  refPillBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  refPillBtnTextOutline: {
+    color: '#2563EB',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  refPillBtnTextPrimary: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  refQuestionText: {
+    fontSize: 12,
+    color: '#64748B',
+    fontWeight: '600',
+    marginBottom: 6,
+  },
+  // Profile Match
+  refMatchHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 12,
+  },
+  refAvatarWrap: {
+    position: 'relative',
+    width: 44,
+    height: 44,
+  },
+  refAvatarImg: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#E2E8F0',
+  },
+  refAvatarBadge: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#F3E8FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: '#FFFFFF',
+  },
+  refMatchTitle: {
+    fontSize: 13.5,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  refMatchScore: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#2563EB',
+    marginTop: 1,
+  },
+  refChecklistGrid: {
+    flexDirection: 'row',
+    gap: 12,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+  },
+  refChecklistCol: {
+    flex: 1,
+    gap: 6,
+  },
+  refChecklistItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  refChecklistLabel: {
+    fontSize: 11.5,
+    fontWeight: '600',
+    color: '#1E293B',
+    flex: 1,
   },
 
   // Donut chart
