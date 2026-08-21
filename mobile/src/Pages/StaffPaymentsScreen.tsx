@@ -741,11 +741,17 @@ const S = StyleSheet.create({
 
     modeRow: { flexDirection: 'row', gap: 8 },
     modeChip: {
-        flex: 1, paddingVertical: 10, borderRadius: 10,
-        borderWidth: 1.5, borderColor: '#E2E8F0',
-        alignItems: 'center', backgroundColor: '#F8FAFC',
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingHorizontal: 14,
+        paddingVertical: 9,
+        borderRadius: 10,
+        borderWidth: 1.5,
+        borderColor: '#E2E8F0',
+        backgroundColor: '#F8FAFC',
     },
-    modeChipText: { fontSize: 13, fontWeight: '700', color: '#64748B' },
+    modeChipText: { fontSize: 13, fontWeight: '600', color: '#64748B' },
 
     inputField: {
         backgroundColor: '#F8FAFC', borderWidth: 1.5, borderColor: '#E2E8F0',

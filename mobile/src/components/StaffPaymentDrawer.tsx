@@ -151,6 +151,7 @@ export function StaffPaymentDrawer({
                                 horizontal
                                 showsHorizontalScrollIndicator={false}
                                 contentContainerStyle={S.modeScrollContainer}
+                                keyboardShouldPersistTaps="handled"
                             >
                                 {paymentModes.map((item) => {
                                     const active = payMode === item.id;
@@ -158,20 +159,28 @@ export function StaffPaymentDrawer({
                                         <TouchableOpacity
                                             key={item.id}
                                             style={[
-                                                S.modeCard,
-                                                active && { borderColor: themeColor, backgroundColor: themeColor + '12' }
+                                                S.modeChip,
+                                                {
+                                                    backgroundColor: active ? themeColor + '15' : (isDark ? '#1E293B' : '#F8FAFC'),
+                                                    borderColor: active ? themeColor : (isDark ? '#334155' : '#E2E8F0'),
+                                                    borderWidth: active ? 1.5 : 1,
+                                                }
                                             ]}
                                             onPress={() => setPayMode(item.id)}
-                                            activeOpacity={0.8}
+                                            activeOpacity={0.75}
                                         >
-                                            <View style={[S.modeIconCircle, active && { backgroundColor: themeColor }]}>
-                                                <Ionicons
-                                                    name={item.icon as any}
-                                                    size={18}
-                                                    color={active ? '#FFF' : '#64748B'}
-                                                />
-                                            </View>
-                                            <Text style={[S.modeCardText, active && { color: themeColor, fontWeight: '800' }]}>
+                                            <Ionicons
+                                                name={item.icon as any}
+                                                size={16}
+                                                color={active ? themeColor : (isDark ? '#94A3B8' : '#64748B')}
+                                            />
+                                            <Text style={[
+                                                S.modeChipText,
+                                                {
+                                                    color: active ? themeColor : (isDark ? '#CBD5E1' : '#475569'),
+                                                    fontWeight: active ? '700' : '500'
+                                                }
+                                            ]}>
                                                 {item.label}
                                             </Text>
                                         </TouchableOpacity>
@@ -330,33 +339,21 @@ const S = StyleSheet.create({
         color: '#0F172A',
     },
     modeScrollContainer: {
-        gap: 10,
+        gap: 8,
         paddingVertical: 4,
+        paddingHorizontal: 2,
         marginBottom: 8,
     },
-    modeCard: {
+    modeChip: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 8,
+        gap: 6,
         paddingHorizontal: 14,
-        paddingVertical: 10,
-        borderRadius: 12,
-        backgroundColor: '#F8FAFC',
-        borderWidth: 1.5,
-        borderColor: '#E2E8F0',
+        paddingVertical: 9,
+        borderRadius: 10,
     },
-    modeIconCircle: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
-        backgroundColor: '#E2E8F0',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    modeCardText: {
+    modeChipText: {
         fontSize: 13,
-        fontWeight: '700',
-        color: '#475569',
     },
     submitBtn: {
         borderRadius: 14,
