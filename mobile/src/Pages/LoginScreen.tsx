@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import {
     View,
     Text,
@@ -13,7 +13,9 @@ import {
     Keyboard,
     TouchableWithoutFeedback,
     Image,
+    BackHandler,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
@@ -40,6 +42,27 @@ export default function LoginScreen({ navigation }: any) {
 
     const scrollRef = useRef<ScrollView>(null);
     const passwordRef = useRef<TextInput>(null);
+
+    // Static navigation handler: Back ALWAYS routes strictly to the RoleSelect screen
+    const handleGoBackToRoleSelect = useCallback(() => {
+        navigation.reset({
+            index: 0,
+            routes: [{ name: 'RoleSelect' }],
+        });
+        return true;
+    }, [navigation]);
+
+    // Hardware back press listener on Android
+    useFocusEffect(
+        useCallback(() => {
+            const onBackPress = () => {
+                handleGoBackToRoleSelect();
+                return true;
+            };
+            const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+            return () => subscription.remove();
+        }, [handleGoBackToRoleSelect])
+    );
 
     // If user is already authenticated when landing on LoginScreen, route immediately (initial mount only)
     const navigatedRef = useRef(false);
@@ -152,7 +175,7 @@ export default function LoginScreen({ navigation }: any) {
                     {/* Back Button */}
                     <TouchableOpacity
                         activeOpacity={0.8}
-                        onPress={() => navigation.canGoBack() ? navigation.goBack() : navigation.replace('RoleSelect')}
+                        onPress={handleGoBackToRoleSelect}
                         style={[styles.backBtn, { top: insets.top > 0 ? insets.top + 10 : 20 }]}
                     >
                         <Ionicons name="arrow-back" size={22} color="#FFFFFF" />
