@@ -1148,14 +1148,9 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
                     appendImageToFormData(bodyFormData, 'id_proof_back', aadhaarBack, 'id_proof_back.jpg');
                 }
 
-                const multipartConfig = {
-                    headers: { 'Content-Type': 'multipart/form-data' },
-                    transformRequest: (data: any) => data,
-                };
-
                 res = isEdit
-                    ? await api.put(`/students/${student.student_id}`, bodyFormData, multipartConfig)
-                    : await api.post('/students', bodyFormData, multipartConfig);
+                    ? await api.put(`/students/${student.student_id}`, bodyFormData)
+                    : await api.post('/students', bodyFormData);
             } else {
                 // Remove empty strings for clean JSON
                 const cleanJsonPayload: Record<string, any> = {};

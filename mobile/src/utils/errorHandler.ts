@@ -3,6 +3,12 @@
 // Use this everywhere instead of error.message or error.response?.data?.error
 
 export function parseApiError(error: any): string {
+  // Server returned a friendly specific message — always prioritize this
+  const serverMsg = error?.response?.data?.error || error?.response?.data?.message;
+  if (serverMsg && typeof serverMsg === 'string' && serverMsg.length < 200) {
+    return serverMsg;
+  }
+
   const status = error?.response?.status;
 
   if (status === 401) return 'Session expired. Please log in again.';
@@ -18,18 +24,12 @@ export function parseApiError(error: any): string {
     error?.code === 'ERR_NETWORK' ||
     error?.message === 'Network Error'
   ) {
-    return 'No internet connection. Please check your network.';
+    return 'Network Error: Please check your internet connection and server status.';
   }
 
   // Axios timeout
   if (error?.code === 'ECONNABORTED') {
     return 'Request timed out. Please try again.';
-  }
-
-  // Server returned a friendly message
-  const serverMsg = error?.response?.data?.error || error?.response?.data?.message;
-  if (serverMsg && typeof serverMsg === 'string' && serverMsg.length < 120) {
-    return serverMsg;
   }
 
   return error?.message || 'Something went wrong. Please try again.';

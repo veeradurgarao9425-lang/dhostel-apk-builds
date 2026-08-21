@@ -252,9 +252,7 @@ function StepperForm({ visible, onClose, onSubmit, hostelId }: { visible: boolea
           type: `image/${ext === 'jpg' ? 'jpeg' : ext}`,
         } as any);
       });
-      await api.post('/complaints/tenant', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
+      await api.post('/complaints/tenant', formData);
       onSubmit();
       onClose();
     } catch (e) {

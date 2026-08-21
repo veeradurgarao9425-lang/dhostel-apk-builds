@@ -794,10 +794,7 @@ export default function PreBookingScreen({ navigation, route }: any) {
                 if (isLocalUri(idProofBack) && idProofBack) {
                     appendImage(bodyFormData, 'id_proof_back', idProofBack, 'id_proof_back.jpg');
                 }
-                await api.post('/students', bodyFormData, {
-                    headers: { 'Content-Type': 'multipart/form-data' },
-                    transformRequest: (data: any) => data,
-                });
+                await api.post('/students', bodyFormData);
             } else {
                 await api.post('/students', payload);
             }

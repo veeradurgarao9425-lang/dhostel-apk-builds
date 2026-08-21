@@ -146,11 +146,6 @@ export default function PaymentScreen({ navigation }: any) {
       setUploadProgress(40);
 
       const response = await api.post('/fees/upload-proof', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-          Accept: 'application/json',
-        },
-        transformRequest: (data) => data,
         onUploadProgress: (e: any) => {
           if (e.total) {
             const pct = Math.min(95, Math.round((e.loaded / e.total) * 100));

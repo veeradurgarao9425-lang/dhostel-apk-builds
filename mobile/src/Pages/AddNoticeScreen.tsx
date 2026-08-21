@@ -278,12 +278,8 @@ export const AddNoticeScreen = ({ navigation, route }: any) => {
             }
 
             const response = isEdit
-                ? await api.put(`/notices/${noticeToEdit.notice_id}`, formDataPayload, {
-                    headers: { 'Content-Type': 'multipart/form-data' }
-                })
-                : await api.post('/notices', formDataPayload, {
-                    headers: { 'Content-Type': 'multipart/form-data' }
-                });
+                ? await api.put(`/notices/${noticeToEdit.notice_id}`, formDataPayload)
+                : await api.post('/notices', formDataPayload);
 
             if (response.data.success) {
                 Toast.show({ type: 'success', text1: 'Success', text2: `Notice ${isEdit ? 'updated' : 'posted'} successfully!` });
