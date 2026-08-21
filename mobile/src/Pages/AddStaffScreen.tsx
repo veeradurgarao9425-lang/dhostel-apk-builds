@@ -26,11 +26,255 @@ import api from '../services/api';
 import { AppHeader } from '../components/AppHeader';
 import { FullScreenLoader } from '../components/FullScreenLoader';
 import { SPACING } from '../theme/index';
-import { OptionsDrawer } from '../components/FormComponents';
-import { ChevronDown, Camera, Upload, X, Check } from 'lucide-react-native';
+import { OptionsDrawer, ModalSheet } from '../components/FormComponents';
+import { ChevronDown, Camera, Upload, X, Check, User } from 'lucide-react-native';
 import { getResolvedImageUrl, isLocalDeviceUri, appendImageFileToFormData } from '../utils/imageHelper';
 
 const ROLES = ['Cook', 'Housekeeping', 'Security', 'Warden', 'Cleaner', 'Others'];
+
+const ImageSourceDrawer = ({ visible, onClose, onSelectCamera, onSelectGallery, title }: any) => {
+    const { theme, isDark } = useTheme();
+    const insets = useSafeAreaInsets();
+    return (
+        <ModalSheet visible={visible} onClose={onClose} maxHeight="45%">
+            <View style={styles.sheetHandle} />
+            <View style={[styles.sheetHeader, { borderBottomColor: isDark ? '#334155' : '#F1F5F9' }]}>
+                <Text style={[styles.sheetTitle, { color: theme.textPrimary }]}>{title || 'Choose Source'}</Text>
+                <TouchableOpacity onPress={onClose} style={[styles.doneBtn, { backgroundColor: isDark ? theme.primary + '20' : '#F3EEFF' }]}>
+                    <Text style={[styles.doneBtnText, { color: theme.primary }]}>Cancel</Text>
+                </TouchableOpacity>
+            </View>
+            <View style={{ padding: 24, paddingBottom: Math.max(insets.bottom, 24) + 20, gap: 16, flexDirection: 'row', justifyContent: 'space-around' }}>
+                <TouchableOpacity
+                    style={[styles.sourceOptionBtn, { backgroundColor: isDark ? '#1E293B' : '#F3EEFF', borderColor: theme.primary }]}
+                    onPress={() => { onSelectCamera(); onClose(); }}
+                    activeOpacity={0.75}
+                >
+                    <View style={[styles.sourceIconBg, { backgroundColor: theme.primary }]}>
+                        <Camera size={24} color="#FFF" />
+                    </View>
+                    <Text style={[styles.sourceOptionText, { color: theme.textPrimary }]}>Use Camera</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                    style={[styles.sourceOptionBtn, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0' }]}
+                    onPress={() => { onSelectGallery(); onClose(); }}
+                    activeOpacity={0.75}
+                >
+                    <View style={[styles.sourceIconBg, { backgroundColor: isDark ? '#475569' : '#CBD5E1' }]}>
+                        <Upload size={24} color={isDark ? '#FFF' : '#475569'} />
+                    </View>
+                    <Text style={[styles.sourceOptionText, { color: theme.textPrimary }]}>Choose Gallery</Text>
+                </TouchableOpacity>
+            </View>
+        </ModalSheet>
+    );
+};
+
+const DocumentUploadBox = ({ label, uri, onCapture, onRemove, isFront, error }: { label: string; uri: string | null; onCapture: (uri: string) => void; onRemove: () => void; isFront: boolean; error?: string }) => {
+    const { theme, isDark } = useTheme();
+    const [pickerVisible, setPickerVisible] = useState(false);
+
+    const onSelectCamera = async () => {
+        try {
+            const p = await ImagePicker.requestCameraPermissionsAsync();
+            if (!p.granted) {
+                Alert.alert('Permission Required', 'Camera permission is needed to upload documents.');
+                return;
+            }
+            const r = await ImagePicker.launchCameraAsync({ quality: 0.6 });
+            if (!r.canceled && r.assets && r.assets.length > 0) {
+                onCapture(r.assets[0].uri);
+            }
+        } catch (err) {
+            console.error('Document camera error:', err);
+        }
+    };
+
+    const onSelectGallery = async () => {
+        try {
+            const p = await ImagePicker.requestMediaLibraryPermissionsAsync();
+            if (!p.granted) {
+                Alert.alert('Permission Required', 'Media library permission is needed to upload documents.');
+                return;
+            }
+            const r = await ImagePicker.launchImageLibraryAsync({ quality: 0.6 });
+            if (!r.canceled && r.assets && r.assets.length > 0) {
+                onCapture(r.assets[0].uri);
+            }
+        } catch (err) {
+            console.error('Document gallery error:', err);
+        }
+    };
+
+    return (
+        <>
+            <View style={[styles.docUploadBox, { backgroundColor: isDark ? '#1E293B' : '#F9FAFB', borderColor: error ? '#EF4444' : (isDark ? '#334155' : '#E2E8F0'), borderStyle: 'dashed' }]}>
+                {uri ? (
+                    <View style={styles.docPreviewContainer}>
+                        <Image source={{ uri }} style={styles.docPreviewImage} />
+                        <TouchableOpacity style={styles.docRemoveBtn} onPress={onRemove}>
+                            <X size={14} color="#FFF" />
+                        </TouchableOpacity>
+                        <TouchableOpacity style={[styles.docRetakeRow, { backgroundColor: 'rgba(0,0,0,0.6)' }]} onPress={() => setPickerVisible(true)}>
+                            <Camera size={12} color="#FFF" />
+                            <Text style={{ fontSize: 10, color: '#FFF', fontWeight: '700', marginLeft: 4 }}>Retake</Text>
+                        </TouchableOpacity>
+                    </View>
+                ) : (
+                    <View style={{ flex: 1, justifyContent: 'space-between' }}>
+                        <View style={styles.docBoxTopRow}>
+                            <View style={[styles.skeletonCard, { borderColor: error ? '#EF4444' : (isDark ? '#475569' : '#CBD5E1') }]}>
+                                {isFront ? (
+                                    <View style={{ flexDirection: 'row', gap: 4, alignItems: 'center', height: '100%' }}>
+                                        <View style={[styles.skeletonAvatar, { backgroundColor: error ? '#EF4444' : (isDark ? '#475569' : '#CBD5E1') }]} />
+                                        <View style={{ flex: 1, gap: 3 }}>
+                                            <View style={[styles.skeletonLine, { width: '80%', backgroundColor: error ? '#EF4444' : (isDark ? '#475569' : '#CBD5E1') }]} />
+                                            <View style={[styles.skeletonLine, { width: '60%', backgroundColor: error ? '#EF4444' : (isDark ? '#475569' : '#CBD5E1') }]} />
+                                        </View>
+                                    </View>
+                                ) : (
+                                    <View style={{ justifyContent: 'center', height: '100%', gap: 3 }}>
+                                        <View style={[styles.skeletonLine, { width: '90%', backgroundColor: error ? '#EF4444' : (isDark ? '#475569' : '#CBD5E1') }]} />
+                                        <View style={[styles.skeletonLine, { width: '80%', backgroundColor: error ? '#EF4444' : (isDark ? '#475569' : '#CBD5E1') }]} />
+                                        <View style={[styles.skeletonLine, { width: '40%', backgroundColor: error ? '#EF4444' : (isDark ? '#475569' : '#CBD5E1') }]} />
+                                    </View>
+                                )}
+                            </View>
+
+                            <View style={[styles.uploadCircle, { backgroundColor: error ? '#FEE2E2' : (isDark ? '#2D1B6B' : '#F3EEFF') }]}>
+                                <Upload size={14} color={error ? '#EF4444' : theme.primary} />
+                            </View>
+                        </View>
+
+                        <View style={{ marginTop: 8 }}>
+                            <Text style={[styles.docBoxTitle, { color: error ? '#EF4444' : (isDark ? '#F1F5F9' : '#1E293B') }]}>{label}</Text>
+                            <Text style={styles.docBoxSubtitle}>JPG, PNG or PDF{"\n"}Max. 5MB</Text>
+                        </View>
+
+                        <TouchableOpacity
+                            style={[styles.docUploadBtn, { borderColor: error ? '#EF4444' : theme.primary }]}
+                            onPress={() => setPickerVisible(true)}
+                            activeOpacity={0.7}
+                        >
+                            <Upload size={12} color={error ? '#EF4444' : theme.primary} />
+                            <Text style={[styles.docUploadBtnText, { color: error ? '#EF4444' : theme.primary }]}>Upload</Text>
+                        </TouchableOpacity>
+                    </View>
+                )}
+                {error && <Text style={{ color: '#EF4444', fontSize: 9, marginTop: 4, fontWeight: '600', textAlign: 'center' }}>{error}</Text>}
+            </View>
+
+            <ImageSourceDrawer
+                visible={pickerVisible}
+                onClose={() => setPickerVisible(false)}
+                onSelectCamera={onSelectCamera}
+                onSelectGallery={onSelectGallery}
+                title={`Upload ${label}`}
+            />
+        </>
+    );
+};
+
+const ProfilePhotoCapture = ({ uri, onCapture, onRemove, error }: any) => {
+    const { theme, isDark } = useTheme();
+    const [pickerVisible, setPickerVisible] = useState(false);
+
+    const openCamera = async () => {
+        try {
+            const p = await ImagePicker.requestCameraPermissionsAsync();
+            if (!p.granted) {
+                Alert.alert('Permission Required', 'Camera permission is needed to take a profile photo.');
+                return;
+            }
+            const r = await ImagePicker.launchCameraAsync({ quality: 0.6, allowsEditing: false });
+            if (!r.canceled && r.assets && r.assets.length > 0) {
+                onCapture(r.assets[0].uri);
+            }
+        } catch (err) {
+            console.error('Camera error:', err);
+        }
+    };
+
+    const openGallery = async () => {
+        try {
+            const p = await ImagePicker.requestMediaLibraryPermissionsAsync();
+            if (!p.granted) {
+                Alert.alert('Permission Required', 'Gallery permission is needed to pick a photo.');
+                return;
+            }
+            const r = await ImagePicker.launchImageLibraryAsync({ quality: 0.6, allowsEditing: false });
+            if (!r.canceled && r.assets && r.assets.length > 0) {
+                onCapture(r.assets[0].uri);
+            }
+        } catch (err) {
+            console.error('Gallery error:', err);
+        }
+    };
+
+    return (
+        <View style={[styles.profilePhotoCard, { backgroundColor: isDark ? '#1E293B' : '#FFF', borderColor: error ? '#EF4444' : (isDark ? '#334155' : 'transparent'), borderWidth: (isDark || error) ? 1 : 0 }]}>
+            <TouchableOpacity onPress={() => setPickerVisible(true)} activeOpacity={0.85} style={styles.profileAvatarContainer}>
+                {uri ? (
+                    <View style={styles.profileAvatarWrapper}>
+                        <Image source={{ uri }} style={[styles.profileAvatar, { borderColor: error ? '#EF4444' : theme.primary }]} />
+                        <View style={[styles.profileEditBadge, { backgroundColor: theme.primary }]}>
+                            <Camera size={12} color="#FFF" />
+                        </View>
+                        <TouchableOpacity style={styles.profileRemoveBtn} onPress={onRemove}>
+                            <X size={10} color="#FFF" />
+                        </TouchableOpacity>
+                    </View>
+                ) : (
+                    <View style={[styles.profileAvatarPlaceholder, { backgroundColor: isDark ? '#2D1B6B' : '#F3EEFF', borderColor: error ? '#EF4444' : theme.primary }]}>
+                        <User size={32} color={error ? '#EF4444' : theme.primary} />
+                        <View style={[styles.profileEditBadge, { backgroundColor: theme.primary }]}>
+                            <Camera size={12} color="#FFF" />
+                        </View>
+                    </View>
+                )}
+            </TouchableOpacity>
+
+            <View style={styles.profileDetailsContainer}>
+                <Text style={[styles.profilePhotoTitle, { color: error ? '#EF4444' : (isDark ? '#FFF' : '#1E293B') }]}>
+                    Staff Profile Photo
+                </Text>
+                <Text style={[styles.profilePhotoSubtitle, { color: isDark ? '#94A3B8' : '#64748B' }]}>
+                    Clear face photo for staff identity & verification
+                </Text>
+
+                <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
+                    <TouchableOpacity
+                        style={[styles.profileSmallActionBtn, { backgroundColor: theme.primary }]}
+                        onPress={() => setPickerVisible(true)}
+                        activeOpacity={0.8}
+                    >
+                        <Camera size={12} color="#FFF" />
+                        <Text style={styles.profileSmallActionBtnText}>{uri ? 'Change Photo' : 'Add Photo'}</Text>
+                    </TouchableOpacity>
+                    {uri && (
+                        <TouchableOpacity
+                            style={[styles.profileSmallActionBtn, { backgroundColor: '#FEE2E2', borderWidth: 1, borderColor: '#FCA5A5' }]}
+                            onPress={onRemove}
+                            activeOpacity={0.8}
+                        >
+                            <X size={12} color="#DC2626" />
+                            <Text style={[styles.profileSmallActionBtnText, { color: '#DC2626' }]}>Remove</Text>
+                        </TouchableOpacity>
+                    )}
+                </View>
+            </View>
+
+            <ImageSourceDrawer
+                visible={pickerVisible}
+                onClose={() => setPickerVisible(false)}
+                onSelectCamera={openCamera}
+                onSelectGallery={openGallery}
+                title="Staff Profile Photo"
+            />
+        </View>
+    );
+};
 
 export default function AddStaffScreen() {
     const navigation = useNavigation<any>();
@@ -46,6 +290,7 @@ export default function AddStaffScreen() {
     const [loading, setLoading] = useState(false);
     const [loadingMessage, setLoadingMessage] = useState('Saving staff member...');
     const [isKeyboardVisible, setKeyboardVisible] = useState(false);
+    const scrollViewRef = React.useRef<ScrollView>(null);
     const checkUniqueTimer = React.useRef<NodeJS.Timeout | null>(null);
 
     // Form fields
@@ -396,72 +641,19 @@ export default function AddStaffScreen() {
             <FullScreenLoader visible={loading} message={loadingMessage} />
 
             <ScrollView
+                ref={scrollViewRef}
                 style={styles.content}
                 showsVerticalScrollIndicator={false}
-                contentContainerStyle={[styles.scrollContent, { paddingBottom: 280 + insets.bottom }]}
+                contentContainerStyle={[styles.scrollContent, { paddingBottom: (isKeyboardVisible ? 320 : 180) + insets.bottom }]}
                 keyboardShouldPersistTaps="handled"
             >
-                {/* Profile Photo / Selfie */}
-                <View style={styles.formCard}>
-                    <Text style={styles.sectionTitle}>📸 Profile Photo</Text>
-                    {photoUri ? (
-                        <View style={styles.photoPreviewWrapper}>
-                            <Image source={{ uri: photoUri }} style={styles.photoPreviewImage} />
-                            <View style={styles.photoPreviewActions}>
-                                <TouchableOpacity 
-                                    style={[styles.miniActionBtn, { backgroundColor: theme.primary }]} 
-                                    onPress={() => openCamera('photo')}
-                                    activeOpacity={0.8}
-                                >
-                                    <Camera size={14} color="#FFF" />
-                                    <Text style={styles.miniActionBtnText}>Camera</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity 
-                                    style={[styles.miniActionBtn, { backgroundColor: '#6366F1' }]} 
-                                    onPress={() => openGallery('photo')}
-                                    activeOpacity={0.8}
-                                >
-                                    <Upload size={14} color="#FFF" />
-                                    <Text style={styles.miniActionBtnText}>Gallery</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity 
-                                    style={[styles.miniActionBtn, { backgroundColor: '#EF4444' }]} 
-                                    onPress={() => setPhotoUri(null)}
-                                    activeOpacity={0.8}
-                                >
-                                    <X size={14} color="#FFF" />
-                                    <Text style={styles.miniActionBtnText}>Remove</Text>
-                                </TouchableOpacity>
-                            </View>
-                        </View>
-                    ) : (
-                        <View style={{ alignItems: 'center' }}>
-                            <View style={[styles.profileAvatarPlaceholder, errors.selfie && { borderColor: '#EF4444' }]}>
-                                <Camera size={36} color={theme.primary} />
-                            </View>
-                            <Text style={styles.selfieLabel}>Take or Upload Employee Photo</Text>
-                            <Text style={styles.selfieSub}>Clear face picture for staff identity</Text>
-                            <View style={{ flexDirection: 'row', gap: 12, marginTop: 14, width: '100%' }}>
-                                <TouchableOpacity 
-                                    style={[styles.profileActionBtn, { backgroundColor: theme.primary }]}
-                                    onPress={() => openCamera('photo')}
-                                    activeOpacity={0.8}
-                                >
-                                    <Camera size={16} color="#FFF" />
-                                    <Text style={styles.profileActionBtnText}>Camera</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity 
-                                    style={[styles.profileActionBtn, { backgroundColor: '#FFF', borderWidth: 1.5, borderColor: theme.primary }]}
-                                    onPress={() => openGallery('photo')}
-                                    activeOpacity={0.8}
-                                >
-                                    <Upload size={16} color={theme.primary} />
-                                    <Text style={[styles.profileActionBtnText, { color: theme.primary }]}>Gallery</Text>
-                                </TouchableOpacity>
-                            </View>
-                        </View>
-                    )}
-                </View>
+                {/* Profile Photo / Avatar Capture matching AddStudent */}
+                <ProfilePhotoCapture 
+                    uri={photoUri} 
+                    onCapture={(u: string) => { setPhotoUri(u); setErrors(p => ({ ...p, selfie: '' })); }} 
+                    onRemove={() => setPhotoUri(null)} 
+                    error={errors.selfie} 
+                />
 
                 {/* Personal Information */}
                 <View style={styles.formCard}>
@@ -590,18 +782,26 @@ export default function AddStaffScreen() {
                     </View>
 
                     <View style={styles.inputGroup}>
-                        <Text style={styles.inputLabel}>Monthly Salary (₹)</Text>
-                        <View style={styles.inputContainer}>
-                            <Ionicons name="cash-outline" size={18} color={theme.primary} style={styles.inputIcon} />
+                        <Text style={styles.inputLabel}>Monthly Salary (₹) <Text style={{ color: '#EF4444' }}>*</Text></Text>
+                        <View style={[styles.inputContainer, errors.monthlySalary && styles.inputError]}>
+                            <Ionicons name="cash-outline" size={18} color={errors.monthlySalary ? '#EF4444' : theme.primary} style={styles.inputIcon} />
                             <TextInput
                                 style={styles.input}
                                 placeholder="Enter monthly salary"
                                 placeholderTextColor="#A0AEC0"
                                 keyboardType="numeric"
                                 value={monthlySalary}
-                                onChangeText={setMonthlySalary}
+                                onChangeText={(t) => {
+                                    setMonthlySalary(t);
+                                    setErrors(prev => {
+                                        const copy = { ...prev };
+                                        delete copy.monthlySalary;
+                                        return copy;
+                                    });
+                                }}
                             />
                         </View>
+                        {errors.monthlySalary && <Text style={styles.errorText}>{errors.monthlySalary}</Text>}
                     </View>
                 </View>
 
@@ -659,73 +859,23 @@ export default function AddStaffScreen() {
                     {isPhotoReq && idProofTypeId ? (
                         <>
                             <Text style={[styles.fieldLabel, { marginTop: 8 }]}>{selectedProofName || 'ID'} Documents (Front & Back)</Text>
-                            <View style={styles.uploadContainer}>
-                                <View style={{ flex: 1, marginRight: 6 }}>
-                                    {aadhaarFrontUri ? (
-                                        <View style={styles.docBoxFilled}>
-                                            <Image source={{ uri: aadhaarFrontUri }} style={styles.docImgThumb} />
-                                            <View style={styles.docActionsOverlay}>
-                                                <TouchableOpacity style={styles.docMiniBtn} onPress={() => openCamera('front')}>
-                                                    <Camera size={12} color="#FFF" />
-                                                </TouchableOpacity>
-                                                <TouchableOpacity style={[styles.docMiniBtn, { backgroundColor: '#6366F1' }]} onPress={() => openGallery('front')}>
-                                                    <Upload size={12} color="#FFF" />
-                                                </TouchableOpacity>
-                                                <TouchableOpacity style={[styles.docMiniBtn, { backgroundColor: '#EF4444' }]} onPress={() => setAadhaarFrontUri(null)}>
-                                                    <X size={12} color="#FFF" />
-                                                </TouchableOpacity>
-                                            </View>
-                                            <Text style={styles.docThumbLabel}>Front Photo</Text>
-                                        </View>
-                                    ) : (
-                                        <View style={[styles.docUploadCard, errors.idFront && { borderColor: '#EF4444' }]}>
-                                            <Text style={styles.docUploadCardTitle}>Front Side</Text>
-                                            <View style={styles.docCardActionsRow}>
-                                                <TouchableOpacity style={[styles.docQuickBtn, { backgroundColor: theme.primary }]} onPress={() => openCamera('front')}>
-                                                    <Camera size={13} color="#FFF" />
-                                                    <Text style={styles.docQuickBtnText}>Camera</Text>
-                                                </TouchableOpacity>
-                                                <TouchableOpacity style={[styles.docQuickBtn, { backgroundColor: '#F1F5F9', borderWidth: 1, borderColor: '#CBD5E1' }]} onPress={() => openGallery('front')}>
-                                                    <Upload size={13} color="#475569" />
-                                                    <Text style={[styles.docQuickBtnText, { color: '#475569' }]}>Gallery</Text>
-                                                </TouchableOpacity>
-                                            </View>
-                                        </View>
-                                    )}
-                                </View>
-                                <View style={{ flex: 1, marginLeft: 6 }}>
-                                    {aadhaarBackUri ? (
-                                        <View style={styles.docBoxFilled}>
-                                            <Image source={{ uri: aadhaarBackUri }} style={styles.docImgThumb} />
-                                            <View style={styles.docActionsOverlay}>
-                                                <TouchableOpacity style={styles.docMiniBtn} onPress={() => openCamera('back')}>
-                                                    <Camera size={12} color="#FFF" />
-                                                </TouchableOpacity>
-                                                <TouchableOpacity style={[styles.docMiniBtn, { backgroundColor: '#6366F1' }]} onPress={() => openGallery('back')}>
-                                                    <Upload size={12} color="#FFF" />
-                                                </TouchableOpacity>
-                                                <TouchableOpacity style={[styles.docMiniBtn, { backgroundColor: '#EF4444' }]} onPress={() => setAadhaarBackUri(null)}>
-                                                    <X size={12} color="#FFF" />
-                                                </TouchableOpacity>
-                                            </View>
-                                            <Text style={styles.docThumbLabel}>Back Photo</Text>
-                                        </View>
-                                    ) : (
-                                        <View style={[styles.docUploadCard, errors.idBack && { borderColor: '#EF4444' }]}>
-                                            <Text style={styles.docUploadCardTitle}>Back Side</Text>
-                                            <View style={styles.docCardActionsRow}>
-                                                <TouchableOpacity style={[styles.docQuickBtn, { backgroundColor: theme.primary }]} onPress={() => openCamera('back')}>
-                                                    <Camera size={13} color="#FFF" />
-                                                    <Text style={styles.docQuickBtnText}>Camera</Text>
-                                                </TouchableOpacity>
-                                                <TouchableOpacity style={[styles.docQuickBtn, { backgroundColor: '#F1F5F9', borderWidth: 1, borderColor: '#CBD5E1' }]} onPress={() => openGallery('back')}>
-                                                    <Upload size={13} color="#475569" />
-                                                    <Text style={[styles.docQuickBtnText, { color: '#475569' }]}>Gallery</Text>
-                                                </TouchableOpacity>
-                                            </View>
-                                        </View>
-                                    )}
-                                </View>
+                            <View style={styles.idUploadBoxesRow}>
+                                <DocumentUploadBox
+                                    label="Front Side"
+                                    uri={aadhaarFrontUri}
+                                    onCapture={(u) => { setAadhaarFrontUri(u); setErrors(p => ({ ...p, idFront: '' })); }}
+                                    onRemove={() => setAadhaarFrontUri(null)}
+                                    isFront={true}
+                                    error={errors.idFront}
+                                />
+                                <DocumentUploadBox
+                                    label="Back Side"
+                                    uri={aadhaarBackUri}
+                                    onCapture={(u) => { setAadhaarBackUri(u); setErrors(p => ({ ...p, idBack: '' })); }}
+                                    onRemove={() => setAadhaarBackUri(null)}
+                                    isFront={false}
+                                    error={errors.idBack}
+                                />
                             </View>
                         </>
                     ) : null}
@@ -743,12 +893,14 @@ export default function AddStaffScreen() {
                             multiline
                             value={notes}
                             onChangeText={setNotes}
+                            onFocus={() => {
+                                setTimeout(() => {
+                                    scrollViewRef.current?.scrollToEnd({ animated: true });
+                                }, 250);
+                            }}
                         />
                     </View>
                 </View>
-
-                {/* Generous bottom spacing so sticky footer and keyboard never block notes or last inputs */}
-                <View style={{ height: 260 }} />
             </ScrollView>
 
             {/* Sticky Footer */}
@@ -849,154 +1001,6 @@ const styles = StyleSheet.create({
 
     fieldLabel: { fontSize: 13, fontWeight: '600', color: '#64748B', marginBottom: 8, marginLeft: 2 },
 
-    // Selfie
-    selfieBox: { 
-        borderStyle: 'dashed', 
-        borderWidth: 1.5, 
-        borderColor: '#CBD5E1', 
-        borderRadius: 16, 
-        padding: 20, 
-        alignItems: 'center', 
-        justifyContent: 'center', 
-        backgroundColor: '#F8FAFC' 
-    },
-    selfieLabel: { fontSize: 14, fontWeight: '700', color: '#475569', marginTop: 8 },
-    selfieSub: { fontSize: 11, color: '#94A3B8', fontWeight: '500', marginTop: 2 },
-
-    photoPreviewWrapper: {
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingVertical: 10,
-    },
-    photoPreviewImage: {
-        width: 110,
-        height: 110,
-        borderRadius: 55,
-        borderWidth: 3,
-        borderColor: '#4F46E5',
-    },
-    photoPreviewActions: {
-        flexDirection: 'row',
-        gap: 8,
-        marginTop: 10,
-    },
-    miniActionBtn: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 4,
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 20,
-    },
-    miniActionBtnText: {
-        color: '#FFF',
-        fontSize: 11,
-        fontWeight: '700',
-    },
-
-    profileAvatarPlaceholder: {
-        width: 80,
-        height: 80,
-        borderRadius: 40,
-        backgroundColor: '#EEF2FF',
-        borderWidth: 2,
-        borderColor: '#4F46E5',
-        borderStyle: 'dashed',
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: 8,
-    },
-    profileActionBtn: {
-        flex: 1,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 6,
-        paddingVertical: 10,
-        borderRadius: 12,
-    },
-    profileActionBtnText: {
-        color: '#FFF',
-        fontSize: 13,
-        fontWeight: '700',
-    },
-
-    docUploadCard: {
-        backgroundColor: '#F8FAFC',
-        borderWidth: 1.5,
-        borderColor: '#E2E8F0',
-        borderRadius: 14,
-        padding: 12,
-        alignItems: 'center',
-    },
-    docUploadCardTitle: {
-        fontSize: 12,
-        fontWeight: '700',
-        color: '#475569',
-        marginBottom: 8,
-    },
-    docCardActionsRow: {
-        flexDirection: 'row',
-        gap: 6,
-        width: '100%',
-    },
-    docQuickBtn: {
-        flex: 1,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 4,
-        paddingVertical: 8,
-        borderRadius: 8,
-    },
-    docQuickBtnText: {
-        color: '#FFF',
-        fontSize: 11,
-        fontWeight: '700',
-    },
-
-    docBoxFilled: {
-        borderRadius: 12,
-        overflow: 'hidden',
-        borderWidth: 1,
-        borderColor: '#CBD5E1',
-        height: 100,
-        backgroundColor: '#F8FAFC',
-        position: 'relative',
-    },
-    docImgThumb: {
-        width: '100%',
-        height: '100%',
-        resizeMode: 'cover',
-    },
-    docActionsOverlay: {
-        position: 'absolute',
-        top: 6,
-        right: 6,
-        flexDirection: 'row',
-        gap: 6,
-    },
-    docMiniBtn: {
-        backgroundColor: 'rgba(0,0,0,0.6)',
-        width: 24,
-        height: 24,
-        borderRadius: 12,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    docThumbLabel: {
-        position: 'absolute',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        backgroundColor: 'rgba(0,0,0,0.65)',
-        color: '#FFF',
-        fontSize: 10,
-        fontWeight: '700',
-        textAlign: 'center',
-        paddingVertical: 3,
-    },
-
     // Role selector
     chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
     chip: { 
@@ -1035,18 +1039,241 @@ const styles = StyleSheet.create({
     },
     dateText: { fontSize: 14, fontWeight: '600', color: '#1E293B' },
 
-    // Upload
-    uploadContainer: { flexDirection: 'row' },
-    uploadButton: { 
-        height: 42, 
-        backgroundColor: '#64748B', 
-        borderRadius: 12, 
-        flexDirection: 'row', 
-        alignItems: 'center', 
-        justifyContent: 'center', 
-        gap: 6 
+    // Profile Photo row redesign matching AddStudent
+    profilePhotoCard: {
+        flexDirection: 'row',
+        padding: 16,
+        borderRadius: 16,
+        gap: 16,
+        marginBottom: 14,
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+        elevation: 2,
     },
-    uploadBtnText: { color: '#FFF', fontWeight: '800', fontSize: 13 },
+    profileAvatarContainer: {
+        position: 'relative',
+    },
+    profileAvatarWrapper: {
+        position: 'relative',
+    },
+    profileAvatar: {
+        width: 72,
+        height: 72,
+        borderRadius: 36,
+        borderWidth: 2.5,
+    },
+    profileAvatarPlaceholder: {
+        width: 72,
+        height: 72,
+        borderRadius: 36,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1.5,
+        borderStyle: 'dashed',
+    },
+    profileEditBadge: {
+        position: 'absolute',
+        bottom: 0,
+        right: 0,
+        width: 22,
+        height: 22,
+        borderRadius: 11,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1.5,
+        borderColor: '#FFF',
+    },
+    profileRemoveBtn: {
+        position: 'absolute',
+        top: 0,
+        right: 0,
+        width: 18,
+        height: 18,
+        borderRadius: 9,
+        backgroundColor: '#EF4444',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: '#FFF',
+    },
+    profileDetailsContainer: {
+        flex: 1,
+        justifyContent: 'center',
+    },
+    profilePhotoTitle: {
+        fontWeight: '700',
+        fontSize: 15,
+        marginBottom: 2,
+    },
+    profilePhotoSubtitle: {
+        fontSize: 11,
+        lineHeight: 15,
+    },
+    profileSmallActionBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 8,
+    },
+    profileSmallActionBtnText: {
+        color: '#FFF',
+        fontSize: 11,
+        fontWeight: '700',
+    },
+
+    // ID Proof Documents (Front & Back) matching AddStudent
+    idUploadBoxesRow: {
+        flexDirection: 'row',
+        gap: 12,
+        marginTop: 4,
+    },
+    docUploadBox: {
+        flex: 1,
+        borderWidth: 1.5,
+        borderStyle: 'dashed',
+        borderRadius: 12,
+        padding: 12,
+        height: 165,
+    },
+    docPreviewContainer: {
+        flex: 1,
+        position: 'relative',
+        borderRadius: 8,
+        overflow: 'hidden',
+    },
+    docPreviewImage: {
+        width: '100%',
+        height: '100%',
+        resizeMode: 'cover',
+    },
+    docRemoveBtn: {
+        position: 'absolute',
+        top: 6,
+        right: 6,
+        width: 22,
+        height: 22,
+        borderRadius: 11,
+        backgroundColor: 'rgba(0,0,0,0.6)',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    docRetakeRow: {
+        position: 'absolute',
+        bottom: 6,
+        right: 6,
+        flexDirection: 'row',
+        alignItems: 'center',
+        borderRadius: 8,
+        paddingHorizontal: 7,
+        paddingVertical: 4,
+    },
+    docBoxTopRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    skeletonCard: {
+        width: 65,
+        height: 40,
+        borderRadius: 6,
+        borderWidth: 1,
+        padding: 4,
+    },
+    skeletonAvatar: {
+        width: 12,
+        height: 12,
+        borderRadius: 6,
+    },
+    skeletonLine: {
+        height: 3,
+        borderRadius: 1.5,
+    },
+    uploadCircle: {
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    docBoxTitle: {
+        fontSize: 12,
+        fontWeight: 'bold',
+        marginBottom: 2,
+    },
+    docBoxSubtitle: {
+        fontSize: 9,
+        color: '#94A3B8',
+        lineHeight: 12,
+    },
+    docUploadBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 4,
+        borderWidth: 1,
+        borderRadius: 6,
+        paddingVertical: 6,
+    },
+    docUploadBtnText: {
+        fontSize: 11,
+        fontWeight: 'bold',
+    },
+
+    // Sheet Modal Drawer for Camera / Gallery matching AddStudent
+    sheetHandle: {
+        width: 40,
+        height: 4,
+        backgroundColor: '#E2E8F0',
+        borderRadius: 2,
+        alignSelf: 'center',
+        marginBottom: 12,
+    },
+    sheetHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingHorizontal: 20,
+        paddingBottom: 14,
+        borderBottomWidth: 1,
+    },
+    sheetTitle: {
+        fontSize: 17,
+        fontWeight: '700',
+    },
+    doneBtn: {
+        paddingVertical: 6,
+        paddingHorizontal: 14,
+        borderRadius: 8,
+    },
+    doneBtnText: {
+        fontWeight: '700',
+        fontSize: 14,
+    },
+    sourceOptionBtn: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 18,
+        borderRadius: 16,
+        borderWidth: 1.5,
+        gap: 8,
+    },
+    sourceIconBg: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    sourceOptionText: {
+        fontWeight: '700',
+        fontSize: 13,
+    },
 
     // Sticky Footer
     stickyFooter: {
@@ -1062,10 +1289,6 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.05,
         shadowRadius: 8,
         elevation: 8,
-        position: 'absolute',
-        bottom: 0,
-        left: 0,
-        right: 0,
     },
     cancelButton: {
         flex: 1,
