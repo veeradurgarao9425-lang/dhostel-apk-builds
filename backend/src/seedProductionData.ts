@@ -401,6 +401,7 @@ async function seedProductionData() {
         hostel_id: hostelId,
         student_id: studentId,
         fee_month: currentMonthStr,
+        fee_date: 5,
         monthly_rent: monthlyRent,
         carry_forward: carryForward,
         total_due: totalDue,
@@ -422,7 +423,6 @@ async function seedProductionData() {
       });
       const feeId = Array.isArray(feeInsertRes) ? feeInsertRes[0] : feeInsertRes;
 
-
       // If Paid or Partial, create Payment Transaction
       if (paidAmount > 0) {
         const isCash = i % 8 === 0;
@@ -440,6 +440,7 @@ async function seedProductionData() {
           receipt_number: `REC-2026-${10000 + i}`,
           payment_date: paidDate || `${currentMonthStr}-02`,
           fee_month: currentMonthStr,
+          fee_date: 5,
           monthly_rent: monthlyRent,
           carry_forward: carryForward,
           total_due: totalDue,
@@ -448,6 +449,7 @@ async function seedProductionData() {
           notes: `Rent for ${currentMonthStr} received via ${pMethod}`,
           created_at: new Date(paidDate || `${currentMonthStr}-02`),
         };
+
 
         await db('fee_payments').insert(filterRow(rawPayment, paymentCols)).catch(async (err: any) => {
           if (err?.code === 'WARN_DATA_TRUNCATED' || err?.code === 'ER_TRUNCATED_WRONG_VALUE_FOR_FIELD') {
