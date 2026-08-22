@@ -57,6 +57,7 @@ import { startDailyExcelReportsJob } from './jobs/dailyExcelReports.js';
 import { startTenantFriendlyRemindersJob } from './jobs/tenantFriendlyReminders.js';
 import { sendNotificationToHostelOwner } from './utils/notification.js';
 import { checkHostelUniqueIdentifiers } from './utils/validation.js';
+import { processFileUpload } from './utils/fileUpload.js';
 import { sanitizeInputMiddleware, developerLoginLimiter } from './middleware/security.js';
 
 
@@ -312,8 +313,8 @@ app.get('/api/public/qr-signup', async (req, res) => {
     .fb:hover{background:#EEF2FF;border-color:#818CF8;}
     .fb.has{border-style:solid;border-color:#4F46E5;background:#F5F3FF;padding:6px;}
     .preview-img{width:100%;height:100px;object-fit:cover;border-radius:10px;display:none;}
-    .loc-btn{display:inline-flex;align-items:center;gap:5px;background:#EEF2FF;color:#4F46E5;border:1px solid #C7D2FE;padding:6px 12px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;margin-top:6px;transition:all .2s;}
-    .loc-btn:hover{background:#E0E7FF;}
+    .clear-btn{position:absolute;top:6px;right:6px;width:24px;height:24px;background:#EF4444;color:#fff;border-radius:50%;display:none;align-items:center;justify-content:center;font-size:12px;font-weight:900;border:none;cursor:pointer;z-index:5;line-height:1;box-shadow:0 2px 6px rgba(0,0,0,0.2);}
+    .clear-btn:hover{background:#DC2626;}
     #toast{position:fixed;top:16px;left:50%;transform:translateX(-50%) translateY(-120px);background:#1E293B;color:#fff;padding:12px 20px;border-radius:100px;font-size:13.5px;font-weight:700;box-shadow:0 8px 24px rgba(0,0,0,.2);transition:transform .4s cubic-bezier(.34,1.56,.64,1);z-index:1000;display:flex;align-items:center;gap:8px;white-space:nowrap;max-width:90%;text-align:center;}
     #toast.show{transform:translateX(-50%) translateY(0);}
     #ldr{position:absolute;inset:0;background:rgba(255,255,255,.95);z-index:99;display:flex;flex-direction:column;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .25s;border-radius:24px;backdrop-filter:blur(4px);}
@@ -348,15 +349,15 @@ app.get('/api/public/qr-signup', async (req, res) => {
         <div class="sp" id="prog" style="width:0%"></div>
         <div class="stp active" id="n1"><div class="sc" id="c1">1</div><div class="sl">Personal</div></div>
         <div class="stp" id="n2"><div class="sc" id="c2">2</div><div class="sl">Guardian</div></div>
-        <div class="stp" id="n3"><div class="sc" id="c3">3</div><div class="sl">Identity</div></div>
+        <div class="stp" id="n3"><div class="sc" id="c3">3</div><div class="sl">Verification</div></div>
       </div>
 
-      <form id="frm" novalidate>
+      <form id="frm" enctype="multipart/form-data">
         <!-- STEP 1: Personal Details -->
         <div class="step active" id="p1">
           <div class="field">
             <lbl>First Name<span class="req">*</span></lbl>
-            <input id="first_name" name="first_name" placeholder="e.g. Ravi"/>
+            <input id="first_name" name="first_name" placeholder="e.g. Ramesh"/>
             <span class="em" id="e1"></span>
           </div>
           <div class="field">
@@ -437,6 +438,7 @@ app.get('/api/public/qr-signup', async (req, res) => {
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:6px;">
               <div class="fw">
                 <label class="fb" id="ffb" for="af">
+                  <button type="button" class="clear-btn" id="fclear" title="Remove Photo">✕</button>
                   <img id="fprev" class="preview-img" alt="Front Preview"/>
                   <div id="fplaceholder" style="display:flex;flex-direction:column;align-items:center;gap:6px;">
                     <i data-lucide="camera" id="fi" style="width:22px;height:22px;"></i>
@@ -447,6 +449,7 @@ app.get('/api/public/qr-signup', async (req, res) => {
               </div>
               <div class="fw">
                 <label class="fb" id="bfb" for="ab">
+                  <button type="button" class="clear-btn" id="bclear" title="Remove Photo">✕</button>
                   <img id="bprev" class="preview-img" alt="Back Preview"/>
                   <div id="bplaceholder" style="display:flex;flex-direction:column;align-items:center;gap:6px;">
                     <i data-lucide="camera" id="bi" style="width:22px;height:22px;"></i>
@@ -465,11 +468,8 @@ app.get('/api/public/qr-signup', async (req, res) => {
           </div>
 
           <div class="field">
-            <div style="display:flex;justify-content:space-between;align-items:center;">
-              <lbl style="margin-bottom:0;">Current Location / Present Address</lbl>
-              <button type="button" class="loc-btn" id="btn_gps"><i data-lucide="map-pin" style="width:13px;height:13px;"></i> Auto-detect GPS</button>
-            </div>
-            <textarea id="curr_addr" name="present_working_address" style="margin-top:6px;" placeholder="Workplace / College or current residence address"></textarea>
+            <lbl>Current Location / Present Address</lbl>
+            <textarea id="curr_addr" name="present_working_address" placeholder="Workplace / College or current residence address"></textarea>
           </div>
 
           <div class="btns">
@@ -529,7 +529,7 @@ app.get('/api/public/qr-signup', async (req, res) => {
     for(var k=0; k<ids.length; k++){
       (function(id){
         var el=document.getElementById(id);
-        if(el) el.addEventListener('input',function(e){ e.target.value=e.target.value.replace(/\\D/g,''); });
+        if(el) el.addEventListener('input',function(e){ e.target.value=e.target.value.replace(/\D/g,''); });
       })(ids[k]);
     }
 
@@ -559,21 +559,23 @@ app.get('/api/public/qr-signup', async (req, res) => {
       });
       ida.addEventListener('input', function(e) {
         if(idt.value == '1') {
-          e.target.value = e.target.value.replace(/\\D/g,'');
+          e.target.value = e.target.value.replace(/\D/g,'');
         } else {
           e.target.value = e.target.value.replace(/[^A-Za-z0-9]/g,'').toUpperCase();
         }
       });
     }
 
-    // Live File Upload Previews
-    function setupFilePreview(inpId, boxId, prevId, holderId, labelId, sideText) {
+    // Live File Upload Previews with Cross Clear Option
+    function setupFilePreview(inpId, boxId, prevId, holderId, labelId, clearId, sideText) {
       var inp = document.getElementById(inpId);
       var box = document.getElementById(boxId);
       var prev = document.getElementById(prevId);
       var holder = document.getElementById(holderId);
       var lbl = document.getElementById(labelId);
+      var clearBtn = document.getElementById(clearId);
       if (!inp) return;
+
       inp.addEventListener('change', function() {
         if (inp.files && inp.files[0]) {
           var file = inp.files[0];
@@ -584,69 +586,40 @@ app.get('/api/public/qr-signup', async (req, res) => {
             if (holder) holder.style.display = 'none';
             box.className = 'fb has';
             if (lbl) lbl.textContent = 'Change ' + sideText;
+            if (clearBtn) clearBtn.style.display = 'flex';
           };
           reader.readAsDataURL(file);
         }
       });
-    }
-    setupFilePreview('af', 'ffb', 'fprev', 'fplaceholder', 'ffl', 'Front');
-    setupFilePreview('ab', 'bfb', 'bprev', 'bplaceholder', 'bfl', 'Back');
 
-    // Auto-detect GPS Location
-    var btnGps = document.getElementById('btn_gps');
-    if (btnGps) {
-      btnGps.addEventListener('click', function() {
-        if (!navigator.geolocation) {
-          toast('Geolocation is not supported by your browser');
-          return;
-        }
-        btnGps.innerHTML = '<i data-lucide="loader" style="width:13px;height:13px;"></i> Locating...';
-        lucide.createIcons();
-        navigator.geolocation.getCurrentPosition(
-          function(pos) {
-            var lat = pos.coords.latitude;
-            var lon = pos.coords.longitude;
-            fetch('https://nominatim.openstreetmap.org/reverse?format=json&lat='+lat+'&lon='+lon)
-              .then(function(r){return r.json();})
-              .then(function(data){
-                var formatted = data.display_name || ('Lat: ' + lat.toFixed(4) + ', Lon: ' + lon.toFixed(4));
-                var currEl = document.getElementById('curr_addr');
-                if (currEl) currEl.value = formatted;
-                btnGps.innerHTML = '<i data-lucide="check" style="width:13px;height:13px;"></i> Located!';
-                lucide.createIcons();
-                setTimeout(function(){
-                  btnGps.innerHTML = '<i data-lucide="map-pin" style="width:13px;height:13px;"></i> Auto-detect GPS';
-                  lucide.createIcons();
-                }, 3000);
-              })
-              .catch(function() {
-                var currEl = document.getElementById('curr_addr');
-                if (currEl) currEl.value = 'Lat: ' + lat.toFixed(4) + ', Lon: ' + lon.toFixed(4);
-                btnGps.innerHTML = '<i data-lucide="map-pin" style="width:13px;height:13px;"></i> Auto-detect GPS';
-                lucide.createIcons();
-              });
-          },
-          function(err) {
-            toast('Unable to retrieve location. Please type manually.');
-            btnGps.innerHTML = '<i data-lucide="map-pin" style="width:13px;height:13px;"></i> Auto-detect GPS';
-            lucide.createIcons();
-          },
-          { enableHighAccuracy: true, timeout: 10000 }
-        );
-      });
+      if (clearBtn) {
+        clearBtn.addEventListener('click', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          inp.value = '';
+          prev.src = '';
+          prev.style.display = 'none';
+          if (holder) holder.style.display = 'flex';
+          box.className = 'fb';
+          if (lbl) lbl.textContent = 'Upload ' + sideText;
+          clearBtn.style.display = 'none';
+        });
+      }
     }
+    setupFilePreview('af', 'ffb', 'fprev', 'fplaceholder', 'ffl', 'fclear', 'Front');
+    setupFilePreview('ab', 'bfb', 'bprev', 'bplaceholder', 'bfl', 'bclear', 'Back');
 
     // Step 1 Next
     document.getElementById('b1').addEventListener('click', function() {
       var ok = true;
       if (!val('first_name').trim()) { setErr('e1','first_name','First name is required'); ok = false; } else { setErr('e1','first_name',''); }
       var p = val('phone').trim();
-      if (!/^[6-9]\\d{9}$/.test(p)) {
+      if (!/^[6-9]\d{9}$/.test(p)) {
         setErr('e2','phone','Enter a valid 10-digit mobile number starting with 6-9');
         ok = false;
       } else { setErr('e2','phone',''); }
       var em = val('email').trim();
-      if (em && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(em)) { setErr('e3','email','Enter a valid email'); ok = false; } else { setErr('e3','email',''); }
+      if (em && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) { setErr('e3','email','Enter a valid email'); ok = false; } else { setErr('e3','email',''); }
       if (!val('dob').trim()) { setErr('e_dob','dob','Date of Birth is required'); ok = false; } else { setErr('e_dob','dob',''); }
       if (!val('gender').trim()) { setErr('e_gender','gender','Gender is required'); ok = false; } else { setErr('e_gender','gender',''); }
       if (!ok) { toast('Please fill all required fields correctly.'); return; }
@@ -660,7 +633,7 @@ app.get('/api/public/qr-signup', async (req, res) => {
       var ok = true;
       if (!val('gname').trim()) { setErr('e_gname','gname','Guardian name is required'); ok = false; } else { setErr('e_gname','gname',''); }
       var gp = val('gphone').trim();
-      if (!/^[6-9]\\d{9}$/.test(gp)) {
+      if (!/^[6-9]\d{9}$/.test(gp)) {
         setErr('e5','gphone','Enter a valid 10-digit guardian number starting with 6-9');
         ok = false;
       } else { setErr('e5','gphone',''); }
@@ -676,7 +649,7 @@ app.get('/api/public/qr-signup', async (req, res) => {
       var idnum = val('aadhaar').trim();
       var idtype = val('id_type');
       if (!idnum) { setErr('e6','aadhaar','ID Number is required'); toast('ID document number is required.'); return; }
-      if (idtype == '1' && !/^\\d{12}$/.test(idnum)) { setErr('e6','aadhaar','Aadhaar must be exactly 12 digits'); toast('Aadhaar must be 12 digits'); return; }
+      if (idtype == '1' && !/^\d{12}$/.test(idnum)) { setErr('e6','aadhaar','Aadhaar must be exactly 12 digits'); toast('Aadhaar must be 12 digits'); return; }
       if (idtype == '2' && !/^[A-Z0-9]{10}$/.test(idnum)) { setErr('e6','aadhaar','PAN must be exactly 10 characters'); toast('PAN must be 10 characters'); return; }
       if (idtype == '3' && !/^[A-Z0-9]{10}$/.test(idnum)) { setErr('e6','aadhaar','Voter ID must be exactly 10 characters'); toast('Voter ID must be 10 characters'); return; }
       if (idtype == '4' && !/^[A-Z0-9]{15}$/.test(idnum)) { setErr('e6','aadhaar','Driving License must be exactly 15 characters'); toast('Driving License must be 15 characters'); return; }
@@ -786,20 +759,45 @@ app.post('/api/public/qr-signup', qrSignupUpload.fields([
       return sendError('This ID proof number is already registered in this hostel.');
     }
 
-    const now = new Date();
+    let parsedDob: string | null = null;
+    if (date_of_birth) {
+      try {
+        parsedDob = new Date(date_of_birth).toISOString().split('T')[0];
+      } catch (e) {
+        parsedDob = String(date_of_birth);
+      }
+    }
+
+    let frontUrl: string | null = aadhaarFrontFile ? `/uploads/${aadhaarFrontFile.filename}` : null;
+    let backUrl: string | null = aadhaarBackFile ? `/uploads/${aadhaarBackFile.filename}` : null;
+
+    if (aadhaarFrontFile) {
+      try {
+        const uploaded = await processFileUpload(aadhaarFrontFile, 'students');
+        if (uploaded) frontUrl = uploaded;
+      } catch (e) {}
+    }
+    if (aadhaarBackFile) {
+      try {
+        const uploaded = await processFileUpload(aadhaarBackFile, 'students');
+        if (uploaded) backUrl = uploaded;
+      } catch (e) {}
+    }
+
+    const nowStr = new Date().toISOString().split('T')[0];
     const insertData: any = {
       hostel_id:        numHostelId,
       first_name:       String(first_name).trim(),
       last_name:        last_name ? String(last_name).trim() : null,
       phone:            String(phone).trim(),
       email:            email ? String(email).trim() : null,
-      date_of_birth:    new Date(date_of_birth),
+      date_of_birth:    parsedDob,
       gender:           String(gender).trim(),
       permanent_address: permanent_address ? String(permanent_address).trim() : null,
       present_working_address: present_working_address ? String(present_working_address).trim() : null,
       guardian_name:    guardian_name ? String(guardian_name).trim() : null,
       guardian_phone:   guardian_phone ? String(guardian_phone).trim() : null,
-      admission_date:   now,
+      admission_date:   nowStr,
       admission_fee:    0,
       admission_status: 0,
       status:           3, // QR Signup — owner must activate
@@ -810,11 +808,22 @@ app.post('/api/public/qr-signup', qrSignupUpload.fields([
       id_proof_type:    typeId,
       id_proof_number:  cleanId,
       id_proof_status:  1, // Submitted
-      id_proof_front_url: aadhaarFrontFile ? `/uploads/${aadhaarFrontFile.filename}` : null,
-      id_proof_back_url:  aadhaarBackFile  ? `/uploads/${aadhaarBackFile.filename}`  : null,
+      id_proof_front_url: frontUrl,
+      id_proof_back_url:  backUrl,
     };
 
-    const [newStudentId] = await db('students').insert(insertData);
+    let newStudentId: number;
+    try {
+      const [id] = await db('students').insert(insertData);
+      newStudentId = id;
+    } catch (insertErr: any) {
+      console.warn('[qr-signup] Initial insert error, retrying without optional columns:', insertErr.message);
+      delete insertData.id_proof_front_url;
+      delete insertData.id_proof_back_url;
+      delete insertData.id_proof_status;
+      const [id] = await db('students').insert(insertData);
+      newStudentId = id;
+    }
 
     // Notify the owner of the hostel
     sendNotificationToHostelOwner(
@@ -824,7 +833,7 @@ app.post('/api/public/qr-signup', qrSignupUpload.fields([
       `${first_name} has submitted a registration request via QR. Review and assign a room.`,
       'High',
       { studentId: newStudentId }
-    );
+    ).catch(err => console.error('[qr-signup] Owner notification error:', err));
 
     if (wantsJson) {
       return res.status(200).json({ success: true, message: 'Registration submitted successfully!' });

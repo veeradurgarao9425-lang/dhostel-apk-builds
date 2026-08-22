@@ -13,7 +13,7 @@ import {
   Dimensions,
   Image,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../../contexts/AuthContext';
 import Svg, { Path, Rect, Circle, Line, Polyline } from 'react-native-svg';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -98,6 +98,7 @@ const ArrowRightIcon = () => (
 );
 
 export function TenantLoginScreen({ navigation }: any) {
+  const insets = useSafeAreaInsets();
   const { signInOtp, verifyOtp, connectedHostel, disconnectHostel } = useAuth();
 
   const [email, setEmail]               = useState('');
@@ -224,7 +225,7 @@ export function TenantLoginScreen({ navigation }: any) {
         style={[
           s.topSection,
           {
-            height: Math.max(Math.min(Dimensions.get('window').height * 0.32 + 20, Dimensions.get('window').height * 0.35), 180),
+            height: Math.max(Math.min(Dimensions.get('window').height * 0.32 + (insets.top > 0 ? insets.top : 0), Dimensions.get('window').height * 0.35), 180),
           },
         ]}
       >
@@ -233,7 +234,7 @@ export function TenantLoginScreen({ navigation }: any) {
           style={[
             StyleSheet.absoluteFillObject,
             s.topSectionContent,
-            { paddingTop: 28 },
+            { paddingTop: insets.top > 0 ? insets.top + 8 : 24 },
           ]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
@@ -242,7 +243,7 @@ export function TenantLoginScreen({ navigation }: any) {
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={() => navigation.goBack()}
-            style={s.backBtn}
+            style={[s.backBtn, { top: insets.top > 0 ? insets.top + 10 : 20 }]}
           >
             <Ionicons name="arrow-back" size={22} color={WHITE} />
           </TouchableOpacity>
