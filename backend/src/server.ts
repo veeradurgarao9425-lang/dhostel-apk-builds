@@ -130,14 +130,15 @@ const otpLimiter = rateLimit({
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
-      defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'", "https://unpkg.com"],
-      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-      fontSrc: ["'self'", "https://fonts.gstatic.com"],
-      imgSrc: ["'self'", "data:", "blob:", "https:"],
-      connectSrc: ["'self'", ...getAllowedOrigins()],
+      defaultSrc: ["'self'", "'unsafe-inline'", "https:", "http:", "data:", "blob:"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://unpkg.com", "https://cdn.jsdelivr.net"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://fonts.cdnfonts.com"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com", "https://fonts.cdnfonts.com", "data:"],
+      imgSrc: ["'self'", "data:", "blob:", "https:", "http:"],
+      connectSrc: ["'self'", "*", "data:", "blob:", ...getAllowedOrigins()],
       objectSrc: ["'none'"],
       frameSrc: ["'none'"],
+      upgradeInsecureRequests: null
     },
   },
   crossOriginEmbedderPolicy: false, // Required for PDF/Excel file downloads
@@ -713,6 +714,7 @@ app.get('/api/public/qr-signup', async (req, res) => {
 </body>
 </html>`;
 
+  res.removeHeader('Content-Security-Policy');
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
   res.setHeader('Pragma', 'no-cache');
