@@ -59,18 +59,30 @@ export const getExpenses = async (req: AuthRequest, res: Response) => {
             const lastDayOfPrevMonth = new Date(prevYear, prevMonthNum, 0).getDate();
             const lastDayOfPrevMonthStr = `${prevMonthStr}-${String(lastDayOfPrevMonth).padStart(2, '0')}`;
 
-            // Fetch recurring expense categories (Rent, Maintenance, Internet, Lift, Utilities)
+            // Fetch recurring expense categories (Rent, Maintenance, Internet, Lift, Utilities) - EXCLUDE deposits & refunds
             const prevMonthExpenses = await db('expenses as e')
               .leftJoin('expense_categories as ec', 'e.category_id', 'ec.category_id')
               .where('e.hostel_id', hostel_id)
               .whereBetween('e.expense_date', [firstDayOfPrevMonth, lastDayOfPrevMonthStr])
               .where(function () {
-                this.where('ec.category_name', 'like', '%Rent%')
-                  .orWhere('ec.category_name', 'like', '%Maintenance%')
-                  .orWhere('ec.category_name', 'like', '%Internet%')
-                  .orWhere('ec.category_name', 'like', '%Lift%')
-                  .orWhere('ec.category_name', 'like', '%Electricity%')
-                  .orWhere('ec.category_name', 'like', '%Water%');
+                this.where(function () {
+                  this.where('ec.category_name', 'like', '%Rent%')
+                    .orWhere('ec.category_name', 'like', '%Maintenance%')
+                    .orWhere('ec.category_name', 'like', '%Internet%')
+                    .orWhere('ec.category_name', 'like', '%Lift%')
+                    .orWhere('ec.category_name', 'like', '%Electricity%')
+                    .orWhere('ec.category_name', 'like', '%Water%');
+                })
+                .andWhereNot('ec.category_name', 'like', '%Deposit%')
+                .andWhereNot('ec.category_name', 'like', '%Refund%');
+              })
+              .where(function () {
+                this.whereNull('e.description')
+                  .orWhere(function () {
+                    this.whereNot('e.description', 'like', '%Deposit%')
+                      .whereNot('e.description', 'like', '%Refund%')
+                      .whereNot('e.description', 'like', '%Vacate%');
+                  });
               })
               .select('e.*');
 

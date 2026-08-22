@@ -33,6 +33,7 @@ export default function ForgotPasswordScreen({ navigation }: any) {
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     
     const [isLoading, setIsLoading] = useState(false);
+    const [isRedirecting, setIsRedirecting] = useState(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
     const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
@@ -132,6 +133,7 @@ export default function ForgotPasswordScreen({ navigation }: any) {
 
         Keyboard.dismiss();
         setIsLoading(true);
+        setIsRedirecting(true);
         setErrorMsg(null);
         setSuccessMsg(null);
 
@@ -147,19 +149,24 @@ export default function ForgotPasswordScreen({ navigation }: any) {
                 setSuccessMsg(msg);
                 showSuccess(msg);
                 setTimeout(() => {
-                    navigation.navigate('Login');
-                }, 1500);
+                    navigation.reset({
+                        index: 0,
+                        routes: [{ name: 'Login' }],
+                    });
+                }, 1000);
             } else {
+                setIsRedirecting(false);
+                setIsLoading(false);
                 const msg = response.data?.error || response.data?.message || 'Failed to reset password.';
                 setErrorMsg(msg);
                 showError(msg);
             }
         } catch (err: any) {
+            setIsRedirecting(false);
+            setIsLoading(false);
             const msg = err.response?.data?.error || err.response?.data?.message || 'Error resetting password. Please try again.';
             setErrorMsg(msg);
             showError(msg);
-        } finally {
-            setIsLoading(false);
         }
     };
 
@@ -349,6 +356,15 @@ export default function ForgotPasswordScreen({ navigation }: any) {
                     </>
                 )}
             </View>
+
+            {/* Full-Screen Loading Overlay */}
+            {isRedirecting && (
+                <View style={styles.redirectOverlay}>
+                    <View style={styles.redirectCard}>
+                        <ActivityIndicator size="large" color="#7C3AED" />
+                    </View>
+                </View>
+            )}
         </KeyboardAvoidingView>
     );
 }
@@ -474,5 +490,27 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         color: '#475569',
         marginBottom: 6,
-    }
+    },
+    redirectOverlay: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: 'rgba(15, 23, 42, 0.45)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 999,
+        elevation: 999,
+        padding: 24,
+    },
+    redirectCard: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 20,
+        width: 80,
+        height: 80,
+        justifyContent: 'center',
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.18,
+        shadowRadius: 16,
+        elevation: 10,
+    },
 });

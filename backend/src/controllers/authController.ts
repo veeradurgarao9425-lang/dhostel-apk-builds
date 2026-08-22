@@ -6,7 +6,7 @@ import { generateToken } from '../utils/jwt.js';
 import { AuthRequest } from '../middleware/auth.js';
 import jwt from 'jsonwebtoken';
 import { sendPasswordResetEmail, sendOtpEmail, sendEmail, sendNewJoinerOwnerAlertEmail, sendNewJoinerStudentEmail } from '../utils/email.js';
-import { sendNotificationToHostelOwner, sendNotificationToStudent } from '../utils/notification.js';
+import { sendNotificationToHostelOwner, sendNotificationToStudent, sendNotificationToUser } from '../utils/notification.js';
 import crypto from 'crypto';
 import { checkHostelUniqueIdentifiers } from '../utils/validation.js';
 import { sendDailyOwnerReportEmail } from '../utils/excelReport.js';
@@ -688,6 +688,63 @@ export const authController = {
         password_reset_otp: null,
         password_reset_expires_at: null,
       });
+
+      // Send in-app & push notification
+      sendNotificationToUser({
+        userId: user.user_id,
+        hostelId: user.hostel_id || null,
+        type: 'System Alert',
+        title: 'Password Changed Successfully',
+        message: 'Your account password has been updated. If you did not make this change, please contact support immediately.',
+        priority: 'High',
+        metadata: { action: 'password_reset', timestamp: new Date() }
+      }).catch((e: any) => console.warn('Password reset notification warning:', e));
+
+      // Send confirmation security email
+      try {
+        const notifHtml = `
+          <!DOCTYPE html>
+          <html lang="en">
+          <head><meta charset="utf-8"><title>Password Changed Successfully</title></head>
+          <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f8fafc; margin:0; padding: 24px; color: #1e293b;">
+            <div style="max-width: 500px; margin: 0 auto; background-color: #ffffff; padding: 32px 28px; border-radius: 16px; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.05);">
+              <div style="text-align: center; margin-bottom: 24px;">
+                <div style="display: inline-block; background: linear-gradient(135deg, #10B981, #059669); width: 48px; height: 48px; border-radius: 12px; line-height: 48px; color: #ffffff; font-size: 24px; margin-bottom: 8px;">🔒</div>
+                <h2 style="color: #6366f1; margin: 0; font-size: 24px; font-weight: 800;">Hostix Security</h2>
+              </div>
+              <div style="border-top: 1px solid #f1f5f9; padding-top: 20px;">
+                <h3 style="color: #0f172a; margin-top: 0; font-size: 18px; font-weight: 700; text-align: center;">Password Changed Successfully</h3>
+                <p style="color: #475569; font-size: 14px; line-height: 22px; margin-bottom: 16px;">
+                  Hello <strong>${user.full_name || 'Hostix User'}</strong>,
+                </p>
+                <p style="color: #475569; font-size: 14px; line-height: 22px; margin-bottom: 16px;">
+                  This is a confirmation that your account password was changed successfully.
+                </p>
+                <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; padding: 14px 18px; margin: 20px 0;">
+                  <p style="color: #166534; font-size: 13px; font-weight: 600; margin: 0;">
+                    ✓ Your account is secure and your new password is now active.
+                  </p>
+                </div>
+                <p style="color: #64748b; font-size: 12.5px; line-height: 18px; margin-top: 16px;">
+                  If you did <strong>not</strong> make this change, please contact Hostix support or reset your password immediately.
+                </p>
+              </div>
+              <div style="border-top: 1px solid #f1f5f9; margin-top: 24px; padding-top: 14px; text-align: center;">
+                <p style="color: #94a3b8; font-size: 11px; margin: 0;">&copy; ${new Date().getFullYear()} Hostix Systems. All rights reserved.</p>
+              </div>
+            </div>
+          </body>
+          </html>
+        `;
+        sendEmail({
+          to: user.email,
+          subject: 'Security Alert: Password Changed Successfully - Hostix',
+          html: notifHtml,
+          emailType: 'SECURITY'
+        }).catch((e: any) => console.warn('Password change email warning:', e));
+      } catch (emailErr) {
+        console.warn('Could not send password change alert email:', emailErr);
+      }
 
       return res.json({
         success: true,
