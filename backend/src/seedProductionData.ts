@@ -406,15 +406,22 @@ async function seedProductionData() {
         total_due: totalDue,
         paid_amount: paidAmount,
         balance: balance,
-        status: feeStatusStr,
-        fee_status: feeStatusStr,
+        status: feeStatusEnum,
+        fee_status: feeStatusEnum,
         amount: totalDue,
         due_date: `${currentMonthStr}-05`,
         created_at: joinDate,
       };
 
-      const feeInsertRes = await db('monthly_fees').insert(filterRow(rawFee, feeCols));
+      const feeInsertRes = await db('monthly_fees').insert(filterRow(rawFee, feeCols)).catch(async (err: any) => {
+        if (err?.code === 'WARN_DATA_TRUNCATED' || err?.code === 'ER_TRUNCATED_WRONG_VALUE_FOR_FIELD') {
+          const fallback = { ...rawFee, fee_status: feeStatusStr, status: feeStatusStr };
+          return db('monthly_fees').insert(filterRow(fallback, feeCols));
+        }
+        throw err;
+      });
       const feeId = Array.isArray(feeInsertRes) ? feeInsertRes[0] : feeInsertRes;
+
 
       // If Paid or Partial, create Payment Transaction
       if (paidAmount > 0) {
