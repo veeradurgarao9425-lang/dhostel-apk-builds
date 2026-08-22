@@ -208,9 +208,21 @@ export default function ForgotPasswordScreen({ navigation }: any) {
                             />
                         </View>
 
-                        <TouchableOpacity style={styles.submitBtn} onPress={handleSendOTP} disabled={isLoading}>
+                        <TouchableOpacity 
+                            style={[styles.submitBtn, isLoading && { opacity: 0.8 }]} 
+                            onPress={handleSendOTP} 
+                            disabled={isLoading}
+                            activeOpacity={0.85}
+                        >
                             <LinearGradient colors={['#7C3AED', '#5F2EEA']} style={styles.submitGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-                                {isLoading ? <ActivityIndicator color="#FFF" /> : <Text style={styles.submitTxt}>Send OTP</Text>}
+                                {isLoading ? (
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+                                        <ActivityIndicator color="#FFFFFF" size="small" />
+                                        <Text style={styles.submitTxt}>Sending OTP...</Text>
+                                    </View>
+                                ) : (
+                                    <Text style={styles.submitTxt}>Send OTP</Text>
+                                )}
                             </LinearGradient>
                         </TouchableOpacity>
                     </>
@@ -240,13 +252,17 @@ export default function ForgotPasswordScreen({ navigation }: any) {
                         </View>
 
                         <TouchableOpacity 
-                            style={[styles.submitBtn, isLoading && { opacity: 0.7 }]} 
+                            style={[styles.submitBtn, isLoading && { opacity: 0.8 }]} 
                             onPress={handleVerifyOTP} 
                             disabled={isLoading}
+                            activeOpacity={0.85}
                         >
                             <LinearGradient colors={['#7C3AED', '#5F2EEA']} style={styles.submitGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
                                 {isLoading ? (
-                                    <ActivityIndicator color="#FFFFFF" size="small" />
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+                                        <ActivityIndicator color="#FFFFFF" size="small" />
+                                        <Text style={styles.submitTxt}>Verifying Code...</Text>
+                                    </View>
                                 ) : (
                                     <Text style={styles.submitTxt}>Verify Code</Text>
                                 )}
@@ -452,5 +468,11 @@ const styles = StyleSheet.create({
         fontWeight: '500',
         marginBottom: 16,
         textAlign: 'center',
+    },
+    inputLabel: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: '#475569',
+        marginBottom: 6,
     }
 });
