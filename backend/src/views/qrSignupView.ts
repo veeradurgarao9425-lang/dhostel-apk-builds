@@ -20,15 +20,15 @@ export function renderQrSignupView(params: QrSignupViewParams): string {
 
   const roomBannerHtml = roomId
     ? `
-      <div class="mb-5 p-3.5 bg-emerald-50/90 border border-emerald-200/80 rounded-2xl flex items-center gap-3 backdrop-blur-sm shadow-sm animate-fade-in">
-        <div class="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center shrink-0">
-          <i data-lucide="door-open" class="w-5 h-5"></i>
+      <div class="mb-4 p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl flex items-center gap-3">
+        <div class="w-9 h-9 rounded-xl bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-sm shadow-emerald-500/30">
+          <i data-lucide="door-open" class="w-4 h-4"></i>
         </div>
-        <div>
-          <div class="text-[10px] font-extrabold uppercase tracking-wider text-emerald-800">Pre-assigned Space</div>
-          <div class="text-xs font-semibold text-emerald-950">
-            Room <span class="font-black text-emerald-700 font-mono">${roomId}</span>
-            ${bedName ? ` &nbsp;•&nbsp; Bed <span class="font-black text-emerald-700 font-mono">${bedName}</span>` : ''}
+        <div class="min-w-0">
+          <div class="text-[10px] font-extrabold uppercase tracking-wider text-emerald-700">Pre-assigned Room</div>
+          <div class="text-xs font-bold text-slate-800">
+            Room <span class="text-emerald-700 font-black">${roomId}</span>
+            ${bedName ? ` &nbsp;•&nbsp; Bed <span class="text-emerald-700 font-black">${bedName}</span>` : ''}
           </div>
         </div>
       </div>`
@@ -41,7 +41,7 @@ export function renderQrSignupView(params: QrSignupViewParams): string {
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0"/>
   <title>${hostelName} - Tenant Registration</title>
   
-  <!-- Fonts -->
+  <!-- Modern Font: Plus Jakarta Sans -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -55,29 +55,15 @@ export function renderQrSignupView(params: QrSignupViewParams): string {
       theme: {
         extend: {
           fontFamily: {
-            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            sans: ['"Plus Jakarta Sans"', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
           },
           colors: {
             brand: {
-              50: '#eef2ff',
-              100: '#e0e7ff',
-              500: '#6366f1',
-              600: '#4f46e5',
-              700: '#4338ca',
-            }
-          },
-          animation: {
-            'fade-in': 'fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards',
-            'slide-up': 'slideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards',
-          },
-          keyframes: {
-            fadeIn: {
-              '0%': { opacity: '0' },
-              '100%': { opacity: '1' }
-            },
-            slideUp: {
-              '0%': { opacity: '0', transform: 'translateY(12px)' },
-              '100%': { opacity: '1', transform: 'translateY(0)' }
+              50: '#f5f3ff',
+              100: '#ede9fe',
+              500: '#8b5cf6',
+              600: '#7c3aed',
+              700: '#6d28d9',
             }
           }
         }
@@ -87,234 +73,237 @@ export function renderQrSignupView(params: QrSignupViewParams): string {
 
   <style>
     body {
-      background: radial-gradient(circle at top right, #f8faff 0%, #f1f5f9 100%);
+      background: #f8fafc;
       -webkit-tap-highlight-color: transparent;
+      font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
     }
-    .glass-card {
-      background: rgba(255, 255, 255, 0.96);
-      backdrop-filter: blur(16px);
-      border: 1px solid rgba(226, 232, 240, 0.8);
-      box-shadow: 0 20px 40px -15px rgba(15, 23, 42, 0.07), 0 0 1px 1px rgba(15, 23, 42, 0.02);
-    }
-    .input-field {
-      width: 100%;
+    .main-card {
       background: #ffffff;
+      border: 1px solid #f1f5f9;
+      box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.05), 0 20px 25px -5px rgba(0, 0, 0, 0.02);
+    }
+    .custom-input {
+      width: 100%;
+      background: #f8fafc;
       border: 1.5px solid #e2e8f0;
-      border-radius: 14px;
-      padding: 11px 15px;
-      font-size: 14.5px;
+      border-radius: 12px;
+      padding: 10px 14px;
+      font-size: 14px;
       color: #0f172a;
       transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
       outline: none;
     }
-    .input-field:focus {
-      border-color: #6366f1;
-      box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.12);
+    .custom-input:focus {
+      background: #ffffff;
+      border-color: #7c3aed;
+      box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.12);
     }
-    .has-error .input-field {
+    .has-error .custom-input {
       border-color: #ef4444 !important;
-      background-color: #fffaf0;
+      background: #fef2f2 !important;
     }
-    .has-error .error-msg {
+    .has-error .err-text {
       display: block !important;
     }
-    .step-section {
+    .step-pane {
       display: none;
     }
-    .step-section.active {
+    .step-pane.active {
       display: block;
-      animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      animation: fadeIn 0.25s ease-out forwards;
     }
-    .file-dropzone {
-      border: 2px dashed #cbd5e1;
-      border-radius: 16px;
-      transition: all 0.2s ease;
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .file-box {
+      border: 1.5px dashed #cbd5e1;
+      border-radius: 14px;
       background: #f8fafc;
+      transition: all 0.2s ease;
     }
-    .file-dropzone:hover {
-      border-color: #6366f1;
-      background: #f5f7ff;
+    .file-box:hover {
+      border-color: #7c3aed;
+      background: #faf5ff;
     }
-    .file-dropzone.has-file {
-      border: 1.5px solid #6366f1;
+    .file-box.has-file {
+      border: 1.5px solid #7c3aed;
       background: #ffffff;
     }
   </style>
 </head>
-<body class="min-h-screen py-5 px-3.5 sm:px-6 flex flex-col justify-between font-sans text-slate-800 antialiased selection:bg-brand-500 selection:text-white">
+<body class="min-h-screen py-4 px-3 sm:px-6 flex flex-col justify-between font-sans text-slate-800 antialiased">
 
-  <div class="max-w-lg w-full mx-auto">
-    <!-- Header Banner -->
-    <div class="glass-card rounded-3xl p-5 mb-4 relative overflow-hidden">
-      <div class="absolute -right-8 -top-8 w-32 h-32 bg-gradient-to-br from-indigo-400/20 to-purple-400/10 rounded-full blur-2xl pointer-events-none"></div>
-      
-      <div class="flex items-center gap-4">
-        <div class="w-13 h-13 rounded-2xl bg-gradient-to-tr from-brand-600 to-indigo-500 text-white flex items-center justify-center p-3 shadow-lg shadow-brand-500/25 shrink-0">
-          <i data-lucide="building-2" class="w-7 h-7"></i>
+  <div class="max-w-md w-full mx-auto">
+    <!-- Header Badge -->
+    <div class="main-card rounded-2xl p-4 mb-3 relative overflow-hidden">
+      <div class="flex items-center gap-3.5">
+        <div class="w-12 h-12 rounded-xl bg-gradient-to-tr from-violet-600 to-indigo-600 text-white flex items-center justify-center shadow-md shadow-violet-500/20 shrink-0">
+          <i data-lucide="building" class="w-6 h-6"></i>
         </div>
-        <div class="min-w-0">
-          <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-brand-50 text-brand-600 mb-1 border border-brand-100/80">
-            <span class="w-1.5 h-1.5 rounded-full bg-brand-500 animate-pulse"></span>
-            Guest Registration
-          </span>
-          <h1 class="text-lg font-black text-slate-900 tracking-tight leading-tight truncate">${hostelName}</h1>
-          ${hostelCity ? `<p class="text-xs font-semibold text-slate-500 flex items-center gap-1 mt-0.5"><i data-lucide="map-pin" class="w-3.5 h-3.5 text-slate-400"></i> ${hostelCity}</p>` : ''}
+        <div class="min-w-0 flex-1">
+          <div class="flex items-center gap-1.5 mb-0.5">
+            <span class="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span class="text-[10px] font-black uppercase tracking-wider text-violet-600">Digital Admission</span>
+          </div>
+          <h1 class="text-base font-extrabold text-slate-900 leading-tight truncate">${hostelName}</h1>
+          ${hostelCity ? `<p class="text-xs text-slate-500 flex items-center gap-1 mt-0.5"><i data-lucide="map-pin" class="w-3 h-3 text-slate-400"></i> ${hostelCity}</p>` : ''}
         </div>
       </div>
     </div>
 
     <!-- Main Registration Card -->
-    <div class="glass-card rounded-3xl p-6 sm:p-7 relative shadow-xl shadow-slate-200/50">
+    <div class="main-card rounded-2xl p-5 sm:p-6 relative">
       
       ${roomBannerHtml}
 
-      <!-- Step Indicator -->
-      <div class="relative flex items-center justify-between mb-8 px-2">
-        <div class="absolute left-8 right-8 top-1/2 -translate-y-1/2 h-1 bg-slate-200/80 z-0 rounded-full"></div>
-        <div id="step-bar" class="absolute left-8 top-1/2 -translate-y-1/2 h-1 bg-gradient-to-r from-brand-600 to-indigo-500 z-0 rounded-full transition-all duration-500 ease-out" style="width: 0%;"></div>
+      <!-- Step Indicator Bar -->
+      <div id="step-nav" class="relative flex items-center justify-between mb-6 px-3">
+        <div class="absolute left-7 right-7 top-1/2 -translate-y-1/2 h-1 bg-slate-100 z-0 rounded-full"></div>
+        <div id="bar-prog" class="absolute left-7 top-1/2 -translate-y-1/2 h-1 bg-gradient-to-r from-violet-600 to-indigo-600 z-0 rounded-full transition-all duration-300" style="width: 0%;"></div>
 
-        <!-- Step 1 -->
-        <div class="relative z-10 flex flex-col items-center gap-1.5" id="step-node-1">
-          <div class="step-circle w-9 h-9 rounded-xl flex items-center justify-center font-bold text-xs transition-all duration-300 bg-brand-600 text-white ring-4 ring-brand-100 shadow-md">
+        <!-- Node 1 -->
+        <div class="relative z-10 flex flex-col items-center gap-1" id="sn-1">
+          <div class="node-circle w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs bg-violet-600 text-white shadow-sm ring-4 ring-violet-50">
             1
           </div>
-          <span class="text-[11px] font-extrabold uppercase tracking-wider text-brand-600 step-label">Personal</span>
+          <span class="text-[10px] font-extrabold uppercase tracking-wider text-violet-600 node-lbl">Personal</span>
         </div>
 
-        <!-- Step 2 -->
-        <div class="relative z-10 flex flex-col items-center gap-1.5" id="step-node-2">
-          <div class="step-circle w-9 h-9 rounded-xl flex items-center justify-center font-bold text-xs transition-all duration-300 bg-slate-100 text-slate-400 border border-slate-200">
+        <!-- Node 2 -->
+        <div class="relative z-10 flex flex-col items-center gap-1" id="sn-2">
+          <div class="node-circle w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs bg-slate-100 text-slate-400 border border-slate-200">
             2
           </div>
-          <span class="text-[11px] font-extrabold uppercase tracking-wider text-slate-400 step-label">Guardian</span>
+          <span class="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 node-lbl">Guardian</span>
         </div>
 
-        <!-- Step 3 -->
-        <div class="relative z-10 flex flex-col items-center gap-1.5" id="step-node-3">
-          <div class="step-circle w-9 h-9 rounded-xl flex items-center justify-center font-bold text-xs transition-all duration-300 bg-slate-100 text-slate-400 border border-slate-200">
+        <!-- Node 3 -->
+        <div class="relative z-10 flex flex-col items-center gap-1" id="sn-3">
+          <div class="node-circle w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs bg-slate-100 text-slate-400 border border-slate-200">
             3
           </div>
-          <span class="text-[11px] font-extrabold uppercase tracking-wider text-slate-400 step-label">Identity</span>
+          <span class="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 node-lbl">Identity</span>
         </div>
       </div>
 
       <!-- Registration Form -->
-      <form id="signup-form" enctype="multipart/form-data" novalidate>
+      <form id="reg-form" enctype="multipart/form-data" novalidate>
         
         <!-- STEP 1: Personal Details -->
-        <div id="step-1" class="step-section active space-y-4">
-          <div class="border-b border-slate-100 pb-3 mb-4">
-            <h2 class="text-base font-extrabold text-slate-900 flex items-center gap-2">
-              <i data-lucide="user" class="w-4 h-4 text-brand-600"></i> Personal Information
+        <div id="pane-1" class="step-pane active space-y-3.5">
+          <div class="border-b border-slate-100 pb-2 mb-3">
+            <h2 class="text-sm font-extrabold text-slate-900 flex items-center gap-1.5">
+              <i data-lucide="user" class="w-4 h-4 text-violet-600"></i> Personal Information
             </h2>
-            <p class="text-xs text-slate-500 mt-0.5 font-medium">Please enter your basic legal identity details.</p>
+            <p class="text-[11px] text-slate-500 mt-0.5">Enter tenant identity details</p>
           </div>
 
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-            <div class="form-group" id="grp-first_name">
-              <label class="block text-[11px] font-extrabold uppercase tracking-wider text-slate-600 mb-1.5">First Name <span class="text-rose-500">*</span></label>
-              <input type="text" id="first_name" name="first_name" placeholder="e.g. Ramesh" class="input-field" autocomplete="given-name"/>
-              <span class="error-msg hidden text-[11px] font-semibold text-rose-500 mt-1"></span>
+          <div class="grid grid-cols-2 gap-2.5">
+            <div class="field-grp" id="fg-first_name">
+              <label class="block text-[10px] font-extrabold uppercase tracking-wider text-slate-600 mb-1">First Name <span class="text-rose-500">*</span></label>
+              <input type="text" id="first_name" name="first_name" placeholder="e.g. Ramesh" class="custom-input"/>
+              <span class="err-text hidden text-[10px] font-bold text-rose-500 mt-1"></span>
             </div>
             
-            <div class="form-group" id="grp-last_name">
-              <label class="block text-[11px] font-extrabold uppercase tracking-wider text-slate-600 mb-1.5">Last Name</label>
-              <input type="text" id="last_name" name="last_name" placeholder="e.g. Kumar" class="input-field" autocomplete="family-name"/>
+            <div class="field-grp" id="fg-last_name">
+              <label class="block text-[10px] font-extrabold uppercase tracking-wider text-slate-600 mb-1">Last Name</label>
+              <input type="text" id="last_name" name="last_name" placeholder="e.g. Kumar" class="custom-input"/>
             </div>
           </div>
 
-          <div class="form-group" id="grp-phone">
-            <label class="block text-[11px] font-extrabold uppercase tracking-wider text-slate-600 mb-1.5">Mobile Number <span class="text-rose-500">*</span></label>
+          <div class="field-grp" id="fg-phone">
+            <label class="block text-[10px] font-extrabold uppercase tracking-wider text-slate-600 mb-1">Mobile Number <span class="text-rose-500">*</span></label>
             <div class="relative">
-              <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 font-mono">+91</span>
-              <input type="tel" id="phone" name="phone" inputmode="numeric" maxlength="10" placeholder="10-digit mobile number" class="input-field pl-12 font-mono font-medium"/>
+              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 font-mono">+91</span>
+              <input type="tel" id="phone" name="phone" inputmode="numeric" maxlength="10" placeholder="10-digit number" class="custom-input pl-11 font-mono font-medium"/>
             </div>
-            <span class="error-msg hidden text-[11px] font-semibold text-rose-500 mt-1"></span>
+            <span class="err-text hidden text-[10px] font-bold text-rose-500 mt-1"></span>
           </div>
 
-          <!-- MANDATORY EMAIL -->
-          <div class="form-group" id="grp-email">
-            <label class="block text-[11px] font-extrabold uppercase tracking-wider text-slate-600 mb-1.5">Email Address <span class="text-rose-500">*</span></label>
+          <!-- MANDATORY EMAIL FIELD -->
+          <div class="field-grp" id="fg-email">
+            <label class="block text-[10px] font-extrabold uppercase tracking-wider text-slate-600 mb-1">Email Address <span class="text-rose-500">*</span></label>
             <div class="relative">
-              <i data-lucide="mail" class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></i>
-              <input type="email" id="email" name="email" placeholder="name@example.com" class="input-field pl-10" autocomplete="email"/>
+              <i data-lucide="mail" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+              <input type="email" id="email" name="email" placeholder="name@example.com" class="custom-input pl-9"/>
             </div>
-            <span class="error-msg hidden text-[11px] font-semibold text-rose-500 mt-1"></span>
+            <span class="err-text hidden text-[10px] font-bold text-rose-500 mt-1"></span>
           </div>
 
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-            <div class="form-group" id="grp-dob">
-              <label class="block text-[11px] font-extrabold uppercase tracking-wider text-slate-600 mb-1.5">Date of Birth <span class="text-rose-500">*</span></label>
-              <input type="date" id="dob" name="date_of_birth" class="input-field"/>
-              <span class="error-msg hidden text-[11px] font-semibold text-rose-500 mt-1"></span>
+          <div class="grid grid-cols-2 gap-2.5">
+            <div class="field-grp" id="fg-dob">
+              <label class="block text-[10px] font-extrabold uppercase tracking-wider text-slate-600 mb-1">Date of Birth <span class="text-rose-500">*</span></label>
+              <input type="date" id="dob" name="date_of_birth" class="custom-input"/>
+              <span class="err-text hidden text-[10px] font-bold text-rose-500 mt-1"></span>
             </div>
 
-            <div class="form-group" id="grp-gender">
-              <label class="block text-[11px] font-extrabold uppercase tracking-wider text-slate-600 mb-1.5">Gender <span class="text-rose-500">*</span></label>
-              <select id="gender" name="gender" class="input-field bg-white">
-                <option value="">Select Gender...</option>
+            <div class="field-grp" id="fg-gender">
+              <label class="block text-[10px] font-extrabold uppercase tracking-wider text-slate-600 mb-1">Gender <span class="text-rose-500">*</span></label>
+              <select id="gender" name="gender" class="custom-input bg-slate-50">
+                <option value="">Select...</option>
                 <option value="Male">Male</option>
                 <option value="Female">Female</option>
                 <option value="Other">Other</option>
               </select>
-              <span class="error-msg hidden text-[11px] font-semibold text-rose-500 mt-1"></span>
+              <span class="err-text hidden text-[10px] font-bold text-rose-500 mt-1"></span>
             </div>
           </div>
 
-          <div class="pt-3">
-            <button type="button" id="btn-next-1" class="w-full py-3.5 px-5 bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-700 hover:to-indigo-700 text-white font-bold rounded-2xl shadow-lg shadow-brand-500/25 flex items-center justify-center gap-2 active:scale-[0.99] transition-all text-sm">
-              Continue to Guardian Details <i data-lucide="arrow-right" class="w-4 h-4"></i>
+          <div class="pt-2">
+            <button type="button" id="btn-next-1" class="w-full py-3 px-4 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white font-bold rounded-xl shadow-md shadow-violet-500/20 flex items-center justify-center gap-2 text-xs uppercase tracking-wider active:scale-[0.99] transition-all">
+              Continue to Guardian <i data-lucide="chevron-right" class="w-4 h-4"></i>
             </button>
           </div>
         </div>
 
         <!-- STEP 2: Guardian Details -->
-        <div id="step-2" class="step-section space-y-4">
-          <div class="border-b border-slate-100 pb-3 mb-4">
-            <h2 class="text-base font-extrabold text-slate-900 flex items-center gap-2">
-              <i data-lucide="shield-alert" class="w-4 h-4 text-brand-600"></i> Emergency Contact
+        <div id="pane-2" class="step-pane space-y-3.5">
+          <div class="border-b border-slate-100 pb-2 mb-3">
+            <h2 class="text-sm font-extrabold text-slate-900 flex items-center gap-1.5">
+              <i data-lucide="shield" class="w-4 h-4 text-violet-600"></i> Emergency Contact
             </h2>
-            <p class="text-xs text-slate-500 mt-0.5 font-medium">Guardian contact info is strictly required for security.</p>
+            <p class="text-[11px] text-slate-500 mt-0.5">Parent or guardian contact details</p>
           </div>
 
-          <div class="form-group" id="grp-gname">
-            <label class="block text-[11px] font-extrabold uppercase tracking-wider text-slate-600 mb-1.5">Guardian / Parent Full Name <span class="text-rose-500">*</span></label>
-            <input type="text" id="gname" name="guardian_name" placeholder="Full name of Parent/Guardian" class="input-field"/>
-            <span class="error-msg hidden text-[11px] font-semibold text-rose-500 mt-1"></span>
+          <div class="field-grp" id="fg-gname">
+            <label class="block text-[10px] font-extrabold uppercase tracking-wider text-slate-600 mb-1">Guardian Full Name <span class="text-rose-500">*</span></label>
+            <input type="text" id="gname" name="guardian_name" placeholder="Parent / Guardian Name" class="custom-input"/>
+            <span class="err-text hidden text-[10px] font-bold text-rose-500 mt-1"></span>
           </div>
 
-          <div class="form-group" id="grp-gphone">
-            <label class="block text-[11px] font-extrabold uppercase tracking-wider text-slate-600 mb-1.5">Guardian Phone Number <span class="text-rose-500">*</span></label>
+          <div class="field-grp" id="fg-gphone">
+            <label class="block text-[10px] font-extrabold uppercase tracking-wider text-slate-600 mb-1">Guardian Phone Number <span class="text-rose-500">*</span></label>
             <div class="relative">
-              <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 font-mono">+91</span>
-              <input type="tel" id="gphone" name="guardian_phone" inputmode="numeric" maxlength="10" placeholder="10-digit guardian number" class="input-field pl-12 font-mono font-medium"/>
+              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 font-mono">+91</span>
+              <input type="tel" id="gphone" name="guardian_phone" inputmode="numeric" maxlength="10" placeholder="10-digit number" class="custom-input pl-11 font-mono font-medium"/>
             </div>
-            <span class="error-msg hidden text-[11px] font-semibold text-rose-500 mt-1"></span>
+            <span class="err-text hidden text-[10px] font-bold text-rose-500 mt-1"></span>
           </div>
 
-          <div class="flex gap-3 pt-3">
-            <button type="button" id="btn-back-2" class="w-1/3 py-3.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-2xl transition-all text-sm">
+          <div class="flex gap-2.5 pt-2">
+            <button type="button" id="btn-back-2" class="w-1/3 py-3 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs uppercase tracking-wider transition-all">
               Back
             </button>
-            <button type="button" id="btn-next-2" class="w-2/3 py-3.5 px-5 bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-700 hover:to-indigo-700 text-white font-bold rounded-2xl shadow-lg shadow-brand-500/25 flex items-center justify-center gap-2 active:scale-[0.99] transition-all text-sm">
-              Next: Verification <i data-lucide="arrow-right" class="w-4 h-4"></i>
+            <button type="button" id="btn-next-2" class="w-2/3 py-3 px-4 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white font-bold rounded-xl shadow-md shadow-violet-500/20 flex items-center justify-center gap-2 text-xs uppercase tracking-wider active:scale-[0.99] transition-all">
+              Next: Identity <i data-lucide="chevron-right" class="w-4 h-4"></i>
             </button>
           </div>
         </div>
 
         <!-- STEP 3: Identity & Address -->
-        <div id="step-3" class="step-section space-y-4">
-          <div class="border-b border-slate-100 pb-3 mb-4">
-            <h2 class="text-base font-extrabold text-slate-900 flex items-center gap-2">
-              <i data-lucide="id-card" class="w-4 h-4 text-brand-600"></i> Identity Verification
+        <div id="pane-3" class="step-pane space-y-3.5">
+          <div class="border-b border-slate-100 pb-2 mb-3">
+            <h2 class="text-sm font-extrabold text-slate-900 flex items-center gap-1.5">
+              <i data-lucide="id-card" class="w-4 h-4 text-violet-600"></i> Identity & Address
             </h2>
-            <p class="text-xs text-slate-500 mt-0.5 font-medium">Government ID and residential address verification.</p>
+            <p class="text-[11px] text-slate-500 mt-0.5">Government ID and residential address</p>
           </div>
 
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-            <div class="form-group" id="grp-id_type">
-              <label class="block text-[11px] font-extrabold uppercase tracking-wider text-slate-600 mb-1.5">ID Document Type <span class="text-rose-500">*</span></label>
-              <select id="id_type" name="id_proof_type" class="input-field bg-white">
+          <div class="grid grid-cols-2 gap-2.5">
+            <div class="field-grp" id="fg-id_type">
+              <label class="block text-[10px] font-extrabold uppercase tracking-wider text-slate-600 mb-1">ID Document Type <span class="text-rose-500">*</span></label>
+              <select id="id_type" name="id_proof_type" class="custom-input bg-slate-50">
                 <option value="1">Aadhaar Card</option>
                 <option value="2">PAN Card</option>
                 <option value="3">Voter ID</option>
@@ -323,151 +312,172 @@ export function renderQrSignupView(params: QrSignupViewParams): string {
               </select>
             </div>
 
-            <div class="form-group" id="grp-aadhaar">
-              <label class="block text-[11px] font-extrabold uppercase tracking-wider text-slate-600 mb-1.5">ID Proof Number <span class="text-rose-500">*</span></label>
-              <input type="text" id="aadhaar" name="id_proof_number" maxlength="12" placeholder="e.g. 12-digit Aadhaar" class="input-field font-mono font-medium uppercase"/>
-              <span class="error-msg hidden text-[11px] font-semibold text-rose-500 mt-1"></span>
+            <div class="field-grp" id="fg-aadhaar">
+              <label class="block text-[10px] font-extrabold uppercase tracking-wider text-slate-600 mb-1">ID Proof Number <span class="text-rose-500">*</span></label>
+              <input type="text" id="aadhaar" name="id_proof_number" maxlength="12" placeholder="e.g. 123456789012" class="custom-input font-mono uppercase"/>
+              <span class="err-text hidden text-[10px] font-bold text-rose-500 mt-1"></span>
             </div>
           </div>
 
           <!-- Document Upload Cards -->
           <div>
-            <label class="block text-[11px] font-extrabold uppercase tracking-wider text-slate-600 mb-2">ID Document Photos (Optional)</label>
-            <div class="grid grid-cols-2 gap-3">
+            <label class="block text-[10px] font-extrabold uppercase tracking-wider text-slate-600 mb-1.5">ID Photos (Front & Back)</label>
+            <div class="grid grid-cols-2 gap-2.5">
               <!-- Front Photo -->
-              <div id="drop-front" class="file-dropzone p-3.5 flex flex-col items-center justify-center text-center cursor-pointer relative min-h-[110px] rounded-2xl group">
-                <input type="file" id="aadhaar_front" name="aadhaar_front" accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"/>
-                <img id="prev-front" src="" class="hidden w-full h-20 object-cover rounded-xl mb-1 shadow-sm"/>
-                <div id="holder-front" class="flex flex-col items-center">
-                  <div class="w-8 h-8 rounded-full bg-brand-50 text-brand-600 flex items-center justify-center mb-1 group-hover:scale-110 transition-transform">
-                    <i data-lucide="camera" class="w-4 h-4"></i>
+              <div id="drop-f" class="file-box p-3 flex flex-col items-center justify-center text-center cursor-pointer relative min-h-[95px] rounded-xl group">
+                <input type="file" id="af" name="aadhaar_front" accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"/>
+                <img id="prev-f" src="" class="hidden w-full h-16 object-cover rounded-lg mb-1 shadow-sm"/>
+                <div id="hold-f" class="flex flex-col items-center">
+                  <div class="w-7 h-7 rounded-full bg-violet-50 text-violet-600 flex items-center justify-center mb-1 group-hover:scale-105 transition-transform">
+                    <i data-lucide="camera" class="w-3.5 h-3.5"></i>
                   </div>
-                  <span id="lbl-front" class="text-xs font-bold text-slate-700">Upload Front</span>
-                  <span class="text-[10px] text-slate-400 font-medium mt-0.5">JPG, PNG up to 5MB</span>
+                  <span id="lbl-f" class="text-[11px] font-bold text-slate-700">Upload Front</span>
                 </div>
-                <button type="button" id="clear-front" class="hidden absolute top-2 right-2 z-20 w-6 h-6 rounded-full bg-slate-900/80 text-white items-center justify-center hover:bg-slate-900 shadow">
-                  <i data-lucide="x" class="w-3 h-3"></i>
-                </button>
+                <button type="button" id="clr-f" class="hidden absolute top-1.5 right-1.5 z-20 w-5 h-5 rounded-full bg-slate-900/80 text-white items-center justify-center hover:bg-slate-900 text-[10px]">✕</button>
               </div>
 
               <!-- Back Photo -->
-              <div id="drop-back" class="file-dropzone p-3.5 flex flex-col items-center justify-center text-center cursor-pointer relative min-h-[110px] rounded-2xl group">
-                <input type="file" id="aadhaar_back" name="aadhaar_back" accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"/>
-                <img id="prev-back" src="" class="hidden w-full h-20 object-cover rounded-xl mb-1 shadow-sm"/>
-                <div id="holder-back" class="flex flex-col items-center">
-                  <div class="w-8 h-8 rounded-full bg-brand-50 text-brand-600 flex items-center justify-center mb-1 group-hover:scale-110 transition-transform">
-                    <i data-lucide="camera" class="w-4 h-4"></i>
+              <div id="drop-b" class="file-box p-3 flex flex-col items-center justify-center text-center cursor-pointer relative min-h-[95px] rounded-xl group">
+                <input type="file" id="ab" name="aadhaar_back" accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"/>
+                <img id="prev-b" src="" class="hidden w-full h-16 object-cover rounded-lg mb-1 shadow-sm"/>
+                <div id="hold-b" class="flex flex-col items-center">
+                  <div class="w-7 h-7 rounded-full bg-violet-50 text-violet-600 flex items-center justify-center mb-1 group-hover:scale-105 transition-transform">
+                    <i data-lucide="camera" class="w-3.5 h-3.5"></i>
                   </div>
-                  <span id="lbl-back" class="text-xs font-bold text-slate-700">Upload Back</span>
-                  <span class="text-[10px] text-slate-400 font-medium mt-0.5">JPG, PNG up to 5MB</span>
+                  <span id="lbl-b" class="text-[11px] font-bold text-slate-700">Upload Back</span>
                 </div>
-                <button type="button" id="clear-back" class="hidden absolute top-2 right-2 z-20 w-6 h-6 rounded-full bg-slate-900/80 text-white items-center justify-center hover:bg-slate-900 shadow">
-                  <i data-lucide="x" class="w-3 h-3"></i>
-                </button>
+                <button type="button" id="clr-b" class="hidden absolute top-1.5 right-1.5 z-20 w-5 h-5 rounded-full bg-slate-900/80 text-white items-center justify-center hover:bg-slate-900 text-[10px]">✕</button>
               </div>
             </div>
           </div>
 
-          <div class="form-group" id="grp-addr">
-            <label class="block text-[11px] font-extrabold uppercase tracking-wider text-slate-600 mb-1.5">Permanent Residential Address <span class="text-rose-500">*</span></label>
-            <textarea id="addr" name="permanent_address" rows="2" placeholder="House/Flat No, Street, City, State, PIN code" class="input-field resize-none"></textarea>
-            <span class="error-msg hidden text-[11px] font-semibold text-rose-500 mt-1"></span>
+          <div class="field-grp" id="fg-addr">
+            <label class="block text-[10px] font-extrabold uppercase tracking-wider text-slate-600 mb-1">Permanent Address <span class="text-rose-500">*</span></label>
+            <textarea id="addr" name="permanent_address" rows="2" placeholder="House/Flat No, Street, City, State, PIN" class="custom-input resize-none"></textarea>
+            <span class="err-text hidden text-[10px] font-bold text-rose-500 mt-1"></span>
           </div>
 
-          <div class="form-group" id="grp-pres-addr">
-            <label class="block text-[11px] font-extrabold uppercase tracking-wider text-slate-600 mb-1.5">Working / College Address</label>
-            <textarea id="pres_addr" name="present_working_address" rows="2" placeholder="Company / College name and location" class="input-field resize-none"></textarea>
+          <div class="field-grp" id="fg-pres_addr">
+            <label class="block text-[10px] font-extrabold uppercase tracking-wider text-slate-600 mb-1">Working / College Address</label>
+            <textarea id="pres_addr" name="present_working_address" rows="2" placeholder="Company / College Name and Location" class="custom-input resize-none"></textarea>
           </div>
 
-          <div class="flex gap-3 pt-3">
-            <button type="button" id="btn-back-3" class="w-1/3 py-3.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-2xl transition-all text-sm">
+          <div class="flex gap-2.5 pt-2">
+            <button type="button" id="btn-back-3" class="w-1/3 py-3 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs uppercase tracking-wider transition-all">
               Back
             </button>
-            <button type="submit" id="btn-submit" class="w-2/3 py-3.5 px-5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold rounded-2xl shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2 active:scale-[0.99] transition-all text-sm">
-              <i data-lucide="check-circle-2" class="w-4 h-4"></i> Submit Registration
+            <button type="submit" id="btn-sub" class="w-2/3 py-3 px-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold rounded-xl shadow-md shadow-emerald-500/20 flex items-center justify-center gap-1.5 text-xs uppercase tracking-wider active:scale-[0.99] transition-all">
+              <i data-lucide="check" class="w-4 h-4"></i> Submit Registration
             </button>
           </div>
         </div>
       </form>
 
-      <!-- Success Screen -->
-      <div id="success-screen" class="hidden text-center py-6 animate-fade-in">
-        <div class="w-18 h-18 mx-auto rounded-3xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-4 ring-8 ring-emerald-100 shadow-inner">
-          <i data-lucide="check-check" class="w-9 h-9"></i>
+      <!-- SUCCESS SCREEN WITH HOSTIX PLAY STORE APP PROMOTION -->
+      <div id="pane-success" class="hidden text-center py-4">
+        <!-- Success Icon -->
+        <div class="w-16 h-16 mx-auto rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-3 ring-4 ring-emerald-100 shadow-inner">
+          <i data-lucide="check-check" class="w-8 h-8"></i>
         </div>
-        <h2 class="text-xl font-black text-slate-900 tracking-tight mb-2">Registration Submitted!</h2>
-        <p class="text-xs text-slate-600 leading-relaxed max-w-sm mx-auto mb-6">
-          Your admission details have been submitted to <span class="font-bold text-slate-900">${hostelName}</span>. The hostel owner will verify your details and allocate your room.
+
+        <h2 class="text-lg font-black text-slate-900 tracking-tight mb-1">Registration Submitted!</h2>
+        <p class="text-xs text-slate-600 leading-relaxed max-w-xs mx-auto mb-5">
+          Your admission details have been submitted to <span class="font-bold text-slate-900">${hostelName}</span>.
         </p>
 
-        <div class="p-4 bg-slate-50 border border-slate-100 rounded-2xl text-left max-w-sm mx-auto space-y-2 mb-6">
-          <div class="flex items-center gap-2 text-xs font-semibold text-slate-700">
-            <i data-lucide="badge-check" class="w-4 h-4 text-emerald-500"></i> KYC documents under review
+        <!-- PLAY STORE APP PROMOTION CARD -->
+        <div class="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white rounded-2xl p-4 text-left shadow-xl shadow-indigo-950/20 border border-indigo-900/50 mb-5 relative overflow-hidden">
+          <div class="absolute -right-6 -bottom-6 w-24 h-24 bg-violet-500/20 rounded-full blur-xl pointer-events-none"></div>
+          
+          <div class="flex items-center gap-3 mb-3">
+            <div class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-violet-400 border border-white/10 shrink-0">
+              <i data-lucide="smartphone" class="w-5 h-5"></i>
+            </div>
+            <div>
+              <div class="text-[10px] font-black uppercase tracking-widest text-violet-400">Next Step: Tenant Portal</div>
+              <h3 class="text-xs font-black text-white">Download the Hostix Mobile App</h3>
+            </div>
           </div>
-          <div class="flex items-center gap-2 text-xs font-semibold text-slate-700">
-            <i data-lucide="bell" class="w-4 h-4 text-brand-500"></i> You will receive an SMS & Email notification once approved
+
+          <p class="text-[11px] text-slate-300 leading-relaxed mb-3">
+            Track your monthly fee dues, download instant rent receipts, check daily food menus, and get hostel notices directly on your phone!
+          </p>
+
+          <div class="space-y-1.5 mb-3.5">
+            <div class="flex items-center gap-2 text-[10.5px] font-semibold text-slate-200">
+              <i data-lucide="check-circle-2" class="w-3.5 h-3.5 text-emerald-400"></i> Check & Pay monthly fee bills
+            </div>
+            <div class="flex items-center gap-2 text-[10.5px] font-semibold text-slate-200">
+              <i data-lucide="check-circle-2" class="w-3.5 h-3.5 text-emerald-400"></i> Instant official payment receipts
+            </div>
+            <div class="flex items-center gap-2 text-[10.5px] font-semibold text-slate-200">
+              <i data-lucide="check-circle-2" class="w-3.5 h-3.5 text-emerald-400"></i> Mess food menu & meal skipping
+            </div>
           </div>
+
+          <!-- Play Store Download Button -->
+          <a href="https://play.google.com/store/apps/details?id=com.hostix.app" target="_blank" class="w-full py-2.5 px-4 bg-white hover:bg-slate-100 text-slate-900 font-extrabold rounded-xl text-xs flex items-center justify-center gap-2 shadow-md transition active:scale-[0.99]">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M3.609 1.814L13.792 12 3.61 22.186a2.38 2.38 0 0 1-.22-.387V2.2c.07-.137.144-.268.22-.386zm11.235 11.238l2.58 2.58-12.03 6.873 9.45-9.453zm2.58-2.58l-2.58 2.58-9.45-9.452 12.03 6.872zm1.05 1.05l2.84 1.623a1.47 1.47 0 0 1 0 2.56l-2.84 1.623-2.023-2.023 2.023-2.783z"/>
+            </svg>
+            Get Hostix on Google Play
+          </a>
         </div>
 
-        <button type="button" onclick="window.location.reload()" class="inline-flex items-center gap-2 px-6 py-2.5 bg-slate-900 text-white rounded-xl text-xs font-bold hover:bg-slate-800 transition shadow">
-          <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i> Register Another Tenant
+        <button type="button" onclick="window.location.reload()" class="text-xs font-bold text-slate-500 hover:text-slate-800 transition">
+          + Submit another registration
         </button>
       </div>
 
     </div>
     
     <!-- Footer Branding -->
-    <div class="text-center mt-5">
-      <p class="text-[11px] font-bold text-slate-400 flex items-center justify-center gap-1.5 tracking-wide uppercase">
-        <i data-lucide="sparkles" class="w-3.5 h-3.5 text-brand-500"></i> Powered by Hostix PMS
+    <div class="text-center mt-4">
+      <p class="text-[10px] font-bold text-slate-400 flex items-center justify-center gap-1 uppercase tracking-wider">
+        <i data-lucide="shield-check" class="w-3.5 h-3.5 text-violet-500"></i> Hostix Smart Hostel Management
       </p>
     </div>
   </div>
 
-  <!-- Loading Modal Overlay -->
-  <div id="loader-overlay" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden">
-    <div class="bg-white rounded-3xl p-6 shadow-2xl flex flex-col items-center gap-3 animate-slide-up">
-      <div class="w-10 h-10 border-4 border-brand-200 border-t-brand-600 rounded-full animate-spin"></div>
-      <span class="text-xs font-black text-slate-800 uppercase tracking-wider">Submitting Application...</span>
+  <!-- Loading Overlay -->
+  <div id="loader-box" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden">
+    <div class="bg-white rounded-2xl p-5 shadow-2xl flex flex-col items-center gap-2.5">
+      <div class="w-8 h-8 border-3 border-violet-200 border-t-violet-600 rounded-full animate-spin"></div>
+      <span class="text-[11px] font-extrabold text-slate-800 uppercase tracking-wider">Submitting Application...</span>
     </div>
   </div>
 
-  <!-- Toast Container -->
-  <div id="toast-box" class="fixed top-5 left-1/2 -translate-x-1/2 z-50 max-w-sm w-11/12 transition-all duration-300 -translate-y-24 opacity-0 pointer-events-none">
-    <div class="bg-slate-900 text-white px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-3 border border-slate-700">
+  <!-- Toast -->
+  <div id="toast-el" class="fixed top-4 left-1/2 -translate-x-1/2 z-50 max-w-xs w-11/12 transition-all duration-300 -translate-y-20 opacity-0 pointer-events-none">
+    <div class="bg-slate-900 text-white px-3.5 py-2.5 rounded-xl shadow-xl flex items-center gap-2.5 border border-slate-800">
       <i data-lucide="alert-circle" class="w-4 h-4 text-amber-400 shrink-0"></i>
-      <span id="toast-text" class="text-xs font-semibold leading-tight"></span>
+      <span id="toast-msg" class="text-xs font-semibold leading-tight"></span>
     </div>
   </div>
 
-  <!-- Interactive JavaScript Logic -->
+  <!-- Client Script -->
   <script>
-    // State
-    var currentStep = 1;
-
-    function initIcons() {
-      if (window.lucide) {
-        lucide.createIcons();
-      }
+    function runIcons() {
+      if (window.lucide) lucide.createIcons();
     }
 
     function showToast(msg) {
-      var box = document.getElementById('toast-box');
-      var txt = document.getElementById('toast-text');
-      if (!box || !txt) return;
-      txt.textContent = msg;
-      box.classList.remove('-translate-y-24', 'opacity-0', 'pointer-events-none');
-      box.classList.add('translate-y-0', 'opacity-100');
+      var t = document.getElementById('toast-el');
+      var m = document.getElementById('toast-msg');
+      if (!t || !m) return;
+      m.textContent = msg;
+      t.classList.remove('-translate-y-20', 'opacity-0', 'pointer-events-none');
+      t.classList.add('translate-y-0', 'opacity-100');
       setTimeout(function() {
-        box.classList.add('-translate-y-24', 'opacity-0', 'pointer-events-none');
-        box.classList.remove('translate-y-0', 'opacity-100');
+        t.classList.add('-translate-y-20', 'opacity-0', 'pointer-events-none');
+        t.classList.remove('translate-y-0', 'opacity-100');
       }, 3500);
     }
 
     function setFieldError(fieldId, errorMsg) {
-      var grp = document.getElementById('grp-' + fieldId);
+      var grp = document.getElementById('fg-' + fieldId);
       if (!grp) return;
-      var errSpan = grp.querySelector('.error-msg');
+      var errSpan = grp.querySelector('.err-text');
       if (errorMsg) {
         grp.classList.add('has-error');
         if (errSpan) {
@@ -484,9 +494,9 @@ export function renderQrSignupView(params: QrSignupViewParams): string {
     }
 
     function clearAllErrors() {
-      document.querySelectorAll('.form-group').forEach(function(el) {
+      document.querySelectorAll('.field-grp').forEach(function(el) {
         el.classList.remove('has-error');
-        var errSpan = el.querySelector('.error-msg');
+        var errSpan = el.querySelector('.err-text');
         if (errSpan) {
           errSpan.textContent = '';
           errSpan.classList.add('hidden');
@@ -499,46 +509,36 @@ export function renderQrSignupView(params: QrSignupViewParams): string {
       return el ? el.value.trim() : '';
     }
 
-    function goToStep(step) {
-      currentStep = step;
-      document.querySelectorAll('.step-section').forEach(function(sec) {
-        sec.classList.remove('active');
-      });
-      var activeSec = document.getElementById('step-' + step);
-      if (activeSec) activeSec.classList.add('active');
+    function setStep(s) {
+      document.querySelectorAll('.step-pane').forEach(function(p) { p.classList.remove('active'); });
+      var cur = document.getElementById('pane-' + s);
+      if (cur) cur.classList.add('active');
 
-      // Update progress bar
-      var bar = document.getElementById('step-bar');
-      if (bar) {
-        bar.style.width = step === 1 ? '0%' : step === 2 ? '50%' : '100%';
-      }
+      var prog = document.getElementById('bar-prog');
+      if (prog) prog.style.width = s === 1 ? '0%' : s === 2 ? '50%' : '100%';
 
-      // Update nodes
       for (var i = 1; i <= 3; i++) {
-        var node = document.getElementById('step-node-' + i);
+        var node = document.getElementById('sn-' + i);
         if (!node) continue;
-        var circle = node.querySelector('.step-circle');
-        var label = node.querySelector('.step-label');
+        var circle = node.querySelector('.node-circle');
+        var lbl = node.querySelector('.node-lbl');
 
-        if (i < step) {
-          // Completed
-          circle.className = 'step-circle w-9 h-9 rounded-xl flex items-center justify-center font-bold text-xs bg-emerald-500 text-white shadow-sm';
-          circle.innerHTML = '<i data-lucide="check" class="w-4 h-4"></i>';
-          label.className = 'text-[11px] font-extrabold uppercase tracking-wider text-emerald-600 step-label';
-        } else if (i === step) {
-          // Active
-          circle.className = 'step-circle w-9 h-9 rounded-xl flex items-center justify-center font-bold text-xs bg-brand-600 text-white ring-4 ring-brand-100 shadow-md';
+        if (i < s) {
+          circle.className = 'node-circle w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs bg-emerald-500 text-white shadow-sm';
+          circle.innerHTML = '<i data-lucide="check" class="w-3.5 h-3.5"></i>';
+          lbl.className = 'text-[10px] font-extrabold uppercase tracking-wider text-emerald-600 node-lbl';
+        } else if (i === s) {
+          circle.className = 'node-circle w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs bg-violet-600 text-white ring-4 ring-violet-50 shadow-sm';
           circle.innerHTML = String(i);
-          label.className = 'text-[11px] font-extrabold uppercase tracking-wider text-brand-600 step-label';
+          lbl.className = 'text-[10px] font-extrabold uppercase tracking-wider text-violet-600 node-lbl';
         } else {
-          // Pending
-          circle.className = 'step-circle w-9 h-9 rounded-xl flex items-center justify-center font-bold text-xs bg-slate-100 text-slate-400 border border-slate-200';
+          circle.className = 'node-circle w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs bg-slate-100 text-slate-400 border border-slate-200';
           circle.innerHTML = String(i);
-          label.className = 'text-[11px] font-extrabold uppercase tracking-wider text-slate-400 step-label';
+          lbl.className = 'text-[10px] font-extrabold uppercase tracking-wider text-slate-400 node-lbl';
         }
       }
 
-      initIcons();
+      runIcons();
       try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch(e) { window.scrollTo(0, 0); }
     }
 
@@ -546,12 +546,8 @@ export function renderQrSignupView(params: QrSignupViewParams): string {
     ['first_name', 'last_name', 'phone', 'email', 'dob', 'gender', 'gname', 'gphone', 'aadhaar', 'addr'].forEach(function(id) {
       var el = document.getElementById(id);
       if (el) {
-        el.addEventListener('input', function() {
-          setFieldError(id, '');
-        });
-        el.addEventListener('change', function() {
-          setFieldError(id, '');
-        });
+        el.addEventListener('input', function() { setFieldError(id, ''); });
+        el.addEventListener('change', function() { setFieldError(id, ''); });
       }
     });
 
@@ -640,8 +636,8 @@ export function renderQrSignupView(params: QrSignupViewParams): string {
         });
       }
     }
-    setupDropzone('aadhaar_front', 'drop-front', 'prev-front', 'holder-front', 'lbl-front', 'clear-front', 'Front');
-    setupDropzone('aadhaar_back', 'drop-back', 'prev-back', 'holder-back', 'lbl-back', 'clear-back', 'Back');
+    setupDropzone('af', 'drop-f', 'prev-f', 'hold-f', 'lbl-f', 'clr-f', 'Front');
+    setupDropzone('ab', 'drop-b', 'prev-b', 'hold-b', 'lbl-b', 'clr-b', 'Back');
 
     // ─── STEP 1 NEXT ────────────────────────────────────────────────────────────
     document.getElementById('btn-next-1').addEventListener('click', function() {
@@ -656,7 +652,7 @@ export function renderQrSignupView(params: QrSignupViewParams): string {
 
       var phone = getVal('phone').replace(/\\D/g, '').slice(-10);
       if (phone.length !== 10 || !/^[6-9]\\d{9}$/.test(phone)) {
-        setFieldError('phone', 'Enter a valid 10-digit mobile number starting with 6-9.');
+        setFieldError('phone', 'Enter a valid 10-digit number starting with 6-9.');
         valid = false;
       }
 
@@ -666,7 +662,7 @@ export function renderQrSignupView(params: QrSignupViewParams): string {
         setFieldError('email', 'Email address is required.');
         valid = false;
       } else if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) {
-        setFieldError('email', 'Please enter a valid email address.');
+        setFieldError('email', 'Enter a valid email address.');
         valid = false;
       }
 
@@ -678,21 +674,21 @@ export function renderQrSignupView(params: QrSignupViewParams): string {
 
       var gender = getVal('gender');
       if (!gender) {
-        setFieldError('gender', 'Please select your gender.');
+        setFieldError('gender', 'Please select gender.');
         valid = false;
       }
 
       if (!valid) {
-        showToast('Please fill in all mandatory fields.');
+        showToast('Please fill all required fields.');
         return;
       }
 
-      goToStep(2);
+      setStep(2);
     });
 
     // ─── STEP 2 BACK & NEXT ─────────────────────────────────────────────────────
     document.getElementById('btn-back-2').addEventListener('click', function() {
-      goToStep(1);
+      setStep(1);
     });
 
     document.getElementById('btn-next-2').addEventListener('click', function() {
@@ -707,7 +703,7 @@ export function renderQrSignupView(params: QrSignupViewParams): string {
 
       var gphone = getVal('gphone').replace(/\\D/g, '').slice(-10);
       if (gphone.length !== 10 || !/^[6-9]\\d{9}$/.test(gphone)) {
-        setFieldError('gphone', 'Enter a valid 10-digit guardian number starting with 6-9.');
+        setFieldError('gphone', 'Enter a valid 10-digit guardian number.');
         valid = false;
       }
 
@@ -716,15 +712,15 @@ export function renderQrSignupView(params: QrSignupViewParams): string {
         return;
       }
 
-      goToStep(3);
+      setStep(3);
     });
 
     // ─── STEP 3 BACK & SUBMIT ───────────────────────────────────────────────────
     document.getElementById('btn-back-3').addEventListener('click', function() {
-      goToStep(2);
+      setStep(2);
     });
 
-    document.getElementById('signup-form').addEventListener('submit', function(e) {
+    document.getElementById('reg-form').addEventListener('submit', function(e) {
       e.preventDefault();
       clearAllErrors();
       var valid = true;
@@ -733,23 +729,23 @@ export function renderQrSignupView(params: QrSignupViewParams): string {
       var idType = getVal('id_type');
 
       if (!idNum) {
-        setFieldError('aadhaar', 'ID Document number is required.');
+        setFieldError('aadhaar', 'ID document number is required.');
         valid = false;
       } else {
         if (idType === '1' && !/^\\d{12}$/.test(idNum)) {
-          setFieldError('aadhaar', 'Aadhaar must be exactly 12 numeric digits.');
+          setFieldError('aadhaar', 'Aadhaar must be 12 digits.');
           valid = false;
         } else if (idType === '2' && !/^[A-Z0-9]{10}$/.test(idNum)) {
-          setFieldError('aadhaar', 'PAN must be exactly 10 alphanumeric characters.');
+          setFieldError('aadhaar', 'PAN must be 10 characters.');
           valid = false;
         } else if (idType === '3' && !/^[A-Z0-9]{10}$/.test(idNum)) {
-          setFieldError('aadhaar', 'Voter ID must be exactly 10 characters.');
+          setFieldError('aadhaar', 'Voter ID must be 10 characters.');
           valid = false;
         } else if (idType === '4' && !/^[A-Z0-9]{15}$/.test(idNum)) {
-          setFieldError('aadhaar', 'Driving License must be exactly 15 characters.');
+          setFieldError('aadhaar', 'License must be 15 characters.');
           valid = false;
         } else if (idType === '5' && !/^[A-Z0-9]{8}$/.test(idNum)) {
-          setFieldError('aadhaar', 'Passport must be exactly 8 characters.');
+          setFieldError('aadhaar', 'Passport must be 8 characters.');
           valid = false;
         }
       }
@@ -761,12 +757,12 @@ export function renderQrSignupView(params: QrSignupViewParams): string {
       }
 
       if (!valid) {
-        showToast('Please complete identity verification details.');
+        showToast('Please fill all mandatory fields.');
         return;
       }
 
       // Show loader
-      var loader = document.getElementById('loader-overlay');
+      var loader = document.getElementById('loader-box');
       if (loader) loader.classList.remove('hidden');
 
       var formData = new FormData(this);
@@ -784,22 +780,23 @@ export function renderQrSignupView(params: QrSignupViewParams): string {
         .then(function(res) {
           if (loader) loader.classList.add('hidden');
           if (res && res.success) {
-            document.getElementById('signup-form').classList.add('hidden');
-            var successScreen = document.getElementById('success-screen');
-            if (successScreen) successScreen.classList.remove('hidden');
-            initIcons();
+            document.getElementById('reg-form').classList.add('hidden');
+            document.getElementById('step-nav').classList.add('hidden');
+            var successPane = document.getElementById('pane-success');
+            if (successPane) successPane.classList.remove('hidden');
+            runIcons();
           } else {
             showToast(res.error || 'Submission failed. Please check your details.');
           }
         })
         .catch(function(err) {
           if (loader) loader.classList.add('hidden');
-          showToast('Failed to submit application. Please check your connection.');
+          showToast('Failed to submit application. Please check connection.');
         });
     });
 
     // Initial icon render
-    initIcons();
+    runIcons();
   </script>
 </body>
 </html>`;
