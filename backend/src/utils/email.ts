@@ -54,60 +54,14 @@ const parseSender = () => {
   return { name: 'Hostix Support', email: rawFrom };
 };
 
-// ─── Send via Brevo HTTP API (port 443) ────────────────────────────────────────
-const sendViaBrevo = async (options: EmailOptions): Promise<boolean> => {
-  const apiKey = (process.env.BREVO_API_KEY || '').trim();
-  if (!apiKey) return false;
-
-  // Brevo HTTP API requires a REST API key (starts with 'xkeysib-').
-  // If user configured an SMTP password (starts with 'xsmtpsib-'), log a helpful note.
-  if (apiKey.startsWith('xsmtpsib-')) {
-    console.warn('⚠️ BREVO_API_KEY starts with "xsmtpsib-", which is an SMTP key. Brevo REST API requires an API key starting with "xkeysib-".');
-    return false;
-  }
-
-  const sender = parseSender();
-  const payload: any = {
-    sender: { name: sender.name, email: sender.email },
-    to: [{ email: options.to }],
-    subject: options.subject,
-    htmlContent: options.html,
-  };
-
-  if (options.attachments && options.attachments.length > 0) {
-    payload.attachment = options.attachments.map((a) => ({
-      name: a.filename,
-      content: Buffer.isBuffer(a.content) ? a.content.toString('base64') : Buffer.from(a.content).toString('base64'),
-    }));
-  }
-
-  const res = await fetch('https://api.brevo.com/v3/smtp/email', {
-    method: 'POST',
-    signal: AbortSignal.timeout(6000),
-    headers: {
-      'accept': 'application/json',
-      'api-key': apiKey,
-      'content-type': 'application/json',
-    },
-    body: JSON.stringify(payload),
-  });
-
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`Brevo HTTP API ${res.status}: ${text}`);
-  }
-  console.log(`✅ Email sent via Brevo HTTP API to: ${options.to}`);
-  return true;
-};
-
 // ─── Send via Resend HTTP API (port 443) ───────────────────────────────────────
 const sendViaResend = async (options: EmailOptions): Promise<boolean> => {
   const apiKey = (process.env.RESEND_API_KEY || '').trim();
   if (!apiKey) return false;
 
-  const sender = parseSender();
+  const resendFrom = process.env.RESEND_FROM || 'Hostix <onboarding@resend.dev>';
   const payload: any = {
-    from: `${sender.name} <${sender.email}>`,
+    from: resendFrom,
     to: [options.to],
     subject: options.subject,
     html: options.html,
@@ -122,7 +76,7 @@ const sendViaResend = async (options: EmailOptions): Promise<boolean> => {
 
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
-    signal: AbortSignal.timeout(6000),
+    signal: AbortSignal.timeout(8000),
     headers: {
       'Authorization': `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
@@ -137,6 +91,7 @@ const sendViaResend = async (options: EmailOptions): Promise<boolean> => {
   console.log(`✅ Email sent via Resend HTTP API to: ${options.to}`);
   return true;
 };
+
 
 // ─── Send via SendGrid HTTP API (port 443) ─────────────────────────────────────
 const sendViaSendGrid = async (options: EmailOptions): Promise<boolean> => {
@@ -250,7 +205,7 @@ export const sendEmail = async (options: EmailOptions): Promise<void> => {
 
   try {
     // 1. For OTP emails ONLY: Use EmailJS template
-    const isStrictOtp = options.emailType === 'OTP';
+    const isStrictOtp = options.emailType === 'OTP' || options.emailType === 'ForgotPassword' || /otp|verification/i.test(options.subject);
 
     if (isStrictOtp && process.env.EMAILJS_SERVICE_ID && process.env.EMAILJS_TEMPLATE_ID) {
       try {
@@ -261,16 +216,8 @@ export const sendEmail = async (options: EmailOptions): Promise<void> => {
       }
     }
 
-    // 2. For Reports, Notifications, Sign-in Alerts, and general HTML emails:
-    // Try Brevo / Resend / SendGrid which send complete custom HTML layouts
-    if (process.env.BREVO_API_KEY) {
-      try {
-        const sent = await sendViaBrevo(options);
-        if (sent) return;
-      } catch (brevoErr: any) {
-        console.warn('⚠️ Brevo API delivery notice:', brevoErr.message);
-      }
-    }
+    // 2. For Reports, New Owner, New User, Notifications, and general HTML emails:
+    // Route via Resend HTTP API over port 443
     if (process.env.RESEND_API_KEY) {
       try {
         const sent = await sendViaResend(options);
@@ -279,6 +226,7 @@ export const sendEmail = async (options: EmailOptions): Promise<void> => {
         console.warn('⚠️ Resend API delivery notice:', resendErr.message);
       }
     }
+
     if (process.env.SENDGRID_API_KEY) {
       try {
         const sent = await sendViaSendGrid(options);
@@ -287,6 +235,8 @@ export const sendEmail = async (options: EmailOptions): Promise<void> => {
         console.warn('⚠️ SendGrid API delivery notice:', sgErr.message);
       }
     }
+
+
 
     // 3. SMTP Transporter fallback (uses standard Gmail SMTP credentials)
     const transporter = createTransporter();

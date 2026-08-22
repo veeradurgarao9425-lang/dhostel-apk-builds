@@ -151,12 +151,12 @@ export function notifyNewOwnerRegistered(params: {
   hostelId?: number | null;
   address?: string | null;
 }): void {
-  const when = new Date().toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
+  const when = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' });
   void notifyDeveloper({
     type: 'NEW_OWNER',
     title: 'New Owner Registered',
-    message: `${params.fullName} created a Hostix owner account${
-      params.hostelName ? ` for "${params.hostelName}"` : ''
+    message: `A new owner account has been created for ${params.fullName}${
+      params.hostelName ? ` ("${params.hostelName}")` : ''
     }.`,
     priority: 'HIGH',
     relatedEntity: 'OWNER',
@@ -169,12 +169,12 @@ export function notifyNewOwnerRegistered(params: {
       phone: params.phone ?? null,
     },
     emailRows: [
-      ['Owner', params.fullName],
-      ['Email', params.email],
-      ['Phone', params.phone || 'N/A'],
-      ['Hostel', params.hostelName || 'Not created yet'],
-      ['Address', params.address || 'N/A'],
-      ['Registered', when],
+      ['Owner Name', params.fullName],
+      ['Mobile Number', params.phone ? `+91 ${params.phone}` : 'N/A'],
+      ['Email Address', params.email],
+      ['PG / Hostel Name', params.hostelName || 'Not created yet'],
+      ['Hostel Address', params.address || 'N/A'],
+      ['Registration Time', when],
     ],
     email: true,
   });
@@ -189,24 +189,22 @@ export function notifyNewHostelRegistered(params: {
   ownerEmail?: string | null;
   city?: string | null;
 }): void {
-  const when = new Date().toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
+  const when = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' });
   void notifyDeveloper({
     type: 'NEW_HOSTEL',
     title: 'New Hostel Registered',
-    message: `"${params.hostelName}" joined the network${
-      params.ownerName ? ` under ${params.ownerName}` : ''
-    }. Set its platform billing amount to start tracking revenue.`,
-    priority: 'HIGH',
+    message: `Hostel "${params.hostelName}" was added by ${params.ownerName || 'an owner'}.`,
+    priority: 'NORMAL',
     relatedEntity: 'HOSTEL',
     relatedEntityId: params.hostelId,
     metadata: {
       hostel_id: params.hostelId,
-      hostel_name: params.hostelName,
       owner_id: params.ownerId ?? null,
+      hostel_name: params.hostelName,
     },
     emailRows: [
-      ['Hostel', params.hostelName],
-      ['Owner', params.ownerName || 'N/A'],
+      ['Hostel Name', params.hostelName],
+      ['Owner Name', params.ownerName || 'N/A'],
       ['Owner Email', params.ownerEmail || 'N/A'],
       ['City', params.city || 'N/A'],
       ['Registered', when],
