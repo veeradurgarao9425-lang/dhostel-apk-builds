@@ -195,8 +195,7 @@ export const sendNotificationToUser = async (options: SendNotificationOptions): 
         title: formattedTitle,
         subtitle: 'HOSTIX',
         body: message,
-        color: color,
-        data: { notificationId, type, hostelId, screen, params, referenceType, referenceId, deepLink, metadata, ...data }
+        data: { notificationId, type, color, hostelId, screen, params, referenceType, referenceId, deepLink, metadata, ...data }
       };
     });
 
