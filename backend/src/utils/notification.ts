@@ -184,8 +184,9 @@ export const sendNotificationToUser = async (options: SendNotificationOptions): 
     // 4. Send push notifications via Expo Push API
     const pushMessages = validTokens.map(token => {
       const { color, prefix } = getNotificationColorAndPrefix(title, type);
-      const cleanTitle = title.replace(/^[\uD800-\uDBFF\uDC00-\uDFFF\u2600-\u27BF\s]+/, '').trim();
-      const formattedTitle = `${prefix}${cleanTitle}`;
+      // Remove any existing emojis from title to avoid duplicates
+      const cleanTitle = title.replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{27BF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}]/gu, '').trim();
+      const formattedTitle = `${cleanTitle} ${prefix.trim()}`;
 
       return {
         to: token,

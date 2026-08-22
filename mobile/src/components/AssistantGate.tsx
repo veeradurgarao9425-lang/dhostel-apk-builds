@@ -81,10 +81,9 @@ export const AssistantGate: React.FC = () => {
   const isDevUser = user?.role === 'DEVELOPER' || (user as any)?.is_developer || isDeveloperLoggedIn;
   const isTenantUser = user?.role === 'TENANT';
 
-  if (!currentRoute) {
-    if (isDevUser) return <DeveloperAssistant />;
-    if (isTenantUser) return null;
-    return <OwnerAssistant />;
+  // Do not show assistant on splash screen, initial mount, or if user is not logged in
+  if (!user || !currentRoute || currentRoute === 'Splash' || currentRoute === 'Onboarding') {
+    return null;
   }
 
   const isDevRoute = currentRoute.startsWith('Dev') || currentRoute.startsWith('Developer') || (isDevUser && currentRoute === 'Main');

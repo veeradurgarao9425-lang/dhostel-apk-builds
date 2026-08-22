@@ -393,15 +393,15 @@ export const OwnerAssistant: React.FC = () => {
     const hasAddFab = pagesWithAddFab.includes(activeRoute);
 
     if (hasAddFab) {
-      // Stack directly above the '+' FAB
-      return { bottom: Math.max(insets.bottom + 180, 195), right: 18 };
+      // Stack cleanly directly above the '+' FAB with a balanced, comfortable gap
+      return { bottom: Math.max(insets.bottom + 155, 165), right: 18 };
     }
-    if (isTabScreen) {
-      // Dashboard, Finance, Pending Dues, Dev Tabs: sit cleanly and high above the bottom tab bar
-      return { bottom: Math.max(insets.bottom + 115, 128), right: 18 };
+    if (isTabScreen || !activeRoute || activeRoute === 'Main' || activeRoute === 'Home') {
+      // Dashboard, Finance, Pending Dues, Dev Tabs: sit cleanly above the bottom tab bar
+      return { bottom: Math.max(insets.bottom + 85, 95), right: 18 };
     }
     // Inside pages / detail / form screens without bottom tabs
-    return { bottom: Math.max(insets.bottom + 45, 55), right: 18 };
+    return { bottom: Math.max(insets.bottom + 25, 35), right: 18 };
   }, [currentRoute, insets.bottom]);
 
   // ── Message helpers ────────────────────────────────────────────────────

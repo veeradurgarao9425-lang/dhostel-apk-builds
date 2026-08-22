@@ -132,7 +132,7 @@ export const notificationService = {
       if (!response) return;
 
       const identifier = response.notification?.request?.identifier;
-      if (identifier) {
+      if (isColdStart && identifier) {
         if (this._handledNotificationIds.has(identifier)) {
           return;
         }
@@ -144,39 +144,88 @@ export const notificationService = {
       const title = (response?.notification?.request?.content?.title || '').toLowerCase();
       const dataType = typeof data.type === 'string' ? data.type.toUpperCase() : '';
 
-      // Direct screen targeting if provided in payload data
+      // 1. Direct screen targeting if provided in payload data
       if (data.screen && typeof data.screen === 'string') {
         navigate(data.screen, data.params || data);
         return;
       }
       
-      if (dataType === 'NEW ADMISSION' || dataType === 'NEW_ADMISSION' || title.includes('admission')) {
-        if (data.id || data.studentId || data.student_id) {
-          navigate('StudentDetails', { studentId: data.id || data.studentId || data.student_id });
+      // 2. QR Pre-Booking / New Admission Requests -> PreBooking list
+      if (dataType === 'PREBOOKING' || dataType === 'NEW_ADMISSION_REQUEST' || title.includes('pre-booking') || title.includes('admission request') || title.includes('qr application')) {
+        navigate('PreBooking');
+        return;
+      }
+
+      // 3. New Student Admission (General) -> Student Details or Students List
+      if (dataType === 'NEW ADMISSION' || dataType === 'NEW_ADMISSION' || title.includes('admission') || title.includes('enrolled')) {
+        const sid = data.studentId || data.student_id || data.id;
+        if (sid) {
+          navigate('StudentDetails', { studentId: sid });
         } else {
           navigate('Students');
         }
-      } else if (title.includes('payment') || title.includes('collect') || title.includes('due') || dataType === 'PAYMENT' || dataType === 'SUCCESS' || dataType === 'DUE_REMINDER') {
-        navigate('FeeManagement');
-      } else if (title.includes('room') || title.includes('assign') || title.includes('vacate') || dataType === 'ROOM_ALLOCATED' || dataType === 'VACATE') {
+        return;
+      }
+
+      // 4. Payment Success / Collected Rent -> Tenant's Transaction Details Page (or Collect Rent List)
+      if (dataType === 'PAYMENT' || dataType === 'PAYMENT_SUCCESS' || title.includes('payment') || title.includes('collect')) {
+        const sid = data.studentId || data.student_id;
+        if (sid) {
+          navigate('TenantTransactions', { studentId: sid, studentName: data.student_name || data.studentName });
+        } else {
+          navigate('CollectedPayments');
+        }
+        return;
+      }
+
+      // 5. Pending / Overdue Rent -> Particular Student Details or Pending Payments Tab
+      if (dataType === 'DUE_REMINDER' || dataType === 'PENDING_PAYMENT' || title.includes('due') || title.includes('pending') || title.includes('overdue')) {
+        const sid = data.studentId || data.student_id;
+        if (sid) {
+          navigate('StudentDetails', { studentId: sid });
+        } else {
+          navigate('PendingPayments');
+        }
+        return;
+      }
+
+      // 6. Vacate Bed / Room Allocation -> Rooms Screen
+      if (dataType === 'VACATE' || dataType === 'ROOM_ALLOCATED' || title.includes('vacate') || title.includes('room') || title.includes('bed')) {
         navigate('Rooms');
-      } else if (dataType === 'NOTICE' || title.includes('notice')) {
-        navigate('Notices');
-      } else if (dataType === 'COMPLAINT' || dataType === 'MAINTENANCE' || title.includes('complaint')) {
-        navigate('ComplaintsManagement');
-      } else if (dataType === 'EXPENSE' || title.includes('expense')) {
+        return;
+      }
+
+      // 7. Notice -> Direct Notice Details View or Notices List
+      if (dataType === 'NOTICE' || title.includes('notice')) {
+        const nid = data.noticeId || data.notice_id || data.id;
+        if (nid) {
+          navigate('NoticeDetails', { noticeId: nid, notice: data });
+        } else {
+          navigate('Notices');
+        }
+        return;
+      }
+
+      // 8. Complaint / Maintenance -> Complaints Management
+      if (dataType === 'COMPLAINT' || dataType === 'MAINTENANCE' || title.includes('complaint')) {
+        navigate('ComplaintsManagement', data);
+        return;
+      }
+
+      // 9. Expenses
+      if (dataType === 'EXPENSE' || title.includes('expense')) {
         navigate('Expenses');
-      } else if (dataType === 'PREBOOKING' || title.includes('pre-booking')) {
-        navigate('PreBooking');
-      } else if (dataType === 'DOCUMENT' || title.includes('receipt')) {
-        navigate('FeeManagement');
-      } else if (dataType === 'SUMMARY' || title.includes('summary')) {
+        return;
+      }
+
+      // 10. Summary Reports
+      if (dataType === 'SUMMARY' || title.includes('summary') || title.includes('report')) {
         navigate('Reports');
-      } else if (title.includes('tenant')) {
-        navigate('Rooms');
-      } else if (!isColdStart) {
-        // Only navigate to general Notifications screen if this was an active user tap,
-        // never from an automatic cold-start resolution
+        return;
+      }
+
+      // Fallback: Notifications screen
+      if (!isColdStart) {
         navigate('Notifications');
       }
     };

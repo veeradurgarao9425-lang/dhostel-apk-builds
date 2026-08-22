@@ -208,6 +208,7 @@ interface AppNavigatorProps {
 
 // ── Root Stack Navigator ──────────────────────────────────────────────────────
 const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
+    const navigationRef = useNavigationContainerRef();
     const { user, logoutLoading } = useAuth();
     const navigationKey = `${user?.user_id || 'guest'}_${user?.hostel_id || 'none'}`;
 
@@ -218,7 +219,9 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
 
             // Setup listeners for foreground notifications and clicks
             const unsubscribe = notificationService.setupNotificationListeners((screen, params) => {
-                navigationRef.current?.navigate(screen as any, params);
+                if (navigationRef.isReady()) {
+                    (navigationRef as any).navigate(screen, params);
+                }
             });
 
             return () => {
@@ -231,6 +234,15 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
         <>
             <NavigationContainer
                 ref={navigationRef}
+                onReady={() => {
+                    const route = navigationRef.current?.getCurrentRoute();
+                    if (route?.name) {
+                        DeviceEventEmitter.emit('ROUTE_CHANGED', route.name);
+                        if (onRouteChange) {
+                            onRouteChange(route.name);
+                        }
+                    }
+                }}
                 onStateChange={() => {
                     const route = navigationRef.current?.getCurrentRoute();
                     if (route?.name) {
