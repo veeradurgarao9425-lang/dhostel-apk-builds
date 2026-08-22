@@ -520,16 +520,39 @@ app.get('/api/public/qr-signup', async (req, res) => {
     function setErr(id,inp,m){
       var el=document.getElementById(id), i=document.getElementById(inp);
       if(el) el.textContent=m;
-      if(i) i.parentElement.className='field'+(m?' ef':'');
+      if(i && i.parentElement) {
+        if (m) {
+          i.parentElement.classList.add('ef');
+        } else {
+          i.parentElement.classList.remove('ef');
+        }
+      }
     }
     function val(id){ return (document.getElementById(id)||{}).value||''; }
 
-    // Digits only
+    // Live auto-clear error state on user typing
+    ['first_name', 'last_name', 'phone', 'email', 'dob', 'gender', 'gname', 'gphone', 'aadhaar', 'addr'].forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el) {
+        el.addEventListener('input', function() {
+          if (this.parentElement) this.parentElement.classList.remove('ef');
+          var errEl = this.parentElement ? this.parentElement.querySelector('.em') : null;
+          if (errEl) errEl.textContent = '';
+        });
+        el.addEventListener('change', function() {
+          if (this.parentElement) this.parentElement.classList.remove('ef');
+          var errEl = this.parentElement ? this.parentElement.querySelector('.em') : null;
+          if (errEl) errEl.textContent = '';
+        });
+      }
+    });
+
+    // Digits only for phone inputs
     var ids = ['phone','gphone'];
     for(var k=0; k<ids.length; k++){
       (function(id){
         var el=document.getElementById(id);
-        if(el) el.addEventListener('input',function(e){ e.target.value=e.target.value.replace(/\D/g,''); });
+        if(el) el.addEventListener('input',function(e){ e.target.value=e.target.value.replace(/\D/g,'').slice(0,10); });
       })(ids[k]);
     }
 
@@ -608,16 +631,6 @@ app.get('/api/public/qr-signup', async (req, res) => {
     }
     setupFilePreview('af', 'ffb', 'fprev', 'fplaceholder', 'ffl', 'fclear', 'Front');
     setupFilePreview('ab', 'bfb', 'bprev', 'bplaceholder', 'bfl', 'bclear', 'Back');
-
-    // Auto-clean phone inputs to only numeric 10 digits
-    ['phone', 'gphone'].forEach(function(id) {
-      var el = document.getElementById(id);
-      if (el) {
-        el.addEventListener('input', function() {
-          this.value = this.value.replace(/\D/g, '').slice(0, 10);
-        });
-      }
-    });
 
     // Step 1 Next
     document.getElementById('b1').addEventListener('click', function() {
