@@ -12,8 +12,10 @@
     "init:relations": "tsx scripts/initializeRelationsTable.ts",
     "init:id-proof-types": "tsx scripts/initializeIdProofTypes.ts",
     "generate:growth-content": "tsx scripts/generateGrowthContent.ts",
-    "seed:growth-stories": "tsx scripts/seedGrowthStories.ts"
+    "seed:growth-stories": "tsx scripts/seedGrowthStories.ts",
+    "seed:production": "tsx src/seedProductionData.ts"
   },
+
   "dependencies": {
     "@anthropic-ai/sdk": "^0.115.0",
     "@aws-sdk/client-s3": "^3.1111.0",
