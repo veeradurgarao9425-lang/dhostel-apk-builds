@@ -146,18 +146,33 @@ export const notificationService = {
 
       // 1. Direct screen targeting if provided in payload data
       if (data.screen && typeof data.screen === 'string') {
-        navigate(data.screen, data.params || data);
+        let parsedParams = data.params;
+        if (typeof parsedParams === 'string') {
+          try { parsedParams = JSON.parse(parsedParams); } catch {}
+        }
+        navigate(data.screen, parsedParams || data);
         return;
       }
       
-      // 2. QR Pre-Booking / New Admission Requests -> PreBooking list
-      if (dataType === 'PREBOOKING' || dataType === 'NEW_ADMISSION_REQUEST' || title.includes('pre-booking') || title.includes('admission request') || title.includes('qr application')) {
-        navigate('PreBooking');
+      // 2. New Registration / QR Code / Admission Requests -> Students list page
+      if (
+        dataType === 'QR_CODE' ||
+        dataType === 'PREBOOKING' ||
+        dataType === 'NEW_ADMISSION_REQUEST' ||
+        dataType === 'NEW ADMISSION' ||
+        dataType === 'NEW_ADMISSION' ||
+        title.includes('qr') ||
+        title.includes('registration') ||
+        title.includes('admission') ||
+        title.includes('pre-booking') ||
+        title.includes('enrolled')
+      ) {
+        navigate('Students', data.params || { tab: 'All' });
         return;
       }
 
-      // 3. New Student Admission (General) -> Student Details or Students List
-      if (dataType === 'NEW ADMISSION' || dataType === 'NEW_ADMISSION' || title.includes('admission') || title.includes('enrolled')) {
+      // 3. Vacate Bed / Vacate Notice -> Student Details Page (or Students)
+      if (dataType === 'VACATE' || title.includes('vacat')) {
         const sid = data.studentId || data.student_id || data.id;
         if (sid) {
           navigate('StudentDetails', { studentId: sid });
@@ -167,20 +182,42 @@ export const notificationService = {
         return;
       }
 
-      // 4. Payment Success / Collected Rent -> Tenant's Transaction Details Page (or Collect Rent List)
-      if (dataType === 'PAYMENT' || dataType === 'PAYMENT_SUCCESS' || title.includes('payment') || title.includes('collect')) {
-        const sid = data.studentId || data.student_id;
+      // 4. Payment Success / Collected Rent / Payment Proof -> Tenant Transactions (or Collected Payments)
+      if (
+        dataType === 'PAYMENT' ||
+        dataType === 'PAYMENT_SUCCESS' ||
+        dataType === 'PAYMENT_COLLECTED' ||
+        dataType === 'PAYMENT_PROOF' ||
+        dataType === 'PAYMENT PROOF' ||
+        title.includes('payment') ||
+        title.includes('collect') ||
+        title.includes('proof') ||
+        title.includes('receipt')
+      ) {
+        const sid = data.studentId || data.student_id || data.id;
         if (sid) {
-          navigate('TenantTransactions', { studentId: sid, studentName: data.student_name || data.studentName });
+          navigate('TenantTransactions', {
+            studentId: sid,
+            studentName: data.student_name || data.studentName,
+          });
         } else {
           navigate('CollectedPayments');
         }
         return;
       }
 
-      // 5. Pending / Overdue Rent -> Particular Student Details or Pending Payments Tab
-      if (dataType === 'DUE_REMINDER' || dataType === 'PENDING_PAYMENT' || title.includes('due') || title.includes('pending') || title.includes('overdue')) {
-        const sid = data.studentId || data.student_id;
+      // 5. Pending / Overdue Rent / Due Reminder -> Student Details (or Pending Payments)
+      if (
+        dataType === 'DUE_REMINDER' ||
+        dataType === 'PENDING_PAYMENT' ||
+        dataType === 'OVERDUE' ||
+        dataType === 'PAYMENT DUE' ||
+        dataType === 'PAYMENT_DUE' ||
+        title.includes('due') ||
+        title.includes('pending') ||
+        title.includes('overdue')
+      ) {
+        const sid = data.studentId || data.student_id || data.id;
         if (sid) {
           navigate('StudentDetails', { studentId: sid });
         } else {
@@ -189,8 +226,8 @@ export const notificationService = {
         return;
       }
 
-      // 6. Vacate Bed / Room Allocation -> Rooms Screen
-      if (dataType === 'VACATE' || dataType === 'ROOM_ALLOCATED' || title.includes('vacate') || title.includes('room') || title.includes('bed')) {
+      // 6. Room Allocation / Created -> Rooms Screen
+      if (dataType === 'ROOM_ALLOCATED' || title.includes('room') || title.includes('bed')) {
         navigate('Rooms');
         return;
       }

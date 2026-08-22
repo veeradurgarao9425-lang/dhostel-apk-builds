@@ -1132,13 +1132,20 @@ export const recordPayment = async (req: AuthRequest, res: Response) => {
           created_at: new Date()
         });
       }
+      const studentFullName = `${student.first_name} ${student.last_name || ''}`.trim();
       sendNotificationToHostelOwner(
         hostel_id,
         'General',
         'Payment Collected',
-        `Payment of ₹${amount} received from ${student.first_name} ${student.last_name || ''}.`,
+        `Payment of ₹${amount} received from ${studentFullName}.`,
         'Medium',
-        { payment_id: paymentId, student_id }
+        { payment_id: paymentId, student_id, studentName: studentFullName, studentId: student_id },
+        {
+          screen: 'TenantTransactions',
+          params: { studentId: student_id, studentName: studentFullName },
+          referenceType: 'payment',
+          referenceId: paymentId,
+        }
       ).catch(err => console.error('Failed to send payment collection notification:', err));
 
       sendNotificationToStudent(
@@ -1147,7 +1154,12 @@ export const recordPayment = async (req: AuthRequest, res: Response) => {
         'Payment Recorded',
         `A payment of ₹${amount} has been recorded for your rent.`,
         'Medium',
-        { payment_id: paymentId }
+        { payment_id: paymentId, student_id },
+        {
+          screen: 'Payments',
+          referenceType: 'payment',
+          referenceId: paymentId,
+        }
       ).catch(err => console.error('Failed to send payment recording notification to student:', err));
 
       res.status(201).json({

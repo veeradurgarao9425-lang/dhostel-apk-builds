@@ -1398,8 +1398,12 @@ export async function patchDatabaseSchema() {
         }
         // Make user_id nullable since notifications can now be for students
         await db.raw("ALTER TABLE notifications MODIFY COLUMN user_id INT NULL");
-        // Change notification_type to VARCHAR to support new types without ENUM issues
-        await db.raw("ALTER TABLE notifications MODIFY COLUMN notification_type VARCHAR(100) NOT NULL");
+        if (!columnNames.includes('notification_type')) {
+          console.log('[schema-patch] adding notification_type to notifications...');
+          await db.raw("ALTER TABLE notifications ADD COLUMN notification_type VARCHAR(100) DEFAULT 'General'");
+        } else {
+          await db.raw("ALTER TABLE notifications MODIFY COLUMN notification_type VARCHAR(100) NOT NULL");
+        }
       }
     } catch (e: any) {
       console.error('[schema-patch] Error updating notifications for ecosystem:', e.message);

@@ -44,6 +44,19 @@ export const useNotifications = () => {
                         }
                     }
 
+                    let extraData = {};
+                    if (item.metadata) {
+                        try {
+                            extraData = typeof item.metadata === 'string' ? JSON.parse(item.metadata) : item.metadata;
+                        } catch {}
+                    }
+                    let parsedParams = item.params;
+                    if (typeof parsedParams === 'string') {
+                        try {
+                            parsedParams = JSON.parse(parsedParams);
+                        } catch {}
+                    }
+
                     return {
                         id: item.notification_id,
                         type,
@@ -52,7 +65,15 @@ export const useNotifications = () => {
                         time: new Date(item.created_at).toLocaleString(),
                         date: item.created_at,
                         read: item.is_read === 1,
-                        data: item
+                        data: {
+                            ...item,
+                            ...extraData,
+                            params: parsedParams,
+                            student_id: item.student_id || extraData?.student_id || extraData?.studentId || (parsedParams && parsedParams.studentId),
+                            studentId: item.student_id || extraData?.student_id || extraData?.studentId || (parsedParams && parsedParams.studentId),
+                            student_name: item.student_name || extraData?.student_name || extraData?.studentName || (parsedParams && parsedParams.studentName),
+                            studentName: item.student_name || extraData?.student_name || extraData?.studentName || (parsedParams && parsedParams.studentName)
+                        }
                     };
                 });
 

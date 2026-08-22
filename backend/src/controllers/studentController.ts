@@ -612,9 +612,15 @@ export const createStudent = async (req: AuthRequest, res: Response) => {
       hostel_id,
       'New Admission',
       'New Student Admission',
-      `Student ${first_name} ${last_name || ''} has been registered successfully.`,
+      `Student ${first_name} ${last_name || ''} has been registered successfully.`.trim(),
       'Medium',
-      { id: student_id }
+      { id: student_id, student_id, studentId: student_id },
+      {
+        screen: 'Students',
+        params: { studentId: student_id },
+        referenceType: 'student',
+        referenceId: student_id,
+      }
     ).catch(err => console.error('Failed to send student admission notification:', err));
 
     // Send Welcome Email to New Joiner ONLY (if student email provided)
@@ -1405,7 +1411,7 @@ export const submitVacateNotice = async (req: AuthRequest, res: Response) => {
       });
 
     if (student?.hostel_id) {
-      const name = `${student.first_name}${student.last_name ? ' ' + student.last_name : ''}`;
+      const name = `${student.first_name}${student.last_name ? ' ' + student.last_name : ''}`.trim();
       sendNotificationToHostelOwner(
         student.hostel_id,
         'General',
@@ -1414,7 +1420,13 @@ export const submitVacateNotice = async (req: AuthRequest, res: Response) => {
           ? `${name} has given notice to vacate on ${formattedDate}.${reason ? ` Reason: ${reason}` : ''}`
           : `${name} has cancelled their vacate notice.`,
         'Medium',
-        { student_id: student.student_id }
+        { student_id: student.student_id, studentId: student.student_id },
+        {
+          screen: 'StudentDetails',
+          params: { studentId: student.student_id },
+          referenceType: 'student',
+          referenceId: student.student_id,
+        }
       ).catch(err => console.error('Failed to send vacate-notice owner notification:', err));
     }
 

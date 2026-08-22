@@ -69,9 +69,9 @@ export const sendNotificationToUser = async (options: SendNotificationOptions): 
     }
 
     // 1. Save to in-app notification table (with graceful fallback if new columns not yet patched)
-    const baseRow = {
+    const baseRow: any = {
       user_id: userId, student_id: studentId, hostel_id: hostelId,
-      notification_type: type, title, message, priority, is_read: 0, created_at: new Date(),
+      type, notification_type: type, title, message, priority, is_read: 0, created_at: new Date(),
     };
     const enrichedRow = {
       ...baseRow,
@@ -85,7 +85,19 @@ export const sendNotificationToUser = async (options: SendNotificationOptions): 
     };
     const insertResult = await db('notifications').insert(enrichedRow).catch(async (err: any) => {
       if (err?.code === 'ER_BAD_FIELD_ERROR' || String(err?.sqlMessage || '').includes('Unknown column')) {
-        return db('notifications').insert(baseRow);
+        // Fallback without whichever column was missing
+        const cleanBase: any = {
+          user_id: userId, student_id: studentId, hostel_id: hostelId,
+          title, message, priority, is_read: 0, created_at: new Date(),
+        };
+        if (!String(err?.sqlMessage || '').includes('type')) {
+          cleanBase.type = type;
+        }
+        return db('notifications').insert(cleanBase).catch(() => {
+          delete cleanBase.type;
+          cleanBase.notification_type = type;
+          return db('notifications').insert(cleanBase).catch(() => null);
+        });
       }
       throw err;
     });
@@ -196,6 +208,7 @@ export const sendNotificationToUser = async (options: SendNotificationOptions): 
         title: formattedTitle,
         subtitle: 'HOSTIX',
         body: message,
+        color: color || '#6D4AFF',
         data: { notificationId, type, color, hostelId, screen, params, referenceType, referenceId, deepLink, metadata, ...data }
       };
     });

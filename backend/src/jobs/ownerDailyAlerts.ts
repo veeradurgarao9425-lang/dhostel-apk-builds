@@ -36,8 +36,8 @@ export const runOwnerDailyAlerts = async () => {
         'Bed Becoming Vacant Soon',
         `${s.room_number ? `Room ${s.room_number} — ` : ''}${name} is vacating on ${dateStr}. Prepare for turnover.`,
         'Medium',
-        { student_id: s.student_id },
-        { screen: 'Students', params: { studentId: s.student_id }, referenceType: 'student', referenceId: s.student_id }
+        { student_id: s.student_id, studentId: s.student_id },
+        { screen: 'StudentDetails', params: { studentId: s.student_id }, referenceType: 'student', referenceId: s.student_id }
       ).catch((err) => console.error('[ownerDailyAlerts] vacancy notify failed:', err?.message));
 
       await db('students').where('student_id', s.student_id).update({ vacate_reminder_sent: 1 });
