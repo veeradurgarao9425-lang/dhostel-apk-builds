@@ -577,7 +577,7 @@ export const DeveloperAssistant: React.FC = () => {
           activeOpacity={0.85}
         >
           <Image
-            source={require('../../../assets/chatbot.jpeg')}
+            source={require('../../../assets/chatbot-image-newjpeg.jpeg')}
             style={styles.fabAvatarImg}
             resizeMode="cover"
           />
@@ -602,7 +602,7 @@ export const DeveloperAssistant: React.FC = () => {
               <View style={styles.headerLeft}>
                 <View style={styles.avatarRing}>
                   <Image
-                    source={require('../../../assets/chatbot.jpeg')}
+                    source={require('../../../assets/chatbot-image-newjpeg.jpeg')}
                     style={styles.avatarImg}
                     resizeMode="cover"
                   />

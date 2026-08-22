@@ -4,7 +4,7 @@ import { Header } from '../components/Header';
 import { Card } from '../components/Card';
 import { EmptyState } from '../components/ui/EmptyState';
 import { SkeletonList } from '../components/ui/SkeletonCard';
-import { Bell, CreditCard, UserPlus, AlertTriangle, CheckCircle2, ChevronRight, MessageSquareCode, Calendar, X, User, FileText } from 'lucide-react-native';
+import { Bell, AlertTriangle, CheckCircle2, ChevronRight, Calendar, X, User, FileText, Banknote } from 'lucide-react-native';
 import { useNotifications, Notification } from '../hooks/useNotifications';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -71,18 +71,48 @@ export const NotificationScreen = () => {
     // Get animated icon for each notification category
     const getBadgeStyle = (notif: Notification) => {
         const title = notif.title.toLowerCase();
-        
-        if (title.includes('payment') || title.includes('collect') || notif.type === 'success') {
-            return <AnimatedGlowIcon Icon={CheckCircle2} gradientColors={['#10B981', '#059669']} glowColor="#10B98133" containerSize={48} iconSize={22} />;
-        } else if (title.includes('room') || title.includes('assign')) {
-            return <AnimatedGlowIcon Icon={require('lucide-react-native').DoorOpen} gradientColors={['#F59E0B', '#D97706']} glowColor="#F59E0B33" containerSize={48} iconSize={22} />;
-        } else if (title.includes('admission') || title.includes('tenant') || notif.type === 'info') {
-            return <AnimatedGlowIcon Icon={User} gradientColors={['#3B82F6', '#2563EB']} glowColor="#3B82F633" containerSize={48} iconSize={22} />;
-        } else if (title.includes('report') || title.includes('generated')) {
-            return <AnimatedGlowIcon Icon={FileText} gradientColors={['#8B5CF6', '#6D28D9']} glowColor="#8B5CF633" containerSize={48} iconSize={22} />;
-        } else {
-            return <AnimatedGlowIcon Icon={Bell} gradientColors={['#F43F5E', '#BE123C']} glowColor="#F43F5E33" containerSize={48} iconSize={22} />;
+        const data = notif.data || {};
+        const notifType = (data.type || data.notification_type || '').toString().toLowerCase();
+
+        // Payment received / collected / proof — Banknote icon (green)
+        if (
+            title.includes('payment') ||
+            title.includes('collect') ||
+            title.includes('proof') ||
+            title.includes('receipt') ||
+            notif.type === 'success' ||
+            notifType.includes('payment')
+        ) {
+            return <AnimatedGlowIcon Icon={Banknote} gradientColors={['#10B981', '#059669']} glowColor="#10B98133" containerSize={48} iconSize={22} />;
         }
+        // Overdue / pending dues — AlertTriangle icon (red)
+        if (
+            title.includes('due') ||
+            title.includes('overdue') ||
+            title.includes('pending') ||
+            title.includes('reminder') ||
+            notif.type === 'warning'
+        ) {
+            return <AnimatedGlowIcon Icon={AlertTriangle} gradientColors={['#EF4444', '#DC2626']} glowColor="#EF444433" containerSize={48} iconSize={22} />;
+        }
+        // Room / bed / allocation — DoorOpen icon (amber)
+        if (title.includes('room') || title.includes('bed') || title.includes('assign') || title.includes('allocat')) {
+            return <AnimatedGlowIcon Icon={require('lucide-react-native').DoorOpen} gradientColors={['#F59E0B', '#D97706']} glowColor="#F59E0B33" containerSize={48} iconSize={22} />;
+        }
+        // Vacate — DoorOpen icon (orange)
+        if (title.includes('vacat')) {
+            return <AnimatedGlowIcon Icon={require('lucide-react-native').DoorOpen} gradientColors={['#F97316', '#EA580C']} glowColor="#F9731633" containerSize={48} iconSize={22} />;
+        }
+        // Admission / new student / registration
+        if (title.includes('admission') || title.includes('registration') || title.includes('enrolled') || title.includes('tenant') || notif.type === 'info') {
+            return <AnimatedGlowIcon Icon={User} gradientColors={['#3B82F6', '#2563EB']} glowColor="#3B82F633" containerSize={48} iconSize={22} />;
+        }
+        // Notice / report / document
+        if (title.includes('notice') || title.includes('report') || title.includes('summary') || title.includes('generated') || title.includes('document')) {
+            return <AnimatedGlowIcon Icon={FileText} gradientColors={['#8B5CF6', '#6D28D9']} glowColor="#8B5CF633" containerSize={48} iconSize={22} />;
+        }
+        // General / system fallback
+        return <AnimatedGlowIcon Icon={Bell} gradientColors={['#F43F5E', '#BE123C']} glowColor="#F43F5E33" containerSize={48} iconSize={22} />;
     };
  
     const handleNotifClick = (notif: Notification) => {
@@ -94,53 +124,100 @@ export const NotificationScreen = () => {
         const isTenant = user?.role_id === 3 || user?.role === 'TENANT';
 
         try {
+            // ── TENANT routing ────────────────────────────────────────────────
             if (isTenant) {
+                // 1. Direct screen from backend payload (highest priority)
                 if (data.screen && typeof data.screen === 'string') {
                     let params = data.params;
                     if (typeof params === 'string') {
                         try { params = JSON.parse(params); } catch {}
                     }
-                    navigation.navigate(data.screen, params || data);
+                    navigation.navigate(data.screen, params || {});
                     return;
                 }
-                if (title.includes('payment') || title.includes('collect') || title.includes('fee') || title.includes('due') || title.includes('rent')) {
+                // 2. Title-based fallback for tenant
+                if (title.includes('payment') || title.includes('collect') || title.includes('fee') || title.includes('receipt')) {
                     navigation.navigate('Payments');
+                } else if (title.includes('due') || title.includes('overdue') || title.includes('reminder')) {
+                    navigation.navigate('Dues');
                 } else if (title.includes('complaint') || title.includes('maintenance')) {
                     navigation.navigate('Complaints');
                 } else if (title.includes('notice')) {
                     navigation.navigate('Notices');
+                } else if (title.includes('room') || title.includes('bed') || title.includes('allocat')) {
+                    navigation.navigate('RoomInfo');
                 } else {
                     navigation.navigate('Main');
                 }
                 return;
             }
 
-            // Owner navigation
-            // 1. Direct screen payload if present
+            // ── OWNER routing ─────────────────────────────────────────────────
+
+            // 1. Direct screen from backend payload (highest priority — backend already
+            //    embeds screen + params for payment, vacate, admission notifications)
             if (data.screen && typeof data.screen === 'string') {
                 let params = data.params;
                 if (typeof params === 'string') {
                     try { params = JSON.parse(params); } catch {}
                 }
-                navigation.navigate(data.screen, params || data);
+                // Normalise params: ensure we have the right shape
+                const mergedParams = params || {};
+                navigation.navigate(data.screen, mergedParams);
                 return;
             }
 
-            // 2. New Registration / QR Code / Admission -> Students list page
+            // 2. Helper: resolve student ID from all possible keys in data
+            const resolveStudentId = () =>
+                data.student_id || data.studentId || data.id ||
+                (data.params && (data.params.studentId || data.params.student_id)) ||
+                data.reference_id || data.referenceId;
+
+            const resolveStudentName = () =>
+                data.student_name || data.studentName ||
+                (data.params && (data.params.studentName || data.params.student_name));
+
+            // 3. Payment received / collected / proof → TenantTransactions (exact student)
             if (
-                title.includes('qr') ||
-                title.includes('registration') ||
-                title.includes('admission') ||
-                title.includes('pre-booking') ||
-                title.includes('enrolled')
+                title.includes('payment') ||
+                title.includes('collect') ||
+                title.includes('proof') ||
+                title.includes('receipt')
             ) {
-                navigation.navigate('Students');
+                const sid = resolveStudentId();
+                if (sid) {
+                    navigation.navigate('TenantTransactions', {
+                        studentId: sid,
+                        studentName: resolveStudentName(),
+                    });
+                } else {
+                    navigation.navigate('CollectedPayments');
+                }
                 return;
             }
 
-            // 3. Vacate Bed / Vacate Notice -> Student Details Page (or Students)
+            // 4. Overdue / due reminder → StudentDetails payments tab (or PendingPayments)
+            if (
+                title.includes('due') ||
+                title.includes('pending') ||
+                title.includes('overdue') ||
+                title.includes('reminder')
+            ) {
+                const sid = resolveStudentId();
+                if (sid) {
+                    navigation.navigate('StudentDetails', {
+                        studentId: sid,
+                        activeTab: 'payments',
+                    });
+                } else {
+                    navigation.navigate('PendingPayments');
+                }
+                return;
+            }
+
+            // 5. Vacate notice → StudentDetails (or Students list)
             if (title.includes('vacat')) {
-                const sid = data.student_id || data.studentId || data.id;
+                const sid = resolveStudentId();
                 if (sid) {
                     navigation.navigate('StudentDetails', { studentId: sid });
                 } else {
@@ -149,56 +226,46 @@ export const NotificationScreen = () => {
                 return;
             }
 
-            // 4. Payment received / collected / proof -> Tenant Transactions (or Collected Payments)
+            // 6. New Admission / QR Registration → Students (pending tab if available)
             if (
-                title.includes('payment') ||
-                title.includes('collect') ||
-                title.includes('proof') ||
-                title.includes('receipt')
+                title.includes('admission') ||
+                title.includes('registration') ||
+                title.includes('pre-booking') ||
+                title.includes('qr') ||
+                title.includes('enrolled') ||
+                title.includes('awaiting')
             ) {
-                const sid = data.student_id || data.studentId || data.id;
-                if (sid) {
-                    navigation.navigate('TenantTransactions', {
-                        studentId: sid,
-                        studentName: data.student_name || data.studentName,
-                    });
-                } else {
-                    navigation.navigate('CollectedPayments');
-                }
+                navigation.navigate('Students');
                 return;
             }
 
-            // 5. Pending / Overdue Rent / Due Reminder -> Student Details (or Pending Payments)
-            if (
-                title.includes('due') ||
-                title.includes('pending') ||
-                title.includes('overdue')
-            ) {
-                const sid = data.student_id || data.studentId || data.id;
+            // 7. Room / bed events → Rooms
+            if (title.includes('room') || title.includes('bed') || title.includes('assign') || title.includes('allocat')) {
+                const sid = resolveStudentId();
                 if (sid) {
                     navigation.navigate('StudentDetails', { studentId: sid });
                 } else {
-                    navigation.navigate('PendingPayments');
+                    navigation.navigate('Rooms');
                 }
                 return;
             }
 
+            // 8. Remaining specific types
             if (title.includes('verify') || title.includes('verification')) {
                 navigation.navigate('PaymentVerification');
             } else if (title.includes('notice') || title.includes('publish')) {
                 navigation.navigate('Notices');
-            } else if (title.includes('subscription') || title.includes('trial')) {
+            } else if (title.includes('subscription') || title.includes('trial') || title.includes('expired')) {
                 navigation.navigate('SubscriptionExpired');
             } else if (title.includes('report') || title.includes('summary')) {
                 navigation.navigate('Reports');
             } else if (title.includes('maintenance') || title.includes('complaint')) {
                 navigation.navigate('ComplaintsManagement');
-            } else if (title.includes('room') || title.includes('assign')) {
-                navigation.navigate('Rooms');
             } else if (type === 'warning' && title.includes('expense')) {
                 navigation.navigate('Expenses');
             } else {
-                navigation.navigate('Dashboard');
+                // Safe fallback — 'Dashboard' route does not exist; use 'Main'
+                navigation.navigate('Notifications');
             }
         } catch (navErr) {
             console.error('Notification navigation error:', navErr);

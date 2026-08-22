@@ -215,6 +215,42 @@ export function notifyNewHostelRegistered(params: {
   });
 }
 
+/** A user signed in to the platform. */
+export function notifyUserSignIn(params: {
+  userId: number;
+  fullName: string;
+  email: string;
+  role: string;
+  hostelName?: string | null;
+  ipAddress?: string | null;
+}): void {
+  const when = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'short' });
+  void notifyDeveloper({
+    type: 'GENERAL',
+    title: `Sign-in Alert: ${params.fullName}`,
+    message: `${params.fullName} (${params.role}) signed in to Hostix.`,
+    priority: 'LOW',
+    relatedEntity: 'OWNER',
+    relatedEntityId: params.userId,
+    metadata: {
+      user_id: params.userId,
+      email: params.email,
+      role: params.role,
+      hostel_name: params.hostelName || null,
+      ip: params.ipAddress || null,
+    },
+    emailRows: [
+      ['User', params.fullName],
+      ['Email', params.email],
+      ['Role', params.role],
+      ['Hostel', params.hostelName || 'N/A'],
+      ['IP Address', params.ipAddress || 'N/A'],
+      ['Sign-in Time', when + ' (IST)'],
+    ],
+    email: true,
+  });
+}
+
 /** A new tenant/student registered on the platform. */
 export function notifyNewStudentRegistered(params: {
   studentId: number;

@@ -259,7 +259,7 @@ export default function SplashScreen({ navigation }: any) {
         </View>
 
         {/* Footer */}
-        <Text style={styles.footer}>Powered by Hostix</Text>
+        <Text style={styles.footer}>Powered by Host<Text style={{ color: '#FCD34D' }}>ix</Text></Text>
       </LinearGradient>
     </View>
   );

@@ -206,7 +206,7 @@ export const notificationService = {
         return;
       }
 
-      // 5. Pending / Overdue Rent / Due Reminder -> Student Details (or Pending Payments)
+      // 5. Pending / Overdue Rent / Due Reminder -> Student Details payments tab (or Pending Payments)
       if (
         dataType === 'DUE_REMINDER' ||
         dataType === 'PENDING_PAYMENT' ||
@@ -215,11 +215,12 @@ export const notificationService = {
         dataType === 'PAYMENT_DUE' ||
         title.includes('due') ||
         title.includes('pending') ||
-        title.includes('overdue')
+        title.includes('overdue') ||
+        title.includes('reminder')
       ) {
         const sid = data.studentId || data.student_id || data.id;
         if (sid) {
-          navigate('StudentDetails', { studentId: sid });
+          navigate('StudentDetails', { studentId: sid, activeTab: 'payments' });
         } else {
           navigate('PendingPayments');
         }

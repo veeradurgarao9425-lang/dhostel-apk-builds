@@ -88,7 +88,7 @@ const PaymentHistoryItem = React.memo(({ payment, student, onPress }: { payment:
 
 // ─── Main Screen ─────────────────────────────────────────────────────────────
 const StudentDetailsScreen = ({ route, navigation }: any) => {
-    const { studentId } = route.params || {};
+    const { studentId, activeTab: initialTab } = route.params || {};
     const { theme, isDark } = useTheme();
     const { showError, showSuccess, showApiError } = useToast();
     const confirm = useConfirmation();
@@ -98,10 +98,13 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
     const [student, setStudent] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [avatarError, setAvatarError] = useState(false);
-    const [activeTab, setActiveTab] = useState<'info' | 'payments'>('info');
+    // Initialise to the tab requested by the notification deep-link (or 'info' default)
+    const [activeTab, setActiveTab] = useState<'info' | 'payments'>(
+        initialTab === 'payments' ? 'payments' : 'info'
+    );
 
-    // Tab animation
-    const tabAnim = useRef(new Animated.Value(0)).current; // 0 = info, 1 = payments
+    // Tab animation — start at position matching initialTab
+    const tabAnim = useRef(new Animated.Value(initialTab === 'payments' ? 1 : 0)).current;
     const switchTab = useCallback((tab: 'info' | 'payments') => {
         setActiveTab(tab);
         Animated.spring(tabAnim, {
@@ -111,6 +114,7 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
             friction: 10,
         }).start();
     }, [tabAnim]);
+
 
     const getInitials = (first: string, last: string) => {
         const f = first ? first.charAt(0).toUpperCase() : '';

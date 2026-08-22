@@ -208,7 +208,6 @@ interface AppNavigatorProps {
 
 // ── Root Stack Navigator ──────────────────────────────────────────────────────
 const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
-    const navigationRef = useNavigationContainerRef();
     const { user, logoutLoading } = useAuth();
     const navigationKey = `${user?.user_id || 'guest'}_${user?.hostel_id || 'none'}`;
 
@@ -234,6 +233,7 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
         <>
             <NavigationContainer
                 ref={navigationRef}
+
                 onReady={() => {
                     const route = navigationRef.current?.getCurrentRoute();
                     if (route?.name) {

@@ -324,7 +324,7 @@ export default function LoginScreen({ navigation }: any) {
 
                 {/* Bottom branding */}
                 <View style={[styles.bottomBranding, { flex: 1, justifyContent: 'flex-end', paddingBottom: Math.max(insets.bottom, 10) }]}>
-                    <Text style={styles.bottomBrandingText}>Powered by Hostix • PG OS</Text>
+                    <Text style={styles.bottomBrandingText}>Powered by Host<Text style={{ color: '#FCD34D' }}>ix</Text> • PG OS</Text>
                 </View>
             </ScrollView>
         </View>

@@ -249,30 +249,20 @@ export const sendEmail = async (options: EmailOptions): Promise<void> => {
   const plainText = options.html ? options.html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim() : '';
 
   try {
-    // 1. For OTP & Password Reset emails: Use EmailJS template ONLY when it is strictly an OTP/reset
-    const isStrictOtp = options.emailType === 'OTP' || options.emailType === 'ForgotPassword' || /\b(otp|verification code|password reset)\b/i.test(options.subject);
-    const isNonOtpType = options.emailType === 'NewJoiner' || options.emailType === 'NewJoinerOwnerAlert' || options.emailType === 'Super Admin Alert' || options.emailType === 'DailyReport';
+    // 1. For OTP emails ONLY: Use EmailJS template
+    const isStrictOtp = options.emailType === 'OTP';
 
-    if (isStrictOtp && !isNonOtpType && process.env.EMAILJS_SERVICE_ID) {
+    if (isStrictOtp && process.env.EMAILJS_SERVICE_ID && process.env.EMAILJS_TEMPLATE_ID) {
       try {
         const sent = await sendViaEmailJS(options);
         if (sent) return;
       } catch (ejsErr: any) {
-        console.warn('⚠️ EmailJS OTP/Reset delivery notice:', ejsErr.message);
+        console.warn('⚠️ EmailJS OTP delivery notice:', ejsErr.message);
       }
     }
 
-    // 2. For Reports / General emails: Try EmailJS General Template if configured
-    if (process.env.EMAILJS_SERVICE_ID && (process.env.EMAILJS_REPORT_TEMPLATE_ID || process.env.EMAILJS_GENERAL_TEMPLATE_ID || process.env.EMAILJS_TEMPLATE_ID)) {
-      try {
-        const sent = await sendViaEmailJS(options);
-        if (sent) return;
-      } catch (ejsErr: any) {
-        console.warn('⚠️ EmailJS Report delivery notice:', ejsErr.message);
-      }
-    }
-
-    // 3. For Reports, Notifications, and general emails: Try Brevo / Resend / SendGrid if available
+    // 2. For Reports, Notifications, Sign-in Alerts, and general HTML emails:
+    // Try Brevo / Resend / SendGrid which send complete custom HTML layouts
     if (process.env.BREVO_API_KEY) {
       try {
         const sent = await sendViaBrevo(options);
@@ -298,7 +288,7 @@ export const sendEmail = async (options: EmailOptions): Promise<void> => {
       }
     }
 
-    // 4. SMTP Transporter fallback (uses standard Gmail SMTP credentials)
+    // 3. SMTP Transporter fallback (uses standard Gmail SMTP credentials)
     const transporter = createTransporter();
     const info = await transporter.sendMail({
       from,
@@ -748,4 +738,104 @@ export const sendPasswordResetNotificationEmail = async (params: {
     console.error('Password reset email dispatch notice:', err?.message || err);
   });
 };
+
+// ─── Login Alert / Intimation Email ──────────────────────────────────────────
+export const sendLoginAlertEmail = async ({
+  recipientEmail,
+  recipientName,
+  userType,
+  hostelName,
+  ipAddress,
+}: {
+  recipientEmail: string;
+  recipientName: string;
+  userType?: string;
+  hostelName?: string;
+  ipAddress?: string;
+}): Promise<void> => {
+  if (!recipientEmail || !recipientEmail.includes('@')) return;
+
+  const now = new Date();
+  const timeFormatted = now.toLocaleString('en-IN', {
+    timeZone: 'Asia/Kolkata',
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+  });
+
+  const subject = `🔐 Security Alert: Successful Sign-in to Hostix`;
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+    <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #F8FAFC; margin: 0; padding: 24px;">
+      <div style="max-width: 540px; margin: 0 auto; background-color: #FFFFFF; border-radius: 16px; border: 1px solid #E2E8F0; overflow: hidden; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.05);">
+        <!-- Header Banner -->
+        <div style="background: linear-gradient(135deg, #1E1B4B 0%, #312E81 100%); padding: 24px; text-align: center;">
+          <h1 style="color: #FCD34D; margin: 0; font-size: 22px; font-weight: 800; letter-spacing: 0.5px;">HOSTIX SIGN-IN INTIMATION</h1>
+          <p style="color: #E0E7FF; font-size: 13px; margin-top: 6px; margin-bottom: 0;">Account Activity Alert</p>
+        </div>
+
+        <div style="padding: 24px;">
+          <p style="color: #1E293B; font-size: 15px; line-height: 22px; margin-top: 0; font-weight: 600;">
+            Hello ${recipientName || 'Hostix User'},
+          </p>
+          <p style="color: #475569; font-size: 14px; line-height: 22px;">
+            Your Hostix account (<strong>${recipientEmail}</strong>) was just accessed successfully.
+          </p>
+
+          <!-- Details Table -->
+          <div style="background-color: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 16px; margin: 20px 0;">
+            <table style="width: 100%; border-collapse: collapse;">
+              <tr>
+                <td style="padding: 6px 0; color: #64748B; font-size: 13px; width: 35%;">Time:</td>
+                <td style="padding: 6px 0; color: #0F172A; font-size: 13px; font-weight: 700;">${timeFormatted} (IST)</td>
+              </tr>
+              ${userType ? `
+              <tr>
+                <td style="padding: 6px 0; color: #64748B; font-size: 13px;">Account Type:</td>
+                <td style="padding: 6px 0; color: #4F46E5; font-size: 13px; font-weight: 700;">${userType}</td>
+              </tr>` : ''}
+              ${hostelName ? `
+              <tr>
+                <td style="padding: 6px 0; color: #64748B; font-size: 13px;">Hostel:</td>
+                <td style="padding: 6px 0; color: #0F172A; font-size: 13px; font-weight: 700;">${hostelName}</td>
+              </tr>` : ''}
+              ${ipAddress ? `
+              <tr>
+                <td style="padding: 6px 0; color: #64748B; font-size: 13px;">IP Address:</td>
+                <td style="padding: 6px 0; color: #0F172A; font-size: 13px; font-weight: 700;">${ipAddress}</td>
+              </tr>` : ''}
+            </table>
+          </div>
+
+          <!-- Security reassurance -->
+          <div style="background-color: #ECFDF5; border: 1px solid #A7F3D0; border-radius: 10px; padding: 12px 16px; margin: 16px 0;">
+            <p style="color: #065F46; font-size: 12.5px; line-height: 18px; margin: 0; font-weight: 600;">
+              ✓ If this was you, you can safely ignore this notification.
+            </p>
+          </div>
+
+          <p style="color: #94A3B8; font-size: 12px; line-height: 18px; margin-top: 18px; margin-bottom: 0;">
+            If you did not initiate this sign-in, please change your password immediately or contact Hostix Support (<a href="tel:6303359425" style="color: #4F46E5; text-decoration: none; font-weight: 700;">6303359425</a>).
+          </p>
+        </div>
+
+        <div style="background-color: #F1F5F9; padding: 14px 24px; text-align: center; border-top: 1px solid #E2E8F0;">
+          <p style="color: #94A3B8; font-size: 11px; margin: 0;">Hostix Security • Automated Dispatch</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  await sendEmail({ to: recipientEmail, subject, html, emailType: 'LoginAlert' }).catch((err) => {
+    console.error('Login alert email dispatch error:', err?.message || err);
+  });
+};
+
 

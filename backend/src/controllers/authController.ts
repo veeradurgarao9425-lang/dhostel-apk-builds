@@ -5,13 +5,13 @@ import { hashPassword, comparePassword } from '../utils/bcrypt.js';
 import { generateToken } from '../utils/jwt.js';
 import { AuthRequest } from '../middleware/auth.js';
 import jwt from 'jsonwebtoken';
-import { sendPasswordResetEmail, sendOtpEmail, sendEmail, sendNewJoinerOwnerAlertEmail, sendNewJoinerStudentEmail } from '../utils/email.js';
+import { sendPasswordResetEmail, sendOtpEmail, sendEmail, sendNewJoinerOwnerAlertEmail, sendNewJoinerStudentEmail, sendLoginAlertEmail } from '../utils/email.js';
 import { sendNotificationToHostelOwner, sendNotificationToStudent, sendNotificationToUser } from '../utils/notification.js';
 import crypto from 'crypto';
 import { checkHostelUniqueIdentifiers } from '../utils/validation.js';
 import { sendDailyOwnerReportEmail } from '../utils/excelReport.js';
 import { generateDeveloperToken, logDeveloperAction } from '../middleware/developerAuth.js';
-import { notifyNewOwnerRegistered, notifyNewStudentRegistered } from '../services/developerNotificationService.js';
+import { notifyNewOwnerRegistered, notifyNewStudentRegistered, notifyUserSignIn } from '../services/developerNotificationService.js';
 
 export const authController = {
   // Login
@@ -136,6 +136,26 @@ export const authController = {
         email: user.email,
         role_id: user.role_id,
         hostel_id: activeHostelId, // Include hostel_id in JWT token
+      });
+
+      // Send login intimation email to user
+      const ipAddress = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.socket?.remoteAddress || '';
+      sendLoginAlertEmail({
+        recipientEmail: user.email,
+        recipientName: user.full_name,
+        userType: user.role_name || (user.role_id === 2 ? 'Hostel Owner' : 'Student/Tenant'),
+        hostelName: user.hostel_name,
+        ipAddress: ipAddress.replace('::ffff:', ''),
+      }).catch((e: any) => console.warn('Login alert email dispatch warning:', e));
+
+      // Dispatch admin sign-in notification
+      notifyUserSignIn({
+        userId: user.user_id,
+        fullName: user.full_name,
+        email: user.email,
+        role: user.role_name || (user.role_id === 2 ? 'Hostel Owner' : 'Student/Tenant'),
+        hostelName: user.hostel_name,
+        ipAddress: ipAddress.replace('::ffff:', ''),
       });
 
       // Return response

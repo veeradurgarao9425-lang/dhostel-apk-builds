@@ -3,7 +3,7 @@ import db from '../config/database.js';
 import { hashPassword, comparePassword } from '../utils/bcrypt.js';
 import { generateDeveloperToken, logDeveloperAction, DeveloperAuthRequest } from '../middleware/developerAuth.js';
 import { generateToken } from '../utils/jwt.js';
-import { sendPasswordResetNotificationEmail } from '../utils/email.js';
+import { sendPasswordResetNotificationEmail, sendLoginAlertEmail } from '../utils/email.js';
 
 export const developerController = {
   // ─── 1. AUTHENTICATION ───────────────────────────────────────────────────
@@ -74,6 +74,15 @@ export const developerController = {
         metadata: { login_time: new Date() },
         req,
       });
+
+      // Dispatch security sign-in intimation email
+      const ipAddress = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.socket?.remoteAddress || '';
+      sendLoginAlertEmail({
+        recipientEmail: devUser.email,
+        recipientName: devUser.full_name || devUser.username,
+        userType: `Developer (${devUser.role_title || 'Platform Admin'})`,
+        ipAddress: ipAddress.replace('::ffff:', ''),
+      }).catch((e: any) => console.warn('Developer login alert email warning:', e));
 
       return res.json({
         success: true,
