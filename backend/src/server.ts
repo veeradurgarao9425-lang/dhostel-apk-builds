@@ -552,7 +552,7 @@ app.get('/api/public/qr-signup', async (req, res) => {
     for(var k=0; k<ids.length; k++){
       (function(id){
         var el=document.getElementById(id);
-        if(el) el.addEventListener('input',function(e){ e.target.value=e.target.value.replace(/\D/g,'').slice(0,10); });
+        if(el) el.addEventListener('input',function(e){ e.target.value=e.target.value.replace(/\\D/g,'').slice(0,10); });
       })(ids[k]);
     }
 
@@ -582,7 +582,7 @@ app.get('/api/public/qr-signup', async (req, res) => {
       });
       ida.addEventListener('input', function(e) {
         if(idt.value == '1') {
-          e.target.value = e.target.value.replace(/\D/g,'');
+          e.target.value = e.target.value.replace(/\\D/g,'');
         } else {
           e.target.value = e.target.value.replace(/[^A-Za-z0-9]/g,'').toUpperCase();
         }
@@ -636,13 +636,13 @@ app.get('/api/public/qr-signup', async (req, res) => {
     document.getElementById('b1').addEventListener('click', function() {
       var ok = true;
       if (!val('first_name').trim()) { setErr('e1','first_name','First name is required'); ok = false; } else { setErr('e1','first_name',''); }
-      var p = val('phone').replace(/\D/g, '').slice(-10);
-      if (p.length !== 10 || !/^[6-9]\d{9}$/.test(p)) {
+      var p = val('phone').replace(/\\D/g, '').slice(-10);
+      if (p.length !== 10 || !/^[6-9]\\d{9}$/.test(p)) {
         setErr('e2','phone','Enter a valid 10-digit mobile number starting with 6-9');
         ok = false;
       } else { setErr('e2','phone',''); }
       var em = val('email').trim();
-      if (em && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) { setErr('e3','email','Enter a valid email'); ok = false; } else { setErr('e3','email',''); }
+      if (em && !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(em)) { setErr('e3','email','Enter a valid email'); ok = false; } else { setErr('e3','email',''); }
       if (!val('dob').trim()) { setErr('e_dob','dob','Date of Birth is required'); ok = false; } else { setErr('e_dob','dob',''); }
       if (!val('gender').trim()) { setErr('e_gender','gender','Gender is required'); ok = false; } else { setErr('e_gender','gender',''); }
       if (!ok) { toast('Please fill all required fields correctly.'); return; }
@@ -655,8 +655,8 @@ app.get('/api/public/qr-signup', async (req, res) => {
     document.getElementById('b2').addEventListener('click', function() {
       var ok = true;
       if (!val('gname').trim()) { setErr('e_gname','gname','Guardian name is required'); ok = false; } else { setErr('e_gname','gname',''); }
-      var gp = val('gphone').replace(/\D/g, '').slice(-10);
-      if (gp.length !== 10 || !/^[6-9]\d{9}$/.test(gp)) {
+      var gp = val('gphone').replace(/\\D/g, '').slice(-10);
+      if (gp.length !== 10 || !/^[6-9]\\d{9}$/.test(gp)) {
         setErr('e5','gphone','Enter a valid 10-digit guardian number starting with 6-9');
         ok = false;
       } else { setErr('e5','gphone',''); }
@@ -672,7 +672,7 @@ app.get('/api/public/qr-signup', async (req, res) => {
       var idnum = val('aadhaar').trim();
       var idtype = val('id_type');
       if (!idnum) { setErr('e6','aadhaar','ID Number is required'); toast('ID document number is required.'); return; }
-      if (idtype == '1' && !/^\d{12}$/.test(idnum)) { setErr('e6','aadhaar','Aadhaar must be exactly 12 digits'); toast('Aadhaar must be 12 digits'); return; }
+      if (idtype == '1' && !/^\\d{12}$/.test(idnum)) { setErr('e6','aadhaar','Aadhaar must be exactly 12 digits'); toast('Aadhaar must be 12 digits'); return; }
       if (idtype == '2' && !/^[A-Z0-9]{10}$/.test(idnum)) { setErr('e6','aadhaar','PAN must be exactly 10 characters'); toast('PAN must be 10 characters'); return; }
       if (idtype == '3' && !/^[A-Z0-9]{10}$/.test(idnum)) { setErr('e6','aadhaar','Voter ID must be exactly 10 characters'); toast('Voter ID must be 10 characters'); return; }
       if (idtype == '4' && !/^[A-Z0-9]{15}$/.test(idnum)) { setErr('e6','aadhaar','Driving License must be exactly 15 characters'); toast('Driving License must be 15 characters'); return; }
