@@ -2,78 +2,39 @@
  * seedProductionData.ts
  * Comprehensive Production-Grade Database Seeder for HOSTIX.
  *
- * Populates authentic, realistic data matching both Local and Remote DigitalOcean MySQL DB schemas:
- *  - 6 Floors, 48 Rooms (138 Beds capacity, 118 occupied, 20 vacant)
- *  - 145+ Total Students with authentic Indian profiles, colleges & IT companies
- *  - Realistic rent statuses: ~66 Fully Paid, ~30 Pending Dues, ~22 Overdue, ~12 Active Vacate Notices
- *  - Pre-Bookings & QR Onboarding Admissions
- *  - Comprehensive multi-category Expenses
- *  - Staff Directory (4 members)
- *  - Short-Stay Guests (8 records)
- *  - Full 7-Day Indian Mess Menu
- *  - Ensures Owner Account (demo@test.com / Demo123)
+ * Dynamically detects table schemas for 100% compatibility across
+ * local development and DigitalOcean production MySQL databases.
  */
 
 import bcrypt from 'bcryptjs';
 import { db } from './config/database.js';
 
-// Resilient helper to insert into MySQL with automatic type/column adaptability
-async function insertStudentSafely(data: any) {
-  try {
-    // Try integer admission_status (server default)
-    const row = { ...data, admission_status: data.admission_status === 'Paid' || data.admission_status === 1 ? 1 : 0 };
-    return await db('students').insert(row);
-  } catch (err: any) {
-    if (err?.code === 'WARN_DATA_TRUNCATED' || err?.code === 'ER_TRUNCATED_WRONG_VALUE_FOR_FIELD') {
-      // Try string enum admission_status
-      const rowEnum = { ...data, admission_status: data.admission_status === 0 ? 'Unpaid' : 'Paid' };
-      return await db('students').insert(rowEnum).catch(async () => {
-        const rowNoAdm = { ...data };
-        delete rowNoAdm.admission_status;
-        return await db('students').insert(rowNoAdm);
-      });
-    }
-    if (err?.code === 'ER_BAD_FIELD_ERROR') {
-      const cleanRow = { ...data };
-      const badCol = String(err?.sqlMessage || '');
-      for (const k of Object.keys(cleanRow)) {
-        if (badCol.includes(k)) delete cleanRow[k];
-      }
-      return await db('students').insert(cleanRow);
-    }
-    throw err;
-  }
-}
-
-async function insertPaymentSafely(data: any) {
-  try {
-    return await db('fee_payments').insert(data);
-  } catch (err: any) {
-    if (err?.code === 'WARN_DATA_TRUNCATED' || err?.code === 'ER_TRUNCATED_WRONG_VALUE_FOR_FIELD') {
-      // Try lower-case or simplified status
-      const fallback = { ...data, fee_status: 'Fully Paid', payment_method: 'Online' };
-      return await db('fee_payments').insert(fallback).catch(async () => {
-        const clean = { ...data };
-        delete clean.fee_status;
-        return await db('fee_payments').insert(clean).catch(() => null);
-      });
-    }
-    if (err?.code === 'ER_BAD_FIELD_ERROR') {
-      const clean = { ...data };
-      const badCol = String(err?.sqlMessage || '');
-      for (const k of Object.keys(clean)) {
-        if (badCol.includes(k)) delete clean[k];
-      }
-      return await db('fee_payments').insert(clean).catch(() => null);
-    }
-    throw err;
-  }
-}
-
 async function seedProductionData() {
   console.log('🚀 Starting Comprehensive Production Data Seeding...\n');
 
   try {
+    // Helper to get existing column names for any table
+    const getTableColumns = async (tableName: string): Promise<Set<string>> => {
+      try {
+        const [cols] = await db.raw(`DESCRIBE \`${tableName}\``);
+        return new Set((cols as any[]).map((c: any) => c.Field));
+      } catch (e) {
+        return new Set();
+      }
+    };
+
+    // Helper to filter an object to only existing columns
+    const filterRow = (row: Record<string, any>, validCols: Set<string>) => {
+      if (validCols.size === 0) return row;
+      const filtered: Record<string, any> = {};
+      for (const [k, v] of Object.entries(row)) {
+        if (validCols.has(k)) {
+          filtered[k] = v;
+        }
+      }
+      return filtered;
+    };
+
     // 1. Get or Ensure Primary Hostel
     let hostel = await db('hostel_master').first();
     if (!hostel) {
@@ -171,7 +132,17 @@ async function seedProductionData() {
     await db('students').where({ hostel_id: hostelId }).delete().catch(() => {});
     await db('rooms').where({ hostel_id: hostelId }).delete().catch(() => {});
 
-    // Check room_types table if it exists
+    // Detect schemas
+    const roomCols = await getTableColumns('rooms');
+    const studentCols = await getTableColumns('students');
+    const feeCols = await getTableColumns('monthly_fees');
+    const paymentCols = await getTableColumns('fee_payments');
+    const expenseCols = await getTableColumns('expenses');
+    const staffCols = await getTableColumns('staff');
+    const guestCols = await getTableColumns('guests');
+    const menuCols = await getTableColumns('mess_menu');
+
+    // Room Types resolution
     let defaultRoomTypeId = 1;
     try {
       const types = await db('room_types').select('*').catch(() => []);
@@ -203,22 +174,23 @@ async function seedProductionData() {
     // 6 Floors: 1 to 6 (8 rooms per floor = 48 rooms total)
     for (let floor = 1; floor <= 6; floor++) {
       const floorConfigs = [
-        { suffix: '01', cap: 1, rent: 12000 }, // Single AC
-        { suffix: '02', cap: 2, rent: 8500 },  // 2 Sharing AC
-        { suffix: '03', cap: 2, rent: 8500 },  // 2 Sharing AC
-        { suffix: '04', cap: 3, rent: 6500 },  // 3 Sharing Non-AC
-        { suffix: '05', cap: 3, rent: 6500 },  // 3 Sharing Non-AC
-        { suffix: '06', cap: 4, rent: 5000 },  // 4 Sharing Comfort
-        { suffix: '07', cap: 4, rent: 5000 },  // 4 Sharing Comfort
-        { suffix: '08', cap: 4, rent: 5000 },  // 4 Sharing Comfort
+        { suffix: '01', cap: 1, rent: 12000 },
+        { suffix: '02', cap: 2, rent: 8500 },
+        { suffix: '03', cap: 2, rent: 8500 },
+        { suffix: '04', cap: 3, rent: 6500 },
+        { suffix: '05', cap: 3, rent: 6500 },
+        { suffix: '06', cap: 4, rent: 5000 },
+        { suffix: '07', cap: 4, rent: 5000 },
+        { suffix: '08', cap: 4, rent: 5000 },
       ];
 
       for (const cfg of floorConfigs) {
         const roomNum = `${floor}${cfg.suffix}`;
-        const roomRow: any = {
+        const rawRoomRow: any = {
           hostel_id: hostelId,
           room_number: roomNum,
           floor_number: floor,
+          floor: floor,
           capacity: cfg.cap,
           occupied_beds: 0,
           rent_per_bed: cfg.rent,
@@ -226,14 +198,8 @@ async function seedProductionData() {
           is_available: 1,
         };
 
-        const [roomId] = await db('rooms').insert(roomRow).catch(async (err: any) => {
-          if (err?.code === 'ER_BAD_FIELD_ERROR') {
-            if (String(err?.sqlMessage || '').includes('rent_per_bed')) delete roomRow.rent_per_bed;
-            if (String(err?.sqlMessage || '').includes('room_type_id')) delete roomRow.room_type_id;
-            return db('rooms').insert(roomRow);
-          }
-          throw err;
-        });
+        const filteredRoom = filterRow(rawRoomRow, roomCols);
+        const [roomId] = await db('rooms').insert(filteredRoom);
 
         createdRooms.push({
           room_id: roomId,
@@ -298,6 +264,26 @@ async function seedProductionData() {
     const today = new Date();
     const currentMonthStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
 
+    // Helper to insert student dynamically handling integer/enum admission_status
+    const insertStudentDynamic = async (rawStudent: Record<string, any>) => {
+      const filtered = filterRow(rawStudent, studentCols);
+      try {
+        // Try integer admission_status first
+        return await db('students').insert(filtered);
+      } catch (err: any) {
+        if (err?.code === 'WARN_DATA_TRUNCATED' || err?.code === 'ER_TRUNCATED_WRONG_VALUE_FOR_FIELD') {
+          const stringStatus = rawStudent.admission_status === 1 || rawStudent.admission_status === 'Paid' ? 'Paid' : 'Unpaid';
+          const rowEnum = { ...filtered, admission_status: stringStatus };
+          return await db('students').insert(rowEnum).catch(async () => {
+            const rowNoAdm = { ...filtered };
+            delete rowNoAdm.admission_status;
+            return await db('students').insert(rowNoAdm);
+          });
+        }
+        throw err;
+      }
+    };
+
     // Create 118 Active Occupants (leaving 20 beds vacant)
     const occupiedCount = 118;
     for (let i = 0; i < occupiedCount; i++) {
@@ -339,8 +325,8 @@ async function seedProductionData() {
       if (i >= 66 && i < 96) rentStatus = 'pending';
       else if (i >= 96) rentStatus = 'overdue';
 
-      // Insert Student Safely
-      const insertRes = await insertStudentSafely({
+      // Insert Student
+      const rawStudent = {
         hostel_id: hostelId,
         room_id: slot.room_id,
         floor_number: slot.floor_number,
@@ -354,7 +340,7 @@ async function seedProductionData() {
         admission_date: joinDateStr,
         monthly_rent: slot.rent_per_bed,
         admission_fee: 1000,
-        admission_status: 1, // Active admitted (integer or mapped)
+        admission_status: 1, // Admitted
         refundable_deposit: slot.rent_per_bed * 1.5,
         status: 1, // Active
         is_active: 1,
@@ -362,8 +348,9 @@ async function seedProductionData() {
         vacate_notice_reason: vacateNoticeReason,
         vacate_reminder_sent: 0,
         created_at: joinDate,
-      });
+      };
 
+      const insertRes = await insertStudentDynamic(rawStudent);
       const studentId = Array.isArray(insertRes) ? insertRes[0] : insertRes;
 
       // Update Room occupied count
@@ -410,7 +397,7 @@ async function seedProductionData() {
         paidDate = null;
       }
 
-      const feeInsertRes = await db('monthly_fees').insert({
+      const rawFee = {
         hostel_id: hostelId,
         student_id: studentId,
         fee_month: currentMonthStr,
@@ -424,28 +411,18 @@ async function seedProductionData() {
         amount: totalDue,
         due_date: `${currentMonthStr}-05`,
         created_at: joinDate,
-      }).catch(async (err: any) => {
-        // Fallback with minimal columns if custom patch differs
-        return await db('monthly_fees').insert({
-          hostel_id: hostelId,
-          student_id: studentId,
-          fee_month: currentMonthStr,
-          total_due: totalDue,
-          paid_amount: paidAmount,
-          status: feeStatusStr,
-          due_date: `${currentMonthStr}-05`,
-        });
-      });
+      };
 
+      const feeInsertRes = await db('monthly_fees').insert(filterRow(rawFee, feeCols));
       const feeId = Array.isArray(feeInsertRes) ? feeInsertRes[0] : feeInsertRes;
 
       // If Paid or Partial, create Payment Transaction
       if (paidAmount > 0) {
         const isCash = i % 8 === 0;
-        const pMethod: 'Online' | 'Cash' = isCash ? 'Cash' : 'Online';
+        const pMethod = isCash ? 'Cash' : 'Online';
         const txId = isCash ? 'CASH-' + (10000 + i) : `UPI/${429810000000 + i}/GPay`;
 
-        await insertPaymentSafely({
+        const rawPayment = {
           fee_id: feeId,
           student_id: studentId,
           hostel_id: hostelId,
@@ -463,6 +440,13 @@ async function seedProductionData() {
           verification_status: 'verified',
           notes: `Rent for ${currentMonthStr} received via ${pMethod}`,
           created_at: new Date(paidDate || `${currentMonthStr}-02`),
+        };
+
+        await db('fee_payments').insert(filterRow(rawPayment, paymentCols)).catch(async (err: any) => {
+          if (err?.code === 'WARN_DATA_TRUNCATED' || err?.code === 'ER_TRUNCATED_WRONG_VALUE_FOR_FIELD') {
+            const fallbackPay = { ...rawPayment, fee_status: 'Fully Paid' };
+            return db('fee_payments').insert(filterRow(fallbackPay, paymentCols)).catch(() => null);
+          }
         });
       }
     }
@@ -474,7 +458,7 @@ async function seedProductionData() {
       const ln = lastNames[(20 + p) % lastNames.length];
       const checkInDate = new Date(today.getTime() + (p + 3) * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
-      await insertStudentSafely({
+      await insertStudentDynamic({
         hostel_id: hostelId,
         first_name: fn,
         last_name: ln,
@@ -486,7 +470,7 @@ async function seedProductionData() {
         admission_date: checkInDate,
         monthly_rent: 8500,
         admission_fee: 1000,
-        admission_status: 0, // Pending
+        admission_status: 0, // Pending Check-in
         refundable_deposit: 10000,
         status: 2, // Pre-booked
         is_active: 1,
@@ -500,7 +484,7 @@ async function seedProductionData() {
       const fn = firstNames[(80 + q) % firstNames.length];
       const ln = lastNames[(15 + q) % lastNames.length];
 
-      await insertStudentSafely({
+      await insertStudentDynamic({
         hostel_id: hostelId,
         first_name: fn,
         last_name: ln,
@@ -512,7 +496,7 @@ async function seedProductionData() {
         admission_date: today.toISOString().split('T')[0],
         monthly_rent: 6500,
         admission_fee: 1000,
-        admission_status: 0, // Pending
+        admission_status: 0, // Pending verification
         refundable_deposit: 6500,
         status: 3, // QR registered
         is_active: 1,
@@ -528,7 +512,7 @@ async function seedProductionData() {
       const joinDateStr = '2025-11-01';
       const vacateDateStr = '2026-06-30';
 
-      await insertStudentSafely({
+      await insertStudentDynamic({
         hostel_id: hostelId,
         first_name: fn,
         last_name: ln,
@@ -573,7 +557,7 @@ async function seedProductionData() {
       const exp = expenseItems[e];
       const expDate = `${currentMonthStr}-${String((e * 3) + 2).padStart(2, '0')}`;
 
-      await db('expenses').insert({
+      const rawExpense = {
         hostel_id: hostelId,
         category_id: getCatId(exp.cat),
         expense_date: expDate,
@@ -583,15 +567,9 @@ async function seedProductionData() {
         description: exp.desc,
         bill_number: `BILL-2026-${1000 + e}`,
         created_at: new Date(expDate),
-      }).catch(async (err: any) => {
-        // Fallback for minimal schema
-        return db('expenses').insert({
-          hostel_id: hostelId,
-          expense_date: expDate,
-          amount: exp.amount,
-          description: exp.desc,
-        });
-      });
+      };
+
+      await db('expenses').insert(filterRow(rawExpense, expenseCols)).catch(() => null);
     }
 
     // 10. Seed Staff Directory (4 Members)
@@ -604,7 +582,7 @@ async function seedProductionData() {
     ];
 
     for (const st of staffMembers) {
-      await db('staff').insert({
+      const rawStaff = {
         hostel_id: hostelId,
         full_name: st.name,
         phone: st.phone,
@@ -616,15 +594,8 @@ async function seedProductionData() {
         notes: st.notes,
         status: 'active',
         created_at: new Date(st.join),
-      }).catch(async () => {
-        return db('staff').insert({
-          hostel_id: hostelId,
-          full_name: st.name,
-          phone: st.phone,
-          role: st.role,
-          status: 'active',
-        });
-      });
+      };
+      await db('staff').insert(filterRow(rawStaff, staffCols)).catch(() => null);
     }
 
     // 11. Seed Short-Stay Guests (8 Records)
@@ -644,7 +615,7 @@ async function seedProductionData() {
       const gst = guestProfiles[g];
       const total = gst.rate * gst.days;
 
-      await db('guests').insert({
+      const rawGuest = {
         hostel_id: hostelId,
         full_name: gst.name,
         phone: gst.phone,
@@ -658,14 +629,9 @@ async function seedProductionData() {
         id_proof_number: genAadhaar(500 + g),
         purpose: gst.purpose,
         created_at: new Date(gst.in),
-      }).catch(async () => {
-        return db('guests').insert({
-          hostel_id: hostelId,
-          full_name: gst.name,
-          phone: gst.phone,
-          status: 'active',
-        });
-      });
+      };
+
+      await db('guests').insert(filterRow(rawGuest, guestCols)).catch(() => null);
     }
 
     // 12. Seed 7-Day Indian Mess Menu
@@ -718,12 +684,15 @@ async function seedProductionData() {
 
     for (const day of weekDays) {
       const m = menuSchedule[day];
-      await db('mess_menu').insert([
+      const meals = [
         { hostel_id: hostelId, day_of_week: day, meal_type: 'Breakfast', items: m.b, timing: '7:30 AM - 9:30 AM' },
         { hostel_id: hostelId, day_of_week: day, meal_type: 'Lunch', items: m.l, timing: '12:30 PM - 2:30 PM' },
         { hostel_id: hostelId, day_of_week: day, meal_type: 'Snacks', items: m.s, timing: '5:00 PM - 6:30 PM' },
         { hostel_id: hostelId, day_of_week: day, meal_type: 'Dinner', items: m.d, timing: '7:30 PM - 9:30 PM' },
-      ]).catch(() => {});
+      ];
+      for (const meal of meals) {
+        await db('mess_menu').insert(filterRow(meal, menuCols)).catch(() => {});
+      }
     }
 
     console.log('\n============================================================');
