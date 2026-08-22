@@ -264,31 +264,49 @@ export const AddNoticeScreen = ({ navigation, route }: any) => {
         }
         setLoading(true);
         try {
-            const formDataPayload = new FormData();
-            formDataPayload.append('title', formData.title.trim());
-            formDataPayload.append('content', formData.content.trim());
-            formDataPayload.append('notice_type', formData.notice_type);
-            
+            let response;
+            const targetHostelId = user?.hostel_id ? String(user.hostel_id) : undefined;
+
             if (formData.image?.uri) {
+                const formDataPayload = new FormData();
+                formDataPayload.append('title', formData.title.trim());
+                formDataPayload.append('content', formData.content.trim());
+                formDataPayload.append('notice_type', formData.notice_type || 'General');
+                if (targetHostelId) {
+                    formDataPayload.append('hostel_id', targetHostelId);
+                }
+                
                 appendImageFileToFormData(formDataPayload, 'image', formData.image.uri, 'notice.jpg');
+
+                response = isEdit
+                    ? await api.put(`/notices/${noticeToEdit.notice_id}`, formDataPayload)
+                    : await api.post('/notices', formDataPayload);
+            } else {
+                const jsonPayload: Record<string, any> = {
+                    title: formData.title.trim(),
+                    content: formData.content.trim(),
+                    notice_type: formData.notice_type || 'General',
+                };
+                if (targetHostelId) {
+                    jsonPayload.hostel_id = targetHostelId;
+                }
+
+                response = isEdit
+                    ? await api.put(`/notices/${noticeToEdit.notice_id}`, jsonPayload)
+                    : await api.post('/notices', jsonPayload);
             }
 
-            const response = isEdit
-                ? await api.put(`/notices/${noticeToEdit.notice_id}`, formDataPayload, {
-                    headers: { 'Content-Type': 'multipart/form-data' },
-                  })
-                : await api.post('/notices', formDataPayload, {
-                    headers: { 'Content-Type': 'multipart/form-data' },
-                  });
-
-            if (response.data.success) {
+            if (response.data.success || response.status === 200 || response.status === 201) {
                 Toast.show({ type: 'success', text1: 'Success', text2: `Notice ${isEdit ? 'updated' : 'posted'} successfully!` });
                 triggerRefresh({ lastNoticeUpdate: Date.now() });
                 navigation.goBack();
+            } else {
+                Toast.show({ type: 'error', text1: 'Error', text2: response.data?.error || 'Failed to save notice' });
             }
         } catch (error: any) {
-            console.error(error);
-            Toast.show({ type: 'error', text1: 'Error', text2: error.response?.data?.error || 'Failed to save notice' });
+            console.error('Error saving notice:', error);
+            const errMsg = error.response?.data?.error || error.response?.data?.message || error.message || 'Failed to save notice';
+            Toast.show({ type: 'error', text1: 'Error', text2: errMsg });
         } finally {
             setLoading(false);
         }

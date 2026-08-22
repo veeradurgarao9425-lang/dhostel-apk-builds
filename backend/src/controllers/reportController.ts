@@ -416,11 +416,54 @@ export const getDashboardStats = async (req: AuthRequest, res: Response) => {
     console.log('[DEBUG] staffCount:', staffCount);
     console.log('[DEBUG] newAdmissionsCount:', newAdmissionsCount);
 
+    // Get total floors and floor-by-floor room & bed occupancy breakdown
+    let totalFloors = 0;
+    let floorBreakdown: any[] = [];
+    if (hostelIds.length > 0) {
+      try {
+        const hostelInfo = await db('hostel_master').whereIn('hostel_id', hostelIds).first('total_floors');
+        totalFloors = Number(hostelInfo?.total_floors || 0);
+
+        const floorRooms = await db('rooms as r')
+          .leftJoin('room_types as rt', 'r.room_type_id', 'rt.room_type_id')
+          .whereIn('r.hostel_id', hostelIds)
+          .select(
+            'r.floor_number',
+            db.raw('COUNT(DISTINCT r.room_id) as total_rooms'),
+            db.raw('SUM(COALESCE(NULLIF(r.capacity, 0), rt.occupancy, 1)) as total_beds'),
+            db.raw('SUM(COALESCE(r.occupied_beds, 0)) as occupied_beds')
+          )
+          .groupBy('r.floor_number')
+          .orderBy('r.floor_number', 'asc');
+
+        floorBreakdown = floorRooms.map((f: any) => {
+          const tBeds = Number(f.total_beds || 0);
+          const oBeds = Number(f.occupied_beds || 0);
+          return {
+            floor_number: f.floor_number ?? 0,
+            total_rooms: Number(f.total_rooms || 0),
+            total_beds: tBeds,
+            occupied_beds: oBeds,
+            available_beds: Math.max(0, tBeds - oBeds),
+            fill_percentage: tBeds > 0 ? Math.round((oBeds / tBeds) * 100) : 0,
+          };
+        });
+
+        if (totalFloors === 0 && floorBreakdown.length > 0) {
+          totalFloors = floorBreakdown.length;
+        }
+      } catch (floorErr) {
+        console.warn('Could not compute floor breakdown:', floorErr);
+      }
+    }
+
     res.json({
       success: true,
       data: {
         totalRooms: Number(totalRooms?.count || 0),
         availableRooms: Number(availableRooms?.count || 0),
+        totalFloors,
+        floorBreakdown,
         totalStudents: Number(totalStudents?.count || 0),
         occupancyRate: Number(occupancyRate),
         totalBeds: Number(totalBeds),

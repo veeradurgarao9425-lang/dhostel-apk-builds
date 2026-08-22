@@ -455,12 +455,13 @@ export default function StudentsScreen({ navigation, route }: any) {
             const params: Record<string, any> = { page: pageNum, limit: PAGE_SIZE };
             if (debouncedSearch) params.search = debouncedSearch;
 
-            const statusParam = activeTab === 'Active' ? 1 : activeTab === 'Inactive' ? 0 : activeTab === 'PreBooked' ? 2 : activeTab === 'QRRegister' ? 3 : activeTab === 'Rejected' ? 4 : undefined;
+            const statusParam = activeTab === 'Active' ? 1 : activeTab === 'Inactive' ? 0 : activeTab === 'PreBooked' ? 2 : activeTab === 'QRRegister' ? 3 : activeTab === 'Rejected' ? 4 : activeTab === 'Unallocated' ? 1 : undefined;
             if (statusParam !== undefined) {
                 params.status = statusParam;
             }
             if (activeTab === 'Unallocated') {
                 params.unallocated = true;
+                params.status = 1;
             }
             if (activeTab === 'AdmissionPending') {
                 params.admissionPending = true;

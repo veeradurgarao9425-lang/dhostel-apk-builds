@@ -116,39 +116,69 @@ export const sendNotificationToUser = async (options: SendNotificationOptions): 
 
     // 2. Fetch push tokens for this user/student
     let userTokens: any[] = [];
-    if (userId) {
-      userTokens = await db('user_push_tokens').where({ user_id: userId }).select('push_token');
+    if (userId && studentId) {
+      userTokens = await db('user_push_tokens')
+        .where(function() {
+          this.where('user_id', userId).orWhere('student_id', studentId);
+        })
+        .select('push_token');
+    } else if (userId) {
+      userTokens = await db('user_push_tokens')
+        .where(function() {
+          this.where('user_id', userId).orWhere('student_id', userId);
+        })
+        .select('push_token');
     } else if (studentId) {
-      userTokens = await db('user_push_tokens').where({ student_id: studentId }).select('push_token');
+      userTokens = await db('user_push_tokens')
+        .where(function() {
+          this.where('student_id', studentId).orWhere('user_id', studentId);
+        })
+        .select('push_token');
     }
 
     if (!userTokens || userTokens.length === 0) {
-      console.log(`[Notification] No push tokens registered for this user/student. Skipping push delivery.`);
+      console.log(`[Notification] No push tokens found in DB for User:${userId ?? '-'} / Student:${studentId ?? '-'}. Push delivery skipped.`);
       return;
     }
 
-    const tokens = userTokens.map((t: any) => t.push_token);
-    
-    // 3. Send push notifications via Expo API
-    const pushMessages = tokens.map(token => ({
+    // Extract unique tokens and validate
+    const rawTokens = Array.from(new Set(userTokens.map((t: any) => String(t.push_token || '').trim()))).filter(Boolean);
+    const validTokens = rawTokens.filter((token: string) => 
+      token.startsWith('ExponentPushToken[') || token.startsWith('ExpoPushToken[')
+    );
+
+    if (validTokens.length === 0) {
+      console.log(`[Notification] No valid Expo push tokens found among registered tokens:`, rawTokens);
+      return;
+    }
+
+    // 3. Send push notifications via Expo Push API
+    const pushMessages = validTokens.map(token => ({
       to: token,
       sound: 'default',
       channelId: 'default',
+      priority: 'high',
       title,
       body: message,
       data: { notificationId, type, hostelId, screen, params, referenceType, referenceId, deepLink, metadata, ...data }
     }));
 
-    await fetch('https://exp.host/--/api/v2/push/send', {
-      method: 'POST',
-      headers: {
-        'Accept': 'application/json',
-        'Accept-Encoding': 'gzip, deflate',
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(pushMessages),
-    });
+    try {
+      const response = await fetch('https://exp.host/--/api/v2/push/send', {
+        method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+          'Accept-Encoding': 'gzip, deflate',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(pushMessages),
+      });
 
+      const result = await response.json().catch(() => null);
+      console.log(`[Notification] Dispatched ${validTokens.length} push notification(s) to Expo. HTTP Status: ${response.status}`, result ? JSON.stringify(result) : '');
+    } catch (pushErr: any) {
+      console.error('[Notification] Error dispatching push to Expo servers:', pushErr.message || pushErr);
+    }
   } catch (error) {
     console.error('[Notification] Error in sendNotificationToUser:', error);
   }

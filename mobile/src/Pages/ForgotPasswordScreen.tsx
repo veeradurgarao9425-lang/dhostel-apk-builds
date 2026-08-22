@@ -215,9 +215,17 @@ export default function ForgotPasswordScreen({ navigation }: any) {
                             />
                         </View>
 
-                        <TouchableOpacity style={styles.submitBtn} onPress={handleVerifyOTP}>
+                        <TouchableOpacity 
+                            style={[styles.submitBtn, isLoading && { opacity: 0.7 }]} 
+                            onPress={handleVerifyOTP} 
+                            disabled={isLoading}
+                        >
                             <LinearGradient colors={['#7C3AED', '#5F2EEA']} style={styles.submitGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-                                <Text style={styles.submitTxt}>Verify Code</Text>
+                                {isLoading ? (
+                                    <ActivityIndicator color="#FFFFFF" size="small" />
+                                ) : (
+                                    <Text style={styles.submitTxt}>Verify Code</Text>
+                                )}
                             </LinearGradient>
                         </TouchableOpacity>
 

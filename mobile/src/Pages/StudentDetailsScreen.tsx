@@ -1397,21 +1397,28 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                                             </View>
                                         </View>
 
+                                        {/* Admission Fee Row */}
                                         <View style={[styles.infoRow, { marginTop: 12 }]}>
                                             <View style={styles.infoRowText}>
                                                 <Text style={styles.infoRowLabel}>Admission Fee</Text>
-                                                <Text style={[styles.infoRowValue, { color: theme.textPrimary }]}>
-                                                    ₹{student.admission_fee || 0}
+                                                <Text style={[styles.infoRowValue, { color: theme.textPrimary, fontWeight: '700' }]}>
+                                                    {student.is_old_student ? 'Old Student' : `₹${Number(student.admission_fee || 0).toLocaleString('en-IN')}`}
                                                 </Text>
                                             </View>
                                             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                                                <View style={[styles.feeStatusBadge, { backgroundColor: student.admission_status === 1 ? '#E6F9F3' : '#FFEBEE' }]}>
-                                                    <Text style={[styles.feeStatusBadgeText, { color: student.admission_status === 1 ? '#00B074' : '#E53935' }]}>
-                                                        {student.admission_status === 1 ? '✓ Paid' : 'Unpaid'}
+                                                <View style={[
+                                                    styles.feeStatusBadge,
+                                                    { backgroundColor: (student.is_old_student || student.admission_status === 1) ? '#E6F9F3' : '#FFEBEE' }
+                                                ]}>
+                                                    <Text style={[
+                                                        styles.feeStatusBadgeText,
+                                                        { color: (student.is_old_student || student.admission_status === 1) ? '#00B074' : '#E53935' }
+                                                    ]}>
+                                                        {(student.is_old_student || student.admission_status === 1) ? '✓ Paid' : 'Unpaid'}
                                                     </Text>
                                                 </View>
-                                                {/* Pay Now button — only when unpaid */}
-                                                {student.admission_status !== 1 && (
+                                                {/* Pay Now button — only when unpaid and not an old student */}
+                                                {!student.is_old_student && student.admission_status !== 1 && (
                                                     <TouchableOpacity
                                                         onPress={openAdmissionPay}
                                                         activeOpacity={0.8}
@@ -1425,6 +1432,23 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                                                         <Text style={{ color: '#FFF', fontSize: 12, fontWeight: '700' }}>Pay Now</Text>
                                                     </TouchableOpacity>
                                                 )}
+                                            </View>
+                                        </View>
+
+                                        <View style={[styles.infoRowDivider, { marginVertical: 10 }]} />
+
+                                        {/* Refundable Deposit Row */}
+                                        <View style={styles.infoRow}>
+                                            <View style={styles.infoRowText}>
+                                                <Text style={styles.infoRowLabel}>Refundable Deposit</Text>
+                                                <Text style={[styles.infoRowValue, { color: theme.textPrimary, fontWeight: '700' }]}>
+                                                    ₹{student.refundable_deposit ? Number(student.refundable_deposit).toLocaleString('en-IN') : 0}
+                                                </Text>
+                                            </View>
+                                            <View style={[styles.feeStatusBadge, { backgroundColor: isDark ? '#0C2840' : '#E0F2FE' }]}>
+                                                <Text style={[styles.feeStatusBadgeText, { color: '#0284C7' }]}>
+                                                    Refundable at vacate
+                                                </Text>
                                             </View>
                                         </View>
                                     </View>

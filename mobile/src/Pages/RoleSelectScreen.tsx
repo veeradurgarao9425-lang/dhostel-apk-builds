@@ -119,7 +119,7 @@ export default function RoleSelectScreen({ navigation }: any) {
                 </View>
                 <Text style={styles.cardTitle}>PG & Hostel Owner</Text>
                 <Text style={styles.cardDesc}>
-                  Property management, bed allocation, digital KYC & auto rent dues
+                  Manage rooms & beds, track tenants, collect rent & monitor expenses
                 </Text>
               </View>
 
@@ -135,8 +135,8 @@ export default function RoleSelectScreen({ navigation }: any) {
             {/* Feature Pills */}
             <View style={styles.tagsRow}>
               <View style={styles.tagPill}>
-                <Ionicons name="pie-chart" size={11} color="#6366F1" />
-                <Text style={styles.tagText}>Analytics</Text>
+                <Ionicons name="business" size={11} color="#6366F1" />
+                <Text style={styles.tagText}>Rooms</Text>
               </View>
               <View style={styles.tagPill}>
                 <Ionicons name="people" size={11} color="#6366F1" />
@@ -144,11 +144,11 @@ export default function RoleSelectScreen({ navigation }: any) {
               </View>
               <View style={styles.tagPill}>
                 <Ionicons name="wallet" size={11} color="#6366F1" />
-                <Text style={styles.tagText}>Auto Dues</Text>
+                <Text style={styles.tagText}>Rent Dues</Text>
               </View>
               <View style={styles.tagPill}>
-                <Ionicons name="shield-checkmark" size={11} color="#6366F1" />
-                <Text style={styles.tagText}>KYC</Text>
+                <Ionicons name="receipt" size={11} color="#6366F1" />
+                <Text style={styles.tagText}>Expenses</Text>
               </View>
             </View>
 
@@ -183,7 +183,7 @@ export default function RoleSelectScreen({ navigation }: any) {
                 </View>
                 <Text style={styles.cardTitle}>Tenant & Resident</Text>
                 <Text style={styles.cardDesc}>
-                  1-Tap UPI pay, instant digital rent receipts & mess menu
+                  Pay rent dues, download receipts, view mess menu & raise complaints
                 </Text>
               </View>
 
@@ -199,20 +199,20 @@ export default function RoleSelectScreen({ navigation }: any) {
             {/* Feature Pills */}
             <View style={styles.tagsRow}>
               <View style={styles.tagPillTenant}>
-                <Ionicons name="flash" size={11} color="#059669" />
-                <Text style={styles.tagTextTenant}>1-Tap Pay</Text>
-              </View>
-              <View style={styles.tagPillTenant}>
-                <Ionicons name="restaurant" size={11} color="#059669" />
-                <Text style={styles.tagTextTenant}>Mess Menu</Text>
+                <Ionicons name="card" size={11} color="#059669" />
+                <Text style={styles.tagTextTenant}>Pay Rent</Text>
               </View>
               <View style={styles.tagPillTenant}>
                 <Ionicons name="receipt" size={11} color="#059669" />
                 <Text style={styles.tagTextTenant}>Receipts</Text>
               </View>
               <View style={styles.tagPillTenant}>
+                <Ionicons name="restaurant" size={11} color="#059669" />
+                <Text style={styles.tagTextTenant}>Mess Menu</Text>
+              </View>
+              <View style={styles.tagPillTenant}>
                 <Ionicons name="construct" size={11} color="#059669" />
-                <Text style={styles.tagTextTenant}>Helpdesk</Text>
+                <Text style={styles.tagTextTenant}>Complaints</Text>
               </View>
             </View>
 

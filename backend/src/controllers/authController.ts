@@ -523,36 +523,38 @@ export const authController = {
   // Forgot Password
   async forgotPassword(req: Request, res: Response) {
     try {
-      const { email } = req.body;
+      const emailInput = req.body.email || req.body.identifier;
 
-      if (!email) {
+      if (!emailInput || typeof emailInput !== 'string' || !emailInput.trim()) {
         return res.status(400).json({
           success: false,
           error: 'Email is required',
         });
       }
 
+      const cleanEmail = emailInput.trim().toLowerCase();
+
       // Validate email format
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(email)) {
+      if (!emailRegex.test(cleanEmail)) {
         return res.status(400).json({
           success: false,
-          error: 'Invalid email format',
+          error: 'Invalid email format. Please enter a valid email address.',
         });
       }
 
-      const cleanEmail = email.trim().toLowerCase();
-
-      // Find user by email (case-insensitive)
+      // Find user by email (case-insensitive and active check)
       const user = await db('users')
         .whereRaw('LOWER(email) = ?', [cleanEmail])
-        .where('is_active', true)
+        .where(function() {
+          this.where('is_active', 1).orWhere('is_active', true).orWhereNull('is_active');
+        })
         .first();
 
       if (!user) {
         return res.status(404).json({
           success: false,
-          error: 'No account found with this email address. Please check your spelling and try again.',
+          error: 'This email is not registered in our system. Please check your spelling or create a new account.',
         });
       }
 
@@ -600,7 +602,7 @@ export const authController = {
 
       return res.status(200).json({
         success: true,
-        message: 'If email exists, a password reset link has been sent',
+        message: 'Password reset OTP has been sent to your email',
         dev_otp: otp,
       });
     } catch (error: any) {
@@ -769,35 +771,39 @@ export const authController = {
   // Verify Reset OTP
   async verifyResetOtp(req: Request, res: Response) {
     try {
-      const { email, otp } = req.body;
+      const emailInput = req.body.email || req.body.identifier;
+      const { otp } = req.body;
 
-      if (!email || !otp) {
+      if (!emailInput || !otp) {
         return res.status(400).json({
           success: false,
-          error: 'Email and OTP are required',
+          error: 'Email and 6-digit OTP code are required',
         });
       }
 
-      const cleanEmail = email.trim().toLowerCase();
+      const cleanEmail = String(emailInput).trim().toLowerCase();
+      const cleanOtp = String(otp).trim();
 
       // Find user by email
       const user = await db('users')
         .whereRaw('LOWER(email) = ?', [cleanEmail])
-        .where('is_active', true)
+        .where(function() {
+          this.where('is_active', 1).orWhere('is_active', true).orWhereNull('is_active');
+        })
         .first();
 
       if (!user) {
-        return res.status(400).json({
+        return res.status(404).json({
           success: false,
           error: 'No account found with this email address.',
         });
       }
 
       // Strictly verify OTP generated for this account
-      if (user.password_reset_otp !== otp) {
+      if (!user.password_reset_otp || String(user.password_reset_otp).trim() !== cleanOtp) {
         return res.status(400).json({
           success: false,
-          error: 'Invalid OTP code',
+          error: 'Invalid OTP code. Please enter the correct 6-digit code.',
         });
       }
 
@@ -808,7 +814,7 @@ export const authController = {
       ) {
         return res.status(400).json({
           success: false,
-          error: 'OTP code has expired',
+          error: 'OTP code has expired. Please request a new code.',
         });
       }
 

@@ -90,9 +90,9 @@ export const getStudents = async (req: AuthRequest, res: Response) => {
       query = query.where('s.hostel_id', scopedHostelId);
     }
 
-    // Filter by unallocated (no room assigned)
+    // Filter by unallocated (no room assigned - only active students needing room allocation)
     if (req.query.unallocated === 'true') {
-      query = query.whereNull('s.room_id');
+      query = query.whereNull('s.room_id').where('s.status', 1);
     }
 
     // Filter by admission pending (unpaid admission fee)
@@ -617,15 +617,13 @@ export const createStudent = async (req: AuthRequest, res: Response) => {
       { id: student_id }
     ).catch(err => console.error('Failed to send student admission notification:', err));
 
-    // Send Welcome Email to New Joiner & Owner Alert Email
-    (async () => {
-      try {
-        const hostel = await db('hostel_master').where({ hostel_id }).first();
-        const owner = hostel?.owner_id ? await db('users').where({ user_id: hostel.owner_id }).first() : null;
-        const hostelName = hostel?.hostel_name || 'Your Hostel';
+    // Send Welcome Email to New Joiner ONLY (if student email provided)
+    if (email && String(email).includes('@')) {
+      (async () => {
+        try {
+          const hostel = await db('hostel_master').where({ hostel_id }).first();
+          const hostelName = hostel?.hostel_name || 'Your Hostel';
 
-        // 1. Send Welcome Confirmation Email to Student (if student email provided)
-        if (email && String(email).includes('@')) {
           await sendNewJoinerStudentEmail({
             email: String(email).trim(),
             studentName: `${first_name} ${last_name || ''}`.trim(),
@@ -636,28 +634,11 @@ export const createStudent = async (req: AuthRequest, res: Response) => {
             monthlyRent: monthlyRent || null,
             admissionFee: admission_fee || null,
           }).catch(err => console.error('[createStudent] Student welcome email error:', err.message));
+        } catch (mailErr: any) {
+          console.error('[createStudent] Welcome email exception:', mailErr.message);
         }
-
-        // 2. Send Alert Email to Hostel Owner
-        if (owner?.email && String(owner.email).includes('@')) {
-          await sendNewJoinerOwnerAlertEmail({
-            ownerEmail: String(owner.email).trim(),
-            ownerName: owner.full_name || 'Hostel Owner',
-            studentName: `${first_name} ${last_name || ''}`.trim(),
-            studentPhone: phone,
-            studentEmail: email || null,
-            hostelName,
-            roomNumber: roomDetails?.room_number || null,
-            bedNumber: bed_number || null,
-            admissionDate: convertToDateOnly(admission_date) || new Date().toISOString().split('T')[0],
-            monthlyRent: monthlyRent || null,
-            admissionFee: admission_fee || null,
-          }).catch(err => console.error('[createStudent] Owner alert email error:', err.message));
-        }
-      } catch (mailErr: any) {
-        console.error('[createStudent] Failed to process new joiner emails:', mailErr.message);
-      }
-    })();
+      })();
+    }
 
     res.status(201).json({
       success: true,

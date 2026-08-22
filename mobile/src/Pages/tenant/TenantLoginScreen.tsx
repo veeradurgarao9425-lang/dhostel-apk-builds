@@ -217,48 +217,55 @@ export function TenantLoginScreen({ navigation }: any) {
 
   return (
     <View style={s.root}>
-      <StatusBar barStyle="light-content" backgroundColor={PURPLE} />
+      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
-      <LinearGradient
-        colors={[PURPLE, PURPLE_DARK]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={s.headerSection}
+      {/* ── Purple Gradient Header Matching Login / Brand ── */}
+      <View
+        style={[
+          s.topSection,
+          {
+            height: Math.max(Math.min(Dimensions.get('window').height * 0.32 + 20, Dimensions.get('window').height * 0.35), 180),
+          },
+        ]}
       >
-        <SafeAreaView edges={['top']} style={{ backgroundColor: 'transparent' }}>
-          <View style={s.topRow}>
-            <TouchableOpacity style={s.backBtn} onPress={() => navigation.goBack()} activeOpacity={0.8}>
-              <Ionicons name="arrow-back" size={22} color={WHITE} />
-            </TouchableOpacity>
-            <TouchableOpacity style={s.helpBtn} activeOpacity={0.7} onPress={() => navigation.navigate('ComingSoon')}>
-              <Text style={s.helpText}>Need help?</Text>
-              <HeadphoneIcon />
-            </TouchableOpacity>
-          </View>
-        </SafeAreaView>
+        <LinearGradient
+          colors={[PURPLE, PURPLE_DARK]}
+          style={[
+            StyleSheet.absoluteFillObject,
+            s.topSectionContent,
+            { paddingTop: 28 },
+          ]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        >
+          {/* Back Button */}
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => navigation.goBack()}
+            style={s.backBtn}
+          >
+            <Ionicons name="arrow-back" size={22} color={WHITE} />
+          </TouchableOpacity>
 
-        <View style={s.logoSection}>
-          <View style={s.logoGlowRing}>
-            <Image
-              source={require('../../../assets/HostixNew.png')}
-              style={{ width: '100%', height: '100%', borderRadius: 55 }}
-              resizeMode="cover"
-            />
-          </View>
-          <Text style={s.brandName}>HOST<Text style={{ color: '#FCD34D' }}>IX</Text></Text>
-          <View style={s.taglineRow}>
-            <View style={s.taglineLine} />
-            <Text style={s.tagline}>TENANT LOGIN</Text>
-            <View style={s.taglineLine} />
-          </View>
-        </View>
+          {/* Decorative background circles */}
+          <View style={s.decorCircle1} />
+          <View style={s.decorCircle2} />
 
-        <View style={s.waveContainer}>
-          <Svg width={width} height={54} viewBox={`0 0 ${width} 54`} preserveAspectRatio="none">
-            <Path d={`M0,0 Q${width / 2},54 ${width},0 L${width},54 L0,54 Z`} fill={WHITE} />
-          </Svg>
-        </View>
-      </LinearGradient>
+          <View style={s.logoWrapper}>
+            <View style={s.logoImageContainer}>
+              <Image
+                source={require('../../../assets/HostixNew.png')}
+                style={s.logoImage}
+                resizeMode="cover"
+              />
+            </View>
+            <Text style={s.appName}>
+              Host<Text style={{ color: '#FCD34D' }}>ix</Text>
+            </Text>
+            <Text style={s.tagline}>Tenant Login</Text>
+          </View>
+        </LinearGradient>
+      </View>
 
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={s.scrollContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
@@ -444,22 +451,84 @@ export function TenantLoginScreen({ navigation }: any) {
 
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: WHITE },
-  headerSection: {},
-  topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 20, paddingBottom: 4 },
-  backBtn: {
-    padding: 8,
-    marginLeft: -8, // offsets padding to align icon with edge
+  topSection: {
+    width: '100%',
+    position: 'relative',
+    borderBottomLeftRadius: 36,
+    borderBottomRightRadius: 36,
+    overflow: 'hidden',
+    backgroundColor: '#7C3AED',
   },
-  helpBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(255,255,255,0.15)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
-  helpText: { color: WHITE, fontSize: 13, fontWeight: '600' },
-  logoSection: { alignItems: 'center', paddingTop: 16, paddingBottom: 28 },
-  logoGlowRing: { width: 110, height: 110, borderRadius: 55, backgroundColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
-  brandName: { color: WHITE, fontSize: 30, fontWeight: '900', letterSpacing: 8, marginTop: 2 },
-  taglineRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 8 },
-  taglineLine: { width: 28, height: 1.5, backgroundColor: 'rgba(255,255,255,0.45)' },
-  tagline: { color: 'rgba(255,255,255,0.85)', fontSize: 10, fontWeight: '600', letterSpacing: 2.5 },
-  waveContainer: { marginTop: 0 },
-  scrollContent: { paddingHorizontal: 22, paddingTop: 12, paddingBottom: 16 },
+  topSectionContent: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  decorCircle1: {
+    position: 'absolute',
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    backgroundColor: 'rgba(255,255,255,0.07)',
+    top: -50,
+    right: -40,
+  },
+  decorCircle2: {
+    position: 'absolute',
+    width: 150,
+    height: 150,
+    borderRadius: 75,
+    backgroundColor: 'rgba(255,255,255,0.07)',
+    bottom: -30,
+    left: -25,
+  },
+  backBtn: {
+    position: 'absolute',
+    left: 20,
+    top: 20,
+    zIndex: 10,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  logoWrapper: {
+    alignItems: 'center',
+  },
+  logoImageContainer: {
+    width: 68,
+    height: 68,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.25)',
+    overflow: 'hidden',
+  },
+  logoImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 18,
+  },
+  appName: {
+    fontSize: 26,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    marginBottom: 2,
+    letterSpacing: 0.5,
+  },
+  tagline: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.85)',
+    fontWeight: '600',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+  },
+  scrollContent: { paddingHorizontal: 22, paddingTop: 20, paddingBottom: 24 },
   welcomeRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6, marginTop: 4 },
   welcomeDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: PURPLE },
   welcomeBack: { color: PURPLE, fontSize: 14, fontWeight: '700' },

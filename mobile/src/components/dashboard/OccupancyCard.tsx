@@ -5,6 +5,15 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../../contexts/ThemeContext';
 
+interface FloorInfo {
+    floor_number: number;
+    total_rooms: number;
+    total_beds: number;
+    occupied_beds: number;
+    available_beds: number;
+    fill_percentage: number;
+}
+
 interface OccupancyCardProps {
     data: {
         totalBeds: number;
@@ -12,6 +21,8 @@ interface OccupancyCardProps {
         availableBeds: number;
         totalRooms: number;
         availableRooms: number;
+        totalFloors?: number;
+        floorBreakdown?: FloorInfo[];
         occupancyRate: number;
     };
 }
@@ -20,9 +31,9 @@ export const OccupancyCard = ({ data }: OccupancyCardProps) => {
     const navigation = useNavigation<any>();
     const { theme, isDark, fontSize } = useTheme();
 
-    const { totalBeds, occupiedBeds, availableBeds, totalRooms, availableRooms } = data;
+    const { totalBeds, occupiedBeds, availableBeds, totalRooms, availableRooms, totalFloors = 0, floorBreakdown = [] } = data;
 
-    if (totalBeds === 0) return null;
+    if (totalBeds === 0 && totalRooms === 0) return null;
 
     const fillPct = totalBeds > 0 ? Math.round((occupiedBeds / totalBeds) * 100) : 0;
     const availPct = Math.max(0, 100 - fillPct);
@@ -60,6 +71,14 @@ export const OccupancyCard = ({ data }: OccupancyCardProps) => {
             icon: 'bed-outline',
         };
     })();
+
+    const formatFloorName = (fn: number) => {
+        if (fn === 0) return 'Ground Floor';
+        if (fn === 1) return '1st Floor';
+        if (fn === 2) return '2nd Floor';
+        if (fn === 3) return '3rd Floor';
+        return `${fn}th Floor`;
+    };
 
     return (
         <View style={s.sectionBlock}>
@@ -107,7 +126,7 @@ export const OccupancyCard = ({ data }: OccupancyCardProps) => {
                             </Text>
                         </View>
                         <Text style={[s.subSummaryText, { color: theme.textSecondary }]}>
-                            {occupiedBeds} of {totalBeds} total beds filled
+                            {occupiedBeds} of {totalBeds} beds · {totalRooms} rooms {totalFloors > 0 ? `across ${totalFloors} floors` : ''}
                         </Text>
                     </View>
 
@@ -146,9 +165,20 @@ export const OccupancyCard = ({ data }: OccupancyCardProps) => {
                     </View>
                 </View>
 
-                {/* 3 Metric Cards Grid */}
+                {/* 4 Metric Cards Grid */}
                 <View style={s.metricGrid}>
-                    {/* Occupied Card */}
+                    {/* Total Rooms */}
+                    <View style={[s.metricCard, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0' }]}>
+                        <View style={s.metricIconRow}>
+                            <View style={[s.miniIconCircle, { backgroundColor: 'rgba(79, 70, 229, 0.12)' }]}>
+                                <Ionicons name="business" size={13} color="#4F46E5" />
+                            </View>
+                            <Text style={[s.metricValue, { color: theme.textPrimary }]}>{totalRooms}</Text>
+                        </View>
+                        <Text style={[s.metricTitle, { color: theme.textSecondary }]}>Total Rooms</Text>
+                    </View>
+
+                    {/* Occupied Beds */}
                     <View style={[s.metricCard, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0' }]}>
                         <View style={s.metricIconRow}>
                             <View style={[s.miniIconCircle, { backgroundColor: 'rgba(99, 102, 241, 0.12)' }]}>
@@ -156,10 +186,10 @@ export const OccupancyCard = ({ data }: OccupancyCardProps) => {
                             </View>
                             <Text style={[s.metricValue, { color: theme.textPrimary }]}>{occupiedBeds}</Text>
                         </View>
-                        <Text style={[s.metricTitle, { color: theme.textSecondary }]}>Occupied Beds</Text>
+                        <Text style={[s.metricTitle, { color: theme.textSecondary }]}>Occupied</Text>
                     </View>
 
-                    {/* Available Card */}
+                    {/* Available Beds */}
                     <View style={[s.metricCard, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0' }]}>
                         <View style={s.metricIconRow}>
                             <View style={[s.miniIconCircle, { backgroundColor: 'rgba(16, 185, 129, 0.12)' }]}>
@@ -167,20 +197,58 @@ export const OccupancyCard = ({ data }: OccupancyCardProps) => {
                             </View>
                             <Text style={[s.metricValue, { color: '#10B981' }]}>{availableBeds}</Text>
                         </View>
-                        <Text style={[s.metricTitle, { color: theme.textSecondary }]}>Available Beds</Text>
+                        <Text style={[s.metricTitle, { color: theme.textSecondary }]}>Available</Text>
                     </View>
 
-                    {/* Total Capacity Card */}
+                    {/* Total Floors / Capacity */}
                     <View style={[s.metricCard, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0' }]}>
                         <View style={s.metricIconRow}>
                             <View style={[s.miniIconCircle, { backgroundColor: 'rgba(14, 165, 233, 0.12)' }]}>
-                                <Ionicons name="business" size={13} color="#0EA5E9" />
+                                <Ionicons name="layers-outline" size={13} color="#0EA5E9" />
                             </View>
-                            <Text style={[s.metricValue, { color: theme.textPrimary }]}>{totalBeds}</Text>
+                            <Text style={[s.metricValue, { color: theme.textPrimary }]}>{totalFloors > 0 ? totalFloors : totalBeds}</Text>
                         </View>
-                        <Text style={[s.metricTitle, { color: theme.textSecondary }]}>Total Capacity</Text>
+                        <Text style={[s.metricTitle, { color: theme.textSecondary }]}>{totalFloors > 0 ? 'Floors' : 'Total Beds'}</Text>
                     </View>
                 </View>
+
+                {/* Floor-by-Floor Filling Breakdown */}
+                {floorBreakdown && floorBreakdown.length > 0 && (
+                    <View style={[s.floorBreakdownContainer, { borderTopColor: isDark ? '#334155' : '#F1F5F9' }]}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                            <Text style={[s.floorSectionTitle, { color: theme.textPrimary }]}>
+                                🏢 Floor-by-Floor Filling
+                            </Text>
+                            <Text style={{ fontSize: 11, fontWeight: '600', color: theme.textSecondary }}>
+                                {floorBreakdown.length} floor{floorBreakdown.length === 1 ? '' : 's'}
+                            </Text>
+                        </View>
+
+                        {floorBreakdown.map((floor, idx) => (
+                            <View key={`floor-${floor.floor_number}-${idx}`} style={s.floorRow}>
+                                <View style={s.floorHeader}>
+                                    <Text style={[s.floorName, { color: theme.textPrimary }]}>
+                                        {formatFloorName(floor.floor_number)}
+                                    </Text>
+                                    <Text style={[s.floorStats, { color: theme.textSecondary }]}>
+                                        {floor.total_rooms} rooms · {floor.occupied_beds}/{floor.total_beds} beds ({floor.fill_percentage}%)
+                                    </Text>
+                                </View>
+                                <View style={[s.floorBarBg, { backgroundColor: isDark ? '#1E293B' : '#F1F5F9' }]}>
+                                    <View
+                                        style={[
+                                            s.floorBarFill,
+                                            {
+                                                width: `${floor.fill_percentage}%`,
+                                                backgroundColor: floor.fill_percentage >= 90 ? '#EF4444' : floor.fill_percentage >= 60 ? '#8B5CF6' : '#10B981'
+                                            }
+                                        ]}
+                                    />
+                                </View>
+                            </View>
+                        ))}
+                    </View>
+                )}
 
                 {/* Footer Insight Note */}
                 {totalRooms > 0 && (
@@ -189,7 +257,7 @@ export const OccupancyCard = ({ data }: OccupancyCardProps) => {
                         <Text style={[s.footerText, { color: isDark ? '#94A3B8' : '#64748B' }]}>
                             {availableRooms > 0
                                 ? `${availableRooms} of ${totalRooms} rooms have vacant beds available to assign.`
-                                : `All ${totalRooms} rooms are currently at full capacity.`}
+                                : `All ${totalRooms} rooms across your PG are currently at full capacity.`}
                         </Text>
                     </View>
                 )}
@@ -361,6 +429,42 @@ const s = StyleSheet.create({
         fontWeight: '500',
         flex: 1,
         lineHeight: 15,
+    },
+    floorBreakdownContainer: {
+        marginTop: 14,
+        paddingTop: 12,
+        borderTopWidth: 1,
+        gap: 10,
+    },
+    floorSectionTitle: {
+        fontSize: 12.5,
+        fontWeight: '700',
+    },
+    floorRow: {
+        gap: 4,
+    },
+    floorHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    floorName: {
+        fontSize: 11.5,
+        fontWeight: '700',
+    },
+    floorStats: {
+        fontSize: 11,
+        fontWeight: '500',
+    },
+    floorBarBg: {
+        height: 6,
+        borderRadius: 3,
+        overflow: 'hidden',
+        width: '100%',
+    },
+    floorBarFill: {
+        height: '100%',
+        borderRadius: 3,
     },
 });
 

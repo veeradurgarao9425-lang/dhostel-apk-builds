@@ -247,7 +247,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         try {
           const pushToken = await notificationService.registerForPushNotificationsAsync();
           if (pushToken) {
-            await notificationService.sendTokenToBackend(pushToken);
+            await notificationService.sendTokenToBackend(pushToken, true);
           }
         } catch (e) {
           console.error('Notification setup failed:', e);
@@ -305,7 +305,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
         try {
           const pushToken = await notificationService.registerForPushNotificationsAsync();
-          if (pushToken) await notificationService.sendTokenToBackend(pushToken);
+          if (pushToken) await notificationService.sendTokenToBackend(pushToken, true);
         } catch (e) {
           if (__DEV__) console.error('Notification setup failed:', e);
         }
@@ -401,7 +401,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
         try {
           const pushToken = await notificationService.registerForPushNotificationsAsync();
-          if (pushToken) await notificationService.sendTokenToBackend(pushToken);
+          if (pushToken) await notificationService.sendTokenToBackend(pushToken, true);
         } catch {}
 
         return { error: null, user: finalUser };
@@ -428,7 +428,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     try {
       const pushToken = await notificationService.registerForPushNotificationsAsync();
-      if (pushToken) await notificationService.sendTokenToBackend(pushToken);
+      if (pushToken) await notificationService.sendTokenToBackend(pushToken, true);
     } catch (e) {
       if (__DEV__) console.error('Notification setup failed:', e);
     }
@@ -463,6 +463,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setLogoutLoading(true);
     try {
       delete api.defaults.headers.common['Authorization'];
+      notificationService._lastRegisteredToken = null;
       setUser(null);
       setHostels([]);
       await removeSecureItem('token');

@@ -57,7 +57,8 @@ export const notificationService = {
         // Retrieve projectId for Expo push token safely
         const projectId =
           Constants?.expoConfig?.extra?.eas?.projectId ??
-          Constants?.easConfig?.projectId;
+          Constants?.easConfig?.projectId ??
+          '7303856b-fde0-4922-baf9-c6487aa06e02';
           
         const tokenOptions = projectId ? { projectId } : undefined;
         const tokenResponse = await Notifications.getExpoPushTokenAsync(tokenOptions);
@@ -71,14 +72,14 @@ export const notificationService = {
         console.warn('Push token retrieval skipped:', error?.message || error);
       }
     } else {
-      console.log('Must use physical device for Push Notifications');
+      console.log('Push notifications require a physical device or development build');
     }
 
     return token;
   },
 
-  async sendTokenToBackend(token: string) {
-    if (this._lastRegisteredToken === token) {
+  async sendTokenToBackend(token: string, force = false) {
+    if (!force && this._lastRegisteredToken === token) {
       return;
     }
     // Only register when an active authorization header is present
