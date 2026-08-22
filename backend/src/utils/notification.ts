@@ -152,16 +152,53 @@ export const sendNotificationToUser = async (options: SendNotificationOptions): 
       return;
     }
 
-    // 3. Send push notifications via Expo Push API
-    const pushMessages = validTokens.map(token => ({
-      to: token,
-      sound: 'default',
-      channelId: 'default',
-      priority: 'high',
-      title,
-      body: message,
-      data: { notificationId, type, hostelId, screen, params, referenceType, referenceId, deepLink, metadata, ...data }
-    }));
+    // 3. Helper to format outside notification badge & color matching the design system
+    const getNotificationColorAndPrefix = (titleText: string, typeText: string) => {
+      const t = (titleText || '').toLowerCase();
+      const typ = (typeText || '').toLowerCase();
+      
+      if (t.includes('payment') || typ.includes('payment') || t.includes('paid')) {
+        return { color: '#10B981', prefix: '✅ ' }; // Emerald Green
+      }
+      if (t.includes('due') || typ.includes('due')) {
+        return { color: '#DC2626', prefix: '📅 ' }; // Bright Red
+      }
+      if (t.includes('lunch') || t.includes('dinner') || t.includes('food') || t.includes('mess')) {
+        return { color: '#F97316', prefix: '🍲 ' }; // Orange
+      }
+      if (t.includes('notice') || typ.includes('notice')) {
+        return { color: '#2563EB', prefix: '📢 ' }; // Blue
+      }
+      if (t.includes('maintenance') || t.includes('complaint') || typ.includes('complaint')) {
+        return { color: '#7C3AED', prefix: '🔧 ' }; // Purple
+      }
+      if (t.includes('admission') || t.includes('pre-booking') || typ.includes('admission')) {
+        return { color: '#0284C7', prefix: '👤 ' }; // Sky Blue
+      }
+      if (t.includes('receipt') || t.includes('document')) {
+        return { color: '#4F46E5', prefix: '📄 ' }; // Indigo
+      }
+      return { color: '#6D4AFF', prefix: '🔔 ' };
+    };
+
+    // 4. Send push notifications via Expo Push API
+    const pushMessages = validTokens.map(token => {
+      const { color, prefix } = getNotificationColorAndPrefix(title, type);
+      const cleanTitle = title.replace(/^[\uD800-\uDBFF\uDC00-\uDFFF\u2600-\u27BF\s]+/, '').trim();
+      const formattedTitle = `${prefix}${cleanTitle}`;
+
+      return {
+        to: token,
+        sound: 'default',
+        channelId: 'default',
+        priority: 'high',
+        title: formattedTitle,
+        subtitle: 'HOSTIX',
+        body: message,
+        color: color,
+        data: { notificationId, type, hostelId, screen, params, referenceType, referenceId, deepLink, metadata, ...data }
+      };
+    });
 
     try {
       const response = await fetch('https://exp.host/--/api/v2/push/send', {
