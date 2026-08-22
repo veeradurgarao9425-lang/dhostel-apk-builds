@@ -609,12 +609,22 @@ app.get('/api/public/qr-signup', async (req, res) => {
     setupFilePreview('af', 'ffb', 'fprev', 'fplaceholder', 'ffl', 'fclear', 'Front');
     setupFilePreview('ab', 'bfb', 'bprev', 'bplaceholder', 'bfl', 'bclear', 'Back');
 
+    // Auto-clean phone inputs to only numeric 10 digits
+    ['phone', 'gphone'].forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el) {
+        el.addEventListener('input', function() {
+          this.value = this.value.replace(/\D/g, '').slice(0, 10);
+        });
+      }
+    });
+
     // Step 1 Next
     document.getElementById('b1').addEventListener('click', function() {
       var ok = true;
       if (!val('first_name').trim()) { setErr('e1','first_name','First name is required'); ok = false; } else { setErr('e1','first_name',''); }
-      var p = val('phone').trim();
-      if (!/^[6-9]\d{9}$/.test(p)) {
+      var p = val('phone').replace(/\D/g, '').slice(-10);
+      if (p.length !== 10 || !/^[6-9]\d{9}$/.test(p)) {
         setErr('e2','phone','Enter a valid 10-digit mobile number starting with 6-9');
         ok = false;
       } else { setErr('e2','phone',''); }
@@ -632,8 +642,8 @@ app.get('/api/public/qr-signup', async (req, res) => {
     document.getElementById('b2').addEventListener('click', function() {
       var ok = true;
       if (!val('gname').trim()) { setErr('e_gname','gname','Guardian name is required'); ok = false; } else { setErr('e_gname','gname',''); }
-      var gp = val('gphone').trim();
-      if (!/^[6-9]\d{9}$/.test(gp)) {
+      var gp = val('gphone').replace(/\D/g, '').slice(-10);
+      if (gp.length !== 10 || !/^[6-9]\d{9}$/.test(gp)) {
         setErr('e5','gphone','Enter a valid 10-digit guardian number starting with 6-9');
         ok = false;
       } else { setErr('e5','gphone',''); }
@@ -726,11 +736,14 @@ app.post('/api/public/qr-signup', qrSignupUpload.fields([
     const aadhaarFrontFile = files?.aadhaar_front?.[0];
     const aadhaarBackFile  = files?.aadhaar_back?.[0];
 
+    const cleanPhone = String(phone || '').replace(/\D/g, '').slice(-10);
+    const cleanGuardianPhone = String(guardian_phone || '').replace(/\D/g, '').slice(-10);
+
     if (!first_name || !String(first_name).trim()) return sendError('First Name is required');
-    if (!phone || !/^[6-9]\d{9}$/.test(String(phone).trim())) return sendError('A valid 10-digit Phone number starting with 6-9 is required');
+    if (!cleanPhone || cleanPhone.length !== 10 || !/^[6-9]\d{9}$/.test(cleanPhone)) return sendError('A valid 10-digit Phone number starting with 6-9 is required');
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email).trim())) return sendError('Enter a valid email address');
     if (!guardian_name || !String(guardian_name).trim()) return sendError('Guardian Name is required');
-    if (!guardian_phone || !/^[6-9]\d{9}$/.test(String(guardian_phone).trim())) return sendError('A valid 10-digit Guardian Phone number starting with 6-9 is required');
+    if (!cleanGuardianPhone || cleanGuardianPhone.length !== 10 || !/^[6-9]\d{9}$/.test(cleanGuardianPhone)) return sendError('A valid 10-digit Guardian Phone number starting with 6-9 is required');
     if (!permanent_address || !String(permanent_address).trim()) return sendError('Permanent Address is required');
     if (!id_proof_number || !String(id_proof_number).trim()) return sendError('ID Number is required');
     
@@ -749,7 +762,7 @@ app.post('/api/public/qr-signup', qrSignupUpload.fields([
     if (!hostelExists) return sendError('This hostel link is no longer valid');
 
     const uniqueness = await checkHostelUniqueIdentifiers(numHostelId, {
-      phone: String(phone).trim(),
+      phone: cleanPhone,
       email: email ? String(email).trim() : null,
       id_number: cleanId,
     });
@@ -789,14 +802,14 @@ app.post('/api/public/qr-signup', qrSignupUpload.fields([
       hostel_id:        numHostelId,
       first_name:       String(first_name).trim(),
       last_name:        last_name ? String(last_name).trim() : null,
-      phone:            String(phone).trim(),
+      phone:            cleanPhone,
       email:            email ? String(email).trim() : null,
       date_of_birth:    parsedDob,
       gender:           String(gender).trim(),
       permanent_address: permanent_address ? String(permanent_address).trim() : null,
       present_working_address: present_working_address ? String(present_working_address).trim() : null,
       guardian_name:    guardian_name ? String(guardian_name).trim() : null,
-      guardian_phone:   guardian_phone ? String(guardian_phone).trim() : null,
+      guardian_phone:   cleanGuardianPhone,
       admission_date:   nowStr,
       admission_fee:    0,
       admission_status: 0,
