@@ -168,22 +168,20 @@ async function seedProductionData() {
           floor_number: floor,
           capacity: cfg.cap,
           occupied_beds: 0,
+          rent_per_bed: cfg.rent,
+          room_type_id: defaultRoomTypeId,
           is_available: 1,
         };
 
-        // If room_type_id exists in schema, attach it safely
-        try {
-          roomRow.room_type_id = defaultRoomTypeId;
-        } catch (e) {}
-
         const [roomId] = await db('rooms').insert(roomRow).catch(async (err: any) => {
-          // If room_type_id caused an error or wasn't provided, try without it
           if (err?.code === 'ER_BAD_FIELD_ERROR') {
-            delete roomRow.room_type_id;
+            if (String(err?.sqlMessage || '').includes('rent_per_bed')) delete roomRow.rent_per_bed;
+            if (String(err?.sqlMessage || '').includes('room_type_id')) delete roomRow.room_type_id;
             return db('rooms').insert(roomRow);
           }
           throw err;
         });
+
 
         createdRooms.push({
           room_id: roomId,
