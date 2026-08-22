@@ -11,8 +11,10 @@
  *  - Staff Directory (4 members)
  *  - Short-Stay Guests (8 records)
  *  - Full 7-Day Indian Mess Menu
+ *  - Ensures Owner Account (demo@test.com / Demo123)
  */
 
+import bcrypt from 'bcryptjs';
 import { db } from './config/database.js';
 
 async function seedProductionData() {
@@ -28,7 +30,7 @@ async function seedProductionData() {
         city: 'Hyderabad',
         state: 'Telangana',
         pincode: '500081',
-        contact_number: '9797949646',
+        contact_number: '9876543210',
         total_floors: 6,
         admission_fee: 1000.0,
         hostel_code: 'HSTX01',
@@ -50,7 +52,59 @@ async function seedProductionData() {
     const hostelId = hostel.hostel_id;
     console.log(`🏨 Target Hostel: "${hostel.hostel_name}" (ID: ${hostelId}, Floors: 6)`);
 
-    // 2. Clean Up Old Records for this Hostel
+    // 2. Ensure Owner Account: demo@test.com / Demo123
+    console.log('👤 Ensuring Owner Account demo@test.com...');
+    const hashedPassword = await bcrypt.hash('Demo123', 10);
+    await db('users').where({ email: 'admin@d.com' }).delete().catch(() => {});
+
+    const existingDemoUser = await db('users').where({ email: 'demo@test.com' }).first();
+    const existingPersonal = await db('users').where({ email: 'veeradurgarao840@gmail.com' }).first();
+
+    let ownerUserId: number;
+    if (existingDemoUser) {
+      await db('users').where({ user_id: existingDemoUser.user_id }).update({
+        full_name: 'Hostix Owner',
+        phone: '9876543210',
+        password: hashedPassword,
+        password_hash: hashedPassword,
+        role: 'OWNER',
+        role_id: 2,
+        hostel_id: hostelId,
+        is_active: 1,
+      });
+      ownerUserId = existingDemoUser.user_id;
+    } else if (existingPersonal) {
+      await db('users').where({ user_id: existingPersonal.user_id }).update({
+        full_name: 'Hostix Owner',
+        email: 'demo@test.com',
+        phone: '9876543210',
+        password: hashedPassword,
+        password_hash: hashedPassword,
+        role: 'OWNER',
+        role_id: 2,
+        hostel_id: hostelId,
+        is_active: 1,
+      });
+      ownerUserId = existingPersonal.user_id;
+    } else {
+      const [newUserId] = await db('users').insert({
+        full_name: 'Hostix Owner',
+        email: 'demo@test.com',
+        phone: '9876543210',
+        password: hashedPassword,
+        password_hash: hashedPassword,
+        role: 'OWNER',
+        role_id: 2,
+        hostel_id: hostelId,
+        is_active: 1,
+      });
+      ownerUserId = newUserId;
+    }
+
+    await db('hostel_master').where({ hostel_id: hostelId }).update({ owner_id: ownerUserId });
+    console.log(`✅ Owner Configured: demo@test.com (Password: Demo123, ID: ${ownerUserId})`);
+
+    // 3. Clean Up Old Records for this Hostel
     console.log('🧹 Cleaning old records...');
     await db('fee_payments').where({ hostel_id: hostelId }).delete().catch(() => {});
     await db('monthly_fees').where({ hostel_id: hostelId }).delete().catch(() => {});
@@ -64,7 +118,25 @@ async function seedProductionData() {
     await db('students').where({ hostel_id: hostelId }).delete().catch(() => {});
     await db('rooms').where({ hostel_id: hostelId }).delete().catch(() => {});
 
-    // 3. Create 48 Rooms Across 6 Floors (138 Total Beds Capacity)
+    // Check room_types table if it exists
+    let defaultRoomTypeId = 1;
+    try {
+      const types = await db('room_types').select('*').catch(() => []);
+      if (types && types.length > 0) {
+        defaultRoomTypeId = types[0].room_type_id || 1;
+      } else {
+        await db('room_types').insert([
+          { room_type_name: 'Single Room', base_price: 12000 },
+          { room_type_name: '2 Sharing', base_price: 8500 },
+          { room_type_name: '3 Sharing', base_price: 6500 },
+          { room_type_name: '4 Sharing', base_price: 5000 },
+        ]).catch(() => {});
+        const freshTypes = await db('room_types').select('*').catch(() => []);
+        if (freshTypes && freshTypes.length > 0) defaultRoomTypeId = freshTypes[0].room_type_id;
+      }
+    } catch (e) {}
+
+    // 4. Create 48 Rooms Across 6 Floors (138 Total Beds Capacity)
     console.log('🏢 Creating 48 Rooms across 6 Floors (138 Beds)...');
     interface CreatedRoom {
       room_id: number;
@@ -90,13 +162,27 @@ async function seedProductionData() {
 
       for (const cfg of floorConfigs) {
         const roomNum = `${floor}${cfg.suffix}`;
-        const [roomId] = await db('rooms').insert({
+        const roomRow: any = {
           hostel_id: hostelId,
           room_number: roomNum,
           floor_number: floor,
           capacity: cfg.cap,
           occupied_beds: 0,
           is_available: 1,
+        };
+
+        // If room_type_id exists in schema, attach it safely
+        try {
+          roomRow.room_type_id = defaultRoomTypeId;
+        } catch (e) {}
+
+        const [roomId] = await db('rooms').insert(roomRow).catch(async (err: any) => {
+          // If room_type_id caused an error or wasn't provided, try without it
+          if (err?.code === 'ER_BAD_FIELD_ERROR') {
+            delete roomRow.room_type_id;
+            return db('rooms').insert(roomRow);
+          }
+          throw err;
         });
 
         createdRooms.push({
@@ -130,7 +216,7 @@ async function seedProductionData() {
     }
     console.log(`✅ Total Beds Capacity: ${allBedSlots.length} across 48 rooms (6 Floors)`);
 
-    // 4. Realistic Indian Student Profiles
+    // 5. Realistic Indian Student Profiles
     console.log('👥 Generating 145+ Authentic Student Records...');
     const firstNames = [
       'Sai', 'Rahul', 'Aditya', 'Karthik', 'Naveen', 'Rohan', 'Manoj', 'Harish', 'Vikram', 'Anil',
@@ -161,10 +247,6 @@ async function seedProductionData() {
 
     const today = new Date();
     const currentMonthStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
-    const prevMonthDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-    const prevMonthStr = `${prevMonthDate.getFullYear()}-${String(prevMonthDate.getMonth() + 1).padStart(2, '0')}`;
-
-    console.log(`📅 Current Fee Cycle: ${currentMonthStr}, Previous: ${prevMonthStr}`);
 
     // Create 118 Active Occupants (leaving 20 beds vacant)
     const occupiedCount = 118;
@@ -190,7 +272,7 @@ async function seedProductionData() {
       let vacateNoticeDate: string | null = null;
       let vacateNoticeReason: string | null = null;
       if (i >= 20 && i < 32) {
-        const vacateDaysFuture = (i - 19) * 2; // 2 to 24 days in future
+        const vacateDaysFuture = (i - 19) * 2;
         const vDate = new Date(today.getTime() + vacateDaysFuture * 24 * 60 * 60 * 1000);
         vacateNoticeDate = vDate.toISOString().split('T')[0];
         const reasons = [
@@ -203,10 +285,6 @@ async function seedProductionData() {
         vacateNoticeReason = reasons[i % reasons.length];
       }
 
-      // Rent status categorization:
-      // i: 0 to 65 -> PAID (Rent fully cleared for current month)
-      // i: 66 to 95 -> PENDING (Rent due in current cycle)
-      // i: 96 to 117 -> OVERDUE (Overdue with carry-forward balance)
       let rentStatus: 'paid' | 'pending' | 'overdue' = 'paid';
       if (i >= 66 && i < 96) rentStatus = 'pending';
       else if (i >= 96) rentStatus = 'overdue';
@@ -226,7 +304,7 @@ async function seedProductionData() {
         admission_date: joinDateStr,
         monthly_rent: slot.rent_per_bed,
         admission_fee: 1000,
-        admission_status: 'Paid', // Enum ('Paid', 'Unpaid')
+        admission_status: 'Paid',
         refundable_deposit: slot.rent_per_bed * 1.5,
         status: 1, // Active
         is_active: 1,
@@ -258,7 +336,7 @@ async function seedProductionData() {
         paidDate = `${currentMonthStr}-${String(pDays).padStart(2, '0')}`;
       } else if (rentStatus === 'pending') {
         if (i % 3 === 0) {
-          paidAmount = 2000; // Partial payment
+          paidAmount = 2000;
           balance = monthlyRent - 2000;
           feeStatusEnum = 'Partially Paid';
           feeStatusStr = 'partial';
@@ -271,7 +349,7 @@ async function seedProductionData() {
           paidDate = null;
         }
       } else if (rentStatus === 'overdue') {
-        carryForward = monthlyRent; // Last month unpaid carry forward
+        carryForward = monthlyRent;
         totalDue = monthlyRent + carryForward;
         paidAmount = 0;
         balance = totalDue;
@@ -324,7 +402,7 @@ async function seedProductionData() {
       }
     }
 
-    // 5. Add 8 Pre-Booked Students (status = 2)
+    // 6. Add 8 Pre-Booked Students (status = 2)
     console.log('📌 Adding 8 Pre-Booked Students...');
     for (let p = 0; p < 8; p++) {
       const fn = firstNames[(100 + p) % firstNames.length];
@@ -351,7 +429,7 @@ async function seedProductionData() {
       });
     }
 
-    // 6. Add 7 QR Registrations / Pending Admissions (status = 3)
+    // 7. Add 7 QR Registrations / Pending Admissions (status = 3)
     console.log('📲 Adding 7 QR Registrations (Pending Admissions)...');
     for (let q = 0; q < 7; q++) {
       const fn = firstNames[(80 + q) % firstNames.length];
@@ -377,7 +455,7 @@ async function seedProductionData() {
       });
     }
 
-    // 7. Add 12 Historical Vacated Students (status = 0)
+    // 8. Add 12 Historical Vacated Students (status = 0)
     console.log('🚪 Adding 12 Historical Vacated Students...');
     for (let v = 0; v < 12; v++) {
       const fn = firstNames[(60 + v) % firstNames.length];
@@ -398,7 +476,7 @@ async function seedProductionData() {
         monthly_rent: 6500,
         admission_fee: 1000,
         admission_status: 'Paid',
-        refundable_deposit: 0, // Settled
+        refundable_deposit: 0,
         status: 0, // Inactive / Vacated
         is_active: 0,
         vacate_notice_date: vacateDateStr,
@@ -407,7 +485,7 @@ async function seedProductionData() {
       });
     }
 
-    // 8. Seed Multi-Category Expenses
+    // 9. Seed Multi-Category Expenses
     console.log('💳 Seeding Comprehensive Monthly Expenses...');
     const categories = await db('expense_categories').select('*').catch(() => []);
     const getCatId = (name: string) => {
@@ -443,7 +521,7 @@ async function seedProductionData() {
       });
     }
 
-    // 9. Seed Staff Directory (4 Members)
+    // 10. Seed Staff Directory (4 Members)
     console.log('👨‍💼 Seeding Staff Members...');
     const staffMembers = [
       { name: 'Rajesh Sharma', phone: '9876543210', email: 'rajesh.warden@gmail.com', role: 'Warden', salary: 25000, join: '2024-01-10', aadhaar: '3456 7890 1234', notes: 'Overall hostel administration and discipline' },
@@ -468,7 +546,7 @@ async function seedProductionData() {
       });
     }
 
-    // 10. Seed Short-Stay Guests (8 Records)
+    // 11. Seed Short-Stay Guests (8 Records)
     console.log('🚶 Seeding Short-Stay Guests...');
     const guestProfiles = [
       { name: 'Amitabh Sen', phone: '9812345001', in: '2026-08-18', out: '2026-08-25', days: 7, rate: 700, room: '101', purpose: 'Interview at Amazon IDC' },
@@ -502,7 +580,7 @@ async function seedProductionData() {
       });
     }
 
-    // 11. Seed 7-Day Indian Mess Menu
+    // 12. Seed 7-Day Indian Mess Menu
     console.log('🍽️ Seeding Complete 7-Day Mess Menu...');
     const weekDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
     const menuSchedule: Record<string, { b: string; l: string; s: string; d: string }> = {
@@ -564,6 +642,7 @@ async function seedProductionData() {
     console.log('🎉 REAL PRODUCTION DATA SEEDING COMPLETED SUCCESSFULLY!');
     console.log('============================================================');
     console.log(`🏨 Hostel: "${hostel.hostel_name}" (6 Floors)`);
+    console.log(`👤 Owner: demo@test.com / Demo123`);
     console.log(`🏢 Rooms: 48 rooms across Floors 1-6`);
     console.log(`🛏️ Total Beds Capacity: ${allBedSlots.length} (Occupied: 118, Vacant: ${allBedSlots.length - 118})`);
     console.log(`👥 Active Students: 118 (Paid: 66, Pending: 30, Overdue: 22)`);
