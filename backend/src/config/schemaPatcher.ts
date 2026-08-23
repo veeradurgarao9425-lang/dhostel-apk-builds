@@ -350,6 +350,33 @@ export async function patchDatabaseSchema() {
       console.error('[schema-patch] Error creating relations_master table:', e.message);
     }
 
+    // Ensure students table has admission_status, admission_fee, is_old_student, and guardian_relation
+    try {
+      if (tableNamesLower.includes('students')) {
+        const [studentCols] = await db.raw("SHOW COLUMNS FROM students");
+        const sColNames = (studentCols as any[]).map(c => c.Field?.toLowerCase());
+
+        if (!sColNames.includes('admission_status')) {
+          console.log('[schema-patch] Adding admission_status to students table...');
+          await db.raw("ALTER TABLE students ADD COLUMN admission_status TINYINT DEFAULT 0");
+        }
+        if (!sColNames.includes('admission_fee')) {
+          console.log('[schema-patch] Adding admission_fee to students table...');
+          await db.raw("ALTER TABLE students ADD COLUMN admission_fee DECIMAL(10,2) DEFAULT 0");
+        }
+        if (!sColNames.includes('is_old_student')) {
+          console.log('[schema-patch] Adding is_old_student to students table...');
+          await db.raw("ALTER TABLE students ADD COLUMN is_old_student TINYINT DEFAULT 0");
+        }
+        if (!sColNames.includes('guardian_relation')) {
+          console.log('[schema-patch] Adding guardian_relation to students table...');
+          await db.raw("ALTER TABLE students ADD COLUMN guardian_relation INT NULL");
+        }
+      }
+    } catch (e: any) {
+      console.error('[schema-patch] Error checking/patching students table columns:', e.message);
+    }
+
     // 1.5 Ensure room_amenities_master exists
     try {
       if (!tableNamesLower.includes('room_amenities_master')) {

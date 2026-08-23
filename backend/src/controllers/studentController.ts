@@ -260,10 +260,14 @@ export const getStudentById = async (req: AuthRequest, res: Response) => {
     const student = await db('students as s')
       .leftJoin('hostel_master as h', 's.hostel_id', 'h.hostel_id')
       .leftJoin('rooms as r', 's.room_id', 'r.room_id')
+      .leftJoin('id_proof_types as ipt', 's.id_proof_type', 'ipt.id')
+      .leftJoin('relations_master as rm', 's.guardian_relation', 'rm.relation_id')
       .select(
         's.*',
         'h.hostel_name',
         'r.room_number',
+        'ipt.name as id_proof_type_name',
+        'rm.relation_name as guardian_relation_name',
         's.admission_date as check_in_date'
       )
       .where('s.student_id', studentId)
@@ -275,6 +279,10 @@ export const getStudentById = async (req: AuthRequest, res: Response) => {
         error: 'Student not found'
       });
     }
+
+    // Normalize admission_status and is_old_student
+    student.admission_status = (student.admission_status === 1 || student.admission_status === '1' || student.admission_status === 'Paid' || student.admission_status === true) ? 1 : 0;
+    student.is_old_student = (student.is_old_student === 1 || student.is_old_student === '1' || student.is_old_student === true) ? 1 : 0;
 
     if (!canAccessHostel(req.user, student.hostel_id)) {
       return res.status(403).json({
@@ -760,6 +768,11 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
           updateData[field] = convertToDateOnly(req.body[field]);
         } else if (field === 'is_old_student') {
           updateData[field] = req.body[field] ? 1 : 0;
+        } else if (field === 'admission_status') {
+          const val = req.body[field];
+          updateData[field] = (val === 1 || val === '1' || val === 'Paid' || val === true) ? 1 : 0;
+        } else if (field === 'admission_fee') {
+          updateData[field] = parseFloat(req.body[field] || '0') || 0;
         } else if (field === 'id_proof_type' || field === 'guardian_relation' || field === 'floor_number') {
           const val = req.body[field];
           updateData[field] = (val && val !== '' && val !== 'null' && val !== 'undefined') ? Number(val) : null;

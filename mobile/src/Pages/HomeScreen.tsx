@@ -742,6 +742,13 @@ export default function HomeScreen() {
                     <View style={s.headerActions}>
                         <TouchableOpacity
                             style={s.headerIconBtn}
+                            onPress={() => navigation.navigate('QRSignup')}
+                            activeOpacity={0.8}
+                        >
+                            <Ionicons name="qr-code-outline" size={19} color="#FFF" />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={s.headerIconBtn}
                             onPress={() => scrollToPage(activePageIndex === 0 ? 1 : 0)}
                             activeOpacity={0.8}
                         >

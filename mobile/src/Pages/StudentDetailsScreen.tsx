@@ -87,6 +87,32 @@ const PaymentHistoryItem = React.memo(({ payment, student, onPress }: { payment:
 });
 
 // ─── Main Screen ─────────────────────────────────────────────────────────────
+const RELATION_MAP: Record<string, string> = {
+    '0': 'Father',
+    '1': 'Father',
+    '2': 'Mother',
+    '3': 'Brother',
+    '4': 'Sister',
+    '5': 'Guardian',
+    '6': 'Relative',
+    '7': 'Other',
+    'father': 'Father',
+    'mother': 'Mother',
+    'brother': 'Brother',
+    'sister': 'Sister',
+    'guardian': 'Guardian',
+    'relative': 'Relative',
+    'other': 'Other',
+};
+
+const formatRelation = (relId: any, relName?: string | null) => {
+    if (relName && isNaN(Number(relName))) return relName;
+    const str = String(relId ?? '').trim().toLowerCase();
+    if (RELATION_MAP[str]) return RELATION_MAP[str];
+    if (relId !== null && relId !== undefined && isNaN(Number(relId))) return String(relId);
+    return 'Father';
+};
+
 const StudentDetailsScreen = ({ route, navigation }: any) => {
     const { studentId, activeTab: initialTab } = route.params || {};
     const { theme, isDark } = useTheme();
@@ -550,8 +576,14 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
             });
             if (res.data.success) {
                 setAdmissionPayVisible(false);
+                // Optimistically update the student state immediately
+                setStudent((prev: any) => ({
+                    ...prev,
+                    admission_status: 1,
+                    admission_fee: amt,
+                }));
                 showSuccess(`Admission fee ₹${amt.toLocaleString('en-IN')} collected from ${student.first_name}!`);
-                fetchStudentDetails();
+                await fetchStudentDetails();
                 triggerRefresh();
             }
         } catch (e: any) {
@@ -1248,7 +1280,9 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                                             </View>
                                             <View style={[styles.infoGridItem, { backgroundColor: isDark ? '#0F172A' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0' }]}>
                                                 <Text style={styles.infoRowLabel}>Relationship</Text>
-                                                <Text style={[styles.infoRowValue, { color: theme.textPrimary }]}>{student.guardian_relation_name || student.guardian_relation || 'N/A'}</Text>
+                                                <Text style={[styles.infoRowValue, { color: theme.textPrimary }]}>
+                                                    {formatRelation(student.guardian_relation, student.guardian_relation_name)}
+                                                </Text>
                                             </View>
                                         </View>
 
@@ -1402,42 +1436,56 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                                         </View>
 
                                         {/* Admission Fee Row */}
-                                        <View style={[styles.infoRow, { marginTop: 12 }]}>
-                                            <View style={styles.infoRowText}>
-                                                <Text style={styles.infoRowLabel}>Admission Fee</Text>
-                                                <Text style={[styles.infoRowValue, { color: theme.textPrimary, fontWeight: '700' }]}>
-                                                    {student.is_old_student ? 'Old Student' : `₹${Number(student.admission_fee || 0).toLocaleString('en-IN')}`}
-                                                </Text>
-                                            </View>
-                                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                                                <View style={[
-                                                    styles.feeStatusBadge,
-                                                    { backgroundColor: (student.is_old_student || student.admission_status === 1) ? '#E6F9F3' : '#FFEBEE' }
-                                                ]}>
-                                                    <Text style={[
-                                                        styles.feeStatusBadgeText,
-                                                        { color: (student.is_old_student || student.admission_status === 1) ? '#00B074' : '#E53935' }
-                                                    ]}>
-                                                        {(student.is_old_student || student.admission_status === 1) ? '✓ Paid' : 'Unpaid'}
-                                                    </Text>
+                                        {(() => {
+                                            const isAdmissionPaid = Boolean(
+                                                student.is_old_student === 1 ||
+                                                student.is_old_student === '1' ||
+                                                student.is_old_student === true ||
+                                                student.admission_status === 1 ||
+                                                student.admission_status === '1' ||
+                                                student.admission_status === 'Paid' ||
+                                                student.admission_status === true
+                                            );
+
+                                            return (
+                                                <View style={[styles.infoRow, { marginTop: 12 }]}>
+                                                    <View style={styles.infoRowText}>
+                                                        <Text style={styles.infoRowLabel}>Admission Fee</Text>
+                                                        <Text style={[styles.infoRowValue, { color: theme.textPrimary, fontWeight: '700' }]}>
+                                                            {student.is_old_student ? 'Old Student' : `₹${Number(student.admission_fee || 0).toLocaleString('en-IN')}`}
+                                                        </Text>
+                                                    </View>
+                                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                                        <View style={[
+                                                            styles.feeStatusBadge,
+                                                            { backgroundColor: isAdmissionPaid ? '#E6F9F3' : '#FFEBEE' }
+                                                        ]}>
+                                                            <Text style={[
+                                                                styles.feeStatusBadgeText,
+                                                                { color: isAdmissionPaid ? '#00B074' : '#E53935' }
+                                                            ]}>
+                                                                {isAdmissionPaid ? '✓ Paid' : 'Unpaid'}
+                                                            </Text>
+                                                        </View>
+                                                        {/* Pay Now button — only when unpaid and not an old student */}
+                                                        {!isAdmissionPaid && (
+                                                            <TouchableOpacity
+                                                                onPress={openAdmissionPay}
+                                                                activeOpacity={0.8}
+                                                                style={{
+                                                                    backgroundColor: theme.primary,
+                                                                    paddingHorizontal: 12,
+                                                                    paddingVertical: 6,
+                                                                    borderRadius: 8,
+                                                                }}
+                                                            >
+                                                                <Text style={{ color: '#FFF', fontSize: 12, fontWeight: '700' }}>Pay Now</Text>
+                                                            </TouchableOpacity>
+                                                        )}
+                                                    </View>
                                                 </View>
-                                                {/* Pay Now button — only when unpaid and not an old student */}
-                                                {!student.is_old_student && student.admission_status !== 1 && (
-                                                    <TouchableOpacity
-                                                        onPress={openAdmissionPay}
-                                                        activeOpacity={0.8}
-                                                        style={{
-                                                            backgroundColor: theme.primary,
-                                                            paddingHorizontal: 12,
-                                                            paddingVertical: 6,
-                                                            borderRadius: 8,
-                                                        }}
-                                                    >
-                                                        <Text style={{ color: '#FFF', fontSize: 12, fontWeight: '700' }}>Pay Now</Text>
-                                                    </TouchableOpacity>
-                                                )}
-                                            </View>
-                                        </View>
+                                            );
+                                        })()}
 
                                         <View style={[styles.infoRowDivider, { marginVertical: 10 }]} />
 

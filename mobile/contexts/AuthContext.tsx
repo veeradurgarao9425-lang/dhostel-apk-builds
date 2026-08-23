@@ -150,6 +150,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           } else {
             await enrichUserInBackground(parsedUser);
           }
+
+          // Register & sync device push token with backend on session restore
+          try {
+            const pushToken = await notificationService.registerForPushNotificationsAsync();
+            if (pushToken) {
+              await notificationService.sendTokenToBackend(pushToken, true);
+            }
+          } catch (pushErr) {
+            if (__DEV__) console.warn('Push notification token sync notice:', pushErr);
+          }
         }
       } catch (error) {
         if (__DEV__) console.error('Failed to load user from storage', error);

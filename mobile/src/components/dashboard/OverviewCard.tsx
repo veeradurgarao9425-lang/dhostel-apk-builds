@@ -117,11 +117,16 @@ export const OverviewCard = ({ data, setShowCollectionSheet, pulseValue, fmt }: 
                     <View style={[s.iconPill, { backgroundColor: isDark ? '#052E16' : '#D1FAE5' }]}>
                         <Ionicons name="wallet" size={13} color="#10B981" />
                     </View>
-                    <View>
-                        <Text style={{ fontSize: 9, fontWeight: '700', color: theme.textSecondary, textTransform: 'uppercase', letterSpacing: 0.4 }}>
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                        <Text style={{ fontSize: 9.5, fontWeight: '700', color: theme.textSecondary, textTransform: 'uppercase', letterSpacing: 0.3 }} numberOfLines={1}>
                             {data.collectionStats.monthName || t('dashboard.month')} Collection
                         </Text>
-                        <Text style={{ fontSize: fontSize + 4, fontWeight: '800', color: '#10B981' }} numberOfLines={1}>
+                        <Text 
+                            style={{ fontSize: Math.min(16, fontSize + 1), fontWeight: '800', color: '#10B981' }} 
+                            numberOfLines={1}
+                            adjustsFontSizeToFit={true}
+                            minimumFontScale={0.75}
+                        >
                             {fmt(data.collectionStats.collected)}
                         </Text>
                     </View>
@@ -130,23 +135,23 @@ export const OverviewCard = ({ data, setShowCollectionSheet, pulseValue, fmt }: 
                 {/* Right: pending + progress + tap hint */}
                 <View style={s.collectionRight}>
                     {data.collectionStats.pending > 0 && (
-                        <View style={[s.badge, { backgroundColor: isDark ? '#1A0A0A' : '#FEF2F2', marginBottom: 4 }]}>
+                        <View style={[s.badge, { backgroundColor: isDark ? '#1A0A0A' : '#FEF2F2', marginBottom: 3, paddingHorizontal: 5, paddingVertical: 1.5 }]}>
                             <Ionicons name="alert-circle" size={9} color="#EF4444" />
-                            <Text style={[s.badgeText, { color: '#EF4444' }]}>{fmt(data.collectionStats.pending)} due</Text>
+                            <Text style={[s.badgeText, { color: '#EF4444', fontSize: 8.5 }]} numberOfLines={1}>{fmt(data.collectionStats.pending)} due</Text>
                         </View>
                     )}
                     {/* Progress bar */}
-                    <View style={{ width: 80 }}>
-                        <View style={[s.progressBg, { backgroundColor: isDark ? '#334155' : '#E2E8F0' }]}>
+                    <View style={{ width: 72 }}>
+                        <View style={[s.progressBg, { backgroundColor: isDark ? '#334155' : '#E2E8F0', width: 72 }]}>
                             <View style={[s.progressFill, { width: `${collectionPct}%` }]} />
                         </View>
-                        <Text style={{ fontSize: 8.5, color: theme.textSecondary, fontWeight: '600', marginTop: 2 }}>
+                        <Text style={{ fontSize: 8, color: theme.textSecondary, fontWeight: '600', marginTop: 2 }} numberOfLines={1}>
                             {collectionPct}% collected
                         </Text>
                     </View>
                 </View>
 
-                <Ionicons name="chevron-forward" size={14} color={theme.textSecondary} style={{ marginLeft: 6 }} />
+                <Ionicons name="chevron-forward" size={14} color={theme.textSecondary} style={{ marginLeft: 4 }} />
             </TouchableOpacity>
 
         </View>

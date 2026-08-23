@@ -68,12 +68,12 @@ export default function SplashScreen({ navigation }: any) {
 
     // Sequence: First letter -> stagger remaining -> tagline fade up
     Animated.sequence([
-      Animated.delay(150),
+      Animated.delay(100),
       firstLetterAnim,
-      Animated.stagger(90, remainingLetterAnims),
+      Animated.stagger(75, remainingLetterAnims),
       Animated.timing(taglineAnim, {
         toValue: 1,
-        duration: 400,
+        duration: 350,
         useNativeDriver: true,
       }),
     ]).start();
@@ -114,13 +114,16 @@ export default function SplashScreen({ navigation }: any) {
     };
   }, [dot1, dot2, dot3]);
 
-  // Navigation redirection after animation
+  // Navigation redirection after animation completes and holds
   useEffect(() => {
     if (authLoading || devLoading) return;
 
     let cancelled = false;
 
+    // 2600ms gives ample time for all letters (H, o, s, t, i, x) to finish animating (~1000ms) + 1.6s calm brand hold
     const timer = setTimeout(async () => {
+      if (cancelled) return;
+
       // 1. Check Developer Session
       if (isDeveloperLoggedIn || developer || user?.role === 'DEVELOPER' || (user as any)?.is_developer) {
         navigation.reset({ index: 0, routes: [{ name: 'DeveloperMain' }] });
@@ -145,7 +148,7 @@ export default function SplashScreen({ navigation }: any) {
       }
       if (cancelled) return;
       navigation.replace(seenIntro ? 'RoleSelect' : 'Onboarding');
-    }, 1500);
+    }, 2600);
 
     return () => {
       cancelled = true;

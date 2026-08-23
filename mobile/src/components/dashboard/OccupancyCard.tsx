@@ -317,8 +317,11 @@ const s = StyleSheet.create({
         justifyContent: 'space-between',
         alignItems: 'flex-start',
         marginBottom: 14,
+        gap: 8,
     },
     mainMetricWrap: {
+        flex: 1,
+        minWidth: 0,
         gap: 2,
     },
     percentRow: {
@@ -327,29 +330,31 @@ const s = StyleSheet.create({
         gap: 6,
     },
     bigPercentText: {
-        fontSize: 28,
+        fontSize: 26,
         fontWeight: '900',
         letterSpacing: -0.5,
     },
     percentLabel: {
-        fontSize: 13,
+        fontSize: 12,
         fontWeight: '700',
         textTransform: 'uppercase',
     },
     subSummaryText: {
-        fontSize: 12,
+        fontSize: 11.5,
         fontWeight: '500',
+        lineHeight: 16,
     },
     statusPill: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 5,
-        paddingHorizontal: 10,
-        paddingVertical: 5,
-        borderRadius: 14,
+        flexShrink: 0,
+        gap: 4,
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 12,
     },
     statusPillText: {
-        fontSize: 11.5,
+        fontSize: 10.5,
         fontWeight: '700',
     },
     progressSection: {

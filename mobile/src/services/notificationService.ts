@@ -2,6 +2,7 @@ import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from './api';
 
 // Configure how notifications are handled when the app is open (foreground).
@@ -30,15 +31,19 @@ export const notificationService = {
     let token = null;
 
     if (Platform.OS === 'android') {
-      await Notifications.setNotificationChannelAsync('default', {
-        name: 'Hostix Notifications',
-        importance: Notifications.AndroidImportance.MAX,
-        vibrationPattern: [0, 250, 250, 250],
-        lightColor: '#6D4AFF',
-        sound: 'default',
-        enableVibrate: true,
-        showBadge: true,
-      });
+      try {
+        await Notifications.setNotificationChannelAsync('default', {
+          name: 'Hostix Notifications',
+          importance: Notifications.AndroidImportance.MAX,
+          vibrationPattern: [0, 250, 250, 250],
+          lightColor: '#6D4AFF',
+          sound: 'default',
+          enableVibrate: true,
+          showBadge: true,
+        });
+      } catch (channelErr) {
+        console.warn('Failed to configure Android notification channel:', channelErr);
+      }
     }
 
     if (Device.isDevice) {
@@ -69,7 +74,7 @@ export const notificationService = {
           await this.sendTokenToBackend(token);
         }
       } catch (error: any) {
-        console.warn('Push token retrieval skipped:', error?.message || error);
+        console.warn('Push token retrieval notice:', error?.message || error);
       }
     } else {
       console.log('Push notifications require a physical device or development build');
@@ -79,13 +84,25 @@ export const notificationService = {
   },
 
   async sendTokenToBackend(token: string, force = false) {
+    if (!token) return;
     if (!force && this._lastRegisteredToken === token) {
       return;
     }
-    // Only register when an active authorization header is present
+    
+    // Ensure Authorization header is present, fallback to AsyncStorage if needed
     if (!api.defaults.headers.common['Authorization']) {
-      return;
+      try {
+        const storedToken = await AsyncStorage.getItem('token');
+        if (storedToken) {
+          api.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
+        } else {
+          return;
+        }
+      } catch {
+        return;
+      }
     }
+
     try {
       const response = await api.post('/notifications/register-token', {
         push_token: token,

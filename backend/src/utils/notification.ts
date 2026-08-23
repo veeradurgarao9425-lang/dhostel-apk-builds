@@ -208,6 +208,8 @@ export const sendNotificationToUser = async (options: SendNotificationOptions): 
         title: formattedTitle,
         subtitle: 'HOSTIX',
         body: message,
+        _displayInForeground: true,
+        badge: 1,
         data: { notificationId, type, color, hostelId, screen, params, referenceType, referenceId, deepLink, metadata, ...data }
       };
 
