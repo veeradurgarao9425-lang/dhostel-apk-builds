@@ -431,7 +431,7 @@ const s = StyleSheet.create({
     statusToggleTextNew: { fontSize: 11, fontWeight: '800' },
 
     fab: {
-        position: 'absolute', bottom: 120, right: 20, width: 56, height: 56, borderRadius: 28,
+        position: 'absolute', bottom: 95, right: 20, width: 52, height: 52, borderRadius: 26,
         justifyContent: 'center', alignItems: 'center', elevation: 10,
         shadowColor: '#4F46E5', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.35, shadowRadius: 6, zIndex: 99999,
     },

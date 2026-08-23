@@ -662,7 +662,7 @@ export default function App() {
           <input ref={backInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={onBackChange} />
 
           <div className="form-group">
-            <label className="form-label">ID Document Photos</label>
+            <label className="form-label">ID Document Photos <span className="req-star">*</span></label>
             <div className="doc-upload-grid">
               {/* Front Photo */}
               <div

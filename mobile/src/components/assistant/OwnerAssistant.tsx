@@ -587,21 +587,26 @@ export const OwnerAssistant: React.FC<{ currentRoute?: string | null }> = ({ cur
       'Notices', 'NoticesTab', 'NoticesManagement',
       'Hostels', 'HostelsTab',
       'Reminders',
-      'Expense', 'Expenses',
+      'Expense', 'Expenses', 'AddExpense',
       'Income', 'InCome'
     ];
-    const hasAddFab = pagesWithAddFab.includes(activeRoute);
+    const hasAddFab = pagesWithAddFab.includes(activeRoute) ||
+      activeRoute.toLowerCase().includes('notice') ||
+      activeRoute.toLowerCase().includes('expense') ||
+      activeRoute.toLowerCase().includes('guest') ||
+      activeRoute.toLowerCase().includes('staff') ||
+      activeRoute.toLowerCase().includes('student');
 
     if (hasAddFab) {
-      // Stack cleanly directly above the '+' FAB with a balanced, comfortable gap
-      return { bottom: Math.max(insets.bottom + 155, 165), right: 18 };
+      // Stack cleanly directly above the '+' FAB with a balanced, comfortable ~8px gap
+      return { bottom: Math.max(insets.bottom + 145, 155), right: 20 };
     }
     if (isTabScreen || !activeRoute || activeRoute === 'Main' || activeRoute === 'Home') {
       // Dashboard, Finance, Pending Dues, Dev Tabs: sit cleanly above the bottom tab bar
-      return { bottom: Math.max(insets.bottom + 85, 95), right: 18 };
+      return { bottom: Math.max(insets.bottom + 85, 95), right: 20 };
     }
     // Inside pages / detail / form screens without bottom tabs
-    return { bottom: Math.max(insets.bottom + 25, 35), right: 18 };
+    return { bottom: Math.max(insets.bottom + 25, 35), right: 20 };
   }, [currentRoute, insets.bottom]);
 
   // ── Message helpers ────────────────────────────────────────────────────
@@ -1780,7 +1785,7 @@ export const OwnerAssistant: React.FC<{ currentRoute?: string | null }> = ({ cur
       {/* FAB */}
       {!isOpen && (
         <TouchableOpacity
-          style={[s.fab, { bottom: fabBottom }]}
+          style={[s.fab, fabPos]}
           onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => { }); setIsOpen(true); }}
           activeOpacity={0.85}
         >

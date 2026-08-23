@@ -85,6 +85,8 @@ export default function RemindersScreen() {
 
     const [isDatePickerVisible, setDatePickerVisible] = useState(false);
     const [submitLoading, setSubmitLoading] = useState(false);
+    const [titleError, setTitleError] = useState('');
+    const [dateError, setDateError] = useState('');
     const insets = useSafeAreaInsets();
     const [isKeyboardVisible, setKeyboardVisible] = useState(false);
 
@@ -122,6 +124,8 @@ export default function RemindersScreen() {
     const handleOpenCreate = () => {
         setEditingReminder(null);
         setTitle('');
+        setTitleError('');
+        setDateError('');
         setDate(new Date().toISOString().split('T')[0]);
         setDescription('');
         setPriority('MEDIUM');
@@ -132,6 +136,8 @@ export default function RemindersScreen() {
     const handleOpenEdit = (rem: Reminder) => {
         setEditingReminder(rem);
         setTitle(rem.title);
+        setTitleError('');
+        setDateError('');
         setDate(rem.reminder_date.substring(0, 10));
         setDescription(rem.description || '');
         setPriority(rem.priority);
@@ -140,8 +146,26 @@ export default function RemindersScreen() {
     };
 
     const handleSaveReminder = async () => {
-        if (!title || !date) {
-            showError('Please add the required fields and try again.');
+        let hasErr = false;
+        if (!title || !title.trim()) {
+            setTitleError('Title is required');
+            hasErr = true;
+        } else if (title.trim().length < 3) {
+            setTitleError('Title must be at least 3 characters');
+            hasErr = true;
+        } else {
+            setTitleError('');
+        }
+
+        if (!date) {
+            setDateError('Date is required');
+            hasErr = true;
+        } else {
+            setDateError('');
+        }
+
+        if (hasErr) {
+            showError('Please fix the required fields.');
             return;
         }
 
@@ -366,61 +390,87 @@ export default function RemindersScreen() {
                     <FullScreenLoader visible={submitLoading} />
 
                     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20, paddingBottom: 60 }} keyboardShouldPersistTaps="handled">
-                        <FormInput
-                            label="Title *"
-                            placeholder="Enter title (e.g. Pay Internet Bill)"
-                            value={title}
-                            onChangeText={setTitle}
-                            icon={(props: any) => <Ionicons name="text-outline" size={18} color={props.color} />}
-                        />
-
-                        <Text style={s.formLabel}>Select Date *</Text>
-                        <TouchableOpacity style={s.dateField} onPress={() => setDatePickerVisible(true)}>
-                            <Ionicons name="calendar-outline" size={18} color="#64748B" />
-                            <Text style={s.dateFieldText}>{date}</Text>
-                        </TouchableOpacity>
-
-                        <Text style={s.formLabel}>Category *</Text>
-                        <View style={s.chipRow}>
-                            {CATEGORIES.map((cat) => {
-                                const active = category === cat;
-                                const catColor = CATEGORY_COLORS[cat];
-                                return (
-                                    <TouchableOpacity
-                                        key={cat}
-                                        style={[s.chip, active && { backgroundColor: catColor, borderColor: catColor }]}
-                                        onPress={() => setCategory(cat)}
-                                    >
-                                        <Text style={[s.chipText, active && { color: '#FFF' }]}>{cat}</Text>
-                                    </TouchableOpacity>
-                                );
-                            })}
+                        <View style={{ marginBottom: 16 }}>
+                            <Text style={s.formLabel}>
+                                Title <Text style={{ color: '#EF4444', fontWeight: '800' }}>*</Text>
+                            </Text>
+                            <FormInput
+                                placeholder="Enter title (e.g. Pay Internet Bill)"
+                                value={title}
+                                error={titleError}
+                                onChangeText={(t: string) => {
+                                    setTitle(t);
+                                    if (t.trim().length >= 3) setTitleError('');
+                                }}
+                                icon={(props: any) => <Ionicons name="text-outline" size={18} color={props.color} />}
+                            />
                         </View>
 
-                        <Text style={s.formLabel}>Priority *</Text>
-                        <View style={s.chipRow}>
-                            {PRIORITIES.map((pri) => {
-                                const active = priority === pri;
-                                return (
-                                    <TouchableOpacity
-                                        key={pri}
-                                        style={[s.chip, active && { backgroundColor: '#1E293B', borderColor: '#1E293B' }]}
-                                        onPress={() => setPriority(pri)}
-                                    >
-                                        <Text style={[s.chipText, active && { color: '#FFF' }]}>{pri}</Text>
-                                    </TouchableOpacity>
-                                );
-                            })}
+                        <View style={{ marginBottom: 16 }}>
+                            <Text style={s.formLabel}>
+                                Select Date <Text style={{ color: '#EF4444', fontWeight: '800' }}>*</Text>
+                            </Text>
+                            <TouchableOpacity 
+                                style={[s.dateField, dateError ? { borderColor: '#EF4444' } : {}]} 
+                                onPress={() => setDatePickerVisible(true)}
+                            >
+                                <Ionicons name="calendar-outline" size={18} color={dateError ? '#EF4444' : '#64748B'} />
+                                <Text style={[s.dateFieldText, { marginLeft: 10 }]}>{date}</Text>
+                            </TouchableOpacity>
+                            {dateError ? <Text style={{ color: '#EF4444', fontSize: 12, marginTop: 4, fontWeight: '600' }}>{dateError}</Text> : null}
                         </View>
 
-                        <FormInput
-                            label="Description"
-                            placeholder="Add optional details..."
-                            value={description}
-                            onChangeText={setDescription}
-                            multiline
-                            icon={(props: any) => <Ionicons name="document-text-outline" size={18} color={props.color} />}
-                        />
+                        <View style={{ marginBottom: 16 }}>
+                            <Text style={s.formLabel}>
+                                Category <Text style={{ color: '#EF4444', fontWeight: '800' }}>*</Text>
+                            </Text>
+                            <View style={s.chipRow}>
+                                {CATEGORIES.map((cat) => {
+                                    const active = category === cat;
+                                    const catColor = CATEGORY_COLORS[cat];
+                                    return (
+                                        <TouchableOpacity
+                                            key={cat}
+                                            style={[s.chip, active && { backgroundColor: catColor, borderColor: catColor }]}
+                                            onPress={() => setCategory(cat)}
+                                        >
+                                            <Text style={[s.chipText, active && { color: '#FFF' }]}>{cat}</Text>
+                                        </TouchableOpacity>
+                                    );
+                                })}
+                            </View>
+                        </View>
+
+                        <View style={{ marginBottom: 16 }}>
+                            <Text style={s.formLabel}>
+                                Priority <Text style={{ color: '#EF4444', fontWeight: '800' }}>*</Text>
+                            </Text>
+                            <View style={s.chipRow}>
+                                {PRIORITIES.map((pri) => {
+                                    const active = priority === pri;
+                                    return (
+                                        <TouchableOpacity
+                                            key={pri}
+                                            style={[s.chip, active && { backgroundColor: '#1E293B', borderColor: '#1E293B' }]}
+                                            onPress={() => setPriority(pri)}
+                                        >
+                                            <Text style={[s.chipText, active && { color: '#FFF' }]}>{pri}</Text>
+                                        </TouchableOpacity>
+                                    );
+                                })}
+                            </View>
+                        </View>
+
+                        <View style={{ marginBottom: 16 }}>
+                            <Text style={s.formLabel}>Description (Optional)</Text>
+                            <FormInput
+                                placeholder="Add optional details..."
+                                value={description}
+                                onChangeText={setDescription}
+                                multiline
+                                icon={(props: any) => <Ionicons name="document-text-outline" size={18} color={props.color} />}
+                            />
+                        </View>
                     </ScrollView>
 
                     {/* ─── Sticky Footer ───────────────────────────────────────────────────── */}
@@ -560,11 +610,11 @@ const s = StyleSheet.create({
 
     fab: {
         position: 'absolute',
-        bottom: 120,
+        bottom: 95,
         right: 20,
-        width: 56,
-        height: 56,
-        borderRadius: 28,
+        width: 52,
+        height: 52,
+        borderRadius: 26,
         justifyContent: 'center',
         alignItems: 'center',
         elevation: 10,

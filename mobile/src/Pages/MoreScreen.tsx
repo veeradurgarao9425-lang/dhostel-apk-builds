@@ -207,7 +207,7 @@ export default function MoreScreen({ hideHeader = false }: MoreScreenProps) {
                     icon: 'log-out-outline',
                     iconColor: '#EF4444',
                     iconBg: '#FEE2E2',
-                    route: 'Students',
+                    route: 'Notices',
                 },
                 /*
                 {

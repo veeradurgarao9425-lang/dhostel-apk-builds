@@ -216,7 +216,7 @@ export const sendNotificationToUser = async (options: SendNotificationOptions): 
         : {})
     };
 
-    // 4A. Dispatch via Direct Firebase Cloud Messaging (FCM)
+    // 4. Dispatch via Direct Firebase Cloud Messaging (FCM)
     if (fcmTokens.length > 0 && isFirebaseReady() && firebaseMessaging) {
       try {
         const fcmResponse = await firebaseMessaging.sendEachForMulticast({
@@ -240,39 +240,6 @@ export const sendNotificationToUser = async (options: SendNotificationOptions): 
         console.log(`[Notification] Direct Firebase FCM dispatched to ${fcmTokens.length} device(s). Success: ${fcmResponse.successCount}, Failure: ${fcmResponse.failureCount}`);
       } catch (fcmErr: any) {
         console.error('[Notification] Direct Firebase FCM delivery error:', fcmErr?.message || fcmErr);
-      }
-    }
-
-    // 4B. Dispatch via Expo Push API
-    if (expoTokens.length > 0) {
-      const pushMessages = expoTokens.map(token => ({
-        to: token,
-        sound: 'default',
-        channelId: 'default',
-        priority: 'high',
-        title: formattedTitle,
-        subtitle: 'HOSTIX',
-        body: message,
-        _displayInForeground: true,
-        badge: 1,
-        data: { notificationId, type, color, hostelId, screen, params, referenceType, referenceId, deepLink, metadata, ...data }
-      }));
-
-      try {
-        const response = await fetch('https://exp.host/--/api/v2/push/send', {
-          method: 'POST',
-          headers: {
-            'Accept': 'application/json',
-            'Accept-Encoding': 'gzip, deflate',
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(pushMessages),
-        });
-
-        const result = await response.json().catch(() => null);
-        console.log(`[Notification] Dispatched ${expoTokens.length} push notification(s) to Expo. HTTP Status: ${response.status}`, result ? JSON.stringify(result) : '');
-      } catch (pushErr: any) {
-        console.error('[Notification] Error dispatching push to Expo servers:', pushErr.message || pushErr);
       }
     }
   } catch (error) {

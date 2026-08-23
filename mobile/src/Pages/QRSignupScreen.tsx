@@ -608,7 +608,7 @@ export default function QRSignupScreen({ navigation }: any) {
                     )}
 
                     {/* Action Buttons */}
-                    {(mode === 'general' || selectedRoom) && (
+                    {(mode === 'general' || mode === 'guest' || selectedRoom) && (
                         <View style={s.qrActionsRow}>
                             <TouchableOpacity style={[s.qrActionBtn, { backgroundColor: isDark ? theme.primary + '20' : '#F3E8FF' }]} activeOpacity={0.7} onPress={handleDownload}>
                                 <Download size={16} color={theme.primary} />
@@ -623,7 +623,7 @@ export default function QRSignupScreen({ navigation }: any) {
                 </View>
 
                 {/* ── 2. Link Card ── */}
-                {(mode === 'general' || selectedRoom) && (
+                {(mode === 'general' || mode === 'guest' || selectedRoom) && (
                     <View style={[s.linkCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : 'transparent', borderWidth: isDark ? 1 : 0 }]}>
                         <View style={[s.linkIconCircle, { backgroundColor: isDark ? theme.primary + '20' : '#F3E8FF' }]}>
                             <Link size={20} color={theme.primary} />

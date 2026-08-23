@@ -58,35 +58,16 @@ export const notificationService = {
         return null;
       }
       
-      // 1. Fetch native FCM Device Token (for direct Google Firebase Cloud Messaging)
+      // Fetch native FCM Device Token (for direct Google Firebase Cloud Messaging)
       try {
         const deviceTokenResponse = await Notifications.getDevicePushTokenAsync();
         if (deviceTokenResponse?.data) {
-          console.log('Native FCM Device Token retrieved:', deviceTokenResponse.data);
-          await this.sendTokenToBackend(deviceTokenResponse.data);
+          token = deviceTokenResponse.data;
+          console.log('Native FCM Device Token retrieved:', token);
+          await this.sendTokenToBackend(token);
         }
       } catch (fcmTokenErr: any) {
         console.log('Device push token note:', fcmTokenErr?.message || fcmTokenErr);
-      }
-
-      // 2. Fetch Expo Push Token (for dual-channel delivery)
-      try {
-        // Retrieve projectId for Expo push token safely
-        const projectId =
-          Constants?.expoConfig?.extra?.eas?.projectId ??
-          Constants?.easConfig?.projectId ??
-          '7303856b-fde0-4922-baf9-c6487aa06e02';
-          
-        const tokenOptions = projectId ? { projectId } : undefined;
-        const tokenResponse = await Notifications.getExpoPushTokenAsync(tokenOptions);
-        token = tokenResponse.data;
-        console.log('Expo Push Token retrieved:', token);
-        
-        if (token) {
-          await this.sendTokenToBackend(token);
-        }
-      } catch (error: any) {
-        console.warn('Push token retrieval notice:', error?.message || error);
       }
     } else {
       console.log('Push notifications require a physical device or development build');

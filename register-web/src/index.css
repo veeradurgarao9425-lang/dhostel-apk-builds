@@ -202,8 +202,9 @@ body {
 }
 
 .req-star {
-  color: var(--danger);
-  margin-left: 2px;
+  color: #EF4444 !important;
+  font-weight: 800;
+  margin-left: 3px;
 }
 
 .form-input {

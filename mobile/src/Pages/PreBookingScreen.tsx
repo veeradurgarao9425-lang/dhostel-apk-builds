@@ -16,6 +16,7 @@ import {
     Animated,
     Modal,
     Image,
+    FlatList,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
@@ -24,7 +25,7 @@ import * as ImagePicker from 'expo-image-picker';
 import {
     User, Phone, Home, Calendar,
     ChevronDown, Check, BedDouble, Plus, Search,
-    Mail, CreditCard, Camera, Upload, X, FileText, Image as ImageIcon
+    Mail, CreditCard, Camera, Upload, X, FileText, Image as ImageIcon, IndianRupee, Fingerprint
 } from 'lucide-react-native';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import { useAuth } from '../../contexts/AuthContext';
@@ -176,6 +177,99 @@ const DocumentUploadBox = ({ label, uri, onCapture, onRemove, isFront, error }: 
                 title={`Upload ${label}`}
             />
         </>
+    );
+};
+
+const IdentityUploadCard = ({
+    title,
+    frontUri,
+    backUri,
+    onCaptureFront,
+    onCaptureBack,
+    onRemoveFront,
+    onRemoveBack,
+    frontError,
+    backError
+}: any) => {
+    const { theme, isDark, fontSize } = useTheme();
+    return (
+        <View style={[styles.idUploadCard, { backgroundColor: isDark ? '#1E293B' : '#FFF', borderColor: isDark ? '#334155' : '#F1F5F9' }]}>
+            <View style={styles.idUploadHeader}>
+                <View style={[styles.idHeaderIconContainer, { backgroundColor: isDark ? '#2D1B6B' : '#F3EEFF' }]}>
+                    <Fingerprint size={20} color={theme.primary} />
+                </View>
+                <View style={{ flex: 1 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <Text style={[styles.idCardTitle, { color: theme.textPrimary, fontSize }]}>{title} Card</Text>
+                        <View style={styles.optionalBadge}>
+                            <Text style={styles.optionalBadgeText}>Optional</Text>
+                        </View>
+                    </View>
+                    <Text style={[styles.idCardSubtitle, { color: theme.textSecondary }]}>Upload both sides of {title} card</Text>
+                </View>
+            </View>
+
+            <View style={styles.idUploadBoxesRow}>
+                <DocumentUploadBox
+                    label="Front Side"
+                    uri={frontUri}
+                    onCapture={onCaptureFront}
+                    onRemove={onRemoveFront}
+                    isFront={true}
+                    error={frontError}
+                />
+                <DocumentUploadBox
+                    label="Back Side"
+                    uri={backUri}
+                    onCapture={onCaptureBack}
+                    onRemove={onRemoveBack}
+                    isFront={false}
+                    error={backError}
+                />
+            </View>
+        </View>
+    );
+};
+
+// ─── Simple options drawer (proof types) ──────────────────────────────────────
+const OptionsDrawer = ({ visible, title, data, selectedId, onSelect, onClose, keyExtractor, labelExtractor, searchable }: any) => {
+    const { theme, isDark } = useTheme();
+    const insets = useSafeAreaInsets();
+    const [search, setSearch] = React.useState('');
+    const filtered = React.useMemo(() => {
+        if (!searchable || !search) return data;
+        return data.filter((item: any) => labelExtractor(item).toLowerCase().includes(search.toLowerCase()));
+    }, [data, search, searchable, labelExtractor]);
+
+    return (
+        <ModalSheet visible={visible} onClose={() => { setSearch(''); onClose(); }} maxHeight="70%">
+            <View style={styles.sheetHandle} />
+            <View style={[styles.sheetHeader, { borderBottomColor: isDark ? '#334155' : '#F1F5F9' }]}>
+                <Text style={[styles.sheetTitle, { color: theme.textPrimary }]}>{title}</Text>
+                <TouchableOpacity onPress={() => { setSearch(''); onClose(); }} style={[styles.doneBtn, { backgroundColor: isDark ? theme.primary + '20' : '#F3EEFF' }]}><Text style={[styles.doneBtnText, { color: theme.primary }]}>Done</Text></TouchableOpacity>
+            </View>
+            {searchable && (
+                <View style={{ paddingHorizontal: 20, marginBottom: 10 }}>
+                    <TextInput style={[styles.searchInput, { backgroundColor: isDark ? '#334155' : '#F1F5F9', color: theme.textPrimary }]} placeholder="Search..." placeholderTextColor={isDark ? '#64748B' : '#94A3B8'} value={search} onChangeText={setSearch} />
+                </View>
+            )}
+            <FlatList
+                data={filtered}
+                keyExtractor={keyExtractor}
+                showsVerticalScrollIndicator={false}
+                renderItem={({ item }: { item: any }) => {
+                    const isSelected = selectedId === keyExtractor(item);
+                    return (
+                        <TouchableOpacity style={[styles.optionRow, { borderBottomColor: isDark ? '#334155' : '#F8FAFC' }, isSelected && (isDark ? { backgroundColor: theme.primary + '20' } : styles.optionRowActive)]} onPress={() => { onSelect(item); setSearch(''); onClose(); }} activeOpacity={0.7}>
+                            <Text style={[styles.optionLabel, { color: theme.textPrimary }, isSelected && styles.optionLabelActive, isSelected && { color: theme.primary }]}>{labelExtractor(item)}</Text>
+                            {isSelected && <Check size={18} color={theme.primary} />}
+                        </TouchableOpacity>
+                    );
+                }}
+                ListEmptyComponent={<View style={{ padding: 40, alignItems: 'center', minHeight: 200, justifyContent: 'center' }}><Text style={{ color: theme.textSecondary, fontSize: 14 }}>No options available / Loading...</Text></View>}
+                contentContainerStyle={{ paddingBottom: 40, minHeight: 250 }}
+            />
+        </ModalSheet>
     );
 };
 
@@ -585,6 +679,7 @@ export default function PreBookingScreen({ navigation, route }: any) {
         bed_id: '',
         floor_number: '',
         monthly_rent: '',
+        advance_amount: '',
     });
 
     const [roomModal, setRoomModal] = useState(false);
@@ -599,6 +694,7 @@ export default function PreBookingScreen({ navigation, route }: any) {
 
     const selectedRoom = rooms.find(r => r.room_id?.toString() === formData.room_id);
     const selectedBed = beds.find(b => b.bed_id?.toString() === formData.bed_id);
+    const selectedIdProofName = idProofTypes.find(t => t.id.toString() === formData.id_proof_type_id)?.name || 'ID';
     const [isKeyboardVisible, setKeyboardVisible] = useState(false);
 
     const fetchInitialData = async () => {
@@ -656,13 +752,13 @@ export default function PreBookingScreen({ navigation, route }: any) {
 
     const validate = () => {
         const e: Record<string, string> = {};
-        if (!formData.first_name) e.first_name = 'First name is required';
-        if (!formData.phone) {
-            e.phone = 'Phone is required';
-        } else if (!/^\d{10}$/.test(formData.phone)) {
+        if (!formData.first_name || !formData.first_name.trim()) e.first_name = 'First name is required';
+        if (!formData.phone || !formData.phone.trim()) {
+            e.phone = 'Mobile number is required';
+        } else if (!/^\d{10}$/.test(formData.phone.trim())) {
             e.phone = 'Must be exactly 10 digits';
         }
-        if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+        if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
             e.email = 'Invalid email format';
         }
         if (formData.id_proof_type_id) {
@@ -723,7 +819,7 @@ export default function PreBookingScreen({ navigation, route }: any) {
     const handleReset = () => {
         setFormData({
             first_name: '', last_name: '', phone: '', email: '', id_proof_type_id: '', id_proof_number: '', gender: 'Male', expected_join_date: new Date().toISOString().split('T')[0],
-            room_id: '', bed_id: '', floor_number: '', monthly_rent: '',
+            room_id: '', bed_id: '', floor_number: '', monthly_rent: '', advance_amount: '',
         });
         setIdProofFront(null);
         setIdProofBack(null);
@@ -767,7 +863,8 @@ export default function PreBookingScreen({ navigation, route }: any) {
                 bed_id: formData.bed_id || null,
                 bed_number: formData.bed_id || null,
                 status: 2,
-                admission_fee: 0,
+                admission_fee: formData.advance_amount ? parseFloat(formData.advance_amount) : 0,
+                advance_amount: formData.advance_amount ? parseFloat(formData.advance_amount) : 0,
                 admission_status: 0,
                 id_proof_status: 1,
             };
@@ -880,7 +977,7 @@ export default function PreBookingScreen({ navigation, route }: any) {
                     />
                     <SelectField 
                         label="ID Proof Type" 
-                        icon={CreditCard} 
+                        icon={Fingerprint} 
                         placeholder="Select ID Proof Type" 
                         value={idProofTypes.find(t => t.id.toString() === formData.id_proof_type_id)?.name || ''} 
                         error={errors.id_proof_type_id} 
@@ -889,17 +986,23 @@ export default function PreBookingScreen({ navigation, route }: any) {
                     {formData.id_proof_type_id ? (
                         <>
                             <FormInput 
-                                label={`${idProofTypes.find(t => t.id.toString() === formData.id_proof_type_id)?.name || 'ID'} Number *`} 
+                                label={`${selectedIdProofName} Number *`} 
                                 icon={CreditCard} 
-                                placeholder={`Enter ${idProofTypes.find(t => t.id.toString() === formData.id_proof_type_id)?.name || 'ID'} Number`} 
+                                placeholder={(selectedIdProofName.toLowerCase().includes('aadhar') || selectedIdProofName.toLowerCase().includes('aadhaar'))
+                                    ? 'Ex: 204095027990'
+                                    : selectedIdProofName.toLowerCase().includes('pan')
+                                        ? 'Ex: ABCDE1234F'
+                                        : 'Enter ID number'} 
                                 value={formData.id_proof_number} 
                                 error={errors.id_proof_number} 
+                                keyboardType={(selectedIdProofName.toLowerCase().includes('aadhar') || selectedIdProofName.toLowerCase().includes('aadhaar')) ? 'number-pad' : 'default'}
+                                autoCapitalize={selectedIdProofName.toLowerCase().includes('pan') ? 'characters' : 'none'}
+                                maxLength={(selectedIdProofName.toLowerCase().includes('aadhar') || selectedIdProofName.toLowerCase().includes('aadhaar')) ? 12 : selectedIdProofName.toLowerCase().includes('pan') ? 10 : 20}
                                 onChangeText={(t: string) => {
-                                    const proofTypeName = idProofTypes.find(p => p.id.toString() === formData.id_proof_type_id)?.name || '';
                                     let clean = t;
-                                    if (proofTypeName.toLowerCase().includes('aadhar') || proofTypeName.toLowerCase().includes('aadhaar')) {
+                                    if (selectedIdProofName.toLowerCase().includes('aadhar') || selectedIdProofName.toLowerCase().includes('aadhaar')) {
                                         clean = t.replace(/\D/g, '').slice(0, 12);
-                                    } else if (proofTypeName.toLowerCase().includes('pan')) {
+                                    } else if (selectedIdProofName.toLowerCase().includes('pan')) {
                                         clean = t.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10);
                                     }
                                     up('id_proof_number', clean);
@@ -908,41 +1011,41 @@ export default function PreBookingScreen({ navigation, route }: any) {
                                 onBlur={() => checkUnique('id_proof_number', formData.id_proof_number)}
                             />
 
-                            {/* ID Proof Attachment Upload Box */}
-                            <View style={{ marginTop: 8, marginBottom: 4 }}>
-                                <Text style={[styles.inputLabel, { fontSize: fontSize - 1, color: theme.textSecondary, marginBottom: 8 }]}>
-                                    {idProofTypes.find(t => t.id.toString() === formData.id_proof_type_id)?.name || 'ID'} Documents (Optional)
-                                </Text>
-                                <View style={{ flexDirection: 'row', gap: 12, height: 160 }}>
-                                    <DocumentUploadBox
-                                        label="Front Side"
-                                        uri={idProofFront}
-                                        onCapture={(uri) => setIdProofFront(uri)}
-                                        onRemove={() => setIdProofFront(null)}
-                                        isFront={true}
-                                    />
-                                    <DocumentUploadBox
-                                        label="Back Side"
-                                        uri={idProofBack}
-                                        onCapture={(uri) => setIdProofBack(uri)}
-                                        onRemove={() => setIdProofBack(null)}
-                                        isFront={false}
-                                    />
-                                </View>
-                            </View>
+                            {/* ID Proof Attachment Upload Card */}
+                            <IdentityUploadCard
+                                title={selectedIdProofName}
+                                frontUri={idProofFront}
+                                backUri={idProofBack}
+                                onCaptureFront={(uri: string) => setIdProofFront(uri)}
+                                onCaptureBack={(uri: string) => setIdProofBack(uri)}
+                                onRemoveFront={() => setIdProofFront(null)}
+                                onRemoveBack={() => setIdProofBack(null)}
+                            />
                         </>
                     ) : null}
                 </View>
 
                 <View style={[styles.formCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : 'transparent', borderWidth: isDark ? 1 : 0 }]}>
-                    <Text style={[styles.sectionTitle, { fontSize: fontSize + 1, color: theme.textPrimary }]}>📅 Schedule Details</Text>
+                    <Text style={[styles.sectionTitle, { fontSize: fontSize + 1, color: theme.textPrimary }]}>📅 Schedule & Token Details</Text>
                     <SelectField label="Expected Join Date *" icon={Calendar} placeholder="Pick date" value={formData.expected_join_date} error={errors.expected_join_date} onPress={() => setShowDatePicker(true)} />
+                    <FormInput
+                        label="Pre-Booking / Token Advance Amount (₹)"
+                        icon={IndianRupee}
+                        placeholder="e.g. 1000"
+                        keyboardType="numeric"
+                        value={formData.advance_amount}
+                        error={errors.advance_amount}
+                        onChangeText={(t: string) => {
+                            const clean = t.replace(/\D/g, '');
+                            up('advance_amount', clean);
+                        }}
+                    />
                 </View>
 
-                <View style={[styles.formCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : 'transparent', borderWidth: isDark ? 1 : 0 }]}>
-                    <Text style={[styles.sectionTitle, { fontSize: fontSize + 1, color: theme.textPrimary }]}>🏠 Room & Bed Allocation</Text>
+                <View style={[styles.formCard, { backgroundColor: theme.cardBg, borderColor: errors.room_id ? '#EF4444' : (isDark ? '#334155' : 'transparent'), borderWidth: errors.room_id ? 1.5 : (isDark ? 1 : 0) }]}>
+                    <Text style={[styles.sectionTitle, { fontSize: fontSize + 1, color: theme.textPrimary }]}>🏠 Room & Bed Allocation <Text style={{ color: '#EF4444' }}>*</Text></Text>
                     <View style={[styles.row, { gap: 12 }]}>
-                        <TouchableOpacity style={[styles.allocationBtn, { backgroundColor: isDark ? '#1E293B' : '#FFF', borderColor: isDark ? '#334155' : '#E2E8F0' }, selectedRoom && { borderColor: theme.primary, backgroundColor: isDark ? theme.primary + '20' : '#FFF7ED' }]} onPress={() => setRoomModal(true)}>
+                        <TouchableOpacity style={[styles.allocationBtn, { backgroundColor: isDark ? '#1E293B' : '#FFF', borderColor: errors.room_id ? '#EF4444' : (isDark ? '#334155' : '#E2E8F0') }, selectedRoom && { borderColor: theme.primary, backgroundColor: isDark ? theme.primary + '20' : '#FFF7ED' }]} onPress={() => { setRoomModal(true); setErrors(prev => { const n = { ...prev }; delete n.room_id; return n; }); }}>
                             <Home size={17} color={selectedRoom ? theme.primary : theme.textSecondary} />
                             <Text style={[styles.allocationBtnText, { color: theme.textSecondary }, selectedRoom && { color: theme.primary }]}>{selectedRoom ? `Room ${selectedRoom.room_number}` : 'Select Room'}</Text>
                         </TouchableOpacity>
@@ -951,6 +1054,7 @@ export default function PreBookingScreen({ navigation, route }: any) {
                             <Text style={[styles.allocationBtnText, { color: theme.textSecondary }, selectedBed && { color: theme.primary }, !selectedRoom && { color: isDark ? '#334155' : '#CBD5E1' }]}>{selectedBed ? `Bed ${selectedBed.bed_name || ''}` : 'Select Bed'}</Text>
                         </TouchableOpacity>
                     </View>
+                    {errors.room_id && <Text style={[styles.errorText, { marginTop: 8 }]}>{errors.room_id}</Text>}
                 </View>
             </ScrollView>
 
@@ -966,46 +1070,23 @@ export default function PreBookingScreen({ navigation, route }: any) {
             <RoomPickerDrawer visible={roomModal} rooms={rooms} selectedRoomId={formData.room_id} onSelectRoom={(room: any) => { up('room_id', room.room_id.toString()); fetchBeds(room.room_id.toString()); }} onClose={() => setRoomModal(false)} />
             <BedPickerDrawer visible={bedModal} room={selectedRoom} beds={beds} selectedBedId={formData.bed_id} loading={bedsLoading} onSelectBed={(bed: any) => up('bed_id', bed.bed_id.toString())} onClose={() => setBedModal(false)} />
 
-            {/* ID Proof Type Modal */}
-            <Modal
+            {/* ID Proof Type Drawer */}
+            <OptionsDrawer
                 visible={proofModal}
-                transparent
-                animationType="fade"
-                onRequestClose={() => setProofModal(false)}
-            >
-                <TouchableOpacity 
-                    style={styles.modalOverlay} 
-                    activeOpacity={1} 
-                    onPress={() => setProofModal(false)}
-                >
-                    <View style={[styles.modalContent, { backgroundColor: theme.cardBg }]}>
-                        <Text style={[styles.modalTitle, { color: theme.textPrimary }]}>Select ID Proof Type</Text>
-                        <ScrollView style={{ maxHeight: 300 }}>
-                            {idProofTypes.map((type) => (
-                                <TouchableOpacity
-                                    key={type.id}
-                                    style={[
-                                        styles.modalItem,
-                                        formData.id_proof_type_id === type.id.toString() && { backgroundColor: theme.primary + '15' }
-                                    ]}
-                                    onPress={() => {
-                                        up('id_proof_type_id', type.id.toString());
-                                        setProofModal(false);
-                                    }}
-                                >
-                                    <Text style={[
-                                        styles.modalItemText, 
-                                        { color: theme.textPrimary },
-                                        formData.id_proof_type_id === type.id.toString() && { color: theme.primary, fontWeight: '700' }
-                                    ]}>
-                                        {type.name}
-                                    </Text>
-                                </TouchableOpacity>
-                            ))}
-                        </ScrollView>
-                    </View>
-                </TouchableOpacity>
-            </Modal>
+                title="ID Proof Type"
+                data={idProofTypes}
+                selectedId={formData.id_proof_type_id}
+                keyExtractor={(i: any) => i.id.toString()}
+                labelExtractor={(i: any) => i.name}
+                searchable={true}
+                onSelect={(i: any) => {
+                    const newId = i.id.toString();
+                    up('id_proof_type_id', newId);
+                    setErrors(prev => { const copy = { ...prev }; delete copy.id_proof_type_id; return copy; });
+                    setProofModal(false);
+                }}
+                onClose={() => setProofModal(false)}
+            />
         </KeyboardAvoidingView>
     );
 }
@@ -1045,37 +1126,71 @@ const styles = StyleSheet.create({
     roomCard: { zIndex: 1 },
     bedCard: { width: '48%', padding: 12, borderRadius: 12, borderWidth: 1.5, alignItems: 'center', gap: 6 },
     bedName: { fontWeight: '700', marginTop: 4 },
-    modalOverlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: 20,
-    },
-    modalContent: {
-        width: '85%',
-        borderRadius: 16,
-        padding: 20,
-        elevation: 5,
-        shadowColor: '#000',
-        shadowOpacity: 0.15,
-        shadowRadius: 10,
-        shadowOffset: { width: 0, height: 4 },
-    },
-    modalTitle: {
-        fontSize: 16,
-        fontWeight: '700',
-        marginBottom: 16,
-        textAlign: 'center',
-    },
-    modalItem: {
-        paddingVertical: 14,
-        paddingHorizontal: 16,
-        borderRadius: 8,
-        marginVertical: 2,
-    },
-    modalItemText: {
+    searchInput: {
+        height: 44,
+        borderRadius: 10,
+        paddingHorizontal: 12,
         fontSize: 14,
+        fontWeight: '500',
+    },
+    optionRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingVertical: 14,
+        paddingHorizontal: 20,
+        borderBottomWidth: 1,
+    },
+    optionRowActive: {
+        backgroundColor: '#F3EEFF',
+    },
+    optionLabel: {
+        fontSize: 14,
+        fontWeight: '600',
+    },
+    optionLabelActive: {
+        fontWeight: '700',
+    },
+    idUploadCard: {
+        borderRadius: 16,
+        padding: 16,
+        marginTop: 14,
+        borderWidth: 1,
+    },
+    idUploadHeader: {
+        flexDirection: 'row',
+        gap: 12,
+        alignItems: 'center',
+        marginBottom: 16,
+    },
+    idHeaderIconContainer: {
+        width: 38,
+        height: 38,
+        borderRadius: 19,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    idCardTitle: {
+        fontWeight: '700',
+    },
+    optionalBadge: {
+        backgroundColor: '#F1F5F9',
+        borderRadius: 4,
+        paddingVertical: 2,
+        paddingHorizontal: 6,
+    },
+    optionalBadgeText: {
+        color: '#64748B',
+        fontSize: 10,
+        fontWeight: 'bold',
+    },
+    idCardSubtitle: {
+        fontSize: 12,
+        marginTop: 2,
+    },
+    idUploadBoxesRow: {
+        flexDirection: 'row',
+        gap: 12,
     },
     selectorContainer: {
         height: 40,
