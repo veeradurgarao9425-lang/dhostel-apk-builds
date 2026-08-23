@@ -183,7 +183,34 @@ export const notificationService = {
         return;
       }
       
-      // 2. New Registration / QR Code / Admission Requests -> Students list page
+      const sid = data.studentId || data.student_id || data.id;
+      const rid = data.roomId || data.room_id;
+      const gid = data.guestId || data.guest_id;
+      const nid = data.noticeId || data.notice_id;
+      const cid = data.complaintId || data.complaint_id;
+
+      // 2. Overdue / Due / Pending Rent / Vacate Bed -> Student Details (Single) or Students List (Bulk)
+      if (
+        dataType === 'VACATE' ||
+        dataType === 'DUE_REMINDER' ||
+        dataType === 'PENDING_PAYMENT' ||
+        dataType === 'OVERDUE' ||
+        dataType === 'PAYMENT DUE' ||
+        dataType === 'PAYMENT_DUE' ||
+        title.includes('vacat') ||
+        title.includes('overdue') ||
+        title.includes('due') ||
+        title.includes('reminder')
+      ) {
+        if (sid) {
+          navigate('StudentDetails', { studentId: sid, activeTab: 'payments' });
+        } else {
+          navigate('Students', { tab: 'Overdue' });
+        }
+        return;
+      }
+
+      // 3. New Admission / QR Code / Registration
       if (
         dataType === 'QR_CODE' ||
         dataType === 'PREBOOKING' ||
@@ -193,37 +220,38 @@ export const notificationService = {
         title.includes('qr') ||
         title.includes('registration') ||
         title.includes('admission') ||
-        title.includes('pre-booking') ||
         title.includes('enrolled')
       ) {
-        navigate('Students', data.params || { tab: 'All' });
-        return;
-      }
-
-      // 3. Vacate Bed / Vacate Notice -> Student Details Page (or Students)
-      if (dataType === 'VACATE' || title.includes('vacat')) {
-        const sid = data.studentId || data.student_id || data.id;
         if (sid) {
           navigate('StudentDetails', { studentId: sid });
         } else {
-          navigate('Students');
+          navigate('Students', { tab: 'All' });
         }
         return;
       }
 
-      // 4. Payment Success / Collected Rent / Payment Proof -> Tenant Transactions (or Collected Payments)
+      // 4. Payment Verification / Verify Rent / Payment Proof
+      if (
+        dataType === 'PAYMENT_PROOF' ||
+        dataType === 'PAYMENT PROOF' ||
+        dataType === 'PAYMENT_VERIFICATION' ||
+        title.includes('proof') ||
+        title.includes('verify')
+      ) {
+        navigate('PaymentVerification', data);
+        return;
+      }
+
+      // 5. Payment Received / Collected Rent -> Tenant Transactions (Single) or Collected Payments (Bulk)
       if (
         dataType === 'PAYMENT' ||
         dataType === 'PAYMENT_SUCCESS' ||
         dataType === 'PAYMENT_COLLECTED' ||
-        dataType === 'PAYMENT_PROOF' ||
-        dataType === 'PAYMENT PROOF' ||
         title.includes('payment') ||
         title.includes('collect') ||
-        title.includes('proof') ||
-        title.includes('receipt')
+        title.includes('receipt') ||
+        title.includes('paid')
       ) {
-        const sid = data.studentId || data.student_id || data.id;
         if (sid) {
           navigate('TenantTransactions', {
             studentId: sid,
@@ -235,36 +263,34 @@ export const notificationService = {
         return;
       }
 
-      // 5. Pending / Overdue Rent / Due Reminder -> Student Details payments tab (or Pending Payments)
-      if (
-        dataType === 'DUE_REMINDER' ||
-        dataType === 'PENDING_PAYMENT' ||
-        dataType === 'OVERDUE' ||
-        dataType === 'PAYMENT DUE' ||
-        dataType === 'PAYMENT_DUE' ||
-        title.includes('due') ||
-        title.includes('pending') ||
-        title.includes('overdue') ||
-        title.includes('reminder')
-      ) {
-        const sid = data.studentId || data.student_id || data.id;
-        if (sid) {
-          navigate('StudentDetails', { studentId: sid, activeTab: 'payments' });
+      // 6. Room Related -> Single Room Details or Rooms List
+      if (dataType === 'ROOM' || dataType === 'ROOM_ALLOCATED' || title.includes('room') || title.includes('bed')) {
+        if (rid) {
+          navigate('RoomDetails', { roomId: rid });
         } else {
-          navigate('PendingPayments');
+          navigate('Rooms');
         }
         return;
       }
 
-      // 6. Room Allocation / Created -> Rooms Screen
-      if (dataType === 'ROOM_ALLOCATED' || title.includes('room') || title.includes('bed')) {
-        navigate('Rooms');
+      // 7. Guest / Short-Stay Check-in -> Single Guest Details or Guests List
+      if (dataType === 'GUEST' || dataType === 'GUEST_CHECKIN' || title.includes('guest')) {
+        if (gid) {
+          navigate('GuestDetails', { guestId: gid });
+        } else {
+          navigate('Guests');
+        }
         return;
       }
 
-      // 7. Notice -> Direct Notice Details View or Notices List
+      // 8. Complaint / Maintenance -> Complaints Management
+      if (dataType === 'COMPLAINT' || dataType === 'MAINTENANCE' || title.includes('complaint') || title.includes('maintenance')) {
+        navigate('ComplaintsManagement', data);
+        return;
+      }
+
+      // 9. Notice -> Notice Details or Notices List
       if (dataType === 'NOTICE' || title.includes('notice')) {
-        const nid = data.noticeId || data.notice_id || data.id;
         if (nid) {
           navigate('NoticeDetails', { noticeId: nid, notice: data });
         } else {
@@ -273,19 +299,13 @@ export const notificationService = {
         return;
       }
 
-      // 8. Complaint / Maintenance -> Complaints Management
-      if (dataType === 'COMPLAINT' || dataType === 'MAINTENANCE' || title.includes('complaint')) {
-        navigate('ComplaintsManagement', data);
-        return;
-      }
-
-      // 9. Expenses
+      // 10. Expenses
       if (dataType === 'EXPENSE' || title.includes('expense')) {
         navigate('Expenses');
         return;
       }
 
-      // 10. Summary Reports
+      // 11. Summary Reports
       if (dataType === 'SUMMARY' || title.includes('summary') || title.includes('report')) {
         navigate('Reports');
         return;
