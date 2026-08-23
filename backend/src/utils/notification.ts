@@ -1,5 +1,6 @@
 import db from '../config/database.js';
 import { io } from '../socket/index.js';
+import { firebaseMessaging, isFirebaseReady } from '../config/firebaseAdmin.js';
 
 // Map of notification types to DB enum values (Now VARCHAR in DB)
 export type NotificationType =
@@ -153,14 +154,18 @@ export const sendNotificationToUser = async (options: SendNotificationOptions): 
       return;
     }
 
-    // Extract unique tokens and validate
+    // Extract unique tokens and separate into Expo tokens & Native Firebase FCM tokens
     const rawTokens = Array.from(new Set(userTokens.map((t: any) => String(t.push_token || '').trim()))).filter(Boolean);
-    const validTokens = rawTokens.filter((token: string) => 
+    
+    const expoTokens = rawTokens.filter((token: string) => 
       token.startsWith('ExponentPushToken[') || token.startsWith('ExpoPushToken[')
     );
+    const fcmTokens = rawTokens.filter((token: string) => 
+      !token.startsWith('ExponentPushToken[') && !token.startsWith('ExpoPushToken[') && token.length > 20
+    );
 
-    if (validTokens.length === 0) {
-      console.log(`[Notification] No valid Expo push tokens found among registered tokens:`, rawTokens);
+    if (expoTokens.length === 0 && fcmTokens.length === 0) {
+      console.log(`[Notification] No valid push tokens found among registered tokens:`, rawTokens);
       return;
     }
 
@@ -193,14 +198,54 @@ export const sendNotificationToUser = async (options: SendNotificationOptions): 
       return { color: '#6D4AFF', prefix: '🔔 ' };
     };
 
-    // 4. Send push notifications via Expo Push API
-    const pushMessages = validTokens.map(token => {
-      const { color, prefix } = getNotificationColorAndPrefix(title, type);
-      // Remove any existing emojis from title to avoid duplicates
-      const cleanTitle = title.replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{27BF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}]/gu, '').trim();
-      const formattedTitle = `${cleanTitle} ${prefix.trim()}`;
+    const { color, prefix } = getNotificationColorAndPrefix(title, type);
+    const cleanTitle = title.replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{27BF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}]/gu, '').trim();
+    const formattedTitle = `${cleanTitle} ${prefix.trim()}`;
+    const stringifiedData: Record<string, string> = {
+      notificationId: String(notificationId || ''),
+      type: String(type || ''),
+      color: String(color || '#6D4AFF'),
+      hostelId: String(hostelId || ''),
+      screen: String(screen || ''),
+      params: params ? JSON.stringify(params) : '',
+      referenceType: String(referenceType || ''),
+      referenceId: String(referenceId || ''),
+      deepLink: String(deepLink || ''),
+      ...(typeof data === 'object' && data !== null
+        ? Object.fromEntries(Object.entries(data).map(([k, v]) => [k, typeof v === 'string' ? v : JSON.stringify(v)]))
+        : {})
+    };
 
-      return {
+    // 4A. Dispatch via Direct Firebase Cloud Messaging (FCM)
+    if (fcmTokens.length > 0 && isFirebaseReady() && firebaseMessaging) {
+      try {
+        const fcmResponse = await firebaseMessaging.sendEachForMulticast({
+          tokens: fcmTokens,
+          notification: {
+            title: formattedTitle,
+            body: message,
+          },
+          data: stringifiedData,
+          android: {
+            priority: 'high',
+            notification: {
+              channelId: 'default',
+              sound: 'default',
+              color: color || '#6D4AFF',
+              defaultVibrateTimings: true,
+              priority: 'high',
+            },
+          },
+        });
+        console.log(`[Notification] Direct Firebase FCM dispatched to ${fcmTokens.length} device(s). Success: ${fcmResponse.successCount}, Failure: ${fcmResponse.failureCount}`);
+      } catch (fcmErr: any) {
+        console.error('[Notification] Direct Firebase FCM delivery error:', fcmErr?.message || fcmErr);
+      }
+    }
+
+    // 4B. Dispatch via Expo Push API
+    if (expoTokens.length > 0) {
+      const pushMessages = expoTokens.map(token => ({
         to: token,
         sound: 'default',
         channelId: 'default',
@@ -211,25 +256,24 @@ export const sendNotificationToUser = async (options: SendNotificationOptions): 
         _displayInForeground: true,
         badge: 1,
         data: { notificationId, type, color, hostelId, screen, params, referenceType, referenceId, deepLink, metadata, ...data }
-      };
+      }));
 
-    });
+      try {
+        const response = await fetch('https://exp.host/--/api/v2/push/send', {
+          method: 'POST',
+          headers: {
+            'Accept': 'application/json',
+            'Accept-Encoding': 'gzip, deflate',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(pushMessages),
+        });
 
-    try {
-      const response = await fetch('https://exp.host/--/api/v2/push/send', {
-        method: 'POST',
-        headers: {
-          'Accept': 'application/json',
-          'Accept-Encoding': 'gzip, deflate',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(pushMessages),
-      });
-
-      const result = await response.json().catch(() => null);
-      console.log(`[Notification] Dispatched ${validTokens.length} push notification(s) to Expo. HTTP Status: ${response.status}`, result ? JSON.stringify(result) : '');
-    } catch (pushErr: any) {
-      console.error('[Notification] Error dispatching push to Expo servers:', pushErr.message || pushErr);
+        const result = await response.json().catch(() => null);
+        console.log(`[Notification] Dispatched ${expoTokens.length} push notification(s) to Expo. HTTP Status: ${response.status}`, result ? JSON.stringify(result) : '');
+      } catch (pushErr: any) {
+        console.error('[Notification] Error dispatching push to Expo servers:', pushErr.message || pushErr);
+      }
     }
   } catch (error) {
     console.error('[Notification] Error in sendNotificationToUser:', error);
