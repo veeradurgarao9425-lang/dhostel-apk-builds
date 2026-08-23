@@ -615,7 +615,6 @@ export const authController = {
         console.log('='.repeat(80));
         console.log(`User Email: ${user.email}`);
         console.log(`Reset Link: ${resetLink}`);
-        console.log(`OTP: ${otp}`);
         console.log(`Expires at: ${resetExpiresAt}`);
         console.log('='.repeat(80) + '\n');
       }
@@ -623,7 +622,6 @@ export const authController = {
       return res.status(200).json({
         success: true,
         message: 'Password reset OTP has been sent to your email',
-        dev_otp: otp,
       });
     } catch (error: any) {
       console.error('Forgot password error:', error);
@@ -1027,11 +1025,12 @@ export const authController = {
         expires_at: expiresAt,
       });
 
-      console.log(`\n${'='.repeat(60)}`);
-      console.log(`📧 OTP GENERATION — ${email}`);
-      console.log(`   OTP: ${otp}  |  Expires: ${expiresAt.toISOString()}`);
-      console.log(`   EMAIL_USER env: ${process.env.EMAIL_USER || '⚠️  NOT SET'}`);
-      console.log(`${'='.repeat(60)}\n`);
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`\n${'='.repeat(60)}`);
+        console.log(`📧 OTP GENERATION — ${email}`);
+        console.log(`   Expires: ${expiresAt.toISOString()}`);
+        console.log(`${'='.repeat(60)}\n`);
+      }
 
       // Send the OTP via email asynchronously (don't block HTTP response if SMTP is slow/failing)
       sendOtpEmail(email, otp).catch((emailErr) => {
@@ -1041,7 +1040,6 @@ export const authController = {
       return res.status(200).json({
         success: true,
         message: 'Verification OTP sent to your email',
-        dev_otp: otp,
       });
     } catch (error: any) {
       console.error('❌ Send OTP error:', error?.message || error);
@@ -1217,7 +1215,6 @@ export const authController = {
       return res.json({ 
         success: true, 
         message: 'OTP sent successfully',
-        dev_otp: otp,
       });
     } catch (error: any) {
       console.error('tenantSendOtp error:', error);

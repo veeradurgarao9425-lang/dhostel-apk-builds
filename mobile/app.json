@@ -35,11 +35,9 @@
         "ACCESS_WIFI_STATE",
         "RECEIVE_BOOT_COMPLETED",
         "CAMERA",
-        "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE",
+        "READ_MEDIA_IMAGES",
         "POST_NOTIFICATIONS",
-        "VIBRATE",
-        "android.permission.POST_NOTIFICATIONS"
+        "VIBRATE"
       ]
     },
     "web": {

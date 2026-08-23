@@ -2254,28 +2254,32 @@ export async function patchDatabaseSchema() {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
       `);
 
-      // Seed default developer account if not exists
-      const existingDev = await db('developer_users')
-        .where('username', 'durgarao9425')
-        .orWhere('email', 'durgarao9425@hostix.com')
-        .first();
+      // Seed initial developer account if configured in environment variables and not already present
+      const devUsername = process.env.SUPER_ADMIN_USERNAME;
+      const devPassword = process.env.SUPER_ADMIN_PASSWORD;
+      const devEmail = process.env.SUPER_ADMIN_EMAIL || (devUsername ? `${devUsername}@hostix.com` : null);
 
-      if (!existingDev) {
-        console.log('[schema-patch] Seeding default Master Admin (durgarao9425)...');
-        // Pre-computed bcrypt hash of 'Durgarao@9425' with salt rounds 10
-        const defaultHash = '$2a$10$7Z2v1V4v3eG.4z4GzK5H1uV7uM8oY0H9lE.uR4H6V8L1jK9X9Q1y6'; // or hash dynamically
-        const { hashPassword } = await import('../utils/bcrypt.js');
-        const dynamicHash = await hashPassword('Durgarao@9425');
+      if (devUsername && devPassword) {
+        const existingDev = await db('developer_users')
+          .where('username', devUsername)
+          .orWhere('email', devEmail)
+          .first();
 
-        await db('developer_users').insert({
-          username: 'durgarao9425',
-          email: 'durgarao9425@hostix.com',
-          password_hash: dynamicHash || defaultHash,
-          full_name: 'Durgarao Developer',
-          role_title: 'Developer Super Admin',
-          status: 'ACTIVE',
-        });
-        console.log('[schema-patch] Default Master Admin user seeded successfully.');
+        if (!existingDev) {
+          console.log(`[schema-patch] Seeding initial developer user (${devUsername})...`);
+          const { hashPassword } = await import('../utils/bcrypt.js');
+          const passwordHash = await hashPassword(devPassword);
+
+          await db('developer_users').insert({
+            username: devUsername,
+            email: devEmail,
+            password_hash: passwordHash,
+            full_name: 'Developer Super Admin',
+            role_title: 'Developer Super Admin',
+            status: 'ACTIVE',
+          });
+          console.log('[schema-patch] Developer user seeded successfully from environment configuration.');
+        }
       }
       // Ensure high-performance composite indexes on tables
       try {

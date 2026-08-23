@@ -3,21 +3,25 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const R2_ACCOUNT_ID = process.env.R2_ACCOUNT_ID || '542b16605d0389dfcb4f6df0535001e2';
-const R2_ACCESS_KEY_ID = process.env.R2_ACCESS_KEY_ID || '30e79e7816b9dbcac874bf81f5c01a23';
-const R2_SECRET_ACCESS_KEY = process.env.R2_SECRET_ACCESS_KEY || '52d67eb0ea0f58c5cd9fca3c4108cfcab140c66f2fb76bf34fc1049e191686a0';
-const R2_BUCKET_NAME = process.env.R2_BUCKET_NAME || 'hostix-media';
-const R2_ENDPOINT = process.env.R2_ENDPOINT || `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
-const R2_PUBLIC_DOMAIN = process.env.R2_PUBLIC_DOMAIN || 'http://143.244.131.69:8081/api/media';
+const R2_ACCOUNT_ID = (process.env.R2_ACCOUNT_ID || '').trim();
+const R2_ACCESS_KEY_ID = (process.env.R2_ACCESS_KEY_ID || '').trim();
+const R2_SECRET_ACCESS_KEY = (process.env.R2_SECRET_ACCESS_KEY || '').trim();
+const R2_BUCKET_NAME = (process.env.R2_BUCKET_NAME || 'hostix-media').trim();
+const R2_ENDPOINT = (process.env.R2_ENDPOINT || (R2_ACCOUNT_ID ? `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com` : '')).trim();
+const R2_PUBLIC_DOMAIN = (process.env.R2_PUBLIC_DOMAIN || '').trim();
 
-export const s3Client = new S3Client({
-  region: 'auto',
-  endpoint: R2_ENDPOINT,
-  credentials: {
-    accessKeyId: R2_ACCESS_KEY_ID,
-    secretAccessKey: R2_SECRET_ACCESS_KEY,
-  },
-});
+const isR2Configured = Boolean(R2_ACCESS_KEY_ID && R2_SECRET_ACCESS_KEY && R2_ENDPOINT);
+
+export const s3Client = isR2Configured
+  ? new S3Client({
+      region: 'auto',
+      endpoint: R2_ENDPOINT,
+      credentials: {
+        accessKeyId: R2_ACCESS_KEY_ID,
+        secretAccessKey: R2_SECRET_ACCESS_KEY,
+      },
+    })
+  : null;
 
 /**
  * Upload a file buffer to Cloudflare R2 bucket
@@ -28,6 +32,10 @@ export async function uploadToR2(
   contentType: string,
   folder: string = 'general'
 ): Promise<string> {
+  if (!s3Client || !isR2Configured) {
+    throw new Error('Cloudflare R2 storage credentials are not configured in environment variables');
+  }
+
   const cleanFolder = folder.replace(/^\/+|\/+$/g, '');
   const cleanFileName = fileName.replace(/[^a-zA-Z0-9.-]/g, '_');
   const key = `${cleanFolder}/${Date.now()}_${cleanFileName}`;
@@ -42,7 +50,8 @@ export async function uploadToR2(
   await s3Client.send(command);
 
   // Return public accessibility URL via backend media proxy
-  const publicUrl = `${R2_PUBLIC_DOMAIN.replace(/\/+$/, '')}/${key}`;
+  const baseDomain = R2_PUBLIC_DOMAIN ? R2_PUBLIC_DOMAIN.replace(/\/+$/, '') : '/api/media';
+  const publicUrl = `${baseDomain}/${key}`;
 
   console.log(`[R2 Service] Successfully uploaded file to Cloudflare R2: ${publicUrl}`);
   return publicUrl;
@@ -52,6 +61,11 @@ export async function uploadToR2(
  * Stream an object directly from Cloudflare R2 to HTTP Response
  */
 export async function streamFromR2(key: string, res: any): Promise<boolean> {
+  if (!s3Client || !isR2Configured) {
+    console.warn('[R2 Service] R2 credentials not configured for media streaming');
+    return false;
+  }
+
   try {
     const cleanKey = key.replace(/^\/+/, '');
     const command = new GetObjectCommand({
@@ -84,11 +98,20 @@ export async function streamFromR2(key: string, res: any): Promise<boolean> {
  * Delete an object from Cloudflare R2 bucket
  */
 export async function deleteFromR2(fileUrl: string): Promise<boolean> {
-  try {
-    const urlParts = fileUrl.split(`${R2_BUCKET_NAME}/`);
-    if (urlParts.length < 2) return false;
+  if (!s3Client || !isR2Configured) {
+    console.warn('[R2 Service] R2 credentials not configured for media deletion');
+    return false;
+  }
 
-    const key = urlParts[1];
+  try {
+    let key = fileUrl;
+    if (key.includes(`${R2_BUCKET_NAME}/`)) {
+      key = key.split(`${R2_BUCKET_NAME}/`)[1];
+    } else if (key.includes('/api/media/')) {
+      key = key.split('/api/media/')[1];
+    }
+    key = key.replace(/^\/+/, '');
+
     const command = new DeleteObjectCommand({
       Bucket: R2_BUCKET_NAME,
       Key: key,
@@ -102,3 +125,5 @@ export async function deleteFromR2(fileUrl: string): Promise<boolean> {
     return false;
   }
 }
+
+
