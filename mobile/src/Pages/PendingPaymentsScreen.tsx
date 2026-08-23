@@ -84,40 +84,51 @@ const RemindModal = ({ visible, tenant, onClose }: {
     const palette = avatarPalette(tenant.name);
 
     const callTenant = () => {
-        onClose();
         if (!tenant.phone) { showError(t('pendingDues.noPhoneAvailable', 'No phone number available')); return; }
-        Linking.openURL(`tel:${tenant.phone}`);
+        onClose();
+        setTimeout(() => {
+            Linking.openURL(`tel:${tenant.phone}`).catch(() => {});
+        }, 100);
     };
 
     const whatsappRemind = () => {
-        onClose();
         if (!tenant.phone) { showError(t('pendingDues.noPhoneAvailable', 'No phone number available')); return; }
+        const phone = tenant.phone.replace(/\D/g, '').slice(-10);
         const msg = t('pendingDues.verificationMsg', {
             name: tenant.name.split(' ')[0],
             amount: tenant.dueAmount.toLocaleString('en-IN'),
             month: tenant.feeMonth,
         });
-        Linking.openURL(`whatsapp://send?phone=91${tenant.phone}&text=${encodeURIComponent(msg)}`);
+        onClose();
+        setTimeout(() => {
+            Linking.openURL(`whatsapp://send?phone=91${phone}&text=${encodeURIComponent(msg)}`).catch(() => {
+                Linking.openURL(`https://wa.me/91${phone}?text=${encodeURIComponent(msg)}`).catch(() => {});
+            });
+        }, 120);
     };
 
     const whatsappBusinessRemind = async () => {
-        onClose();
         if (!tenant.phone) { showError(t('pendingDues.noPhoneAvailable', 'No phone number available')); return; }
+        const phone = tenant.phone.replace(/\D/g, '').slice(-10);
         const msg = `Hi ${tenant.name.split(' ')[0]} 👋,\n\nThis is a friendly rent reminder from *Hostix PG*.\n• *Room:* ${tenant.room}\n• *Due Amount:* ₹${tenant.dueAmount.toLocaleString('en-IN')}\n\nPlease clear your pending rent at your earliest convenience.\n\nThank you!\n~ *powered by Hostix*`;
 
-        const bizUrl = `whatsapp-business://send?phone=91${tenant.phone}&text=${encodeURIComponent(msg)}`;
-        const canOpenBiz = await Linking.canOpenURL(bizUrl).catch(() => false);
-
-        if (canOpenBiz) {
-            Linking.openURL(bizUrl);
-        } else {
-            Linking.openURL(`whatsapp://send?phone=91${tenant.phone}&text=${encodeURIComponent(msg)}`);
-        }
+        const bizUrl = `whatsapp-business://send?phone=91${phone}&text=${encodeURIComponent(msg)}`;
+        onClose();
+        setTimeout(async () => {
+            const canOpenBiz = await Linking.canOpenURL(bizUrl).catch(() => false);
+            if (canOpenBiz) {
+                Linking.openURL(bizUrl).catch(() => {});
+            } else {
+                Linking.openURL(`whatsapp://send?phone=91${phone}&text=${encodeURIComponent(msg)}`).catch(() => {
+                    Linking.openURL(`https://wa.me/91${phone}?text=${encodeURIComponent(msg)}`).catch(() => {});
+                });
+            }
+        }, 120);
     };
 
     return (
-        <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-            <TouchableOpacity style={rm.backdrop} activeOpacity={1} onPress={onClose} />
+        <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+            <TouchableOpacity style={[rm.backdrop, { backgroundColor: isDark ? 'rgba(0,0,0,0.65)' : 'rgba(0,0,0,0.45)' }]} activeOpacity={1} onPress={onClose} />
             <View style={[rm.sheet, { backgroundColor: theme.cardBg }]}>
                 <View style={[rm.handle, { backgroundColor: isDark ? '#475569' : '#CBD5E1' }]} />
                 <View style={rm.header}>

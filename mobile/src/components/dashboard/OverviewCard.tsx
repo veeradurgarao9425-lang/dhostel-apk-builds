@@ -54,11 +54,21 @@ export const OverviewCard = ({ data, setShowCollectionSheet, pulseValue, fmt }: 
                     <View style={[s.iconPill, { backgroundColor: isDark ? '#2D1B69' : '#EDE9FE' }]}>
                         <Ionicons name="people" size={13} color="#7C3AED" />
                     </View>
-                    <View style={{ flex: 1 }}>
-                        <Text style={[s.topValue, { color: '#7C3AED', fontSize: fontSize + 3 }]} numberOfLines={1}>
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                        <Text 
+                            style={[s.topValue, { color: '#7C3AED', fontSize: 15 }]} 
+                            numberOfLines={1}
+                            adjustsFontSizeToFit={true}
+                            minimumFontScale={0.7}
+                        >
                             {data.totalStudentsCount}
                         </Text>
-                        <Text style={[s.topLabel, { color: theme.textSecondary, fontSize: Math.max(9, fontSize - 4) }]} numberOfLines={1}>
+                        <Text 
+                            style={[s.topLabel, { color: theme.textSecondary, fontSize: 10 }]} 
+                            numberOfLines={1}
+                            adjustsFontSizeToFit={true}
+                            minimumFontScale={0.75}
+                        >
                             {t('dashboard.tenants')}
                         </Text>
                     </View>
@@ -73,11 +83,21 @@ export const OverviewCard = ({ data, setShowCollectionSheet, pulseValue, fmt }: 
                     <View style={[s.iconPill, { backgroundColor: isDark ? '#1E1B4B' : '#EEF2FF' }]}>
                         <Ionicons name="business" size={13} color="#4F46E5" />
                     </View>
-                    <View style={{ flex: 1 }}>
-                        <Text style={[s.topValue, { color: '#4F46E5', fontSize: fontSize + 3 }]} numberOfLines={1}>
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                        <Text 
+                            style={[s.topValue, { color: '#4F46E5', fontSize: 15 }]} 
+                            numberOfLines={1}
+                            adjustsFontSizeToFit={true}
+                            minimumFontScale={0.7}
+                        >
                             {totalRooms}
                         </Text>
-                        <Text style={[s.topLabel, { color: theme.textSecondary, fontSize: Math.max(9, fontSize - 4) }]} numberOfLines={1}>
+                        <Text 
+                            style={[s.topLabel, { color: theme.textSecondary, fontSize: 10 }]} 
+                            numberOfLines={1}
+                            adjustsFontSizeToFit={true}
+                            minimumFontScale={0.75}
+                        >
                             {availableRooms > 0 ? `${availableRooms} vacant` : 'Total Rooms'}
                         </Text>
                     </View>
@@ -92,11 +112,21 @@ export const OverviewCard = ({ data, setShowCollectionSheet, pulseValue, fmt }: 
                     <View style={[s.iconPill, { backgroundColor: isDark ? '#0C2840' : '#E0F2FE' }]}>
                         <Ionicons name="bed" size={13} color="#0284C7" />
                     </View>
-                    <View style={{ flex: 1 }}>
-                        <Text style={[s.topValue, { color: '#0284C7', fontSize: fontSize + 3 }]} numberOfLines={1}>
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                        <Text 
+                            style={[s.topValue, { color: '#0284C7', fontSize: 14 }]} 
+                            numberOfLines={1}
+                            adjustsFontSizeToFit={true}
+                            minimumFontScale={0.7}
+                        >
                             {data.occupiedBeds}/{data.totalBeds}
                         </Text>
-                        <Text style={[s.topLabel, { color: theme.textSecondary, fontSize: Math.max(9, fontSize - 4) }]} numberOfLines={1}>
+                        <Text 
+                            style={[s.topLabel, { color: theme.textSecondary, fontSize: 10 }]} 
+                            numberOfLines={1}
+                            adjustsFontSizeToFit={true}
+                            minimumFontScale={0.75}
+                        >
                             {occupancyPct}% full
                         </Text>
                     </View>
@@ -117,15 +147,15 @@ export const OverviewCard = ({ data, setShowCollectionSheet, pulseValue, fmt }: 
                     <View style={[s.iconPill, { backgroundColor: isDark ? '#052E16' : '#D1FAE5' }]}>
                         <Ionicons name="wallet" size={13} color="#10B981" />
                     </View>
-                    <View style={{ flex: 1, minWidth: 0 }}>
+                    <View style={{ flex: 1, minWidth: 0, paddingRight: 4 }}>
                         <Text style={{ fontSize: 9.5, fontWeight: '700', color: theme.textSecondary, textTransform: 'uppercase', letterSpacing: 0.3 }} numberOfLines={1}>
                             {data.collectionStats.monthName || t('dashboard.month')} Collection
                         </Text>
                         <Text 
-                            style={{ fontSize: Math.min(16, fontSize + 1), fontWeight: '800', color: '#10B981' }} 
+                            style={{ fontSize: 15, fontWeight: '800', color: '#10B981' }} 
                             numberOfLines={1}
                             adjustsFontSizeToFit={true}
-                            minimumFontScale={0.75}
+                            minimumFontScale={0.65}
                         >
                             {fmt(data.collectionStats.collected)}
                         </Text>
@@ -137,12 +167,19 @@ export const OverviewCard = ({ data, setShowCollectionSheet, pulseValue, fmt }: 
                     {data.collectionStats.pending > 0 && (
                         <View style={[s.badge, { backgroundColor: isDark ? '#1A0A0A' : '#FEF2F2', marginBottom: 3, paddingHorizontal: 5, paddingVertical: 1.5 }]}>
                             <Ionicons name="alert-circle" size={9} color="#EF4444" />
-                            <Text style={[s.badgeText, { color: '#EF4444', fontSize: 8.5 }]} numberOfLines={1}>{fmt(data.collectionStats.pending)} due</Text>
+                            <Text 
+                                style={[s.badgeText, { color: '#EF4444', fontSize: 8.5 }]} 
+                                numberOfLines={1}
+                                adjustsFontSizeToFit={true}
+                                minimumFontScale={0.7}
+                            >
+                                {fmt(data.collectionStats.pending)} due
+                            </Text>
                         </View>
                     )}
                     {/* Progress bar */}
-                    <View style={{ width: 72 }}>
-                        <View style={[s.progressBg, { backgroundColor: isDark ? '#334155' : '#E2E8F0', width: 72 }]}>
+                    <View style={{ width: 70 }}>
+                        <View style={[s.progressBg, { backgroundColor: isDark ? '#334155' : '#E2E8F0', width: 70 }]}>
                             <View style={[s.progressFill, { width: `${collectionPct}%` }]} />
                         </View>
                         <Text style={{ fontSize: 8, color: theme.textSecondary, fontWeight: '600', marginTop: 2 }} numberOfLines={1}>
@@ -176,9 +213,9 @@ const s = StyleSheet.create({
         flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 8,
-        paddingHorizontal: 16,
-        paddingVertical: 14,
+        gap: 6,
+        paddingHorizontal: 10,
+        paddingVertical: 12,
     },
     iconPill: {
         width: 26,
