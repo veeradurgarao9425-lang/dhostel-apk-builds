@@ -13,6 +13,7 @@ export function renderQrSignupView(params: QrSignupViewParams): string {
   const {
     hostelName,
     hostelCity,
+    hostelAddress,
     roomId,
     bedName,
     postUrl
@@ -44,7 +45,7 @@ export function renderQrSignupView(params: QrSignupViewParams): string {
   <!-- Modern Font: Plus Jakarta Sans -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   
   <!-- Tailwind CSS & Lucide Icons -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -73,14 +74,17 @@ export function renderQrSignupView(params: QrSignupViewParams): string {
 
   <style>
     body {
-      background: #f8fafc;
+      background: #0f172a;
       -webkit-tap-highlight-color: transparent;
       font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    }
+    .bg-main-radial {
+      background: radial-gradient(circle at 50% 0%, #2e1065 0%, #0f172a 100%);
     }
     .main-card {
       background: #ffffff;
       border: 1px solid #f1f5f9;
-      box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.05), 0 20px 25px -5px rgba(0, 0, 0, 0.02);
+      box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.2);
     }
     .custom-input {
       width: 100%;
@@ -95,22 +99,19 @@ export function renderQrSignupView(params: QrSignupViewParams): string {
     }
     .custom-input:focus {
       background: #ffffff;
-      border-color: #7c3aed;
-      box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.12);
+      border-color: #6d4aff;
+      box-shadow: 0 0 0 3px rgba(109, 74, 255, 0.12);
     }
-    .has-error .custom-input {
+    .field-grp.has-error .custom-input {
       border-color: #ef4444 !important;
       background: #fef2f2 !important;
-    }
-    .has-error .err-text {
-      display: block !important;
     }
     .step-pane {
       display: none;
     }
     .step-pane.active {
       display: block;
-      animation: fadeIn 0.25s ease-out forwards;
+      animation: fadeIn 0.25s ease-out;
     }
     @keyframes fadeIn {
       from { opacity: 0; transform: translateY(6px); }
@@ -118,42 +119,33 @@ export function renderQrSignupView(params: QrSignupViewParams): string {
     }
     .file-box {
       border: 1.5px dashed #cbd5e1;
-      border-radius: 14px;
-      background: #f8fafc;
       transition: all 0.2s ease;
-    }
-    .file-box:hover {
-      border-color: #7c3aed;
-      background: #faf5ff;
+      background: #f8fafc;
     }
     .file-box.has-file {
-      border: 1.5px solid #7c3aed;
-      background: #ffffff;
+      border-style: solid;
+      border-color: #10b981;
+      background: #f0fdf4;
     }
   </style>
 </head>
-<body class="min-h-screen py-4 px-3 sm:px-6 flex flex-col justify-between font-sans text-slate-800 antialiased">
+<body class="min-h-screen bg-main-radial text-slate-800 flex items-center justify-center p-3 sm:p-5">
 
-  <div class="max-w-md w-full mx-auto">
-    <!-- Header Badge -->
-    <div class="main-card rounded-2xl p-4 mb-3 relative overflow-hidden">
-      <div class="flex items-center gap-3.5">
-        <div class="w-12 h-12 rounded-xl bg-gradient-to-tr from-violet-600 to-indigo-600 text-white flex items-center justify-center shadow-md shadow-violet-500/20 shrink-0">
-          <i data-lucide="building" class="w-6 h-6"></i>
-        </div>
-        <div class="min-w-0 flex-1">
-          <div class="flex items-center gap-1.5 mb-0.5">
-            <span class="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span class="text-[10px] font-black uppercase tracking-wider text-violet-600">Digital Admission</span>
-          </div>
-          <h1 class="text-base font-extrabold text-slate-900 leading-tight truncate">${hostelName}</h1>
-          ${hostelCity ? `<p class="text-xs text-slate-500 flex items-center gap-1 mt-0.5"><i data-lucide="map-pin" class="w-3 h-3 text-slate-400"></i> ${hostelCity}</p>` : ''}
-        </div>
+  <div class="w-full max-w-md mx-auto relative">
+    
+    <!-- Top Header Branding -->
+    <div class="text-center mb-4">
+      <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-violet-500/10 border border-violet-400/20 text-violet-300 text-xs font-bold mb-2">
+        <i data-lucide="building-2" class="w-3.5 h-3.5 text-violet-400"></i> HOSTIX SMART RESIDENCE
       </div>
+      <h1 class="text-xl sm:text-2xl font-black text-white tracking-tight">${hostelName}</h1>
+      <p class="text-xs text-slate-400 mt-1 flex items-center justify-center gap-1">
+        <i data-lucide="map-pin" class="w-3.5 h-3.5 text-violet-400"></i> ${hostelAddress ? `${hostelAddress}, ` : ''}${hostelCity || 'Hyderabad'}
+      </p>
     </div>
 
     <!-- Main Registration Card -->
-    <div class="main-card rounded-2xl p-5 sm:p-6 relative">
+    <div class="main-card rounded-3xl p-5 sm:p-6 relative">
       
       ${roomBannerHtml}
 
@@ -175,7 +167,7 @@ export function renderQrSignupView(params: QrSignupViewParams): string {
           <div class="node-circle w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs bg-slate-100 text-slate-400 border border-slate-200">
             2
           </div>
-          <span class="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 node-lbl">Guardian</span>
+          <span class="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 node-lbl">KYC & ID</span>
         </div>
 
         <!-- Node 3 -->
@@ -183,7 +175,7 @@ export function renderQrSignupView(params: QrSignupViewParams): string {
           <div class="node-circle w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs bg-slate-100 text-slate-400 border border-slate-200">
             3
           </div>
-          <span class="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 node-lbl">Identity</span>
+          <span class="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 node-lbl">Address</span>
         </div>
       </div>
 
@@ -196,32 +188,62 @@ export function renderQrSignupView(params: QrSignupViewParams): string {
             <h2 class="text-sm font-extrabold text-slate-900 flex items-center gap-1.5">
               <i data-lucide="user" class="w-4 h-4 text-violet-600"></i> Personal Information
             </h2>
-            <p class="text-[11px] text-slate-500 mt-0.5">Enter tenant identity details</p>
+            <p class="text-[11px] text-slate-500 mt-0.5">Your profile & primary contact details</p>
+          </div>
+
+          <!-- Profile Photo Uploader -->
+          <div class="flex items-center gap-3 p-3 bg-slate-50 border border-slate-200/80 rounded-2xl">
+            <div class="relative w-14 h-14 rounded-full bg-violet-100 border-2 border-violet-200 flex items-center justify-center overflow-hidden shrink-0">
+              <img id="prev-profile" src="" class="hidden w-full h-full object-cover"/>
+              <i id="icon-profile-placeholder" data-lucide="camera" class="w-6 h-6 text-violet-600"></i>
+              <input type="file" id="inp-profile" name="profile_photo" accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full"/>
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="text-xs font-bold text-slate-800">Profile Photo <span class="text-[10px] font-normal text-slate-400">(Optional)</span></div>
+              <div class="text-[11px] text-slate-500">Tap avatar to take a selfie or upload photo</div>
+            </div>
+            <button type="button" id="btn-clear-profile" class="hidden text-xs font-bold text-rose-500 hover:text-rose-700">Remove</button>
           </div>
 
           <div class="grid grid-cols-2 gap-2.5">
             <div class="field-grp" id="fg-first_name">
               <label class="block text-[10px] font-extrabold uppercase tracking-wider text-slate-600 mb-1">First Name <span class="text-rose-500">*</span></label>
-              <input type="text" id="first_name" name="first_name" placeholder="e.g. Ramesh" class="custom-input"/>
+              <input type="text" id="first_name" name="first_name" placeholder="e.g. Rahul" class="custom-input"/>
               <span class="err-text hidden text-[10px] font-bold text-rose-500 mt-1"></span>
             </div>
             
             <div class="field-grp" id="fg-last_name">
               <label class="block text-[10px] font-extrabold uppercase tracking-wider text-slate-600 mb-1">Last Name</label>
-              <input type="text" id="last_name" name="last_name" placeholder="e.g. Kumar" class="custom-input"/>
+              <input type="text" id="last_name" name="last_name" placeholder="e.g. Sharma" class="custom-input"/>
             </div>
           </div>
 
-          <div class="field-grp" id="fg-phone">
-            <label class="block text-[10px] font-extrabold uppercase tracking-wider text-slate-600 mb-1">Mobile Number <span class="text-rose-500">*</span></label>
-            <div class="relative">
-              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 font-mono">+91</span>
-              <input type="tel" id="phone" name="phone" inputmode="numeric" maxlength="10" placeholder="10-digit number" class="custom-input pl-11 font-mono font-medium"/>
+          <!-- Gender Pills -->
+          <div class="field-grp" id="fg-gender">
+            <label class="block text-[10px] font-extrabold uppercase tracking-wider text-slate-600 mb-1">Gender <span class="text-rose-500">*</span></label>
+            <div class="grid grid-cols-3 gap-2">
+              <label class="cursor-pointer">
+                <input type="radio" name="gender" value="Male" checked class="peer hidden"/>
+                <div class="py-2 text-center rounded-xl border border-slate-200 bg-slate-50 text-xs font-bold text-slate-600 peer-checked:bg-violet-50 peer-checked:border-violet-600 peer-checked:text-violet-700 transition">
+                  👨 Male
+                </div>
+              </label>
+              <label class="cursor-pointer">
+                <input type="radio" name="gender" value="Female" class="peer hidden"/>
+                <div class="py-2 text-center rounded-xl border border-slate-200 bg-slate-50 text-xs font-bold text-slate-600 peer-checked:bg-violet-50 peer-checked:border-violet-600 peer-checked:text-violet-700 transition">
+                  👩 Female
+                </div>
+              </label>
+              <label class="cursor-pointer">
+                <input type="radio" name="gender" value="Other" class="peer hidden"/>
+                <div class="py-2 text-center rounded-xl border border-slate-200 bg-slate-50 text-xs font-bold text-slate-600 peer-checked:bg-violet-50 peer-checked:border-violet-600 peer-checked:text-violet-700 transition">
+                  ⚧ Other
+                </div>
+              </label>
             </div>
-            <span class="err-text hidden text-[10px] font-bold text-rose-500 mt-1"></span>
           </div>
 
-          <!-- MANDATORY EMAIL FIELD -->
+          <!-- Email Field -->
           <div class="field-grp" id="fg-email">
             <label class="block text-[10px] font-extrabold uppercase tracking-wider text-slate-600 mb-1">Email Address <span class="text-rose-500">*</span></label>
             <div class="relative">
@@ -231,54 +253,89 @@ export function renderQrSignupView(params: QrSignupViewParams): string {
             <span class="err-text hidden text-[10px] font-bold text-rose-500 mt-1"></span>
           </div>
 
-          <div class="grid grid-cols-2 gap-2.5">
-            <div class="field-grp" id="fg-dob">
-              <label class="block text-[10px] font-extrabold uppercase tracking-wider text-slate-600 mb-1">Date of Birth <span class="text-rose-500">*</span></label>
-              <input type="date" id="dob" name="date_of_birth" class="custom-input"/>
-              <span class="err-text hidden text-[10px] font-bold text-rose-500 mt-1"></span>
+          <!-- Mobile Number Field with Real-time 6-9 detection -->
+          <div class="field-grp" id="fg-phone">
+            <label class="block text-[10px] font-extrabold uppercase tracking-wider text-slate-600 mb-1">Mobile Number <span class="text-rose-500">*</span></label>
+            <div class="relative">
+              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 font-mono">+91</span>
+              <input type="tel" id="phone" name="phone" inputmode="numeric" maxlength="10" placeholder="98765 43210" class="custom-input pl-11 font-mono font-medium"/>
             </div>
+            <span class="err-text hidden text-[10px] font-bold text-rose-500 mt-1"></span>
+          </div>
 
-            <div class="field-grp" id="fg-gender">
-              <label class="block text-[10px] font-extrabold uppercase tracking-wider text-slate-600 mb-1">Gender <span class="text-rose-500">*</span></label>
-              <select id="gender" name="gender" class="custom-input bg-slate-50">
-                <option value="">Select...</option>
-                <option value="Male">Male</option>
-                <option value="Female">Female</option>
-                <option value="Other">Other</option>
-              </select>
-              <span class="err-text hidden text-[10px] font-bold text-rose-500 mt-1"></span>
-            </div>
+          <!-- Date of Birth (Optional) -->
+          <div class="field-grp" id="fg-dob">
+            <label class="block text-[10px] font-extrabold uppercase tracking-wider text-slate-600 mb-1">Date of Birth <span class="text-slate-400 font-normal">(Optional)</span></label>
+            <input type="date" id="dob" name="date_of_birth" class="custom-input"/>
           </div>
 
           <div class="pt-2">
             <button type="button" id="btn-next-1" class="w-full py-3 px-4 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white font-bold rounded-xl shadow-md shadow-violet-500/20 flex items-center justify-center gap-2 text-xs uppercase tracking-wider active:scale-[0.99] transition-all">
-              Continue to Guardian <i data-lucide="chevron-right" class="w-4 h-4"></i>
+              Continue to KYC & ID <i data-lucide="chevron-right" class="w-4 h-4"></i>
             </button>
           </div>
         </div>
 
-        <!-- STEP 2: Guardian Details -->
+        <!-- STEP 2: KYC & Identity Verification -->
         <div id="pane-2" class="step-pane space-y-3.5">
           <div class="border-b border-slate-100 pb-2 mb-3">
             <h2 class="text-sm font-extrabold text-slate-900 flex items-center gap-1.5">
-              <i data-lucide="shield" class="w-4 h-4 text-violet-600"></i> Emergency Contact
+              <i data-lucide="shield" class="w-4 h-4 text-violet-600"></i> Identity Verification
             </h2>
-            <p class="text-[11px] text-slate-500 mt-0.5">Parent or guardian contact details</p>
+            <p class="text-[11px] text-slate-500 mt-0.5">Government ID document verification</p>
           </div>
 
-          <div class="field-grp" id="fg-gname">
-            <label class="block text-[10px] font-extrabold uppercase tracking-wider text-slate-600 mb-1">Guardian Full Name <span class="text-rose-500">*</span></label>
-            <input type="text" id="gname" name="guardian_name" placeholder="Parent / Guardian Name" class="custom-input"/>
-            <span class="err-text hidden text-[10px] font-bold text-rose-500 mt-1"></span>
+          <div class="field-grp" id="fg-id_type">
+            <label class="block text-[10px] font-extrabold uppercase tracking-wider text-slate-600 mb-1">Select ID Proof Type</label>
+            <select id="id_type" name="id_proof_type" class="custom-input bg-slate-50 font-medium">
+              <option value="0">Select ID Proof (Optional)...</option>
+              <option value="1">Aadhaar Card (12 digits)</option>
+              <option value="2">PAN Card (10 chars)</option>
+              <option value="3">Voter ID (10 chars)</option>
+              <option value="4">Driving License (15-16 chars)</option>
+              <option value="5">Passport (8 chars)</option>
+            </select>
           </div>
 
-          <div class="field-grp" id="fg-gphone">
-            <label class="block text-[10px] font-extrabold uppercase tracking-wider text-slate-600 mb-1">Guardian Phone Number <span class="text-rose-500">*</span></label>
-            <div class="relative">
-              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 font-mono">+91</span>
-              <input type="tel" id="gphone" name="guardian_phone" inputmode="numeric" maxlength="10" placeholder="10-digit number" class="custom-input pl-11 font-mono font-medium"/>
+          <!-- CONDITIONAL ID SECTION: Displayed ONLY when ID type is selected -->
+          <div id="id-conditional-wrap" class="hidden space-y-3.5 p-3.5 bg-slate-50 border border-slate-200 rounded-2xl">
+            <div class="field-grp" id="fg-aadhaar">
+              <label class="block text-[10px] font-extrabold uppercase tracking-wider text-slate-600 mb-1">ID Document Number <span class="text-rose-500">*</span></label>
+              <input type="text" id="aadhaar" name="id_proof_number" placeholder="Enter ID number" class="custom-input font-mono uppercase"/>
+              <span class="err-text hidden text-[10px] font-bold text-rose-500 mt-1"></span>
             </div>
-            <span class="err-text hidden text-[10px] font-bold text-rose-500 mt-1"></span>
+
+            <!-- Document Photos Upload -->
+            <div>
+              <label class="block text-[10px] font-extrabold uppercase tracking-wider text-slate-600 mb-1.5">Document Photos <span class="text-slate-400 font-normal">(Optional)</span></label>
+              <div class="grid grid-cols-2 gap-2.5">
+                <!-- Front Photo -->
+                <div id="drop-f" class="file-box p-3 flex flex-col items-center justify-center text-center cursor-pointer relative min-h-[95px] rounded-xl group">
+                  <input type="file" id="af" name="id_proof_front" accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"/>
+                  <img id="prev-f" src="" class="hidden w-full h-16 object-cover rounded-lg mb-1 shadow-sm"/>
+                  <div id="hold-f" class="flex flex-col items-center">
+                    <div class="w-7 h-7 rounded-full bg-violet-50 text-violet-600 flex items-center justify-center mb-1 group-hover:scale-105 transition-transform">
+                      <i data-lucide="camera" class="w-3.5 h-3.5"></i>
+                    </div>
+                    <span id="lbl-f" class="text-[11px] font-bold text-slate-700">Upload Front</span>
+                  </div>
+                  <button type="button" id="clr-f" class="hidden absolute top-1.5 right-1.5 z-20 w-5 h-5 rounded-full bg-slate-900/80 text-white items-center justify-center hover:bg-slate-900 text-[10px]">✕</button>
+                </div>
+
+                <!-- Back Photo -->
+                <div id="drop-b" class="file-box p-3 flex flex-col items-center justify-center text-center cursor-pointer relative min-h-[95px] rounded-xl group">
+                  <input type="file" id="ab" name="id_proof_back" accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"/>
+                  <img id="prev-b" src="" class="hidden w-full h-16 object-cover rounded-lg mb-1 shadow-sm"/>
+                  <div id="hold-b" class="flex flex-col items-center">
+                    <div class="w-7 h-7 rounded-full bg-violet-50 text-violet-600 flex items-center justify-center mb-1 group-hover:scale-105 transition-transform">
+                      <i data-lucide="camera" class="w-3.5 h-3.5"></i>
+                    </div>
+                    <span id="lbl-b" class="text-[11px] font-bold text-slate-700">Upload Back</span>
+                  </div>
+                  <button type="button" id="clr-b" class="hidden absolute top-1.5 right-1.5 z-20 w-5 h-5 rounded-full bg-slate-900/80 text-white items-center justify-center hover:bg-slate-900 text-[10px]">✕</button>
+                </div>
+              </div>
+            </div>
           </div>
 
           <div class="flex gap-2.5 pt-2">
@@ -286,80 +343,54 @@ export function renderQrSignupView(params: QrSignupViewParams): string {
               Back
             </button>
             <button type="button" id="btn-next-2" class="w-2/3 py-3 px-4 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white font-bold rounded-xl shadow-md shadow-violet-500/20 flex items-center justify-center gap-2 text-xs uppercase tracking-wider active:scale-[0.99] transition-all">
-              Next: Identity <i data-lucide="chevron-right" class="w-4 h-4"></i>
+              Address & Contacts <i data-lucide="chevron-right" class="w-4 h-4"></i>
             </button>
           </div>
         </div>
 
-        <!-- STEP 3: Identity & Address -->
+        <!-- STEP 3: Address & Emergency Details -->
         <div id="pane-3" class="step-pane space-y-3.5">
           <div class="border-b border-slate-100 pb-2 mb-3">
             <h2 class="text-sm font-extrabold text-slate-900 flex items-center gap-1.5">
-              <i data-lucide="id-card" class="w-4 h-4 text-violet-600"></i> Identity & Address
+              <i data-lucide="map-pin" class="w-4 h-4 text-violet-600"></i> Address & Emergency
             </h2>
-            <p class="text-[11px] text-slate-500 mt-0.5">Government ID and residential address</p>
+            <p class="text-[11px] text-slate-500 mt-0.5">Emergency contact & residential addresses</p>
           </div>
 
-          <div class="grid grid-cols-2 gap-2.5">
-            <div class="field-grp" id="fg-id_type">
-              <label class="block text-[10px] font-extrabold uppercase tracking-wider text-slate-600 mb-1">ID Document Type <span class="text-rose-500">*</span></label>
-              <select id="id_type" name="id_proof_type" class="custom-input bg-slate-50">
-                <option value="1">Aadhaar Card</option>
-                <option value="2">PAN Card</option>
-                <option value="3">Voter ID</option>
-                <option value="4">Driving License</option>
-                <option value="5">Passport</option>
-              </select>
-            </div>
-
-            <div class="field-grp" id="fg-aadhaar">
-              <label class="block text-[10px] font-extrabold uppercase tracking-wider text-slate-600 mb-1">ID Proof Number <span class="text-rose-500">*</span></label>
-              <input type="text" id="aadhaar" name="id_proof_number" maxlength="12" placeholder="e.g. 123456789012" class="custom-input font-mono uppercase"/>
-              <span class="err-text hidden text-[10px] font-bold text-rose-500 mt-1"></span>
-            </div>
+          <!-- Guardian Name (Optional) -->
+          <div class="field-grp" id="fg-gname">
+            <label class="block text-[10px] font-extrabold uppercase tracking-wider text-slate-600 mb-1">Guardian / Parent Name <span class="text-slate-400 font-normal">(Optional)</span></label>
+            <input type="text" id="gname" name="guardian_name" placeholder="Parent / Guardian Name" class="custom-input"/>
           </div>
 
-          <!-- Document Upload Cards -->
-          <div>
-            <label class="block text-[10px] font-extrabold uppercase tracking-wider text-slate-600 mb-1.5">ID Photos (Front & Back)</label>
-            <div class="grid grid-cols-2 gap-2.5">
-              <!-- Front Photo -->
-              <div id="drop-f" class="file-box p-3 flex flex-col items-center justify-center text-center cursor-pointer relative min-h-[95px] rounded-xl group">
-                <input type="file" id="af" name="aadhaar_front" accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"/>
-                <img id="prev-f" src="" class="hidden w-full h-16 object-cover rounded-lg mb-1 shadow-sm"/>
-                <div id="hold-f" class="flex flex-col items-center">
-                  <div class="w-7 h-7 rounded-full bg-violet-50 text-violet-600 flex items-center justify-center mb-1 group-hover:scale-105 transition-transform">
-                    <i data-lucide="camera" class="w-3.5 h-3.5"></i>
-                  </div>
-                  <span id="lbl-f" class="text-[11px] font-bold text-slate-700">Upload Front</span>
-                </div>
-                <button type="button" id="clr-f" class="hidden absolute top-1.5 right-1.5 z-20 w-5 h-5 rounded-full bg-slate-900/80 text-white items-center justify-center hover:bg-slate-900 text-[10px]">✕</button>
-              </div>
-
-              <!-- Back Photo -->
-              <div id="drop-b" class="file-box p-3 flex flex-col items-center justify-center text-center cursor-pointer relative min-h-[95px] rounded-xl group">
-                <input type="file" id="ab" name="aadhaar_back" accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"/>
-                <img id="prev-b" src="" class="hidden w-full h-16 object-cover rounded-lg mb-1 shadow-sm"/>
-                <div id="hold-b" class="flex flex-col items-center">
-                  <div class="w-7 h-7 rounded-full bg-violet-50 text-violet-600 flex items-center justify-center mb-1 group-hover:scale-105 transition-transform">
-                    <i data-lucide="camera" class="w-3.5 h-3.5"></i>
-                  </div>
-                  <span id="lbl-b" class="text-[11px] font-bold text-slate-700">Upload Back</span>
-                </div>
-                <button type="button" id="clr-b" class="hidden absolute top-1.5 right-1.5 z-20 w-5 h-5 rounded-full bg-slate-900/80 text-white items-center justify-center hover:bg-slate-900 text-[10px]">✕</button>
-              </div>
+          <!-- Guardian Phone (Mandatory) -->
+          <div class="field-grp" id="fg-gphone">
+            <label class="block text-[10px] font-extrabold uppercase tracking-wider text-slate-600 mb-1">Guardian Mobile Number <span class="text-rose-500">*</span></label>
+            <div class="relative">
+              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 font-mono">+91</span>
+              <input type="tel" id="gphone" name="guardian_phone" inputmode="numeric" maxlength="10" placeholder="98765 43210" class="custom-input pl-11 font-mono font-medium"/>
             </div>
-          </div>
-
-          <div class="field-grp" id="fg-addr">
-            <label class="block text-[10px] font-extrabold uppercase tracking-wider text-slate-600 mb-1">Permanent Address <span class="text-rose-500">*</span></label>
-            <textarea id="addr" name="permanent_address" rows="2" placeholder="House/Flat No, Street, City, State, PIN" class="custom-input resize-none"></textarea>
             <span class="err-text hidden text-[10px] font-bold text-rose-500 mt-1"></span>
           </div>
 
+          <!-- Current Address (Mandatory) -->
           <div class="field-grp" id="fg-pres_addr">
-            <label class="block text-[10px] font-extrabold uppercase tracking-wider text-slate-600 mb-1">Working / College Address</label>
-            <textarea id="pres_addr" name="present_working_address" rows="2" placeholder="Company / College Name and Location" class="custom-input resize-none"></textarea>
+            <label class="block text-[10px] font-extrabold uppercase tracking-wider text-slate-600 mb-1">Current / Office Address <span class="text-rose-500">*</span></label>
+            <textarea id="pres_addr" name="present_working_address" rows="2" placeholder="Office / College / Local area address" class="custom-input resize-none"></textarea>
+            <span class="err-text hidden text-[10px] font-bold text-rose-500 mt-1"></span>
+          </div>
+
+          <!-- Same as Current Address Checkbox -->
+          <div class="flex items-center gap-2 p-2.5 bg-slate-50 rounded-xl border border-slate-200">
+            <input type="checkbox" id="chk-same-addr" class="w-4 h-4 text-violet-600 rounded border-slate-300 focus:ring-violet-500 cursor-pointer"/>
+            <label for="chk-same-addr" class="text-xs font-semibold text-slate-700 cursor-pointer">Permanent address is same as current</label>
+          </div>
+
+          <!-- Permanent Address (Mandatory) -->
+          <div class="field-grp" id="fg-addr">
+            <label class="block text-[10px] font-extrabold uppercase tracking-wider text-slate-600 mb-1">Permanent Home Address <span class="text-rose-500">*</span></label>
+            <textarea id="addr" name="permanent_address" rows="2" placeholder="House No, Native Town, City, State, PIN" class="custom-input resize-none"></textarea>
+            <span class="err-text hidden text-[10px] font-bold text-rose-500 mt-1"></span>
           </div>
 
           <div class="flex gap-2.5 pt-2">
@@ -373,55 +404,46 @@ export function renderQrSignupView(params: QrSignupViewParams): string {
         </div>
       </form>
 
-      <!-- SUCCESS SCREEN WITH HOSTIX PLAY STORE APP PROMOTION -->
+      <!-- CELEBRATION SUCCESS SCREEN -->
       <div id="pane-success" class="hidden text-center py-4">
-        <!-- Success Icon -->
-        <div class="w-16 h-16 mx-auto rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-3 ring-4 ring-emerald-100 shadow-inner">
-          <i data-lucide="check-check" class="w-8 h-8"></i>
+        <!-- Glowing Success Icon -->
+        <div class="w-16 h-16 mx-auto rounded-3xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-3 ring-8 ring-emerald-100 shadow-inner">
+          <i data-lucide="check-circle-2" class="w-10 h-10"></i>
         </div>
 
-        <h2 class="text-lg font-black text-slate-900 tracking-tight mb-1">Registration Submitted!</h2>
-        <p class="text-xs text-slate-600 leading-relaxed max-w-xs mx-auto mb-5">
-          Your admission details have been submitted to <span class="font-bold text-slate-900">${hostelName}</span>.
+        <h2 class="text-xl font-black text-slate-900 tracking-tight mb-1">Admission Submitted!</h2>
+        <p class="text-xs text-slate-600 leading-relaxed max-w-xs mx-auto mb-4">
+          Your admission request has been sent to <span class="font-bold text-slate-900">${hostelName}</span>.
         </p>
 
-        <!-- PLAY STORE APP PROMOTION CARD -->
-        <div class="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white rounded-2xl p-4 text-left shadow-xl shadow-indigo-950/20 border border-indigo-900/50 mb-5 relative overflow-hidden">
-          <div class="absolute -right-6 -bottom-6 w-24 h-24 bg-violet-500/20 rounded-full blur-xl pointer-events-none"></div>
-          
-          <div class="flex items-center gap-3 mb-3">
-            <div class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-violet-400 border border-white/10 shrink-0">
-              <i data-lucide="smartphone" class="w-5 h-5"></i>
-            </div>
-            <div>
-              <div class="text-[10px] font-black uppercase tracking-widest text-violet-400">Next Step: Tenant Portal</div>
-              <h3 class="text-xs font-black text-white">Download the Hostix Mobile App</h3>
-            </div>
+        <!-- Reference ID Card -->
+        <div class="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-left mb-4 space-y-2">
+          <div class="flex justify-between items-center text-xs">
+            <span class="text-slate-500 font-medium">Applicant Name</span>
+            <span id="succ-name" class="font-bold text-slate-900">Tenant</span>
           </div>
+          <div class="flex justify-between items-center text-xs">
+            <span class="text-slate-500 font-medium">Reference ID</span>
+            <button type="button" id="btn-copy-ref" class="inline-flex items-center gap-1 px-2 py-0.5 bg-violet-100 text-violet-700 font-mono font-bold rounded hover:bg-violet-200">
+              <span id="succ-ref">REG-HSTX-1001</span>
+              <i data-lucide="copy" class="w-3 h-3"></i>
+            </button>
+          </div>
+          <div class="flex justify-between items-center text-xs">
+            <span class="text-slate-500 font-medium">Status</span>
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-100 text-amber-800 text-[10px] font-bold rounded-full">
+              <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> Pending Owner Approval
+            </span>
+          </div>
+        </div>
 
-          <p class="text-[11px] text-slate-300 leading-relaxed mb-3">
-            Track your monthly fee dues, download instant rent receipts, check daily food menus, and get hostel notices directly on your phone!
+        <!-- Download App Card -->
+        <div class="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white rounded-2xl p-4 text-left shadow-xl border border-indigo-900/50 mb-4">
+          <div class="text-[10px] font-black uppercase tracking-widest text-violet-400 mb-1">Next Step</div>
+          <h3 class="text-xs font-bold text-white mb-2">Track your fees and notices in the Hostix App</h3>
+          <p class="text-[11px] text-slate-300 leading-relaxed">
+            The owner will verify your admission and assign your room. You can show your Reference ID at the hostel desk.
           </p>
-
-          <div class="space-y-1.5 mb-3.5">
-            <div class="flex items-center gap-2 text-[10.5px] font-semibold text-slate-200">
-              <i data-lucide="check-circle-2" class="w-3.5 h-3.5 text-emerald-400"></i> Check & Pay monthly fee bills
-            </div>
-            <div class="flex items-center gap-2 text-[10.5px] font-semibold text-slate-200">
-              <i data-lucide="check-circle-2" class="w-3.5 h-3.5 text-emerald-400"></i> Instant official payment receipts
-            </div>
-            <div class="flex items-center gap-2 text-[10.5px] font-semibold text-slate-200">
-              <i data-lucide="check-circle-2" class="w-3.5 h-3.5 text-emerald-400"></i> Mess food menu & meal skipping
-            </div>
-          </div>
-
-          <!-- Play Store Download Button -->
-          <a href="https://play.google.com/store/apps/details?id=com.hostix.app" target="_blank" class="w-full py-2.5 px-4 bg-white hover:bg-slate-100 text-slate-900 font-extrabold rounded-xl text-xs flex items-center justify-center gap-2 shadow-md transition active:scale-[0.99]">
-            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M3.609 1.814L13.792 12 3.61 22.186a2.38 2.38 0 0 1-.22-.387V2.2c.07-.137.144-.268.22-.386zm11.235 11.238l2.58 2.58-12.03 6.873 9.45-9.453zm2.58-2.58l-2.58 2.58-9.45-9.452 12.03 6.872zm1.05 1.05l2.84 1.623a1.47 1.47 0 0 1 0 2.56l-2.84 1.623-2.023-2.023 2.023-2.783z"/>
-            </svg>
-            Get Hostix on Google Play
-          </a>
         </div>
 
         <button type="button" onclick="window.location.reload()" class="text-xs font-bold text-slate-500 hover:text-slate-800 transition">
@@ -434,7 +456,7 @@ export function renderQrSignupView(params: QrSignupViewParams): string {
     <!-- Footer Branding -->
     <div class="text-center mt-4">
       <p class="text-[10px] font-bold text-slate-400 flex items-center justify-center gap-1 uppercase tracking-wider">
-        <i data-lucide="shield-check" class="w-3.5 h-3.5 text-violet-500"></i> Hostix Smart Hostel Management
+        <i data-lucide="shield-check" class="w-3.5 h-3.5 text-violet-400"></i> Hostix Smart Hostel Platform
       </p>
     </div>
   </div>
@@ -543,7 +565,7 @@ export function renderQrSignupView(params: QrSignupViewParams): string {
     }
 
     // Dynamic auto-clearing of error on typing
-    ['first_name', 'last_name', 'phone', 'email', 'dob', 'gender', 'gname', 'gphone', 'aadhaar', 'addr'].forEach(function(id) {
+    ['first_name', 'last_name', 'phone', 'email', 'gname', 'gphone', 'aadhaar', 'addr', 'pres_addr'].forEach(function(id) {
       var el = document.getElementById(id);
       if (el) {
         el.addEventListener('input', function() { setFieldError(id, ''); });
@@ -551,40 +573,98 @@ export function renderQrSignupView(params: QrSignupViewParams): string {
       }
     });
 
-    // Auto-clean phone numbers to pure numeric 10-digits
-    ['phone', 'gphone'].forEach(function(id) {
-      var el = document.getElementById(id);
-      if (el) {
-        el.addEventListener('input', function() {
-          this.value = this.value.replace(/\\D/g, '').slice(0, 10);
+    // Real-time Phone Number validation (Must start with 6-9)
+    var phoneInput = document.getElementById('phone');
+    if (phoneInput) {
+      phoneInput.addEventListener('input', function() {
+        this.value = this.value.replace(/\\D/g, '').slice(0, 10);
+        if (this.value.length > 0) {
+          var firstDigit = parseInt(this.value[0], 10);
+          if (firstDigit < 6) {
+            setFieldError('phone', 'Mobile number must start with 6, 7, 8, or 9');
+          } else {
+            setFieldError('phone', '');
+          }
+        }
+      });
+    }
+
+    var gphoneInput = document.getElementById('gphone');
+    if (gphoneInput) {
+      gphoneInput.addEventListener('input', function() {
+        this.value = this.value.replace(/\\D/g, '').slice(0, 10);
+        if (this.value.length > 0) {
+          var firstDigit = parseInt(this.value[0], 10);
+          if (firstDigit < 6) {
+            setFieldError('gphone', 'Guardian number must start with 6, 7, 8, or 9');
+          } else {
+            setFieldError('gphone', '');
+          }
+        }
+      });
+    }
+
+    // Profile Photo Uploader
+    var inpProfile = document.getElementById('inp-profile');
+    var prevProfile = document.getElementById('prev-profile');
+    var iconProfile = document.getElementById('icon-profile-placeholder');
+    var btnClearProfile = document.getElementById('btn-clear-profile');
+    if (inpProfile && prevProfile) {
+      inpProfile.addEventListener('change', function() {
+        if (inpProfile.files && inpProfile.files[0]) {
+          var reader = new FileReader();
+          reader.onload = function(e) {
+            prevProfile.src = e.target.result;
+            prevProfile.classList.remove('hidden');
+            if (iconProfile) iconProfile.classList.add('hidden');
+            if (btnClearProfile) btnClearProfile.classList.remove('hidden');
+          };
+          reader.readAsDataURL(inpProfile.files[0]);
+        }
+      });
+
+      if (btnClearProfile) {
+        btnClearProfile.addEventListener('click', function() {
+          inpProfile.value = '';
+          prevProfile.src = '';
+          prevProfile.classList.add('hidden');
+          if (iconProfile) iconProfile.classList.remove('hidden');
+          btnClearProfile.classList.add('hidden');
         });
       }
-    });
+    }
 
-    // Dynamic ID proof format handler
+    // Conditional ID Proof Type handler
     var idTypeSelect = document.getElementById('id_type');
+    var idCondWrap = document.getElementById('id-conditional-wrap');
     var idNumInput = document.getElementById('aadhaar');
-    if (idTypeSelect && idNumInput) {
+    if (idTypeSelect && idCondWrap && idNumInput) {
       idTypeSelect.addEventListener('change', function(e) {
         var t = e.target.value;
-        if (t === '1') {
-          idNumInput.maxLength = 12;
-          idNumInput.placeholder = 'e.g. 123456789012 (12 digits)';
-        } else if (t === '2') {
-          idNumInput.maxLength = 10;
-          idNumInput.placeholder = 'e.g. ABCDE1234F (10 chars)';
-        } else if (t === '3') {
-          idNumInput.maxLength = 10;
-          idNumInput.placeholder = 'e.g. ABC1234567 (10 chars)';
-        } else if (t === '4') {
-          idNumInput.maxLength = 15;
-          idNumInput.placeholder = 'e.g. MH1420110062821 (15 chars)';
-        } else if (t === '5') {
-          idNumInput.maxLength = 8;
-          idNumInput.placeholder = 'e.g. A1234567 (8 chars)';
+        if (t === '0') {
+          idCondWrap.classList.add('hidden');
+          idNumInput.value = '';
+          setFieldError('aadhaar', '');
+        } else {
+          idCondWrap.classList.remove('hidden');
+          if (t === '1') {
+            idNumInput.maxLength = 12;
+            idNumInput.placeholder = 'e.g. 345678901234 (12 digits)';
+          } else if (t === '2') {
+            idNumInput.maxLength = 10;
+            idNumInput.placeholder = 'e.g. ABCDE1234F (10 chars)';
+          } else if (t === '3') {
+            idNumInput.maxLength = 10;
+            idNumInput.placeholder = 'e.g. ABC1234567 (10 chars)';
+          } else if (t === '4') {
+            idNumInput.maxLength = 16;
+            idNumInput.placeholder = 'e.g. MH1420110062821 (15-16 chars)';
+          } else if (t === '5') {
+            idNumInput.maxLength = 8;
+            idNumInput.placeholder = 'e.g. A1234567 (8 chars)';
+          }
+          setFieldError('aadhaar', '');
         }
-        idNumInput.value = '';
-        setFieldError('aadhaar', '');
       });
 
       idNumInput.addEventListener('input', function(e) {
@@ -596,7 +676,30 @@ export function renderQrSignupView(params: QrSignupViewParams): string {
       });
     }
 
-    // Photo Dropzones Setup
+    // Same as Current Address Checkbox
+    var chkSameAddr = document.getElementById('chk-same-addr');
+    var presAddrInput = document.getElementById('pres_addr');
+    var permAddrInput = document.getElementById('addr');
+    if (chkSameAddr && presAddrInput && permAddrInput) {
+      chkSameAddr.addEventListener('change', function() {
+        if (this.checked) {
+          permAddrInput.value = presAddrInput.value;
+          permAddrInput.setAttribute('readonly', 'true');
+          permAddrInput.classList.add('bg-slate-100', 'text-slate-500');
+          setFieldError('addr', '');
+        } else {
+          permAddrInput.removeAttribute('readonly');
+          permAddrInput.classList.remove('bg-slate-100', 'text-slate-500');
+        }
+      });
+      presAddrInput.addEventListener('input', function() {
+        if (chkSameAddr.checked) {
+          permAddrInput.value = this.value;
+        }
+      });
+    }
+
+    // Photo Dropzones Setup (Front / Back)
     function setupDropzone(fileInputId, dropId, prevId, holderId, labelId, clearId, labelTitle) {
       var inp = document.getElementById(fileInputId);
       var drop = document.getElementById(dropId);
@@ -652,29 +755,16 @@ export function renderQrSignupView(params: QrSignupViewParams): string {
 
       var phone = getVal('phone').replace(/\\D/g, '').slice(-10);
       if (phone.length !== 10 || !/^[6-9]\\d{9}$/.test(phone)) {
-        setFieldError('phone', 'Enter a valid 10-digit number starting with 6-9.');
+        setFieldError('phone', 'Must be a valid 10-digit number starting with 6, 7, 8, or 9.');
         valid = false;
       }
 
-      // MANDATORY EMAIL VALIDATION
       var email = getVal('email');
       if (!email) {
         setFieldError('email', 'Email address is required.');
         valid = false;
       } else if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) {
         setFieldError('email', 'Enter a valid email address.');
-        valid = false;
-      }
-
-      var dob = getVal('dob');
-      if (!dob) {
-        setFieldError('dob', 'Date of birth is required.');
-        valid = false;
-      }
-
-      var gender = getVal('gender');
-      if (!gender) {
-        setFieldError('gender', 'Please select gender.');
         valid = false;
       }
 
@@ -695,20 +785,35 @@ export function renderQrSignupView(params: QrSignupViewParams): string {
       clearAllErrors();
       var valid = true;
 
-      var gname = getVal('gname');
-      if (!gname) {
-        setFieldError('gname', 'Guardian name is required.');
-        valid = false;
-      }
+      var idType = getVal('id_type');
+      var idNum = getVal('aadhaar');
 
-      var gphone = getVal('gphone').replace(/\\D/g, '').slice(-10);
-      if (gphone.length !== 10 || !/^[6-9]\\d{9}$/.test(gphone)) {
-        setFieldError('gphone', 'Enter a valid 10-digit guardian number.');
-        valid = false;
+      if (idType !== '0') {
+        if (!idNum) {
+          setFieldError('aadhaar', 'ID proof number is required.');
+          valid = false;
+        } else {
+          if (idType === '1' && !/^\\d{12}$/.test(idNum)) {
+            setFieldError('aadhaar', 'Aadhaar must be exactly 12 digits.');
+            valid = false;
+          } else if (idType === '2' && !/^[A-Z0-9]{10}$/.test(idNum)) {
+            setFieldError('aadhaar', 'PAN must be exactly 10 characters.');
+            valid = false;
+          } else if (idType === '3' && !/^[A-Z0-9]{10}$/.test(idNum)) {
+            setFieldError('aadhaar', 'Voter ID must be exactly 10 characters.');
+            valid = false;
+          } else if (idType === '4' && !/^[A-Z0-9]{15,16}$/.test(idNum)) {
+            setFieldError('aadhaar', 'License must be 15-16 characters.');
+            valid = false;
+          } else if (idType === '5' && !/^[A-Z0-9]{8}$/.test(idNum)) {
+            setFieldError('aadhaar', 'Passport must be exactly 8 characters.');
+            valid = false;
+          }
+        }
       }
 
       if (!valid) {
-        showToast('Guardian contact details are required.');
+        showToast('Please correct ID verification details.');
         return;
       }
 
@@ -725,33 +830,20 @@ export function renderQrSignupView(params: QrSignupViewParams): string {
       clearAllErrors();
       var valid = true;
 
-      var idNum = getVal('aadhaar');
-      var idType = getVal('id_type');
-
-      if (!idNum) {
-        setFieldError('aadhaar', 'ID document number is required.');
+      var gphone = getVal('gphone').replace(/\\D/g, '').slice(-10);
+      if (gphone.length !== 10 || !/^[6-9]\\d{9}$/.test(gphone)) {
+        setFieldError('gphone', 'Guardian number must be a valid 10-digit number starting with 6, 7, 8, or 9.');
         valid = false;
-      } else {
-        if (idType === '1' && !/^\\d{12}$/.test(idNum)) {
-          setFieldError('aadhaar', 'Aadhaar must be 12 digits.');
-          valid = false;
-        } else if (idType === '2' && !/^[A-Z0-9]{10}$/.test(idNum)) {
-          setFieldError('aadhaar', 'PAN must be 10 characters.');
-          valid = false;
-        } else if (idType === '3' && !/^[A-Z0-9]{10}$/.test(idNum)) {
-          setFieldError('aadhaar', 'Voter ID must be 10 characters.');
-          valid = false;
-        } else if (idType === '4' && !/^[A-Z0-9]{15}$/.test(idNum)) {
-          setFieldError('aadhaar', 'License must be 15 characters.');
-          valid = false;
-        } else if (idType === '5' && !/^[A-Z0-9]{8}$/.test(idNum)) {
-          setFieldError('aadhaar', 'Passport must be 8 characters.');
-          valid = false;
-        }
       }
 
-      var addr = getVal('addr');
-      if (!addr) {
+      var presAddr = getVal('pres_addr');
+      if (!presAddr) {
+        setFieldError('pres_addr', 'Current address is required.');
+        valid = false;
+      }
+
+      var permAddr = getVal('addr');
+      if (!permAddr) {
         setFieldError('addr', 'Permanent address is required.');
         valid = false;
       }
@@ -761,7 +853,6 @@ export function renderQrSignupView(params: QrSignupViewParams): string {
         return;
       }
 
-      // Show loader
       var loader = document.getElementById('loader-box');
       if (loader) loader.classList.remove('hidden');
 
@@ -783,7 +874,15 @@ export function renderQrSignupView(params: QrSignupViewParams): string {
             document.getElementById('reg-form').classList.add('hidden');
             document.getElementById('step-nav').classList.add('hidden');
             var successPane = document.getElementById('pane-success');
-            if (successPane) successPane.classList.remove('hidden');
+            if (successPane) {
+              successPane.classList.remove('hidden');
+              if (res.data) {
+                var nameEl = document.getElementById('succ-name');
+                var refEl = document.getElementById('succ-ref');
+                if (nameEl && res.data.student_name) nameEl.textContent = res.data.student_name;
+                if (refEl && res.data.reference_id) refEl.textContent = res.data.reference_id;
+              }
+            }
             runIcons();
           } else {
             showToast(res.error || 'Submission failed. Please check your details.');
@@ -794,6 +893,17 @@ export function renderQrSignupView(params: QrSignupViewParams): string {
           showToast('Failed to submit application. Please check connection.');
         });
     });
+
+    // Copy reference ID
+    var btnCopyRef = document.getElementById('btn-copy-ref');
+    if (btnCopyRef) {
+      btnCopyRef.addEventListener('click', function() {
+        var refText = document.getElementById('succ-ref').textContent;
+        navigator.clipboard.writeText(refText).then(function() {
+          showToast('Reference ID copied to clipboard!');
+        });
+      });
+    }
 
     // Initial icon render
     runIcons();

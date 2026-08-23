@@ -72,7 +72,9 @@ import RoleSelectScreen from '../Pages/RoleSelectScreen';
 import { TenantHostelKeyScreen } from '../Pages/tenant/TenantHostelKeyScreen';
 import { TenantLoginScreen } from '../Pages/tenant/TenantLoginScreen';
 import RegistrationScreen from '../Pages/tenant/RegistrationScreen';
+import PublicRegistrationScreen from '../Pages/tenant/PublicRegistrationScreen';
 import LoginScreen from '../Pages/LoginScreen';
+
 import ForgotPasswordScreen from '../Pages/ForgotPasswordScreen';
 import RegisterScreen from '../Pages/RegisterScreen';
 import NotificationScreen from '../Pages/NotificationScreen';
@@ -271,6 +273,9 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
                     <Stack.Screen name="TenantHostelKey" component={TenantHostelKeyScreen} />
                     <Stack.Screen name="TenantLogin" component={TenantLoginScreen} />
                     <Stack.Screen name="TenantRegister" component={RegistrationScreen} />
+                    <Stack.Screen name="PublicRegistration" component={PublicRegistrationScreen} />
+
+
 
                     {/* Main tab container */}
                     <Stack.Screen

@@ -221,21 +221,63 @@ app.use('/api/whatsapp', whatsappRoutes);
 app.use('/api/developer/login', developerLoginLimiter);
 app.use('/api/developer/request-otp', developerLoginLimiter);
 app.use('/api/developer', developerRoutes);
-app.use(legalRoutes);
-// Multer storage for the public QR signup Aadhaar photos
+app.use(legalRoutes)// ─── Public Hostel Info Endpoint (Used by React / React Native forms) ─────────
+app.get('/api/public/hostel-info', async (req, res) => {
+  try {
+    const hostelId = req.query.hostelId as string;
+    const hostelCode = req.query.code as string;
+
+    let query = db('hostel_master');
+    if (hostelId) {
+      query = query.where('hostel_id', parseInt(hostelId, 10));
+    } else if (hostelCode) {
+      query = query.where('hostel_code', String(hostelCode).trim());
+    } else {
+      query = query.where('is_active', 1);
+    }
+
+    const hostel = await query.first();
+    if (!hostel) {
+      return res.status(404).json({ success: false, error: 'Hostel not found or invalid QR link' });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        hostel_id: hostel.hostel_id,
+        hostel_name: hostel.hostel_name,
+        hostel_code: hostel.hostel_code,
+        city: hostel.city,
+        state: hostel.state,
+        pincode: hostel.pincode,
+        address: hostel.address,
+        contact_number: hostel.contact_number,
+        total_floors: hostel.total_floors,
+        admission_fee: hostel.admission_fee,
+        default_refundable_deposit: hostel.default_refundable_deposit,
+      }
+    });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error?.message || 'Failed to fetch hostel info' });
+  }
+});
+
+// Multer storage for the public QR signup photos (profile photo & ID proof photos)
 const qrSignupUpload = multer({
   storage: multer.diskStorage({
     destination: (req, file, cb) => cb(null, 'uploads/'),
     filename: (req, file, cb) => cb(null, `qr-signup-${file.fieldname}-${Date.now()}-${Math.round(Math.random() * 1e9)}${path.extname(file.originalname)}`),
   }),
-  limits: { fileSize: 5 * 1024 * 1024 },
+  limits: { fileSize: 10 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     if (!file.mimetype.startsWith('image/')) {
-      return cb(new Error('Only image files are allowed for Aadhaar photos'));
+      return cb(new Error('Only image files are allowed'));
     }
     cb(null, true);
   },
-});// Public QR tenant signup — serves self-contained HTML (works on any device/IP)
+});
+
+// Public QR tenant signup — serves self-contained HTML (works on any device/IP)
 app.get('/api/public/qr-signup', async (req, res) => {
   const hostelId = req.query.hostelId as string;
   const roomId   = req.query.roomId   as string | undefined;
@@ -289,16 +331,19 @@ const qrSignupErrorPage = (message: string) =>
   `<div style="background:#fef2f2;color:#7f1d1d;padding:14px;border-radius:10px;font-family:sans-serif;">⚠️ ${message}</div>`;
 
 app.post('/api/public/qr-signup', qrSignupUpload.fields([
+  { name: 'profile_photo', maxCount: 1 },
   { name: 'aadhaar_front', maxCount: 1 },
   { name: 'aadhaar_back', maxCount: 1 },
+  { name: 'id_proof_front', maxCount: 1 },
+  { name: 'id_proof_back', maxCount: 1 },
 ]), async (req, res) => {
   try {
-    const hostelId = req.query.hostelId as string;
-    const roomId   = req.query.roomId   as string | undefined;
-    const bedId    = req.query.bedId    as string | undefined;
-    const bedName  = req.query.bedName  as string | undefined;
+    const hostelId = (req.query.hostelId || req.body.hostel_id || req.body.hostelId) as string;
+    const roomId   = (req.query.roomId || req.body.room_id || req.body.roomId) as string | undefined;
+    const bedId    = (req.query.bedId || req.body.bed_id || req.body.bedId) as string | undefined;
+    const bedName  = (req.query.bedName || req.body.bed_name || req.body.bedName) as string | undefined;
 
-    const wantsJson = req.headers.accept?.includes('application/json') || req.xhr;
+    const wantsJson = req.headers.accept?.includes('application/json') || req.headers['content-type']?.includes('application/json') || req.body?.format === 'json' || req.xhr;
     const sendError = (msg: string) => wantsJson ? res.status(400).json({ success: false, error: msg }) : res.status(400).send(qrSignupErrorPage(msg));
 
     if (!hostelId) {
@@ -306,34 +351,42 @@ app.post('/api/public/qr-signup', qrSignupUpload.fields([
     }
     const {
       first_name, last_name, phone, email,
-      date_of_birth, gender, permanent_address, present_working_address,
+      date_of_birth, gender, permanent_address, present_working_address, current_address,
       guardian_name, guardian_phone, id_proof_number, id_proof_type
     } = req.body || {};
 
     const files = req.files as { [field: string]: Express.Multer.File[] } | undefined;
-    const aadhaarFrontFile = files?.aadhaar_front?.[0];
-    const aadhaarBackFile  = files?.aadhaar_back?.[0];
+    const profilePhotoFile = files?.profile_photo?.[0];
+    const aadhaarFrontFile = files?.id_proof_front?.[0] || files?.aadhaar_front?.[0];
+    const aadhaarBackFile  = files?.id_proof_back?.[0] || files?.aadhaar_back?.[0];
 
     const cleanPhone = String(phone || '').replace(/\D/g, '').slice(-10);
     const cleanGuardianPhone = String(guardian_phone || '').replace(/\D/g, '').slice(-10);
 
     if (!first_name || !String(first_name).trim()) return sendError('First Name is required');
-    if (!cleanPhone || cleanPhone.length !== 10 || !/^[6-9]\d{9}$/.test(cleanPhone)) return sendError('A valid 10-digit Phone number starting with 6-9 is required');
+    if (!cleanPhone || cleanPhone.length !== 10 || !/^[6-9]\d{9}$/.test(cleanPhone)) return sendError('Mobile number must be a valid 10-digit number starting with 6, 7, 8, or 9');
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email).trim())) return sendError('A valid Email address is required');
-    if (!guardian_name || !String(guardian_name).trim()) return sendError('Guardian Name is required');
-    if (!cleanGuardianPhone || cleanGuardianPhone.length !== 10 || !/^[6-9]\d{9}$/.test(cleanGuardianPhone)) return sendError('A valid 10-digit Guardian Phone number starting with 6-9 is required');
-    if (!permanent_address || !String(permanent_address).trim()) return sendError('Permanent Address is required');
-    if (!id_proof_number || !String(id_proof_number).trim()) return sendError('ID Number is required');
+    if (!cleanGuardianPhone || cleanGuardianPhone.length !== 10 || !/^[6-9]\d{9}$/.test(cleanGuardianPhone)) return sendError('Guardian Mobile number must be a valid 10-digit number starting with 6, 7, 8, or 9');
     
-    const typeId = parseInt(id_proof_type, 10) || 1;
-    const cleanId = String(id_proof_number).trim().toUpperCase();
-    if (typeId === 1 && !/^\d{12}$/.test(cleanId)) return sendError('Aadhaar Number must be exactly 12 digits');
-    if (typeId === 2 && !/^[A-Z0-9]{10}$/.test(cleanId)) return sendError('PAN must be exactly 10 characters');
-    if (typeId === 3 && !/^[A-Z0-9]{10}$/.test(cleanId)) return sendError('Voter ID must be exactly 10 characters');
-    if (typeId === 4 && !/^[A-Z0-9]{15}$/.test(cleanId)) return sendError('Driving License must be exactly 15 characters');
-    if (typeId === 5 && !/^[A-Z0-9]{8}$/.test(cleanId)) return sendError('Passport must be exactly 8 characters');
+    const finalPermAddress = permanent_address || present_working_address || current_address;
+    const finalCurrAddress = present_working_address || current_address || permanent_address;
+    if (!finalPermAddress || !String(finalPermAddress).trim()) return sendError('Permanent Address is required');
+    if (!finalCurrAddress || !String(finalCurrAddress).trim()) return sendError('Current Address is required');
+
+    const typeId = parseInt(id_proof_type, 10) || 0;
+    const cleanId = id_proof_number ? String(id_proof_number).trim().toUpperCase() : '';
+    
+    if (typeId > 0 && !cleanId) {
+      return sendError('ID Proof number is required for the selected document type');
+    }
+    if (typeId === 1 && cleanId && !/^\d{12}$/.test(cleanId.replace(/\s+/g, ''))) return sendError('Aadhaar Number must be exactly 12 digits');
+    if (typeId === 2 && cleanId && !/^[A-Z0-9]{10}$/.test(cleanId)) return sendError('PAN must be exactly 10 characters');
+    if (typeId === 3 && cleanId && !/^[A-Z0-9]{10}$/.test(cleanId)) return sendError('Voter ID must be exactly 10 characters');
+    if (typeId === 4 && cleanId && !/^[A-Z0-9]{15,16}$/.test(cleanId)) return sendError('Driving License must be 15-16 characters');
+    if (typeId === 5 && cleanId && !/^[A-Z0-9]{8}$/.test(cleanId)) return sendError('Passport must be exactly 8 characters');
 
     const numHostelId = parseInt(hostelId, 10);
+
     if (isNaN(numHostelId)) return sendError('Invalid hostel link');
 
     const hostelExists = await db('hostel_master').where('hostel_id', numHostelId).first();
@@ -359,9 +412,16 @@ app.post('/api/public/qr-signup', qrSignupUpload.fields([
       }
     }
 
+    let photoUrl: string | null = profilePhotoFile ? `/uploads/${profilePhotoFile.filename}` : null;
     let frontUrl: string | null = aadhaarFrontFile ? `/uploads/${aadhaarFrontFile.filename}` : null;
     let backUrl: string | null = aadhaarBackFile ? `/uploads/${aadhaarBackFile.filename}` : null;
 
+    if (profilePhotoFile) {
+      try {
+        const uploaded = await processFileUpload(profilePhotoFile, 'students');
+        if (uploaded) photoUrl = uploaded;
+      } catch (e) {}
+    }
     if (aadhaarFrontFile) {
       try {
         const uploaded = await processFileUpload(aadhaarFrontFile, 'students');
@@ -384,8 +444,10 @@ app.post('/api/public/qr-signup', qrSignupUpload.fields([
       email:            email ? String(email).trim() : null,
       date_of_birth:    parsedDob,
       gender:           String(gender).trim(),
-      permanent_address: permanent_address ? String(permanent_address).trim() : null,
-      present_working_address: present_working_address ? String(present_working_address).trim() : null,
+      photo:            photoUrl,
+      profile_photo_url: photoUrl,
+      permanent_address: finalPermAddress ? String(finalPermAddress).trim() : null,
+      present_working_address: finalCurrAddress ? String(finalCurrAddress).trim() : null,
       guardian_name:    guardian_name ? String(guardian_name).trim() : null,
       guardian_phone:   cleanGuardianPhone,
       admission_date:   nowStr,
@@ -396,9 +458,9 @@ app.post('/api/public/qr-signup', qrSignupUpload.fields([
       bed_id:           bedId || null,
       floor_number:     null,
       monthly_rent:     null,
-      id_proof_type:    typeId,
-      id_proof_number:  cleanId,
-      id_proof_status:  1, // Submitted
+      id_proof_type:    typeId || null,
+      id_proof_number:  cleanId || null,
+      id_proof_status:  typeId ? 1 : 0, // Submitted
       id_proof_front_url: frontUrl,
       id_proof_back_url:  backUrl,
     };
@@ -412,23 +474,40 @@ app.post('/api/public/qr-signup', qrSignupUpload.fields([
       delete insertData.id_proof_front_url;
       delete insertData.id_proof_back_url;
       delete insertData.id_proof_status;
+      delete insertData.profile_photo_url;
       const [id] = await db('students').insert(insertData);
       newStudentId = id;
     }
+
+    const studentFullName = `${first_name} ${last_name || ''}`.trim();
+    const referenceId = `REG-${hostelExists.hostel_code || 'HSTX'}-${1000 + newStudentId}`;
 
     // Notify the owner of the hostel
     sendNotificationToHostelOwner(
       numHostelId,
       'New Admission',
       'New Registration Request',
-      `${first_name} has submitted a registration request via QR. Review and assign a room.`,
+      `${studentFullName} has submitted a registration request via QR. Review and assign a room.`,
       'High',
-      { studentId: newStudentId }
+      { studentId: newStudentId, studentName: studentFullName, referenceId }
     ).catch(err => console.error('[qr-signup] Owner notification error:', err));
 
     if (wantsJson) {
-      return res.status(200).json({ success: true, message: 'Registration submitted successfully!' });
+      return res.status(200).json({
+        success: true,
+        message: 'Registration submitted successfully!',
+        data: {
+          student_id: newStudentId,
+          student_name: studentFullName,
+          reference_id: referenceId,
+          hostel_name: hostelExists.hostel_name,
+          hostel_code: hostelExists.hostel_code,
+          admission_date: nowStr,
+          status: 'Pending Owner Approval',
+        }
+      });
     }
+
 
     const successHtml = `
       <!DOCTYPE html>

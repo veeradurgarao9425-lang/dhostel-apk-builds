@@ -69,12 +69,13 @@ export const useNotifications = () => {
                             ...item,
                             ...extraData,
                             params: parsedParams,
-                            student_id: item.student_id || extraData?.student_id || extraData?.studentId || (parsedParams && parsedParams.studentId),
-                            studentId: item.student_id || extraData?.student_id || extraData?.studentId || (parsedParams && parsedParams.studentId),
-                            student_name: item.student_name || extraData?.student_name || extraData?.studentName || (parsedParams && parsedParams.studentName),
-                            studentName: item.student_name || extraData?.student_name || extraData?.studentName || (parsedParams && parsedParams.studentName)
+                            student_id: item.student_id || (extraData as any)?.student_id || (extraData as any)?.studentId || (parsedParams as any)?.studentId,
+                            studentId: item.student_id || (extraData as any)?.student_id || (extraData as any)?.studentId || (parsedParams as any)?.studentId,
+                            student_name: item.student_name || (extraData as any)?.student_name || (extraData as any)?.studentName || (parsedParams as any)?.studentName,
+                            studentName: item.student_name || (extraData as any)?.student_name || (extraData as any)?.studentName || (parsedParams as any)?.studentName
                         }
                     };
+
                 });
 
                 setNotifications(formattedNotifications);
