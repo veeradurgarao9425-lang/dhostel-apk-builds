@@ -23,6 +23,7 @@ import DateTimePickerModal from "react-native-modal-datetime-picker";
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../services/api';
+import { getResolvedImageUrl } from '../utils/imageHelper';
 import { ProfileMenu } from '../components/ProfileMenu';
 import { HeaderNotification } from '../components/HeaderNotification';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -128,17 +129,7 @@ const StudentCard = React.memo(({ student, onPress, onWhatsApp, onCall, onToggle
                     <View style={[styles.avatarBox, { backgroundColor: avatarBg, borderColor: isDark ? '#334155' : '#E2E8F0' }]}>
                         {(() => {
                             const rawPhoto = student.profile_photo_url || student.photo || student.profile_photo;
-                            let photoUri: string | null = null;
-                            if (rawPhoto) {
-                                if (rawPhoto.includes('r2.cloudflarestorage.com/hostix-media/')) {
-                                    const key = rawPhoto.split('hostix-media/')[1];
-                                    photoUri = `http://143.244.131.69:8081/api/media/${key}`;
-                                } else if (rawPhoto.startsWith('http://') || rawPhoto.startsWith('https://')) {
-                                    photoUri = rawPhoto;
-                                } else {
-                                    photoUri = `http://143.244.131.69:8081${rawPhoto.startsWith('/') ? '' : '/'}${rawPhoto}`;
-                                }
-                            }
+                            const photoUri = getResolvedImageUrl(rawPhoto);
                             return photoUri && !imageError ? (
                                 <Image 
                                     source={{ uri: photoUri }} 

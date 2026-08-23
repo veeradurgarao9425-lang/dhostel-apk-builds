@@ -35,12 +35,8 @@ const CAT_COLORS: Record<string, string> = {
 
 const getCatColor = (name: string) => CAT_COLORS[name] || '#64748B';
 
-const getFullImageUrl = (url?: string) => {
-    if (!url) return null;
-    if (url.startsWith('http://') || url.startsWith('https://')) return url;
-    const base = 'http://143.244.131.69:8081';
-    return `${base}${url.startsWith('/') ? '' : '/'}${url}`;
-};
+import { getResolvedImageUrl } from '../utils/imageHelper';
+const getFullImageUrl = (url?: string) => getResolvedImageUrl(url);
 
 // ─── Single detail row ────────────────────────────────────────────────────────
 const DetailRow = React.memo(({ icon, label, value, accent, isDark, theme }: {

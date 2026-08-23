@@ -20,6 +20,7 @@ import {
 } from 'react-native';
 import { Card } from '../components/Card';
 import { Badge } from '../components/Badge';
+import { getResolvedImageUrl } from '../utils/imageHelper';
 import {
     Phone, Mail, MapPin, Calendar, CreditCard,
     ChevronRight, User, Circle, IndianRupee, Clock,
@@ -843,17 +844,7 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                                 <View style={styles.avatarWrapper}>
                                     {(() => {
                                         const rawPhoto = student.profile_photo_url || student.photo || student.profile_photo;
-                                        let photoUri: string | null = null;
-                                        if (rawPhoto) {
-                                            if (rawPhoto.includes('r2.cloudflarestorage.com/hostix-media/')) {
-                                                const key = rawPhoto.split('hostix-media/')[1];
-                                                photoUri = `http://143.244.131.69:8081/api/media/${key}`;
-                                            } else if (rawPhoto.startsWith('http://') || rawPhoto.startsWith('https://')) {
-                                                photoUri = rawPhoto;
-                                            } else {
-                                                photoUri = `http://143.244.131.69:8081${rawPhoto.startsWith('/') ? '' : '/'}${rawPhoto}`;
-                                            }
-                                        }
+                                        const photoUri = getResolvedImageUrl(rawPhoto);
                                         return photoUri && !avatarError ? (
                                             <TouchableOpacity activeOpacity={0.85} onPress={() => setPreviewImageModalUrl(photoUri)}>
                                                 <Image
@@ -1337,18 +1328,9 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                                             )}
                                         </View>
                                          {/* ID Proof Document Attachments (Front & Back) */}
-                                         {(() => {
-                                             const resolveUrl = (raw?: string | null) => {
-                                                 if (!raw) return null;
-                                                 if (raw.includes('r2.cloudflarestorage.com/hostix-media/')) {
-                                                     const key = raw.split('hostix-media/')[1];
-                                                     return `http://143.244.131.69:8081/api/media/${key}`;
-                                                 }
-                                                 if (raw.startsWith('http://') || raw.startsWith('https://')) return raw;
-                                                 return `http://143.244.131.69:8081${raw.startsWith('/') ? '' : '/'}${raw}`;
-                                             };
-
-                                             const docFront = resolveUrl(student.id_proof_front_url || (student.id_proof_document_url && !student.id_proof_back_url ? student.id_proof_document_url : null) || student.id_proof_front);
+                                         {( () => {
+                                              const resolveUrl = (raw?: string | null) => getResolvedImageUrl(raw);
+                                              const docFront = resolveUrl(student.id_proof_front_url || (student.id_proof_document_url && !student.id_proof_back_url ? student.id_proof_document_url : null) || student.id_proof_front);
                                              const docBack = resolveUrl(student.id_proof_back_url || student.id_proof_back);
 
                                              if (!docFront && !docBack) return null;

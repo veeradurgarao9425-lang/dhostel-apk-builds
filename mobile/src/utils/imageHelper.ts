@@ -1,6 +1,6 @@
 import { Platform } from 'react-native';
 
-const API_FALLBACK_URL = 'http://143.244.131.69:8081';
+const API_FALLBACK_URL = (process.env.EXPO_PUBLIC_API_URL || 'https://api.143-244-131-69.sslip.io/api').replace(/\/api\/?$/, '');
 
 /**
  * Resolves any raw photo/document URL to a fully-qualified, renderable URL.
@@ -8,8 +8,13 @@ const API_FALLBACK_URL = 'http://143.244.131.69:8081';
  */
 export function getResolvedImageUrl(rawUrl: string | null | undefined): string | null {
   if (!rawUrl || typeof rawUrl !== 'string') return null;
-  const clean = rawUrl.trim();
+  let clean = rawUrl.trim();
   if (!clean) return null;
+
+  // Upgrade legacy HTTP IP links to HTTPS domain
+  if (clean.includes('143.244.131.69:8081')) {
+    clean = clean.replace('http://143.244.131.69:8081', API_FALLBACK_URL).replace('https://143.244.131.69:8081', API_FALLBACK_URL);
+  }
 
   // Data URLs or local file uris
   if (clean.startsWith('data:') || clean.startsWith('file://') || clean.startsWith('content://') || clean.startsWith('ph://')) {

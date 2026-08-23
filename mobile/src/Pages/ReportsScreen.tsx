@@ -346,7 +346,7 @@ export default function ReportsScreen() {
             const token = (await getSecureItem('token')) || (await AsyncStorage.getItem('token'));
             if (!token) { showError('Authentication token not found. Please log in again.'); return; }
 
-            const base = (api.defaults.baseURL || 'http://143.244.131.69:8081/api').replace(/\/$/, '');
+            const base = (api.defaults.baseURL || 'https://api.143-244-131-69.sslip.io/api').replace(/\/$/, '');
             let startStr = '';
             let endStr = '';
 

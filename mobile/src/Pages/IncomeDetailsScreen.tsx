@@ -157,7 +157,7 @@ export default function IncomeDetailsScreen() {
 
             const todayStr = toLocalDateString(refDate);
             const currentMonthStr = exportMonth || todayStr.slice(0, 7);
-            const baseURL = (api.defaults.baseURL || 'http://143.244.131.69:8081/api').replace(/\/$/, '');
+            const baseURL = (api.defaults.baseURL || 'https://api.143-244-131-69.sslip.io/api').replace(/\/$/, '');
 
             let queryParams = `token=${encodeURIComponent(token)}`;
             let filename = `Earnings_Report_${exportRange}_${todayStr}.xlsx`;

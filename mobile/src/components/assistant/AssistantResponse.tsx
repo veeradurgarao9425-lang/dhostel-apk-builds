@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import Svg, { Rect, Circle, Line } from 'react-native-svg';
 import * as RootNavigation from '../../navigation/navigationRef';
 import * as Haptics from 'expo-haptics';
+import { getResolvedImageUrl } from '../../utils/imageHelper';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 const INR = (n: number) => `₹${Number(n).toLocaleString('en-IN')}`;
@@ -1152,15 +1153,7 @@ const InfoTipBlock = ({ text, icon, color }: { text: string; icon?: string; colo
 };
 
 // ─── Photo Resolver Helper ───────────────────────────────────────────────────
-const resolveStudentPhotoUri = (rawPhoto?: string | null) => {
-  if (!rawPhoto || typeof rawPhoto !== 'string' || rawPhoto.trim() === '' || rawPhoto.trim() === 'null') return null;
-  const raw = rawPhoto.trim();
-  if (raw.startsWith('http://') || raw.startsWith('https://')) return raw;
-  if (raw.startsWith('media/') || raw.startsWith('photos/') || raw.startsWith('documents/')) {
-    return `http://143.244.131.69:8081/api/media/${raw.replace(/^media\//, '')}`;
-  }
-  return `http://143.244.131.69:8081${raw.startsWith('/') ? '' : '/'}${raw}`;
-};
+const resolveStudentPhotoUri = (rawPhoto?: string | null) => getResolvedImageUrl(rawPhoto);
 
 // ─── Student Detail Accordion Card Block ──────────────────────────────────────
 const StudentDetailCardBlock = ({ student }: { student: any }) => {

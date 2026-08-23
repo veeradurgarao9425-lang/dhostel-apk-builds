@@ -17,6 +17,7 @@ import Toast from 'react-native-toast-message';
 import * as ImagePicker from 'expo-image-picker';
 import { AppHeader } from '../components/AppHeader';
 import api from '../services/api';
+import { getResolvedImageUrl } from '../utils/imageHelper';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useRefresh } from '../../contexts/RefreshContext';
@@ -649,7 +650,7 @@ export const AddNoticeScreen = ({ navigation, route }: any) => {
                             {formData.image || (isEdit && noticeToEdit?.image_url) ? (
                                 <View style={styles.imagePreviewContainer}>
                                     <Image
-                                        source={{ uri: formData.image ? formData.image.uri : `http://143.244.131.69:8081${noticeToEdit.image_url}` }}
+                                        source={{ uri: formData.image ? formData.image.uri : (getResolvedImageUrl(noticeToEdit.image_url) || '') }}
                                         style={styles.imagePreview}
                                     />
                                     <TouchableOpacity

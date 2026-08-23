@@ -205,7 +205,7 @@ export default function CollectedPaymentsScreen() {
                 return;
             }
 
-            const baseURL = (api.defaults.baseURL || 'http://143.244.131.69:8081/api').replace(/\/$/, '');
+            const baseURL = (api.defaults.baseURL || 'https://api.143-244-131-69.sslip.io/api').replace(/\/$/, '');
             const exportUrl = `${baseURL}/reports/download/excel?startDate=${startStr}&endDate=${endStr}&reportType=collection&token=${encodeURIComponent(token)}`;
 
             const filename = `Collected_Rent_Report_${startStr}_to_${endStr}.xlsx`;

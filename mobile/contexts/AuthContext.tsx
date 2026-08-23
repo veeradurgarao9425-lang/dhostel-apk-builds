@@ -279,7 +279,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       let errorMessage = '';
       if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
-        errorMessage = `Server Timeout (15s): Cannot reach ${api.defaults.baseURL}. Please verify server at http://143.244.131.69:8081 is running.`;
+        errorMessage = `Server Timeout: Cannot reach ${api.defaults.baseURL}. Please check your connection.`;
       } else if (!error.response) {
         errorMessage = `Network Error: Cannot connect to ${api.defaults.baseURL}. (${error.message || 'Server offline or unreachable'})`;
       } else if (error.response?.data?.error) {
