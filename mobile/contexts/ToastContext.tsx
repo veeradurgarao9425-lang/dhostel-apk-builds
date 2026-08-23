@@ -32,7 +32,7 @@ const ToastContext = createContext<ToastContextValue>({
 export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
   const showToast = useCallback(({ type, message, title, duration }: ShowToastParams) => {
-    const defaultDuration = (type === 'error') ? 6000 : 3000;
+    const defaultDuration = (type === 'error') ? 3500 : 2800;
     const titleMap: Record<ToastType, string> = {
       success: 'Success',
       error: 'Error',

@@ -325,7 +325,7 @@ export default function StaffScreen() {
                 onPress={() => navigation.navigate('AddStaff')}
                 activeOpacity={0.85}
             >
-                <Plus color="#FFF" size={26} strokeWidth={3.5} />
+                <Plus color="#FFF" size={24} strokeWidth={3.0} />
             </TouchableOpacity>
         </View>
     );
@@ -431,7 +431,7 @@ const s = StyleSheet.create({
     statusToggleTextNew: { fontSize: 11, fontWeight: '800' },
 
     fab: {
-        position: 'absolute', bottom: 140, right: 20, width: 52, height: 52, borderRadius: 26,
+        position: 'absolute', bottom: 120, right: 20, width: 56, height: 56, borderRadius: 28,
         justifyContent: 'center', alignItems: 'center', elevation: 10,
         shadowColor: '#4F46E5', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.35, shadowRadius: 6, zIndex: 99999,
     },

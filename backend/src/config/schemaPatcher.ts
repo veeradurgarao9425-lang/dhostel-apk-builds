@@ -530,6 +530,9 @@ export async function patchDatabaseSchema() {
           await db.raw("ALTER TABLE students ADD COLUMN is_active TINYINT DEFAULT 1");
           await db.raw("UPDATE students SET is_active = IF(status = 1, 1, 0)");
         }
+        try {
+          await db.raw("ALTER TABLE students MODIFY COLUMN admission_status VARCHAR(50) DEFAULT 'Unpaid'");
+        } catch (_) {}
         if (!columnNames.includes('floor_number')) {
           console.log('[schema-patch] adding floor_number to students...');
           if (columnNames.includes('floor')) {
@@ -594,6 +597,34 @@ export async function patchDatabaseSchema() {
         if (!columnNames.includes('inactive_date')) {
           console.log('[schema-patch] adding inactive_date to students...');
           await db.raw("ALTER TABLE students ADD COLUMN inactive_date DATE NULL COMMENT 'Date student became inactive/vacated'");
+        }
+        if (!columnNames.includes('date_of_birth')) {
+          console.log('[schema-patch] adding date_of_birth to students...');
+          await db.raw("ALTER TABLE students ADD COLUMN date_of_birth DATE NULL");
+        }
+        if (!columnNames.includes('gender')) {
+          console.log('[schema-patch] adding gender to students...');
+          await db.raw("ALTER TABLE students ADD COLUMN gender VARCHAR(20) NULL");
+        }
+        if (!columnNames.includes('guardian_name')) {
+          console.log('[schema-patch] adding guardian_name to students...');
+          await db.raw("ALTER TABLE students ADD COLUMN guardian_name VARCHAR(100) NULL");
+        }
+        if (!columnNames.includes('guardian_phone')) {
+          console.log('[schema-patch] adding guardian_phone to students...');
+          await db.raw("ALTER TABLE students ADD COLUMN guardian_phone VARCHAR(20) NULL");
+        }
+        if (!columnNames.includes('guardian_relation')) {
+          console.log('[schema-patch] adding guardian_relation to students...');
+          await db.raw("ALTER TABLE students ADD COLUMN guardian_relation VARCHAR(50) NULL");
+        }
+        if (!columnNames.includes('id_proof_type')) {
+          console.log('[schema-patch] adding id_proof_type to students...');
+          await db.raw("ALTER TABLE students ADD COLUMN id_proof_type INT NULL");
+        }
+        if (!columnNames.includes('present_working_address')) {
+          console.log('[schema-patch] adding present_working_address to students...');
+          await db.raw("ALTER TABLE students ADD COLUMN present_working_address TEXT NULL");
         }
       }
     } catch (e: any) {
@@ -786,6 +817,88 @@ export async function patchDatabaseSchema() {
       }
     } catch (e: any) {
       console.error('[schema-patch] Error checking/updating rooms columns:', e.message);
+    }
+
+    // 2.9 Ensure guests table exists & has all columns
+    try {
+      if (!tableNamesLower.includes('guests')) {
+        console.log('[schema-patch] creating missing guests table...');
+        await db.raw(`
+          CREATE TABLE guests (
+            guest_id INT AUTO_INCREMENT PRIMARY KEY,
+            hostel_id INT NOT NULL,
+            full_name VARCHAR(255) NOT NULL,
+            phone VARCHAR(20) NULL,
+            email VARCHAR(255) NULL,
+            gender VARCHAR(20) NULL DEFAULT 'Male',
+            id_proof_type_id INT NULL,
+            id_proof_number VARCHAR(100) NULL,
+            check_in_date DATE NOT NULL,
+            check_out_date DATE NULL,
+            days INT NOT NULL DEFAULT 1,
+            per_day_amount DECIMAL(10, 2) NULL DEFAULT 0,
+            amount_paid DECIMAL(10, 2) NULL DEFAULT 0,
+            purpose VARCHAR(255) NULL,
+            room_number VARCHAR(50) NULL,
+            status VARCHAR(50) NOT NULL DEFAULT 'staying',
+            notes TEXT NULL,
+            profile_photo_url VARCHAR(500) NULL,
+            id_proof_front_url VARCHAR(500) NULL,
+            id_proof_back_url VARCHAR(500) NULL,
+            overstay_notified TINYINT DEFAULT 0,
+            checked_out_at DATETIME NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            FOREIGN KEY (hostel_id) REFERENCES hostel_master(hostel_id) ON DELETE CASCADE
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        `);
+        console.log('[schema-patch] creating indexes for guests table...');
+        await db.raw("CREATE INDEX idx_guests_hostel ON guests(hostel_id)");
+        await db.raw("CREATE INDEX idx_guests_status ON guests(status)");
+      } else {
+        console.log('[schema-patch] Checking guests columns...');
+        const [columns] = await db.raw("SHOW COLUMNS FROM guests");
+        const columnNames = (columns as any[]).map(col => col.Field.toLowerCase());
+
+        if (!columnNames.includes('gender')) {
+          console.log('[schema-patch] adding gender to guests...');
+          await db.raw("ALTER TABLE guests ADD COLUMN gender VARCHAR(20) NULL DEFAULT 'Male'");
+        }
+        if (!columnNames.includes('status')) {
+          console.log('[schema-patch] adding status to guests...');
+          await db.raw("ALTER TABLE guests ADD COLUMN status VARCHAR(50) NOT NULL DEFAULT 'staying'");
+        }
+        if (!columnNames.includes('purpose')) {
+          console.log('[schema-patch] adding purpose to guests...');
+          await db.raw("ALTER TABLE guests ADD COLUMN purpose VARCHAR(255) NULL");
+        }
+        if (!columnNames.includes('notes')) {
+          console.log('[schema-patch] adding notes to guests...');
+          await db.raw("ALTER TABLE guests ADD COLUMN notes TEXT NULL");
+        }
+        if (!columnNames.includes('profile_photo_url')) {
+          console.log('[schema-patch] adding profile_photo_url to guests...');
+          await db.raw("ALTER TABLE guests ADD COLUMN profile_photo_url VARCHAR(500) NULL");
+        }
+        if (!columnNames.includes('id_proof_front_url')) {
+          console.log('[schema-patch] adding id_proof_front_url to guests...');
+          await db.raw("ALTER TABLE guests ADD COLUMN id_proof_front_url VARCHAR(500) NULL");
+        }
+        if (!columnNames.includes('id_proof_back_url')) {
+          console.log('[schema-patch] adding id_proof_back_url to guests...');
+          await db.raw("ALTER TABLE guests ADD COLUMN id_proof_back_url VARCHAR(500) NULL");
+        }
+        if (!columnNames.includes('overstay_notified')) {
+          console.log('[schema-patch] adding overstay_notified to guests...');
+          await db.raw("ALTER TABLE guests ADD COLUMN overstay_notified TINYINT DEFAULT 0");
+        }
+        if (!columnNames.includes('checked_out_at')) {
+          console.log('[schema-patch] adding checked_out_at to guests...');
+          await db.raw("ALTER TABLE guests ADD COLUMN checked_out_at DATETIME NULL");
+        }
+      }
+    } catch (e: any) {
+      console.error('[schema-patch] Error checking/updating guests table:', e.message);
     }
 
     // 3. Ensure income table exists

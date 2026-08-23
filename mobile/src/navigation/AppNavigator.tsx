@@ -112,6 +112,7 @@ import StaffPaymentsScreen from '../Pages/StaffPaymentsScreen';
 import StaffDetailsScreen from '../Pages/StaffDetailsScreen';
 import GuestsScreen from '../Pages/GuestsScreen';
 import AddGuestScreen from '../Pages/AddGuestScreen';
+import GuestDetailsScreen from '../Pages/GuestDetailsScreen';
 import BillRemindersScreen from '../Pages/BillRemindersScreen';
 import RemindersScreen from '../Pages/RemindersScreen';
 import TenantTransactionsScreen from '../Pages/TenantTransactionsScreen';
@@ -259,6 +260,7 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
                     screenOptions={{ headerShown: false }}
                     initialRouteName="Splash"
                 >
+
                     {/* Auth */}
                     <Stack.Screen name="Splash" component={SplashScreen} />
                     <Stack.Screen
@@ -328,6 +330,7 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
 
                     {/* Guests (short-stay) */}
                     <Stack.Screen name="Guests" component={GuestsScreen} />
+                    <Stack.Screen name="GuestDetails" component={GuestDetailsScreen} />
                     <Stack.Screen
                         name="AddGuest"
                         component={AddGuestScreen}

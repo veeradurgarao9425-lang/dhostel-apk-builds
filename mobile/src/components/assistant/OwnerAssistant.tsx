@@ -265,14 +265,40 @@ const WELCOME_CHIPS: Array<{ icon: string; label: string; q: string; color?: str
 
 
 
-// ─── Main Component ────────────────────────────────────────────────────────
-export const OwnerAssistant: React.FC = () => {
+export const OwnerAssistant: React.FC<{ currentRoute?: string | null }> = ({ currentRoute: propRoute }) => {
   const { user, updateTokenAndUser } = useAuth();
   const insets = useSafeAreaInsets();
   const [isOpen, setIsOpen] = useState(false);
   const [isTourActive, setIsTourActive] = useState(false);
   const [isAssistantHidden, setIsAssistantHidden] = useState(false);
-  const [currentRoute, setCurrentRoute] = useState<string | null>(null);
+  const [currentRoute, setCurrentRoute] = useState<string | null>(propRoute || null);
+
+  useEffect(() => {
+    if (propRoute) setCurrentRoute(propRoute);
+  }, [propRoute]);
+
+  useEffect(() => {
+    const sub = DeviceEventEmitter.addListener('ROUTE_CHANGED', (name: string) => {
+      if (name) setCurrentRoute(name);
+    });
+    return () => sub.remove();
+  }, []);
+
+  const hasPlusButton = (() => {
+    if (!currentRoute) return false;
+    const r = currentRoute.toLowerCase();
+    return (
+      r.includes('student') ||
+      r.includes('staff') ||
+      r.includes('reminder') ||
+      r.includes('guest') ||
+      r.includes('hostel') ||
+      r.includes('notice') ||
+      r.includes('expense')
+    );
+  })();
+
+  const fabBottom = hasPlusButton ? 188 : 140;
 
   // Content state
   const [view, setView] = useState<'home' | 'conversation'>('home');
@@ -1672,6 +1698,21 @@ export const OwnerAssistant: React.FC = () => {
               { label: 'Pending dues', icon: 'alert-circle-outline', onPress: () => handleIntent({ type: 'SHOW_DUES', filter: 'all' }) },
               { label: 'Who hasn\'t paid?', icon: 'wallet-outline', onPress: () => handleIntent({ type: 'SHOW_DUES', filter: 'pending' }) },
             ],
+            add_guest: [
+              { label: 'Guest QR Check-In', icon: 'qr-code-outline', onPress: () => handleIntent({ type: 'SHOW_HOW_TO', action: 'guest_qr_checkin' }) },
+              { label: 'How to checkout guest?', icon: 'exit-outline', onPress: () => handleIntent({ type: 'SHOW_HOW_TO', action: 'guest_checkout' }) },
+              { label: 'View all guests', icon: 'person-outline', onPress: () => handleIntent({ type: 'SHOW_GUESTS' }) },
+            ],
+            guest_qr_checkin: [
+              { label: 'How to add guest?', icon: 'person-add-outline', onPress: () => handleIntent({ type: 'SHOW_HOW_TO', action: 'add_guest' }) },
+              { label: 'View pending guests', icon: 'person-outline', onPress: () => handleIntent({ type: 'SHOW_GUESTS' }) },
+              { label: 'Open QR Screen', icon: 'qr-code-outline', onPress: () => handleIntent({ type: 'SHOW_NAVIGATE', screen: 'QRSignup', label: 'QR Signup' }) },
+            ],
+            guest_checkout: [
+              { label: 'How to add guest?', icon: 'person-add-outline', onPress: () => handleIntent({ type: 'SHOW_HOW_TO', action: 'add_guest' }) },
+              { label: 'Guest QR Check-In', icon: 'qr-code-outline', onPress: () => handleIntent({ type: 'SHOW_HOW_TO', action: 'guest_qr_checkin' }) },
+              { label: 'View guests', icon: 'person-outline', onPress: () => handleIntent({ type: 'SHOW_GUESTS' }) },
+            ],
           };
 
           const chips = relatedChips[action] ?? [
@@ -1739,12 +1780,12 @@ export const OwnerAssistant: React.FC = () => {
       {/* FAB */}
       {!isOpen && (
         <TouchableOpacity
-          style={[s.fab, fabPos]}
+          style={[s.fab, { bottom: fabBottom }]}
           onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => { }); setIsOpen(true); }}
           activeOpacity={0.85}
         >
           <LinearGradient colors={['#7C3AED', '#6D28D9']} style={s.fabGrad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
-            <Ionicons name="chatbubble-ellipses" size={22} color="#FFF" />
+            <Ionicons name="chatbubble-ellipses" size={24} color="#FFF" />
           </LinearGradient>
         </TouchableOpacity>
       )}
@@ -2145,10 +2186,12 @@ const s = StyleSheet.create({
   /* FAB */
   fab: {
     position: 'absolute',
-    width: 52, height: 52, borderRadius: 26,
+    bottom: 188,
+    right: 20,
+    width: 56, height: 56, borderRadius: 28,
     overflow: 'hidden',
     elevation: 20,
-    shadowColor: '#C2410C', shadowOpacity: 0.45, shadowRadius: 8, shadowOffset: { width: 0, height: 4 },
+    shadowColor: '#7C3AED', shadowOpacity: 0.45, shadowRadius: 8, shadowOffset: { width: 0, height: 4 },
     zIndex: 999999,
   },
   fabGrad: { flex: 1, alignItems: 'center', justifyContent: 'center' },

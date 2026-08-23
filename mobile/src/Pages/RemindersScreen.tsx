@@ -560,11 +560,11 @@ const s = StyleSheet.create({
 
     fab: {
         position: 'absolute',
-        bottom: 140,
+        bottom: 120,
         right: 20,
-        width: 52,
-        height: 52,
-        borderRadius: 26,
+        width: 56,
+        height: 56,
+        borderRadius: 28,
         justifyContent: 'center',
         alignItems: 'center',
         elevation: 10,

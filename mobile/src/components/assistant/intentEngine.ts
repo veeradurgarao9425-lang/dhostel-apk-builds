@@ -67,7 +67,10 @@ export type HowToAction =
   | 'send_reminder'
   | 'mark_vacated'
   | 'verify_rent'
-  | 'view_payments_guide';
+  | 'view_payments_guide'
+  | 'add_guest'
+  | 'guest_qr_checkin'
+  | 'guest_checkout';
 
 
 // ─── Conversation Context ─────────────────────────────────────────────────────
@@ -654,6 +657,42 @@ const RULES: Rule[] = [
     ],
     intent: { type: 'SHOW_HOW_TO', action: 'view_payments_guide' },
     priority: 12,
+  },
+
+  // Add Guest / Register Visitor (NEW)
+  {
+    keywords: [
+      'how to add guest', 'how to register guest', 'how to add short stay visitor',
+      'how to check in guest', 'guest entry steps', 'add guest steps',
+      'how to record guest', 'register a guest', 'new guest entry',
+      'how to add visitor', 'visitor registration steps', 'how to add daily guest',
+    ],
+    intent: { type: 'SHOW_HOW_TO', action: 'add_guest' },
+    priority: 13,
+  },
+
+  // Guest QR Self Check-In (NEW)
+  {
+    keywords: [
+      'how does guest qr work', 'guest qr check in', 'guest qr checkin',
+      'how to generate guest qr', 'visitor qr code', 'guest self registration',
+      'guest qr flow', 'how guest self check in works', 'guest qr code',
+      'how to create guest qr', 'visitor self check in', 'pending guest requests',
+      'how to approve pending guest', 'where to see pending guest',
+    ],
+    intent: { type: 'SHOW_HOW_TO', action: 'guest_qr_checkin' },
+    priority: 13,
+  },
+
+  // Guest Check Out (NEW)
+  {
+    keywords: [
+      'how to checkout guest', 'how to check out guest', 'guest checkout steps',
+      'how to vacate guest', 'guest bill calculation', 'calculate guest bill',
+      'how to end guest stay', 'checkout guest', 'check out guest steps',
+    ],
+    intent: { type: 'SHOW_HOW_TO', action: 'guest_checkout' },
+    priority: 13,
   },
 
   // Priority 11 — Direct Room / Bed / Floor counts (beats generic keywords)
@@ -1354,6 +1393,8 @@ export const SIDEBAR_CATEGORIES = [
     section: 'Help',
     items: [
       { label: 'Add a Student', icon: 'person-add-outline', intent: { type: 'SHOW_HOW_TO', action: 'add_student' } as AssistantIntent },
+      { label: 'Register a Guest', icon: 'person-outline', intent: { type: 'SHOW_HOW_TO', action: 'add_guest' } as AssistantIntent },
+      { label: 'Guest QR Check-In', icon: 'qr-code-outline', intent: { type: 'SHOW_HOW_TO', action: 'guest_qr_checkin' } as AssistantIntent },
       { label: 'Add a Room', icon: 'add-circle-outline', intent: { type: 'SHOW_HOW_TO', action: 'add_room' } as AssistantIntent },
       { label: 'Collect Rent', icon: 'cash-outline', intent: { type: 'SHOW_HOW_TO', action: 'collect_rent' } as AssistantIntent },
       { label: 'Record Expense', icon: 'receipt-outline', intent: { type: 'SHOW_HOW_TO', action: 'add_expense' } as AssistantIntent },
@@ -1421,6 +1462,9 @@ export const GUIDE_QUESTIONS: string[] = [
   'How to mark student as vacated?',
   'How to register via QR?',
   'How to view pending dues?',
+  'How to register a guest?',
+  'How does guest QR check-in work?',
+  'How to checkout a guest?',
 ];
 
 /** Combined export for backward compatibility */
@@ -1712,6 +1756,46 @@ export const HOW_TO_STEPS: Record<HowToAction, { title: string; steps: string[];
     ],
     screen: 'PreBooking',
     screenLabel: 'Open Pre-Booking',
+  },
+  add_guest: {
+    title: 'How to Register a Short-Stay Guest',
+    steps: [
+      'Go to the Guests screen from the More menu or quick actions.',
+      'Tap the "+" / Add Guest button.',
+      'Enter Guest Details: Full Name, 10-digit Phone, Gender, Purpose of Visit.',
+      'Enter Check-in Date and Stay Duration (Days).',
+      'Select Room/Bed, enter Daily Rate (e.g. ₹500/day) and Amount Collected.',
+      'Upload ID Proof (Aadhaar, PAN, DL, Voter ID, Passport).',
+      'Tap Save & Check In — the guest is recorded in Active Stay.',
+    ],
+    screen: 'AddGuest',
+    screenLabel: 'Add Guest Now',
+  },
+  guest_qr_checkin: {
+    title: 'How Guest QR Self Check-In Works',
+    steps: [
+      'Open QR Signup from Settings or Dashboard and select the "Guest QR" tab.',
+      'Print or display the reception poster with the Guest Check-In QR code.',
+      'The walk-in visitor scans the QR using their phone camera.',
+      'They fill their Name, Phone, Purpose, Stay Days, and upload ID Proof.',
+      'You receive an instant push notification and the request appears under Guests > Pending tab.',
+      'Tap "Check-In" on the pending card, assign an available room, confirm the rate, and tap Approve.',
+    ],
+    screen: 'QRSignup',
+    screenLabel: 'View Guest QR Code',
+  },
+  guest_checkout: {
+    title: 'How to Check Out a Guest & Auto-Bill',
+    steps: [
+      'Go to the Guests screen.',
+      'Find the active guest card or tap their name to view full details.',
+      'Tap the "Check Out" button.',
+      'The app auto-calculates total stay days, daily rate, and final bill amount.',
+      'Confirm the collected amount and tap Confirm Checkout.',
+      'The room/bed is instantly freed and the income is logged in your financial records.',
+    ],
+    screen: 'Guests',
+    screenLabel: 'Go to Guests',
   },
 };
 

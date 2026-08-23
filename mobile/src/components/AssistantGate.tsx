@@ -119,7 +119,7 @@ export const AssistantGate: React.FC = () => {
   }
 
   // Render on all list & dashboard screens for owners
-  return <OwnerAssistant />;
+  return <OwnerAssistant currentRoute={currentRoute} />;
 };
 
 export default AssistantGate;

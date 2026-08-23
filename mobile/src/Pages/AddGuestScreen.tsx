@@ -502,7 +502,7 @@ export default function AddGuestScreen({ navigation, route }: any) {
     const { theme, isDark } = useTheme();
     const insets = useSafeAreaInsets();
     const { showSuccess, showError, showApiError } = useToast();
-    const { guest, isEdit } = route.params || {};
+    const { guest, isEdit, isCheckinPending } = route.params || {};
 
     const [loading, setLoading] = useState(false);
     const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
@@ -791,11 +791,15 @@ export default function AddGuestScreen({ navigation, route }: any) {
                     bodyFormData.append('id_proof_back', { uri: Platform.OS === 'android' ? idProofBack : idProofBack.replace('file://', ''), name: filename, type } as any);
                 }
 
+                if (isCheckinPending) {
+                    bodyFormData.append('status', 'staying');
+                }
+
                 res = isEdit
                     ? await api.put(`/guests/${guest.guest_id}`, bodyFormData)
                     : await api.post('/guests', bodyFormData);
             } else {
-                const jsonPayload = {
+                const jsonPayload: any = {
                     full_name: formData.full_name.trim(),
                     gender: formData.gender,
                     phone: formData.phone.trim(),
@@ -811,13 +815,17 @@ export default function AddGuestScreen({ navigation, route }: any) {
                     remarks: formData.remarks.trim() || undefined,
                 };
 
+                if (isCheckinPending) {
+                    jsonPayload.status = 'staying';
+                }
+
                 res = isEdit
                     ? await api.put(`/guests/${guest.guest_id}`, jsonPayload)
                     : await api.post('/guests', jsonPayload);
             }
 
             if (res.data?.success || res.status === 200 || res.status === 201) {
-                showSuccess(isEdit ? 'Guest updated successfully' : 'Guest checked in successfully');
+                showSuccess(isCheckinPending ? 'Guest checked in successfully!' : isEdit ? 'Guest updated successfully' : 'Guest checked in successfully');
                 navigation.goBack();
             }
         } catch (err: any) {
@@ -842,10 +850,10 @@ export default function AddGuestScreen({ navigation, route }: any) {
             style={[styles.container, { backgroundColor: theme.background }]}
         >
             <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
-            <FullScreenLoader visible={loading} message={isEdit ? 'Updating guest record...' : 'Checking in guest & uploading documents...'} />
+            <FullScreenLoader visible={loading} message={isCheckinPending ? 'Completing guest check-in...' : isEdit ? 'Updating guest record...' : 'Checking in guest & uploading documents...'} />
             <AppHeader
-                title={isEdit ? 'Edit Guest' : 'Add Guest'}
-                subtitle="Record short-stay & daily visitor details"
+                title={isCheckinPending ? 'Complete Guest Check-In' : isEdit ? 'Edit Guest' : 'Add Guest'}
+                subtitle={isCheckinPending ? 'Assign room & confirm stay rate' : 'Record short-stay & daily visitor details'}
                 alignLeft={true}
             />
 
@@ -1142,7 +1150,7 @@ export default function AddGuestScreen({ navigation, route }: any) {
                     {loading ? (
                         <ActivityIndicator color="#FFF" size="small" />
                     ) : (
-                        <Text style={styles.saveBtnText}>{isEdit ? 'Update Guest' : 'Save & Check In'}</Text>
+                        <Text style={styles.saveBtnText}>{isCheckinPending ? 'Approve & Check In' : isEdit ? 'Update Guest' : 'Save & Check In'}</Text>
                     )}
                 </TouchableOpacity>
             </View>

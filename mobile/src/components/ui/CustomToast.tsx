@@ -67,12 +67,16 @@ export const CustomToast = ({ variant, title, message, progress, onAction, onClo
                     </View>
 
                     {/* Texts */}
-                    <View style={S.textCol}>
+                    <TouchableOpacity 
+                        style={S.textCol}
+                        activeOpacity={0.9}
+                        onPress={handleClose}
+                    >
                         <Text style={[S.title, isDark && S.textDark]}>{title}</Text>
                         {message ? (
                             <Text style={[S.message, isDark && S.textDimDark]}>{message}</Text>
                         ) : null}
-                    </View>
+                    </TouchableOpacity>
 
                     {/* Right Side (Action / Progress / Close) */}
                     <View style={S.rightSide}>
@@ -91,12 +95,12 @@ export const CustomToast = ({ variant, title, message, progress, onAction, onClo
                         <TouchableOpacity 
                             onPress={handleClose} 
                             style={S.closeBtn}
-                            hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
-                            activeOpacity={0.6}
+                            hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+                            activeOpacity={0.4}
                             accessibilityLabel="Close notification"
                             accessibilityRole="button"
                         >
-                            <Ionicons name="close" size={20} color={isDark ? "#94A3B8" : "#64748B"} />
+                            <Ionicons name="close" size={22} color={isDark ? "#94A3B8" : "#64748B"} />
                         </TouchableOpacity>
                     </View>
                 </View>

@@ -1,4 +1,4 @@
-// QR Signup form: v2 - fixed regex, toast CSS, no-redirect HTML serving
+// QR Signup: v3 — React-based public registration form (register-web/dist)
 import dotenv from 'dotenv';
 // Load environment variables FIRST - before any module that reads process.env
 dotenv.config();
@@ -10,8 +10,8 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import multer from 'multer';
 import path from 'path';
+import { fileURLToPath } from 'url';
 import { setupSocket } from './socket/index.js';
-import { renderQrSignupView } from './views/qrSignupView.js';
 import authRoutes from './routes/auth.routes.js';
 import db from './config/database.js';
 import hostelRoutes from './routes/hostel.routes.js';
@@ -60,6 +60,7 @@ import { sendNotificationToHostelOwner } from './utils/notification.js';
 import { checkHostelUniqueIdentifiers } from './utils/validation.js';
 import { processFileUpload } from './utils/fileUpload.js';
 import { sanitizeInputMiddleware, developerLoginLimiter } from './middleware/security.js';
+import { publicGuestSignup } from './controllers/guestController.js';
 
 
 // Start Background Jobs
@@ -155,6 +156,15 @@ app.use((req, _res, next) => {
   console.log(`[${ts}] ${req.method} ${req.url}`);
   next();
 });
+
+// ─── Serve the built register-web React app (public registration form) ───────
+// __dirname equivalent for ESM
+const __filename = fileURLToPath(import.meta.url);
+const __dirname  = path.dirname(__filename);
+const REGISTER_WEB_DIST = path.join(__dirname, '../../register-web/dist');
+app.use('/register', express.static(REGISTER_WEB_DIST));
+app.get('/register', (_req, res) => res.sendFile(path.join(REGISTER_WEB_DIST, 'index.html')));
+app.get('/register/*', (_req, res) => res.sendFile(path.join(REGISTER_WEB_DIST, 'index.html')));
 
 // Serve uploaded files
 app.use('/uploads', express.static('uploads'));
@@ -277,58 +287,19 @@ const qrSignupUpload = multer({
   },
 });
 
-// Public QR tenant signup — serves self-contained HTML (works on any device/IP)
-app.get('/api/public/qr-signup', async (req, res) => {
-  const hostelId = req.query.hostelId as string;
-  const roomId   = req.query.roomId   as string | undefined;
-  const bedId    = req.query.bedId    as string | undefined;
-  const bedName  = req.query.bedName  as string | undefined;
-
+// Public QR tenant signup — redirects to React register-web app
+// The React app is served at /register and built from register-web/dist
+app.get('/api/public/qr-signup', (req, res) => {
+  const { hostelId, roomId, bedId, bedName } = req.query as Record<string, string>;
   if (!hostelId) {
-    return res.status(400).send('<h2 style="font-family:sans-serif;color:#7f1d1d;text-align:center;margin-top:40px;">Missing hostel ID link</h2>');
+    return res.status(400).send('<p style="font-family:sans-serif;color:#7f1d1d;text-align:center;margin-top:60px;font-size:18px;">⚠️ Invalid QR link — missing hostel ID.</p>');
   }
-
-  const numHostelId = parseInt(hostelId, 10);
-  let hostelName = 'Hostel Admission';
-  let hostelCity = '';
-  let hostelAddress = '';
-
-  if (!isNaN(numHostelId)) {
-    try {
-      const hostel = await db('hostel_master').where('hostel_id', numHostelId).first();
-      if (hostel) {
-        hostelName = hostel.hostel_name || hostelName;
-        hostelCity = hostel.city || '';
-        hostelAddress = hostel.address || '';
-      }
-    } catch (e) {
-      console.error('Error fetching hostel details for QR signup:', e);
-    }
-  }
-
-  const postUrl = `/api/public/qr-signup?hostelId=${encodeURIComponent(hostelId)}${roomId ? `&roomId=${encodeURIComponent(roomId)}` : ''}${bedId ? `&bedId=${encodeURIComponent(bedId)}` : ''}${bedName ? `&bedName=${encodeURIComponent(bedName)}` : ''}`;
-
-  const html = renderQrSignupView({
-    hostelId,
-    hostelName,
-    hostelCity,
-    hostelAddress,
-    roomId,
-    bedId,
-    bedName,
-    postUrl
-  });
-
-  res.removeHeader('Content-Security-Policy');
-  res.setHeader('Content-Type', 'text/html; charset=utf-8');
-  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
-  res.setHeader('Pragma', 'no-cache');
-  res.setHeader('Expires', '0');
-  res.status(200).send(html);
+  let url = `/register?hostelId=${encodeURIComponent(hostelId)}`;
+  if (roomId)  url += `&roomId=${encodeURIComponent(roomId)}`;
+  if (bedId)   url += `&bedId=${encodeURIComponent(bedId)}`;
+  if (bedName) url += `&bedName=${encodeURIComponent(bedName)}`;
+  return res.redirect(302, url);
 });
-
-const qrSignupErrorPage = (message: string) =>
-  `<div style="background:#fef2f2;color:#7f1d1d;padding:14px;border-radius:10px;font-family:sans-serif;">⚠️ ${message}</div>`;
 
 app.post('/api/public/qr-signup', qrSignupUpload.fields([
   { name: 'profile_photo', maxCount: 1 },
@@ -343,8 +314,7 @@ app.post('/api/public/qr-signup', qrSignupUpload.fields([
     const bedId    = (req.query.bedId || req.body.bed_id || req.body.bedId) as string | undefined;
     const bedName  = (req.query.bedName || req.body.bed_name || req.body.bedName) as string | undefined;
 
-    const wantsJson = req.headers.accept?.includes('application/json') || req.headers['content-type']?.includes('application/json') || req.body?.format === 'json' || req.xhr;
-    const sendError = (msg: string) => wantsJson ? res.status(400).json({ success: false, error: msg }) : res.status(400).send(qrSignupErrorPage(msg));
+    const sendError = (msg: string) => res.status(400).json({ success: false, error: msg });
 
     if (!hostelId) {
       return sendError('Missing hostel ID');
@@ -444,15 +414,15 @@ app.post('/api/public/qr-signup', qrSignupUpload.fields([
       email:            email ? String(email).trim() : null,
       date_of_birth:    parsedDob,
       gender:           String(gender).trim(),
-      photo:            photoUrl,
       profile_photo_url: photoUrl,
       permanent_address: finalPermAddress ? String(finalPermAddress).trim() : null,
       present_working_address: finalCurrAddress ? String(finalCurrAddress).trim() : null,
+      current_address:   finalCurrAddress ? String(finalCurrAddress).trim() : null,
       guardian_name:    guardian_name ? String(guardian_name).trim() : null,
       guardian_phone:   cleanGuardianPhone,
       admission_date:   nowStr,
       admission_fee:    0,
-      admission_status: 0,
+      admission_status: 'Unpaid',
       status:           3, // QR Signup — owner must activate
       room_id:          roomId ? parseInt(roomId, 10) : null,
       bed_id:           bedId || null,
@@ -465,19 +435,20 @@ app.post('/api/public/qr-signup', qrSignupUpload.fields([
       id_proof_back_url:  backUrl,
     };
 
-    let newStudentId: number;
+    // Filter to only columns that actually exist in the table to prevent MySQL 1054 error
     try {
-      const [id] = await db('students').insert(insertData);
-      newStudentId = id;
-    } catch (insertErr: any) {
-      console.warn('[qr-signup] Initial insert error, retrying without optional columns:', insertErr.message);
-      delete insertData.id_proof_front_url;
-      delete insertData.id_proof_back_url;
-      delete insertData.id_proof_status;
-      delete insertData.profile_photo_url;
-      const [id] = await db('students').insert(insertData);
-      newStudentId = id;
-    }
+      const colInfo = await db('students').columnInfo();
+      const validCols = Object.keys(colInfo);
+      for (const key of Object.keys(insertData)) {
+        if (!validCols.includes(key)) {
+          delete insertData[key];
+        }
+      }
+    } catch (_) {}
+
+    let newStudentId: number;
+    const [id] = await db('students').insert(insertData);
+    newStudentId = id;
 
     const studentFullName = `${first_name} ${last_name || ''}`.trim();
     const referenceId = `REG-${hostelExists.hostel_code || 'HSTX'}-${1000 + newStudentId}`;
@@ -492,47 +463,50 @@ app.post('/api/public/qr-signup', qrSignupUpload.fields([
       { studentId: newStudentId, studentName: studentFullName, referenceId }
     ).catch(err => console.error('[qr-signup] Owner notification error:', err));
 
-    if (wantsJson) {
-      return res.status(200).json({
-        success: true,
-        message: 'Registration submitted successfully!',
-        data: {
-          student_id: newStudentId,
-          student_name: studentFullName,
-          reference_id: referenceId,
-          hostel_name: hostelExists.hostel_name,
-          hostel_code: hostelExists.hostel_code,
-          admission_date: nowStr,
-          status: 'Pending Owner Approval',
-        }
-      });
-    }
-
-
-    const successHtml = `
-      <!DOCTYPE html>
-      <html><body><h2>Success!</h2></body></html>
-    `;
-    res.status(200).send(successHtml);
+    return res.status(200).json({
+      success: true,
+      message: 'Registration submitted successfully!',
+      data: {
+        student_id: newStudentId,
+        student_name: studentFullName,
+        reference_id: referenceId,
+        hostel_name: hostelExists.hostel_name,
+        hostel_code: hostelExists.hostel_code,
+        admission_date: nowStr,
+        status: 'Pending Owner Approval',
+      }
+    });
   } catch (error: any) {
     console.error('QR Signup POST Error:', error);
-    const wantsJson = req.headers.accept?.includes('application/json') || req.xhr;
-    if (wantsJson) {
-      res.status(500).json({ success: false, error: error.message || 'Internal server error' });
-    } else {
-      res.status(500).send(qrSignupErrorPage(error.message || 'Internal server error'));
-    }
+    res.status(500).json({ success: false, error: error.message || 'Internal server error' });
   }
 });
 
 app.use('/api/public/qr-signup', (err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
   if (!err) return next();
   const message = err.code === 'LIMIT_FILE_SIZE' ? 'Each ID photo must be under 5MB' : (err.message || 'Upload failed. Please try again.');
-  const wantsJson = req.headers.accept?.includes('application/json') || req.xhr;
-  if (wantsJson) {
-    return res.status(400).json({ success: false, error: message });
+  return res.status(400).json({ success: false, error: message });
+});
+
+// Public QR Guest signup — redirects to React register-web app with type=guest
+app.get('/api/public/guest-signup', (req, res) => {
+  const { hostelId } = req.query as Record<string, string>;
+  if (!hostelId) {
+    return res.status(400).send('<p style="font-family:sans-serif;color:#7f1d1d;text-align:center;margin-top:60px;font-size:18px;">⚠️ Invalid QR link — missing hostel ID.</p>');
   }
-  res.status(400).send(qrSignupErrorPage(message));
+  return res.redirect(302, `/register?hostelId=${encodeURIComponent(hostelId)}&type=guest`);
+});
+
+app.post('/api/public/guest-signup', qrSignupUpload.fields([
+  { name: 'profile_photo', maxCount: 1 },
+  { name: 'id_proof_front', maxCount: 1 },
+  { name: 'id_proof_back', maxCount: 1 },
+]), publicGuestSignup);
+
+app.use('/api/public/guest-signup', (err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  if (!err) return next();
+  const message = err.code === 'LIMIT_FILE_SIZE' ? 'Each ID photo must be under 5MB' : (err.message || 'Upload failed. Please try again.');
+  return res.status(400).json({ success: false, error: message });
 });
 
 // Health check
