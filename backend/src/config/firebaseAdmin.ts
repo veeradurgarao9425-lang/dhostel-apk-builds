@@ -11,10 +11,39 @@ let firebaseApp: App | null = null;
 let firebaseMessagingInstance: Messaging | null = null;
 
 try {
-  const serviceAccountPath = join(__dirname, 'firebaseServiceAccount.json');
-  if (existsSync(serviceAccountPath)) {
-    const serviceAccount = JSON.parse(readFileSync(serviceAccountPath, 'utf8'));
-    
+  let serviceAccount: any = null;
+
+  // 1. Try from environment variable JSON string
+  if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+    try {
+      serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+    } catch {
+      // Try base64 decoding if encoded
+      try {
+        const decoded = Buffer.from(process.env.FIREBASE_SERVICE_ACCOUNT, 'base64').toString('utf8');
+        serviceAccount = JSON.parse(decoded);
+      } catch {}
+    }
+  }
+
+  // 2. Try from separate environment variables
+  if (!serviceAccount && process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_CLIENT_EMAIL && process.env.FIREBASE_PRIVATE_KEY) {
+    serviceAccount = {
+      project_id: process.env.FIREBASE_PROJECT_ID,
+      client_email: process.env.FIREBASE_CLIENT_EMAIL,
+      private_key: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+    };
+  }
+
+  // 3. Try from local JSON file
+  if (!serviceAccount) {
+    const serviceAccountPath = join(__dirname, 'firebaseServiceAccount.json');
+    if (existsSync(serviceAccountPath)) {
+      serviceAccount = JSON.parse(readFileSync(serviceAccountPath, 'utf8'));
+    }
+  }
+
+  if (serviceAccount) {
     if (!getApps().length) {
       firebaseApp = initializeApp({
         credential: cert(serviceAccount),
@@ -26,7 +55,7 @@ try {
     firebaseMessagingInstance = getMessaging(firebaseApp);
     console.log('✅ Firebase Admin SDK initialized successfully for project:', serviceAccount.project_id);
   } else {
-    console.warn('⚠️ firebaseServiceAccount.json not found. Firebase direct push messaging will be disabled.');
+    console.warn('⚠️ Firebase credentials not found in env or file. Firebase direct push messaging will be disabled.');
   }
 } catch (error: any) {
   console.error('❌ Failed to initialize Firebase Admin SDK:', error?.message || error);
