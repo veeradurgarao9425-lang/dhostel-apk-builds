@@ -37,6 +37,7 @@ import { useToast } from '../context/ToastContext';
 import { COLORS, FONT, SPACING } from '../theme/index';
 import { AppHeader } from '../components/AppHeader';
 import { FullScreenLoader } from '../components/FullScreenLoader';
+import { isLocalDeviceUri, appendImageFileToFormData } from '../utils/imageHelper';
 
 // ─── Smooth bottom-sheet modal ────────────────────────────────────────────────
 const ModalSheet = ({ visible, onClose, maxHeight = '85%', children }: any) => {
@@ -358,7 +359,7 @@ const DocumentUploadBox = ({ label, uri, onCapture, onRemove, isFront, error }: 
                 setPermError({ visible: true, title: 'Permission Required', message: 'Camera permission is needed to upload documents. Please enable it in your device settings.' });
                 return;
             }
-            const r = await ImagePicker.launchCameraAsync({ quality: 0.6 });
+            const r = await ImagePicker.launchCameraAsync({ quality: 0.5 });
             if (!r.canceled && r.assets && r.assets.length > 0) {
                 onCapture(r.assets[0].uri);
             }
@@ -374,7 +375,7 @@ const DocumentUploadBox = ({ label, uri, onCapture, onRemove, isFront, error }: 
                 setPermError({ visible: true, title: 'Permission Required', message: 'Media library permission is needed to upload documents. Please enable it in your device settings.' });
                 return;
             }
-            const r = await ImagePicker.launchImageLibraryAsync({ quality: 0.6 });
+            const r = await ImagePicker.launchImageLibraryAsync({ quality: 0.5 });
             if (!r.canceled && r.assets && r.assets.length > 0) {
                 onCapture(r.assets[0].uri);
             }
@@ -522,7 +523,7 @@ const ProfilePhotoCapture = ({ uri, onCapture, onRemove, error }: any) => {
                 Alert.alert('Permission Required', 'Camera permission is needed to take a profile photo.');
                 return;
             }
-            const r = await ImagePicker.launchCameraAsync({ quality: 0.6, allowsEditing: false });
+            const r = await ImagePicker.launchCameraAsync({ quality: 0.5, allowsEditing: false });
             if (!r.canceled && r.assets && r.assets.length > 0) {
                 onCapture(r.assets[0].uri);
             }
@@ -538,7 +539,7 @@ const ProfilePhotoCapture = ({ uri, onCapture, onRemove, error }: any) => {
                 Alert.alert('Permission Required', 'Gallery permission is needed to pick a photo.');
                 return;
             }
-            const r = await ImagePicker.launchImageLibraryAsync({ quality: 0.6, allowsEditing: false });
+            const r = await ImagePicker.launchImageLibraryAsync({ quality: 0.5, allowsEditing: false });
             if (!r.canceled && r.assets && r.assets.length > 0) {
                 onCapture(r.assets[0].uri);
             }
@@ -1059,33 +1060,6 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
         executeSave();
     };
 
-    const isLocalUri = (uri: string | null | undefined): boolean => {
-        if (!uri || typeof uri !== 'string') return false;
-        const clean = uri.trim();
-        if (!clean) return false;
-        if (clean.startsWith('http://') || clean.startsWith('https://') || clean.startsWith('/uploads')) {
-            return false;
-        }
-        return true;
-    };
-
-    const appendImageToFormData = (formDataObj: FormData, fieldName: string, uri: string, fallbackFilename: string) => {
-        let filename = uri.split('/').pop() || fallbackFilename;
-        filename = filename.split('?')[0];
-        if (!/\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(filename)) {
-            filename = `${filename}.jpg`;
-        }
-        const match = /\.(\w+)$/.exec(filename);
-        const ext = match ? match[1].toLowerCase() : 'jpg';
-        const type = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
-        
-        formDataObj.append(fieldName, {
-            uri: Platform.OS === 'android' ? uri : uri.replace('file://', ''),
-            name: filename,
-            type,
-        } as any);
-    };
-
     const executeSave = async (forceStatus?: 'Unpaid') => {
         setLoading(true);
         setLoadingMessage(isEdit ? 'Updating tenant profile...' : 'Registering tenant & allocating room...');
@@ -1129,9 +1103,9 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
                 })(),
             };
 
-            const hasNewProfilePhoto = isLocalUri(profilePhoto);
-            const hasNewAadhaarFront = isLocalUri(aadhaarFront);
-            const hasNewAadhaarBack = isLocalUri(aadhaarBack);
+            const hasNewProfilePhoto = isLocalDeviceUri(profilePhoto);
+            const hasNewAadhaarFront = isLocalDeviceUri(aadhaarFront);
+            const hasNewAadhaarBack = isLocalDeviceUri(aadhaarBack);
             const hasNewFiles = hasNewProfilePhoto || hasNewAadhaarFront || hasNewAadhaarBack;
 
             let res;
@@ -1145,15 +1119,15 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
                 });
 
                 if (hasNewProfilePhoto && profilePhoto) {
-                    appendImageToFormData(bodyFormData, 'profile_photo', profilePhoto, 'profile.jpg');
+                    appendImageFileToFormData(bodyFormData, 'profile_photo', profilePhoto, 'profile.jpg');
                 }
 
                 if (hasNewAadhaarFront && aadhaarFront) {
-                    appendImageToFormData(bodyFormData, 'id_proof_front', aadhaarFront, 'id_proof_front.jpg');
+                    appendImageFileToFormData(bodyFormData, 'id_proof_front', aadhaarFront, 'id_proof_front.jpg');
                 }
 
                 if (hasNewAadhaarBack && aadhaarBack) {
-                    appendImageToFormData(bodyFormData, 'id_proof_back', aadhaarBack, 'id_proof_back.jpg');
+                    appendImageFileToFormData(bodyFormData, 'id_proof_back', aadhaarBack, 'id_proof_back.jpg');
                 }
 
                 res = isEdit

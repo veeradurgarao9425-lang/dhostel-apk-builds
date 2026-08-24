@@ -217,17 +217,7 @@ export const createHostel = async (req: AuthRequest, res: Response) => {
         hostelId: hostel_id
       });
 
-      // 4. Create in-app admin notification
-      await db('notifications').insert({
-        user_id: 1, // assuming user_id 1 is Super Admin
-        hostel_id: hostel_id,
-        notification_type: 'System Alert',
-        title: 'New Hostel Registered',
-        message: `${hostel_name} has just registered by ${ownerName}.`,
-        priority: 'High'
-      });
-
-      // 5. Surface it in the Developer Notification Centre. `email: false` on
+      // 4. Surface it in the Developer Notification Centre. `email: false` on
       // purpose — step 3 above already mailed SUPER_ADMIN_EMAIL for this exact
       // event, and sending again here would double every registration alert.
       void notifyDeveloper({

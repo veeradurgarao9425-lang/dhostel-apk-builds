@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import {
     View, Text, StyleSheet, ScrollView,
-    TouchableOpacity, StatusBar, ActivityIndicator, Alert
+    TouchableOpacity, StatusBar, ActivityIndicator, Image, Modal, Dimensions
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { AppHeader } from '../components/AppHeader';
-import { Calendar, Tag, FileText, Hash, Receipt, Trash2, Edit3 } from 'lucide-react-native';
+import { Calendar, Tag, FileText, Hash, Receipt, Trash2, Edit3, Image as ImageIcon, Eye, X, Download } from 'lucide-react-native';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useRefresh } from '../../contexts/RefreshContext';
+import { DangerModal } from '../components/ui/DangerModal';
 import api from '../services/api';
 import Toast from 'react-native-toast-message';
 
@@ -22,6 +24,9 @@ const CAT_COLORS: Record<string, string> = {
     'Internet': '#06B6D4',
     'Internet Bill': '#06B6D4',
     'Cleaning': '#EC4899',
+    'Deposit Refund': '#D97706',
+    'Deposit Refunds': '#D97706',
+    'Rent': '#15803D',
     'Other': '#64748B',
     'Others': '#64748B',
     'Others Bill': '#64748B',
@@ -29,6 +34,9 @@ const CAT_COLORS: Record<string, string> = {
 };
 
 const getCatColor = (name: string) => CAT_COLORS[name] || '#64748B';
+
+import { getResolvedImageUrl } from '../utils/imageHelper';
+const getFullImageUrl = (url?: string) => getResolvedImageUrl(url);
 
 // ─── Single detail row ────────────────────────────────────────────────────────
 const DetailRow = React.memo(({ icon, label, value, accent, isDark, theme }: {
@@ -84,9 +92,12 @@ const rowStyles = StyleSheet.create({
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export const ExpenseDetailsScreen = ({ route }: any) => {
     const { theme, isDark } = useTheme();
+    const { triggerRefresh } = useRefresh();
     const navigation = useNavigation<any>();
     const { expense } = route.params || {};
     const [deleteLoading, setDeleteLoading] = useState(false);
+    const [dangerModalVisible, setDangerModalVisible] = useState(false);
+    const [previewModalVisible, setPreviewModalVisible] = useState(false);
 
     if (!expense) {
         return (
@@ -108,48 +119,38 @@ export const ExpenseDetailsScreen = ({ route }: any) => {
 
     const amount = parseFloat(expense.amount || 0);
     const catColor = getCatColor(expense.category_name);
+    const imageUrl = getFullImageUrl(expense.attachment_url);
 
-    const handleDelete = () => {
-        Alert.alert(
-            'Delete Expense',
-            `Are you sure you want to delete this expense of ₹${amount.toLocaleString('en-IN')}?`,
-            [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                    text: 'Delete',
-                    style: 'destructive',
-                    onPress: async () => {
-                        try {
-                            setDeleteLoading(true);
-                            const response = await api.delete(`/expenses/${expense.expense_id}`);
-                            if (response.data.success) {
-                                Toast.show({
-                                    type: 'success',
-                                    text1: 'Success',
-                                    text2: 'Expense deleted successfully',
-                                });
-                                navigation.goBack();
-                            } else {
-                                Toast.show({
-                                    type: 'error',
-                                    text1: 'Error',
-                                    text2: response.data.message || 'Failed to delete expense',
-                                });
-                            }
-                        } catch (error) {
-                            console.error('Error deleting expense:', error);
-                            Toast.show({
-                                type: 'error',
-                                  text1: 'Error',
-                                text2: 'Failed to delete expense',
-                            });
-                        } finally {
-                            setDeleteLoading(false);
-                        }
-                    }
-                }
-            ]
-        );
+    const executeDelete = async () => {
+        try {
+            setDeleteLoading(true);
+            const response = await api.delete(`/expenses/${expense.expense_id}`);
+            if (response.data.success) {
+                Toast.show({
+                    type: 'success',
+                    text1: 'Success',
+                    text2: 'Expense deleted successfully',
+                });
+                triggerRefresh();
+                setDangerModalVisible(false);
+                navigation.goBack();
+            } else {
+                Toast.show({
+                    type: 'error',
+                    text1: 'Error',
+                    text2: response.data.message || 'Failed to delete expense',
+                });
+            }
+        } catch (error) {
+            console.error('Error deleting expense:', error);
+            Toast.show({
+                type: 'error',
+                text1: 'Error',
+                text2: 'Failed to delete expense',
+            });
+        } finally {
+            setDeleteLoading(false);
+        }
     };
 
     return (
@@ -229,10 +230,30 @@ export const ExpenseDetailsScreen = ({ route }: any) => {
                     </Text>
                 </View>
 
+                {/* ── Attachment Preview Card ── */}
+                {imageUrl && (
+                    <View style={[styles.detailsCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#E2E8F0', marginTop: 12 }]}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                            <Text style={[styles.sectionTitle, { color: theme.textPrimary, marginBottom: 0 }]}>Receipt Attachment</Text>
+                            <TouchableOpacity onPress={() => setPreviewModalVisible(true)} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                                <Eye size={14} color={theme.primary} />
+                                <Text style={{ fontSize: 12, fontWeight: '700', color: theme.primary }}>Preview</Text>
+                            </TouchableOpacity>
+                        </View>
+                        <TouchableOpacity onPress={() => setPreviewModalVisible(true)} activeOpacity={0.85} style={styles.imagePreviewWrapper}>
+                            <Image source={{ uri: imageUrl }} style={styles.attachmentThumbnail} resizeMode="cover" />
+                            <View style={styles.previewOverlayBadge}>
+                                <Eye size={14} color="#FFF" />
+                                <Text style={styles.previewBadgeText}>Tap to Zoom</Text>
+                            </View>
+                        </TouchableOpacity>
+                    </View>
+                )}
+
                 {/* ── Delete Button ── */}
                 <TouchableOpacity
                     style={[styles.deleteButton, deleteLoading && styles.disabledButton]}
-                    onPress={handleDelete}
+                    onPress={() => setDangerModalVisible(true)}
                     disabled={deleteLoading}
                 >
                     {deleteLoading ? (
@@ -245,6 +266,33 @@ export const ExpenseDetailsScreen = ({ route }: any) => {
                     )}
                 </TouchableOpacity>
             </ScrollView>
+
+            {/* ── Fullscreen Receipt Viewer Modal ── */}
+            <Modal visible={previewModalVisible} transparent animationType="fade" onRequestClose={() => setPreviewModalVisible(false)}>
+                <View style={styles.fullScreenModalOverlay}>
+                    <TouchableOpacity style={styles.modalCloseBtn} onPress={() => setPreviewModalVisible(false)}>
+                        <X size={24} color="#FFF" />
+                    </TouchableOpacity>
+                    {imageUrl && (
+                        <Image
+                            source={{ uri: imageUrl }}
+                            style={styles.fullScreenImage}
+                            resizeMode="contain"
+                        />
+                    )}
+                </View>
+            </Modal>
+
+            {/* ── Reusable Danger Modal ── */}
+            <DangerModal
+                visible={dangerModalVisible}
+                title="Delete Expense"
+                message={`Are you sure you want to delete this expense of ₹${amount.toLocaleString('en-IN')}? This cannot be undone.`}
+                confirmText="Delete"
+                cancelText="Cancel"
+                onConfirm={executeDelete}
+                onCancel={() => setDangerModalVisible(false)}
+            />
         </View>
     );
 };
@@ -351,6 +399,57 @@ const styles = StyleSheet.create({
     },
     disabledButton: {
         opacity: 0.7,
+    },
+    imagePreviewWrapper: {
+        borderRadius: 14,
+        overflow: 'hidden',
+        position: 'relative',
+        height: 180,
+        backgroundColor: '#0F172A',
+        marginTop: 4,
+    },
+    attachmentThumbnail: {
+        width: '100%',
+        height: '100%',
+    },
+    previewOverlayBadge: {
+        position: 'absolute',
+        bottom: 10,
+        right: 10,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        backgroundColor: 'rgba(15, 23, 42, 0.75)',
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 20,
+    },
+    previewBadgeText: {
+        color: '#FFF',
+        fontSize: 11,
+        fontWeight: '700',
+    },
+    fullScreenModalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.95)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    modalCloseBtn: {
+        position: 'absolute',
+        top: 48,
+        right: 20,
+        zIndex: 10,
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        backgroundColor: 'rgba(255,255,255,0.2)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    fullScreenImage: {
+        width: Dimensions.get('window').width,
+        height: Dimensions.get('window').height * 0.8,
     },
 });
 

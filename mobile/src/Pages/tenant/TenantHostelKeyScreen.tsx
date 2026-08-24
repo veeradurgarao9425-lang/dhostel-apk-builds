@@ -14,7 +14,7 @@ import {
   Image,
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../../contexts/AuthContext';
 import {
@@ -107,6 +107,7 @@ const ArrowRightIcon = () => (
 );
 
 export function TenantHostelKeyScreen() {
+  const insets = useSafeAreaInsets();
   const [key, setKey] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [inputFocused, setInputFocused] = useState(false);
@@ -139,48 +140,55 @@ export function TenantHostelKeyScreen() {
 
   return (
     <View style={styles.root}>
-      <StatusBar barStyle="light-content" backgroundColor={PURPLE} />
+      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
-      <LinearGradient
-        colors={[PURPLE, PURPLE_DARK]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.headerSection}
+      {/* ── Purple Gradient Header Matching Login / Brand ── */}
+      <View
+        style={[
+          styles.topSection,
+          {
+            height: Math.max(Math.min(Dimensions.get('window').height * 0.32 + (insets.top > 0 ? insets.top : 0), Dimensions.get('window').height * 0.35), 180),
+          },
+        ]}
       >
-        <SafeAreaView edges={['top']} style={{ backgroundColor: 'transparent' }}>
-          <View style={styles.topRow}>
-            <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()} activeOpacity={0.8}>
-              <Ionicons name="arrow-back" size={22} color={WHITE} />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.helpBtn} activeOpacity={0.7} onPress={() => navigation.navigate('ComingSoon')}>
-              <Text style={styles.helpText}>Need help?</Text>
-              <HeadphoneIcon />
-            </TouchableOpacity>
-          </View>
-        </SafeAreaView>
+        <LinearGradient
+          colors={['#7C3AED', '#5F2EEA']}
+          style={[
+            StyleSheet.absoluteFillObject,
+            styles.topSectionContent,
+            { paddingTop: insets.top > 0 ? insets.top + 8 : 24 },
+          ]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        >
+          {/* Back Button */}
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => navigation.goBack()}
+            style={[styles.backBtn, { top: insets.top > 0 ? insets.top + 10 : 20 }]}
+          >
+            <Ionicons name="arrow-back" size={22} color="#FFFFFF" />
+          </TouchableOpacity>
 
-        <View style={styles.logoSection}>
-          <View style={styles.logoGlowRing}>
-            <Image
-              source={require('../../../assets/HostixNew.png')}
-              style={{ width: '100%', height: '100%', borderRadius: 55 }}
-              resizeMode="cover"
-            />
-          </View>
-          <Text style={styles.brandName}>HOST<Text style={{ color: '#FCD34D' }}>IX</Text></Text>
-          <View style={styles.taglineRow}>
-            <View style={styles.taglineLine} />
-            <Text style={styles.tagline}>TENANT PORTAL</Text>
-            <View style={styles.taglineLine} />
-          </View>
-        </View>
+          {/* Decorative background circles */}
+          <View style={styles.decorCircle1} />
+          <View style={styles.decorCircle2} />
 
-        <View style={styles.waveContainer}>
-          <Svg width={width} height={54} viewBox={`0 0 ${width} 54`} preserveAspectRatio="none">
-            <Path d={`M0,0 Q${width / 2},54 ${width},0 L${width},54 L0,54 Z`} fill={WHITE} />
-          </Svg>
-        </View>
-      </LinearGradient>
+          <View style={styles.logoWrapper}>
+            <View style={styles.logoImageContainer}>
+              <Image
+                source={require('../../../assets/HostixNew.png')}
+                style={styles.logoImage}
+                resizeMode="cover"
+              />
+            </View>
+            <Text style={styles.appName}>
+              Host<Text style={{ color: '#FCD34D' }}>ix</Text>
+            </Text>
+            <Text style={styles.tagline}>Tenant Portal</Text>
+          </View>
+        </LinearGradient>
+      </View>
 
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.bodyFlex}>
         <ScrollView
@@ -258,45 +266,84 @@ export function TenantHostelKeyScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: WHITE },
-  headerSection: { paddingBottom: 0 },
-  topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 20, paddingBottom: 4 },
-  backBtn: {
-    padding: 8,
-    marginLeft: -8, // offsets padding to align icon with edge
+  topSection: {
+    width: '100%',
+    position: 'relative',
+    borderBottomLeftRadius: 36,
+    borderBottomRightRadius: 36,
+    overflow: 'hidden',
+    backgroundColor: '#7C3AED',
   },
-  helpBtn: {
-    flexDirection: 'row',
+  topSectionContent: {
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
-    gap: 6,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
   },
-  helpText: { color: WHITE, fontSize: 13, fontWeight: '600' },
-  logoSection: { alignItems: 'center', paddingTop: 16, paddingBottom: 28 },
-  logoGlowRing: {
-    width: 110,
-    height: 110,
-    borderRadius: 55,
-    backgroundColor: 'rgba(255,255,255,0.12)',
+  decorCircle1: {
+    position: 'absolute',
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    backgroundColor: 'rgba(255,255,255,0.07)',
+    top: -50,
+    right: -40,
+  },
+  decorCircle2: {
+    position: 'absolute',
+    width: 150,
+    height: 150,
+    borderRadius: 75,
+    backgroundColor: 'rgba(255,255,255,0.07)',
+    bottom: -30,
+    left: -25,
+  },
+  backBtn: {
+    position: 'absolute',
+    left: 20,
+    zIndex: 10,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 10,
   },
-  brandName: {
-    color: WHITE,
-    fontSize: 30,
-    fontWeight: '900',
-    letterSpacing: 8,
-    marginTop: 2,
+  logoWrapper: {
+    alignItems: 'center',
   },
-  taglineRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 8 },
-  taglineLine: { width: 28, height: 1.5, backgroundColor: 'rgba(255,255,255,0.45)' },
-  tagline: { color: 'rgba(255,255,255,0.85)', fontSize: 10, fontWeight: '600', letterSpacing: 2.5 },
-  waveContainer: { marginTop: 0 },
+  logoImageContainer: {
+    width: 68,
+    height: 68,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.25)',
+    overflow: 'hidden',
+  },
+  logoImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 18,
+  },
+  appName: {
+    fontSize: 26,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    marginBottom: 2,
+    letterSpacing: 0.5,
+  },
+  tagline: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.85)',
+    fontWeight: '600',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+  },
   bodyFlex: { flex: 1 },
-  scrollContent: { paddingHorizontal: 24, paddingTop: 12, paddingBottom: 16 },
+  scrollContent: { paddingHorizontal: 24, paddingTop: 20, paddingBottom: 24 },
   welcomeRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6, marginTop: 4 },
   welcomeDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: PURPLE },
   welcomeBack: { color: PURPLE, fontSize: 14, fontWeight: '700' },

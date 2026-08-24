@@ -17,8 +17,9 @@
 // ─── Intent Type ─────────────────────────────────────────────────────────────
 export type AssistantIntent =
   | { type: 'SHOW_HOME' }
-  | { type: 'SHOW_STUDENTS'; filter?: 'active' | 'inactive' | 'prebooked' | 'qr' | 'pending' | 'unallocated' | 'joined_this_month' | 'vacated_this_month' | 'all' }
+  | { type: 'SHOW_STUDENTS'; filter?: 'active' | 'inactive' | 'prebooked' | 'qr' | 'pending' | 'unallocated' | 'joined_this_month' | 'vacated_this_month' | 'vacate_notice' | 'vacate' | 'all' }
   | { type: 'SHOW_STUDENT_LIST_INLINE'; filter?: string }
+
   | { type: 'SHOW_STUDENT_SEARCH'; name: string }
   | { type: 'SHOW_ROOM_DETAIL'; roomNumber: number | string }
   | { type: 'SHOW_FLOOR_DETAIL'; floorNumber: number }
@@ -66,7 +67,10 @@ export type HowToAction =
   | 'send_reminder'
   | 'mark_vacated'
   | 'verify_rent'
-  | 'view_payments_guide';
+  | 'view_payments_guide'
+  | 'add_guest'
+  | 'guest_qr_checkin'
+  | 'guest_checkout';
 
 
 // ─── Conversation Context ─────────────────────────────────────────────────────
@@ -202,6 +206,12 @@ const TYPO_MAP: [RegExp, string][] = [
   [/\bthird floor\b/g, 'floor 3'],
   [/\bfourth floor\b/g, 'floor 4'],
   [/\bground floor\b/g, 'floor 0'],
+  // Fee & Money synonyms
+  [/\bfeee?s?\b/g, 'fee'],
+  [/\bduess?\b/g, 'due'],
+  [/\bexpen[cs]es?\b/g, 'expense'],
+  [/\bmoneys?\b/g, 'money'],
+  [/\boverdu\b/g, 'overdue'],
 ];
 
 export function normalizeQuery(raw: string): string {
@@ -223,13 +233,50 @@ export function normalizeQuery(raw: string): string {
   return q;
 }
 
+// ─── Reserved Non-Room Tokens ───────────────────────────────────────────────
+const NON_ROOM_TOKENS = new Set([
+  'room', 'rooms', 'vacate', 'vacates', 'vacated', 'vacating', 'vacant',
+  'fee', 'fees', 'expense', 'expenses', 'student', 'students', 'tenant', 'tenants',
+  'due', 'dues', 'all', 'list', 'detail', 'details', 'status', 'help', 'floor', 'floors',
+  'income', 'money', 'paid', 'unpaid', 'overdue', 'pending', 'report', 'reports', 'bill', 'bills',
+  'staff', 'guest', 'guests', 'hostel', 'pg', 'my', 'add', 'create', 'new', 'available', 'empty',
+  'full', 'occupied', 'how', 'many', 'total', 'who', 'what', 'where', 'show', 'view', 'check',
+  'management', 'overview', 'summary', 'today', 'month', 'history', 'receipt', 'receipts'
+]);
+
 // ─── Dynamic Extraction ───────────────────────────────────────────────────────
 /** Extract room number or alphanumeric room name, e.g. "room 101", "room 10121", "room 101test" */
 export function extractRoomNumber(q: string): string | null {
-  const m = q.match(/room\s+([a-zA-Z0-9_-]+)/i) || 
-            q.match(/([a-zA-Z0-9_-]+)\s+room/i) || 
-            q.match(/^\s*([a-zA-Z0-9_-]{1,10})\s*$/);
-  return m ? m[1].trim() : null;
+  const trimmed = q.trim().toLowerCase();
+  
+  // 1. "room 101", "room 102A", "room-101"
+  const m1 = q.match(/room\s+([a-zA-Z0-9_-]+)/i);
+  if (m1) {
+    const val = m1[1].trim().toLowerCase();
+    if (!NON_ROOM_TOKENS.has(val) && (/\d/.test(val) || val.length <= 4)) {
+      return m1[1].trim();
+    }
+  }
+
+  // 2. "101 room", "102A room"
+  const m2 = q.match(/([a-zA-Z0-9_-]+)\s+room/i);
+  if (m2) {
+    const val = m2[1].trim().toLowerCase();
+    if (!NON_ROOM_TOKENS.has(val) && /\d/.test(val)) {
+      return m2[1].trim();
+    }
+  }
+
+  // 3. Standalone digits or alphanumeric like "101", "204B", "G1"
+  const m3 = q.match(/^\s*([a-zA-Z0-9_-]{1,6})\s*$/);
+  if (m3) {
+    const val = m3[1].trim().toLowerCase();
+    if (!NON_ROOM_TOKENS.has(val) && (/\d/.test(val) || /^([a-f]\d+|\d+[a-f]?)$/i.test(val))) {
+      return m3[1].trim();
+    }
+  }
+
+  return null;
 }
 
 /** Extract floor number from a query (after normalizeQuery runs floor synonyms) */
@@ -612,6 +659,42 @@ const RULES: Rule[] = [
     priority: 12,
   },
 
+  // Add Guest / Register Visitor (NEW)
+  {
+    keywords: [
+      'how to add guest', 'how to register guest', 'how to add short stay visitor',
+      'how to check in guest', 'guest entry steps', 'add guest steps',
+      'how to record guest', 'register a guest', 'new guest entry',
+      'how to add visitor', 'visitor registration steps', 'how to add daily guest',
+    ],
+    intent: { type: 'SHOW_HOW_TO', action: 'add_guest' },
+    priority: 13,
+  },
+
+  // Guest QR Self Check-In (NEW)
+  {
+    keywords: [
+      'how does guest qr work', 'guest qr check in', 'guest qr checkin',
+      'how to generate guest qr', 'visitor qr code', 'guest self registration',
+      'guest qr flow', 'how guest self check in works', 'guest qr code',
+      'how to create guest qr', 'visitor self check in', 'pending guest requests',
+      'how to approve pending guest', 'where to see pending guest',
+    ],
+    intent: { type: 'SHOW_HOW_TO', action: 'guest_qr_checkin' },
+    priority: 13,
+  },
+
+  // Guest Check Out (NEW)
+  {
+    keywords: [
+      'how to checkout guest', 'how to check out guest', 'guest checkout steps',
+      'how to vacate guest', 'guest bill calculation', 'calculate guest bill',
+      'how to end guest stay', 'checkout guest', 'check out guest steps',
+    ],
+    intent: { type: 'SHOW_HOW_TO', action: 'guest_checkout' },
+    priority: 13,
+  },
+
   // Priority 11 — Direct Room / Bed / Floor counts (beats generic keywords)
   {
     keywords: [
@@ -777,6 +860,20 @@ const RULES: Rule[] = [
     priority: 8,
   },
 
+  // Vacate Notice / Ready to Vacate specifically (Priority 10)
+  {
+    keywords: [
+      'who is ready to vacate', 'ready to vacate', 'vacate notice', 'vacate notices',
+      'who is vacating', 'who will vacate', 'vacating students', 'vacating student',
+      'who applied for vacate', 'who applied to vacate', 'vacate list', 'vacate requests',
+      'vacate request', 'vacate application', 'vacate applications', 'notice period',
+      'students on notice', 'students on vacate notice', 'vacating soon', 'leaving soon',
+      'who is leaving', 'upcoming vacancy', 'upcoming vacancies', 'check vacate',
+    ],
+    intent: { type: 'SHOW_STUDENTS', filter: 'vacate_notice' },
+    priority: 10,
+  },
+
   // Unallocated specifically
   {
     keywords: [
@@ -787,6 +884,7 @@ const RULES: Rule[] = [
     intent: { type: 'SHOW_STUDENTS', filter: 'unallocated' },
     priority: 8,
   },
+
 
   // ═══════════════════════════════════════════════════════════════════════════
   // PRIORITY 6 — STUDENTS (generic — catches all remaining student queries)
@@ -1119,10 +1217,10 @@ export function extractStudentSearchName(rawQuery: string): string | null {
  * resolveIntent — main public API.
  * 1. Check for specific room / floor / student list queries first.
  * 2. Normalize input (typos + synonyms).
- * 3. Apply context for follow-up questions.
- * 4. Score all rules against normalized query.
- * 5. If rules match, return highest-scoring intent.
- * 6. Fall back to student name search if no rule matches.
+ * 3. Direct matching for core system keywords (fees, vacate, rooms, expenses).
+ * 4. Apply context for follow-up questions.
+ * 5. Score all rules against normalized query.
+ * 6. Fall back to student name search if query looks like a person's name.
  */
 export function resolveIntent(rawQuery: string): AssistantIntent {
   if (!rawQuery.trim()) return { type: 'SHOW_HOME' };
@@ -1141,16 +1239,40 @@ export function resolveIntent(rawQuery: string): AssistantIntent {
     return { type: 'SHOW_FLOOR_DETAIL', floorNumber: floorNum };
   }
 
-  // ── 3. Paid / Joined / Vacated Lists Specifically ──
-  if (rawLower.includes('paid student list') || rawLower.includes('list of paid student') || rawLower.includes('who paid this month')) {
+  // ── 3. Direct Fast Path for Common Core Inquiries ──
+  const cleanQ = rawLower.replace(/[?!.,]+$/g, '').trim();
+
+  if (cleanQ.includes('paid student list') || cleanQ.includes('list of paid student') || cleanQ.includes('who paid') || cleanQ.includes('paid fee') || cleanQ.includes('paid money') || cleanQ.includes('money received')) {
     return { type: 'SHOW_PAID_STUDENTS' };
   }
-  if (rawLower.includes('joined this month') || rawLower.includes('joined in this month') || rawLower.includes('new admission this month')) {
+  if (cleanQ.includes('joined this month') || cleanQ.includes('joined in this month') || cleanQ.includes('new admission this month')) {
     return { type: 'SHOW_STUDENTS', filter: 'joined_this_month' };
   }
-  if (rawLower.includes('vacate this month') || rawLower.includes('vacated this month') || rawLower.includes('left this month')) {
+  if (cleanQ.includes('vacate this month') || cleanQ.includes('vacated this month') || cleanQ.includes('left this month')) {
     return { type: 'SHOW_STUDENTS', filter: 'vacated_this_month' };
   }
+  if (cleanQ === 'fees vacate' || cleanQ === 'vacate fees' || cleanQ === 'vacate dues' || cleanQ === 'vacated dues') {
+    return { type: 'SHOW_DUES', filter: 'all' };
+  }
+  if (cleanQ === 'vacate rooms' || cleanQ === 'vacate room' || cleanQ === 'vacant rooms' || cleanQ === 'vacant room' || cleanQ === 'empty rooms' || cleanQ === 'available rooms' || cleanQ === 'room' || cleanQ === 'rooms' || cleanQ === 'all rooms') {
+    return { type: 'SHOW_ROOMS' };
+  }
+  if (cleanQ === 'fees' || cleanQ === 'fee' || cleanQ === 'today fee' || cleanQ === 'today dues' || cleanQ === 'this month dues' || cleanQ === 'fee management' || cleanQ === 'dues' || cleanQ === 'due' || cleanQ === 'money' || cleanQ === 'due money' || cleanQ === 'pending money') {
+    return { type: 'SHOW_DUES', filter: 'all' };
+  }
+  if (cleanQ === 'overdue' || cleanQ === 'overdue fee' || cleanQ === 'overdue dues' || cleanQ === 'overdue money' || cleanQ === 'late fee' || cleanQ === 'late rent' || cleanQ === 'overdue only') {
+    return { type: 'SHOW_DUES', filter: 'overdue' };
+  }
+  if (cleanQ === 'expense' || cleanQ === 'expenses' || cleanQ === 'spending' || cleanQ === 'spends' || cleanQ === 'expenditure') {
+    return { type: 'SHOW_EXPENSES' };
+  }
+  if (cleanQ === 'vacate' || cleanQ === 'ready to vacate' || cleanQ === 'vacate notice' || cleanQ === 'vacate list' || cleanQ === 'vacate applied' || cleanQ === 'who is vacating' || cleanQ === 'who is ready to vacate' || cleanQ === 'vacate requests' || cleanQ === 'vacating' || cleanQ.includes('ready to vacate') || cleanQ.includes('vacate notice') || cleanQ.includes('who is vacating') || cleanQ.includes('who is ready to vacate') || cleanQ === 'check vacate') {
+    return { type: 'SHOW_STUDENTS', filter: 'vacate_notice' };
+  }
+  if (cleanQ === 'vacated' || cleanQ === 'past vacated' || cleanQ === 'vacated students' || cleanQ === 'left students' || cleanQ === 'who left') {
+    return { type: 'SHOW_STUDENTS', filter: 'inactive' };
+  }
+
 
   const q = normalizeQuery(rawQuery);
   if (!q) return { type: 'SHOW_HOME' };
@@ -1192,7 +1314,10 @@ export function resolveIntent(rawQuery: string): AssistantIntent {
     const basePriority = rule.priority ?? 6;
 
     for (const kw of rule.keywords) {
-      if (q.includes(kw)) {
+      if (q === kw) {
+        // Exact match gets massive boost
+        score += basePriority * 4;
+      } else if (q.includes(kw)) {
         const wordCount = kw.split(' ').length;
         score += wordCount > 1 ? basePriority * 2 : basePriority;
       }
@@ -1208,10 +1333,27 @@ export function resolveIntent(rawQuery: string): AssistantIntent {
     return best.intent;
   }
 
-  // ── 5. Student Search by Name (Fallback if no rule matched) ──
-  // ── 6. Unknown / Search Fallback ──
-  // If the query is relatively short and doesn't match any system intents, we assume it's a student search
-  if (rawQuery.trim().length > 2 && rawQuery.trim().length < 30) {
+  // ── 5. Intelligent Fallback for Generic Tokens ──
+  if (NON_ROOM_TOKENS.has(rawLower) || NON_ROOM_TOKENS.has(q)) {
+    if (q.includes('fee') || q.includes('due') || q.includes('money') || q.includes('pay')) {
+      return { type: 'SHOW_DUES', filter: 'all' };
+    }
+    if (q.includes('room') || q.includes('bed')) {
+      return { type: 'SHOW_ROOMS' };
+    }
+    if (q.includes('expense') || q.includes('spend')) {
+      return { type: 'SHOW_EXPENSES' };
+    }
+    if (q.includes('vacat')) {
+      return { type: 'SHOW_STUDENTS', filter: 'inactive' };
+    }
+    if (q.includes('student') || q.includes('tenant')) {
+      return { type: 'SHOW_STUDENTS', filter: 'all' };
+    }
+  }
+
+  // ── 6. Student Search by Name (Only if it looks like a person's name) ──
+  if (rawQuery.trim().length >= 2 && rawQuery.trim().length <= 35 && !NON_ROOM_TOKENS.has(rawLower)) {
     return { type: 'SHOW_STUDENT_SEARCH', name: rawQuery.trim() };
   }
 
@@ -1251,6 +1393,8 @@ export const SIDEBAR_CATEGORIES = [
     section: 'Help',
     items: [
       { label: 'Add a Student', icon: 'person-add-outline', intent: { type: 'SHOW_HOW_TO', action: 'add_student' } as AssistantIntent },
+      { label: 'Register a Guest', icon: 'person-outline', intent: { type: 'SHOW_HOW_TO', action: 'add_guest' } as AssistantIntent },
+      { label: 'Guest QR Check-In', icon: 'qr-code-outline', intent: { type: 'SHOW_HOW_TO', action: 'guest_qr_checkin' } as AssistantIntent },
       { label: 'Add a Room', icon: 'add-circle-outline', intent: { type: 'SHOW_HOW_TO', action: 'add_room' } as AssistantIntent },
       { label: 'Collect Rent', icon: 'cash-outline', intent: { type: 'SHOW_HOW_TO', action: 'collect_rent' } as AssistantIntent },
       { label: 'Record Expense', icon: 'receipt-outline', intent: { type: 'SHOW_HOW_TO', action: 'add_expense' } as AssistantIntent },
@@ -1318,6 +1462,9 @@ export const GUIDE_QUESTIONS: string[] = [
   'How to mark student as vacated?',
   'How to register via QR?',
   'How to view pending dues?',
+  'How to register a guest?',
+  'How does guest QR check-in work?',
+  'How to checkout a guest?',
 ];
 
 /** Combined export for backward compatibility */
@@ -1609,6 +1756,46 @@ export const HOW_TO_STEPS: Record<HowToAction, { title: string; steps: string[];
     ],
     screen: 'PreBooking',
     screenLabel: 'Open Pre-Booking',
+  },
+  add_guest: {
+    title: 'How to Register a Short-Stay Guest',
+    steps: [
+      'Go to the Guests screen from the More menu or quick actions.',
+      'Tap the "+" / Add Guest button.',
+      'Enter Guest Details: Full Name, 10-digit Phone, Gender, Purpose of Visit.',
+      'Enter Check-in Date and Stay Duration (Days).',
+      'Select Room/Bed, enter Daily Rate (e.g. ₹500/day) and Amount Collected.',
+      'Upload ID Proof (Aadhaar, PAN, DL, Voter ID, Passport).',
+      'Tap Save & Check In — the guest is recorded in Active Stay.',
+    ],
+    screen: 'AddGuest',
+    screenLabel: 'Add Guest Now',
+  },
+  guest_qr_checkin: {
+    title: 'How Guest QR Self Check-In Works',
+    steps: [
+      'Open QR Signup from Settings or Dashboard and select the "Guest QR" tab.',
+      'Print or display the reception poster with the Guest Check-In QR code.',
+      'The walk-in visitor scans the QR using their phone camera.',
+      'They fill their Name, Phone, Purpose, Stay Days, and upload ID Proof.',
+      'You receive an instant push notification and the request appears under Guests > Pending tab.',
+      'Tap "Check-In" on the pending card, assign an available room, confirm the rate, and tap Approve.',
+    ],
+    screen: 'QRSignup',
+    screenLabel: 'View Guest QR Code',
+  },
+  guest_checkout: {
+    title: 'How to Check Out a Guest & Auto-Bill',
+    steps: [
+      'Go to the Guests screen.',
+      'Find the active guest card or tap their name to view full details.',
+      'Tap the "Check Out" button.',
+      'The app auto-calculates total stay days, daily rate, and final bill amount.',
+      'Confirm the collected amount and tap Confirm Checkout.',
+      'The room/bed is instantly freed and the income is logged in your financial records.',
+    ],
+    screen: 'Guests',
+    screenLabel: 'Go to Guests',
   },
 };
 

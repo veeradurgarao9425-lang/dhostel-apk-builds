@@ -12,7 +12,8 @@
     "init:relations": "tsx scripts/initializeRelationsTable.ts",
     "init:id-proof-types": "tsx scripts/initializeIdProofTypes.ts",
     "generate:growth-content": "tsx scripts/generateGrowthContent.ts",
-    "seed:growth-stories": "tsx scripts/seedGrowthStories.ts"
+    "seed:growth-stories": "tsx scripts/seedGrowthStories.ts",
+    "seed:production": "tsx src/seedProductionData.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.115.0",
@@ -33,6 +34,7 @@
     "express": "^4.19.2",
     "express-rate-limit": "^7.4.0",
     "express-validator": "^7.1.0",
+    "firebase-admin": "^14.3.0",
     "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.2",
     "knex": "^3.1.0",
@@ -49,5 +51,8 @@
     "typescript": "^5.5.4",
     "whatsapp-web.js": "^1.34.7",
     "winston": "^3.14.2"
+  },
+  "devDependencies": {
+    "sharp": "^0.35.3"
   }
 }

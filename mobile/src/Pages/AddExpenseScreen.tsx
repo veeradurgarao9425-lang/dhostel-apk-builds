@@ -35,6 +35,8 @@ import {
     Search,
     Plus,
     Check,
+    Camera,
+    Image as ImageIcon,
 } from 'lucide-react-native';
 import api from '../services/api';
 import { useAuth } from '../../contexts/AuthContext';
@@ -44,6 +46,7 @@ import { SPACING } from '../theme/index';
 import { AppHeader } from '../components/AppHeader';
 import { FullScreenLoader } from '../components/FullScreenLoader';
 import { CardWatermark } from '../components/ui/CardWatermark';
+import { ModalSheet } from '../components/FormComponents';
 import Svg, { Path, Rect, Circle, G } from 'react-native-svg';
 
 const CashIcon = () => (
@@ -138,6 +141,9 @@ const getCategoryDetails = (name: string) => {
     }
     if (n.includes('water')) {
         return { icon: 'water-outline', bg: '#E0F2FE', color: '#0284C7' }; // Blue
+    }
+    if (n.includes('deposit') || n.includes('refund')) {
+        return { icon: 'return-down-back-outline', bg: '#FEF3C7', color: '#D97706' }; // Amber
     }
     if (n.includes('rent') || n.includes('building') || n.includes('property')) {
         return { icon: 'home-outline', bg: '#DCFCE7', color: '#15803D' }; // Green
@@ -272,9 +278,9 @@ export const AddExpenseScreen = ({ route, navigation }: any) => {
     const [newCategoryName, setNewCategoryName] = useState('');
 
     const [dbPaymentModes, setDbPaymentModes] = useState<any[]>([]);
-    const [selectedExpenseMode, setSelectedExpenseMode] = useState('Cash'); 
-
     const [attachment, setAttachment] = useState<ImagePicker.ImagePickerAsset | null>(null);
+    const [attachmentModalVisible, setAttachmentModalVisible] = useState(false);
+    const [selectedExpenseMode, setSelectedExpenseMode] = useState('Cash'); 
 
     const [formData, setFormData] = useState({
         title: '',
@@ -449,13 +455,13 @@ export const AddExpenseScreen = ({ route, navigation }: any) => {
 
         try {
             const response = await api.post('/expenses/categories', { category_name: trimmed });
-            if (response.data.success) {
-                const saved = response.data.data;
-                setCategories(prev => [...prev, saved]);
-                setFormData(p => ({ ...p, category_id: saved.category_id.toString() }));
-                Toast.show({ type: 'success', text1: 'Category Added', text2: `"${trimmed}" is ready to use.` });
+            if (response.data.success && response.data.data) {
+                const added = response.data.data;
+                setCategories(prev => [...prev, added]);
+                setFormData(p => ({ ...p, category_id: added.category_id.toString() }));
             }
         } catch (error) {
+            console.error('Error adding category:', error);
             const mock = { category_id: Date.now(), category_name: trimmed };
             setCategories(prev => [...prev, mock]);
             setFormData(p => ({ ...p, category_id: mock.category_id.toString() }));
@@ -466,49 +472,41 @@ export const AddExpenseScreen = ({ route, navigation }: any) => {
         }
     };
 
-    const handlePickAttachment = async () => {
-        Alert.alert(
-            "Upload Invoice / Receipt",
-            "Choose a source for your receipt attachment:",
-            [
-                {
-                    text: "Take Photo (Camera)",
-                    onPress: async () => {
-                        const permission = await ImagePicker.requestCameraPermissionsAsync();
-                        if (permission.status !== 'granted') {
-                            Alert.alert("Permission Denied", "Camera permission is required to capture receipt.");
-                            return;
-                        }
-                        const result = await ImagePicker.launchCameraAsync({
-                            quality: 0.7,
-                            allowsEditing: false,
-                        });
-                        if (!result.canceled && result.assets && result.assets.length > 0) {
-                            setAttachment(result.assets[0]);
-                        }
-                    }
-                },
-                {
-                    text: "Choose from Gallery",
-                    onPress: async () => {
-                        const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-                        if (permission.status !== 'granted') {
-                            Alert.alert("Permission Denied", "Media library access is required to pick receipt.");
-                            return;
-                        }
-                        const result = await ImagePicker.launchImageLibraryAsync({
-                            quality: 0.7,
-                            allowsEditing: false,
-                            mediaTypes: ImagePicker.MediaTypeOptions.Images,
-                        });
-                        if (!result.canceled && result.assets && result.assets.length > 0) {
-                            setAttachment(result.assets[0]);
-                        }
-                    }
-                },
-                { text: "Cancel", style: "cancel" }
-            ]
-        );
+    const handleCameraPick = async () => {
+        setAttachmentModalVisible(false);
+        const permission = await ImagePicker.requestCameraPermissionsAsync();
+        if (permission.status !== 'granted') {
+            Alert.alert("Permission Denied", "Camera permission is required to capture receipt.");
+            return;
+        }
+        const result = await ImagePicker.launchCameraAsync({
+            quality: 0.7,
+            allowsEditing: false,
+        });
+        if (!result.canceled && result.assets && result.assets.length > 0) {
+            setAttachment(result.assets[0]);
+        }
+    };
+
+    const handleGalleryPick = async () => {
+        setAttachmentModalVisible(false);
+        const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (permission.status !== 'granted') {
+            Alert.alert("Permission Denied", "Media library access is required to pick receipt.");
+            return;
+        }
+        const result = await ImagePicker.launchImageLibraryAsync({
+            quality: 0.7,
+            allowsEditing: false,
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        });
+        if (!result.canceled && result.assets && result.assets.length > 0) {
+            setAttachment(result.assets[0]);
+        }
+    };
+
+    const handlePickAttachment = () => {
+        setAttachmentModalVisible(true);
     };
 
     const validateForm = () => {
@@ -537,26 +535,50 @@ export const AddExpenseScreen = ({ route, navigation }: any) => {
                 desc = prefix + 'Expense record';
             }
 
-            if (attachment) {
-                desc += ` (Attachment: ${attachment.uri.split('/').pop()})`;
-            }
-
-            const payload = {
-                hostel_id: user?.hostel_id,
-                category_id: parseInt(formData.category_id),
-                expense_date: toDbDateStr(expenseDate),
-                amount: parseFloat(formData.amount),
-                payment_mode_id: parseInt(formData.payment_mode_id),
-                vendor_name: formData.vendor_name.trim(),
-                description: desc,
-                bill_number: formData.bill_number.trim(),
-            };
-
             let response;
-            if (expense) {
-                response = await api.put(`/expenses/${expense.expense_id}`, payload);
+            if (attachment) {
+                const formDataObj = new FormData();
+                formDataObj.append('category_id', formData.category_id);
+                formDataObj.append('expense_date', toDbDateStr(expenseDate));
+                formDataObj.append('amount', formData.amount);
+                formDataObj.append('payment_mode_id', formData.payment_mode_id);
+                formDataObj.append('vendor_name', formData.vendor_name.trim());
+                formDataObj.append('description', desc);
+                formDataObj.append('bill_number', formData.bill_number.trim());
+                if (user?.hostel_id) formDataObj.append('hostel_id', user.hostel_id.toString());
+
+                const filename = attachment.uri.split('/').pop() || 'receipt.jpg';
+                const match = /\.(\w+)$/.exec(filename);
+                const type = match ? `image/${match[1]}` : `image/jpeg`;
+                formDataObj.append('attachment', {
+                    uri: attachment.uri,
+                    name: filename,
+                    type,
+                } as any);
+
+                const config = { headers: { 'Content-Type': 'multipart/form-data' } };
+                if (expense) {
+                    response = await api.put(`/expenses/${expense.expense_id}`, formDataObj, config);
+                } else {
+                    response = await api.post('/expenses', formDataObj, config);
+                }
             } else {
-                response = await api.post('/expenses', payload);
+                const payload = {
+                    hostel_id: user?.hostel_id,
+                    category_id: parseInt(formData.category_id),
+                    expense_date: toDbDateStr(expenseDate),
+                    amount: parseFloat(formData.amount),
+                    payment_mode_id: parseInt(formData.payment_mode_id),
+                    vendor_name: formData.vendor_name.trim(),
+                    description: desc,
+                    bill_number: formData.bill_number.trim(),
+                };
+
+                if (expense) {
+                    response = await api.put(`/expenses/${expense.expense_id}`, payload);
+                } else {
+                    response = await api.post('/expenses', payload);
+                }
             }
 
             if (response.data.success) {
@@ -1172,6 +1194,72 @@ export const AddExpenseScreen = ({ route, navigation }: any) => {
                     </View>
                 </KeyboardAvoidingView>
             </Modal>
+
+            {/* Attachment Source Selection Modal */}
+            <ModalSheet
+                visible={attachmentModalVisible}
+                onClose={() => setAttachmentModalVisible(false)}
+            >
+                <View style={{ paddingHorizontal: 20, paddingBottom: Math.max(insets.bottom + 16, 24) }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: isDark ? '#334155' : '#F1F5F9' }}>
+                        <Text style={{ fontSize: 17, fontWeight: '800', color: theme.textPrimary }}>Upload Invoice / Receipt</Text>
+                        <TouchableOpacity onPress={() => setAttachmentModalVisible(false)} activeOpacity={0.7} style={{ padding: 4 }}>
+                            <X size={20} color={theme.textSecondary} />
+                        </TouchableOpacity>
+                    </View>
+                    <Text style={{ fontSize: 13, color: theme.textSecondary, marginTop: 10, marginBottom: 16 }}>Choose a source for your receipt attachment:</Text>
+
+                    <View style={{ gap: 12 }}>
+                        <TouchableOpacity
+                            style={{
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                padding: 16,
+                                borderRadius: 16,
+                                backgroundColor: isDark ? '#0F172A' : '#F8FAFC',
+                                borderWidth: 1,
+                                borderColor: isDark ? '#334155' : '#E2E8F0',
+                                gap: 14,
+                            }}
+                            onPress={handleCameraPick}
+                            activeOpacity={0.75}
+                        >
+                            <View style={{ width: 46, height: 46, borderRadius: 14, backgroundColor: isDark ? '#312E81' : '#EEF2FF', alignItems: 'center', justifyContent: 'center' }}>
+                                <Camera size={22} color={theme.primary} />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                                <Text style={{ fontSize: 15, fontWeight: '700', color: theme.textPrimary }}>Take Photo</Text>
+                                <Text style={{ fontSize: 12, color: theme.textSecondary, marginTop: 2 }}>Capture receipt with device camera</Text>
+                            </View>
+                            <Ionicons name="chevron-forward" size={18} color={theme.textSecondary} />
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={{
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                padding: 16,
+                                borderRadius: 16,
+                                backgroundColor: isDark ? '#0F172A' : '#F8FAFC',
+                                borderWidth: 1,
+                                borderColor: isDark ? '#334155' : '#E2E8F0',
+                                gap: 14,
+                            }}
+                            onPress={handleGalleryPick}
+                            activeOpacity={0.75}
+                        >
+                            <View style={{ width: 46, height: 46, borderRadius: 14, backgroundColor: isDark ? '#064E3B' : '#ECFDF5', alignItems: 'center', justifyContent: 'center' }}>
+                                <ImageIcon size={22} color="#10B981" />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                                <Text style={{ fontSize: 15, fontWeight: '700', color: theme.textPrimary }}>Choose from Gallery</Text>
+                                <Text style={{ fontSize: 12, color: theme.textSecondary, marginTop: 2 }}>Select existing photo from library</Text>
+                            </View>
+                            <Ionicons name="chevron-forward" size={18} color={theme.textSecondary} />
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </ModalSheet>
 
         </KeyboardAvoidingView>
     );

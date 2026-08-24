@@ -20,6 +20,7 @@ import {
 } from 'react-native';
 import { Card } from '../components/Card';
 import { Badge } from '../components/Badge';
+import { getResolvedImageUrl } from '../utils/imageHelper';
 import {
     Phone, Mail, MapPin, Calendar, CreditCard,
     ChevronRight, User, Circle, IndianRupee, Clock,
@@ -87,8 +88,34 @@ const PaymentHistoryItem = React.memo(({ payment, student, onPress }: { payment:
 });
 
 // ─── Main Screen ─────────────────────────────────────────────────────────────
+const RELATION_MAP: Record<string, string> = {
+    '0': 'Father',
+    '1': 'Father',
+    '2': 'Mother',
+    '3': 'Brother',
+    '4': 'Sister',
+    '5': 'Guardian',
+    '6': 'Relative',
+    '7': 'Other',
+    'father': 'Father',
+    'mother': 'Mother',
+    'brother': 'Brother',
+    'sister': 'Sister',
+    'guardian': 'Guardian',
+    'relative': 'Relative',
+    'other': 'Other',
+};
+
+const formatRelation = (relId: any, relName?: string | null) => {
+    if (relName && isNaN(Number(relName))) return relName;
+    const str = String(relId ?? '').trim().toLowerCase();
+    if (RELATION_MAP[str]) return RELATION_MAP[str];
+    if (relId !== null && relId !== undefined && isNaN(Number(relId))) return String(relId);
+    return 'Father';
+};
+
 const StudentDetailsScreen = ({ route, navigation }: any) => {
-    const { studentId } = route.params || {};
+    const { studentId, activeTab: initialTab } = route.params || {};
     const { theme, isDark } = useTheme();
     const { showError, showSuccess, showApiError } = useToast();
     const confirm = useConfirmation();
@@ -98,10 +125,13 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
     const [student, setStudent] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [avatarError, setAvatarError] = useState(false);
-    const [activeTab, setActiveTab] = useState<'info' | 'payments'>('info');
+    // Initialise to the tab requested by the notification deep-link (or 'info' default)
+    const [activeTab, setActiveTab] = useState<'info' | 'payments'>(
+        initialTab === 'payments' ? 'payments' : 'info'
+    );
 
-    // Tab animation
-    const tabAnim = useRef(new Animated.Value(0)).current; // 0 = info, 1 = payments
+    // Tab animation — start at position matching initialTab
+    const tabAnim = useRef(new Animated.Value(initialTab === 'payments' ? 1 : 0)).current;
     const switchTab = useCallback((tab: 'info' | 'payments') => {
         setActiveTab(tab);
         Animated.spring(tabAnim, {
@@ -111,6 +141,7 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
             friction: 10,
         }).start();
     }, [tabAnim]);
+
 
     const getInitials = (first: string, last: string) => {
         const f = first ? first.charAt(0).toUpperCase() : '';
@@ -423,7 +454,10 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
         let isDestructive = false;
 
         if (currentStatus === 1) {
-            setSettleDepositAmount(student?.refundable_deposit !== undefined && student?.refundable_deposit !== null ? student.refundable_deposit.toString() : '0');
+            const deposit = student?.refundable_deposit !== undefined && student?.refundable_deposit !== null && Number(student.refundable_deposit) > 0
+                ? student.refundable_deposit.toString()
+                : (student?.default_deposit && Number(student.default_deposit) > 0 ? student.default_deposit.toString() : '1000');
+            setSettleDepositAmount(deposit);
             setVacateModalVisible(true);
             return;
         } else if (currentStatus === 2) {
@@ -481,27 +515,40 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
             showError('Please provide a reason for the deduction.');
             return;
         }
-        try {
-            setVacateLoading(true);
-            const res = await api.post(`/students/${studentId}/vacate-settlement`, {
-                damageDeductions: damageDeductions ? parseFloat(damageDeductions) : 0,
-                deductionReason: deductionReason || null,
-                refundableDeposit: settleDepositAmount ? parseFloat(settleDepositAmount) : 0
-            });
-            if (res.data.success) {
-                showSuccess(`${student.first_name} has been vacated successfully.`);
-                setVacateModalVisible(false);
-                setDamageDeductions('');
-                setDeductionReason('');
-                setSettleDepositAmount('');
-                setStudent((prev: any) => ({ ...prev, status: 0 }));
-                fetchStudentDetails();
+        const depositNum = parseFloat(settleDepositAmount || '0') || 0;
+        const dedNum = parseFloat(damageDeductions || '0') || 0;
+        const finalRefund = Math.max(0, depositNum - dedNum);
+
+        confirm({
+            title: 'Confirm Vacate & Settle',
+            message: `Are you sure you want to finalize settlement of ₹${finalRefund.toLocaleString('en-IN')} refund and vacate ${student.first_name}?`,
+            confirmText: 'Yes, Settle & Vacate',
+            cancelText: 'Cancel',
+            variant: 'danger',
+            onConfirm: async () => {
+                try {
+                    setVacateLoading(true);
+                    const res = await api.post(`/students/${studentId}/vacate-settlement`, {
+                        damageDeductions: dedNum,
+                        deductionReason: deductionReason || null,
+                        refundableDeposit: depositNum
+                    });
+                    if (res.data.success) {
+                        showSuccess(`${student.first_name} has been vacated successfully.`);
+                        setVacateModalVisible(false);
+                        setDamageDeductions('');
+                        setDeductionReason('');
+                        setSettleDepositAmount('');
+                        setStudent((prev: any) => ({ ...prev, status: 0 }));
+                        fetchStudentDetails();
+                    }
+                } catch (e: any) {
+                    showApiError(e, 'Failed to process vacate settlement');
+                } finally {
+                    setVacateLoading(false);
+                }
             }
-        } catch (e: any) {
-            showApiError(e, 'Failed to process vacate settlement');
-        } finally {
-            setVacateLoading(false);
-        }
+        });
     };
 
     // ── Pay Admission Fee ─────────────────────────────────────────────────
@@ -530,8 +577,14 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
             });
             if (res.data.success) {
                 setAdmissionPayVisible(false);
+                // Optimistically update the student state immediately
+                setStudent((prev: any) => ({
+                    ...prev,
+                    admission_status: 1,
+                    admission_fee: amt,
+                }));
                 showSuccess(`Admission fee ₹${amt.toLocaleString('en-IN')} collected from ${student.first_name}!`);
-                fetchStudentDetails();
+                await fetchStudentDetails();
                 triggerRefresh();
             }
         } catch (e: any) {
@@ -791,17 +844,7 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                                 <View style={styles.avatarWrapper}>
                                     {(() => {
                                         const rawPhoto = student.profile_photo_url || student.photo || student.profile_photo;
-                                        let photoUri: string | null = null;
-                                        if (rawPhoto) {
-                                            if (rawPhoto.includes('r2.cloudflarestorage.com/hostix-media/')) {
-                                                const key = rawPhoto.split('hostix-media/')[1];
-                                                photoUri = `http://143.244.131.69:8081/api/media/${key}`;
-                                            } else if (rawPhoto.startsWith('http://') || rawPhoto.startsWith('https://')) {
-                                                photoUri = rawPhoto;
-                                            } else {
-                                                photoUri = `http://143.244.131.69:8081${rawPhoto.startsWith('/') ? '' : '/'}${rawPhoto}`;
-                                            }
-                                        }
+                                        const photoUri = getResolvedImageUrl(rawPhoto);
                                         return photoUri && !avatarError ? (
                                             <TouchableOpacity activeOpacity={0.85} onPress={() => setPreviewImageModalUrl(photoUri)}>
                                                 <Image
@@ -1228,7 +1271,9 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                                             </View>
                                             <View style={[styles.infoGridItem, { backgroundColor: isDark ? '#0F172A' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0' }]}>
                                                 <Text style={styles.infoRowLabel}>Relationship</Text>
-                                                <Text style={[styles.infoRowValue, { color: theme.textPrimary }]}>{student.guardian_relation_name || student.guardian_relation || 'N/A'}</Text>
+                                                <Text style={[styles.infoRowValue, { color: theme.textPrimary }]}>
+                                                    {formatRelation(student.guardian_relation, student.guardian_relation_name)}
+                                                </Text>
                                             </View>
                                         </View>
 
@@ -1283,18 +1328,9 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                                             )}
                                         </View>
                                          {/* ID Proof Document Attachments (Front & Back) */}
-                                         {(() => {
-                                             const resolveUrl = (raw?: string | null) => {
-                                                 if (!raw) return null;
-                                                 if (raw.includes('r2.cloudflarestorage.com/hostix-media/')) {
-                                                     const key = raw.split('hostix-media/')[1];
-                                                     return `http://143.244.131.69:8081/api/media/${key}`;
-                                                 }
-                                                 if (raw.startsWith('http://') || raw.startsWith('https://')) return raw;
-                                                 return `http://143.244.131.69:8081${raw.startsWith('/') ? '' : '/'}${raw}`;
-                                             };
-
-                                             const docFront = resolveUrl(student.id_proof_front_url || (student.id_proof_document_url && !student.id_proof_back_url ? student.id_proof_document_url : null) || student.id_proof_front);
+                                         {( () => {
+                                              const resolveUrl = (raw?: string | null) => getResolvedImageUrl(raw);
+                                              const docFront = resolveUrl(student.id_proof_front_url || (student.id_proof_document_url && !student.id_proof_back_url ? student.id_proof_document_url : null) || student.id_proof_front);
                                              const docBack = resolveUrl(student.id_proof_back_url || student.id_proof_back);
 
                                              if (!docFront && !docBack) return null;
@@ -1381,34 +1417,72 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                                             </View>
                                         </View>
 
-                                        <View style={[styles.infoRow, { marginTop: 12 }]}>
+                                        {/* Admission Fee Row */}
+                                        {(() => {
+                                            const isAdmissionPaid = Boolean(
+                                                student.is_old_student === 1 ||
+                                                student.is_old_student === '1' ||
+                                                student.is_old_student === true ||
+                                                student.admission_status === 1 ||
+                                                student.admission_status === '1' ||
+                                                student.admission_status === 'Paid' ||
+                                                student.admission_status === true
+                                            );
+
+                                            return (
+                                                <View style={[styles.infoRow, { marginTop: 12 }]}>
+                                                    <View style={styles.infoRowText}>
+                                                        <Text style={styles.infoRowLabel}>Admission Fee</Text>
+                                                        <Text style={[styles.infoRowValue, { color: theme.textPrimary, fontWeight: '700' }]}>
+                                                            {student.is_old_student ? 'Old Student' : `₹${Number(student.admission_fee || 0).toLocaleString('en-IN')}`}
+                                                        </Text>
+                                                    </View>
+                                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                                        <View style={[
+                                                            styles.feeStatusBadge,
+                                                            { backgroundColor: isAdmissionPaid ? '#E6F9F3' : '#FFEBEE' }
+                                                        ]}>
+                                                            <Text style={[
+                                                                styles.feeStatusBadgeText,
+                                                                { color: isAdmissionPaid ? '#00B074' : '#E53935' }
+                                                            ]}>
+                                                                {isAdmissionPaid ? '✓ Paid' : 'Unpaid'}
+                                                            </Text>
+                                                        </View>
+                                                        {/* Pay Now button — only when unpaid and not an old student */}
+                                                        {!isAdmissionPaid && (
+                                                            <TouchableOpacity
+                                                                onPress={openAdmissionPay}
+                                                                activeOpacity={0.8}
+                                                                style={{
+                                                                    backgroundColor: theme.primary,
+                                                                    paddingHorizontal: 12,
+                                                                    paddingVertical: 6,
+                                                                    borderRadius: 8,
+                                                                }}
+                                                            >
+                                                                <Text style={{ color: '#FFF', fontSize: 12, fontWeight: '700' }}>Pay Now</Text>
+                                                            </TouchableOpacity>
+                                                        )}
+                                                    </View>
+                                                </View>
+                                            );
+                                        })()}
+
+                                        <View style={[styles.infoRowDivider, { marginVertical: 10 }]} />
+
+                                        {/* Refundable Deposit Row */}
+                                        <View style={styles.infoRow}>
                                             <View style={styles.infoRowText}>
-                                                <Text style={styles.infoRowLabel}>Admission Fee</Text>
-                                                <Text style={[styles.infoRowValue, { color: theme.textPrimary }]}>
-                                                    ₹{student.admission_fee || 0}
+                                                <Text style={styles.infoRowLabel}>Refundable Deposit</Text>
+                                                <Text style={[styles.infoRowValue, { color: theme.textPrimary, fontWeight: '700' }]}>
+                                                    ₹{student.refundable_deposit ? Number(student.refundable_deposit).toLocaleString('en-IN') : 0}
                                                 </Text>
                                             </View>
-                                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                                                <View style={[styles.feeStatusBadge, { backgroundColor: student.admission_status === 1 ? '#E6F9F3' : '#FFEBEE' }]}>
-                                                    <Text style={[styles.feeStatusBadgeText, { color: student.admission_status === 1 ? '#00B074' : '#E53935' }]}>
-                                                        {student.admission_status === 1 ? '✓ Paid' : 'Unpaid'}
-                                                    </Text>
-                                                </View>
-                                                {/* Pay Now button — only when unpaid */}
-                                                {student.admission_status !== 1 && (
-                                                    <TouchableOpacity
-                                                        onPress={openAdmissionPay}
-                                                        activeOpacity={0.8}
-                                                        style={{
-                                                            backgroundColor: theme.primary,
-                                                            paddingHorizontal: 12,
-                                                            paddingVertical: 6,
-                                                            borderRadius: 8,
-                                                        }}
-                                                    >
-                                                        <Text style={{ color: '#FFF', fontSize: 12, fontWeight: '700' }}>Pay Now</Text>
-                                                    </TouchableOpacity>
-                                                )}
+                                            <View style={[styles.feeStatusBadge, { backgroundColor: isDark ? '#0C2840' : '#E0F2FE' }]}>
+                                                <Text style={[styles.feeStatusBadgeText, { color: '#0284C7' }]}>
+                                                    Refundable at vacate
+                                                </Text>
                                             </View>
                                         </View>
                                     </View>

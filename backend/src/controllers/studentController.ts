@@ -7,6 +7,7 @@ import { sendNewJoinerStudentEmail, sendNewJoinerOwnerAlertEmail } from '../util
 import { kickUserFromRoomChat } from '../socket/index.js';
 import { checkHostelUniqueIdentifiers } from '../utils/validation.js';
 import { resolveScopedHostelId, resolveOwnerHostelId, canAccessHostel, getAuthenticatedStudent } from '../utils/scope.js';
+import { notifyStudentActivated } from '../services/developerNotificationService.js';
 
 // Helper function to convert ISO datetime string to date-only format (YYYY-MM-DD)
 const convertToDateOnly = (dateValue: any): string | null => {
@@ -89,9 +90,9 @@ export const getStudents = async (req: AuthRequest, res: Response) => {
       query = query.where('s.hostel_id', scopedHostelId);
     }
 
-    // Filter by unallocated (no room assigned)
+    // Filter by unallocated (no room assigned - only active students needing room allocation)
     if (req.query.unallocated === 'true') {
-      query = query.whereNull('s.room_id');
+      query = query.whereNull('s.room_id').where('s.status', 1);
     }
 
     // Filter by admission pending (unpaid admission fee)
@@ -259,10 +260,14 @@ export const getStudentById = async (req: AuthRequest, res: Response) => {
     const student = await db('students as s')
       .leftJoin('hostel_master as h', 's.hostel_id', 'h.hostel_id')
       .leftJoin('rooms as r', 's.room_id', 'r.room_id')
+      .leftJoin('id_proof_types as ipt', 's.id_proof_type', 'ipt.id')
+      .leftJoin('relations_master as rm', 's.guardian_relation', 'rm.relation_id')
       .select(
         's.*',
         'h.hostel_name',
         'r.room_number',
+        'ipt.name as id_proof_type_name',
+        'rm.relation_name as guardian_relation_name',
         's.admission_date as check_in_date'
       )
       .where('s.student_id', studentId)
@@ -274,6 +279,10 @@ export const getStudentById = async (req: AuthRequest, res: Response) => {
         error: 'Student not found'
       });
     }
+
+    // Normalize admission_status and is_old_student
+    student.admission_status = (student.admission_status === 1 || student.admission_status === '1' || student.admission_status === 'Paid' || student.admission_status === true) ? 1 : 0;
+    student.is_old_student = (student.is_old_student === 1 || student.is_old_student === '1' || student.is_old_student === true) ? 1 : 0;
 
     if (!canAccessHostel(req.user, student.hostel_id)) {
       return res.status(403).json({
@@ -371,7 +380,7 @@ export const createStudent = async (req: AuthRequest, res: Response) => {
     const cleanGuardianName = guardian_name && String(guardian_name).trim() ? String(guardian_name).trim() : null;
     const cleanGuardianPhone = guardian_phone && String(guardian_phone).trim() ? String(guardian_phone).replace(/\D/g, '').slice(0, 10) : null;
     const cleanIdProofNumber = id_proof_number && String(id_proof_number).trim() ? String(id_proof_number).trim() : null;
-    
+
     const parsedIdProofType = (id_proof_type && id_proof_type !== '' && id_proof_type !== 'null' && id_proof_type !== 'undefined') ? Number(id_proof_type) : null;
     const parsedGuardianRelation = (guardian_relation && guardian_relation !== '' && guardian_relation !== 'null' && guardian_relation !== 'undefined') ? Number(guardian_relation) : null;
     const parsedRoomId = (room_id && room_id !== '' && room_id !== 'null' && room_id !== 'undefined') ? Number(room_id) : null;
@@ -554,15 +563,15 @@ export const createStudent = async (req: AuthRequest, res: Response) => {
           // For the month string, we use the month of their admission.
           const admissionDateObj = new Date(admission_date);
           let dueDate = new Date(admissionDateObj);
-          
+
           // Current month is used for the fee_month label, but we align due_date
           // to match the exact day of admission.
           const feeYear = now.getFullYear();
           const feeMonth = now.getMonth();
-          
+
           dueDate.setFullYear(feeYear);
           dueDate.setMonth(feeMonth);
-          
+
           // Handle overflow for short months (e.g. admitted 31st, current month has 30 days)
           if (dueDate.getMonth() !== feeMonth) {
             dueDate = new Date(feeYear, feeMonth + 1, 0); // last day of short month
@@ -611,20 +620,24 @@ export const createStudent = async (req: AuthRequest, res: Response) => {
       hostel_id,
       'New Admission',
       'New Student Admission',
-      `Student ${first_name} ${last_name || ''} has been registered successfully.`,
+      `Student ${first_name} ${last_name || ''} has been registered successfully.`.trim(),
       'Medium',
-      { id: student_id }
+      { id: student_id, student_id, studentId: student_id },
+      {
+        screen: 'Students',
+        params: { studentId: student_id },
+        referenceType: 'student',
+        referenceId: student_id,
+      }
     ).catch(err => console.error('Failed to send student admission notification:', err));
 
-    // Send Welcome Email to New Joiner & Owner Alert Email
-    (async () => {
-      try {
-        const hostel = await db('hostel_master').where({ hostel_id }).first();
-        const owner = hostel?.owner_id ? await db('users').where({ user_id: hostel.owner_id }).first() : null;
-        const hostelName = hostel?.hostel_name || 'Your Hostel';
+    // Send Welcome Email to New Joiner ONLY (if student email provided)
+    if (email && String(email).includes('@')) {
+      (async () => {
+        try {
+          const hostel = await db('hostel_master').where({ hostel_id }).first();
+          const hostelName = hostel?.hostel_name || 'Your Hostel';
 
-        // 1. Send Welcome Confirmation Email to Student (if student email provided)
-        if (email && String(email).includes('@')) {
           await sendNewJoinerStudentEmail({
             email: String(email).trim(),
             studentName: `${first_name} ${last_name || ''}`.trim(),
@@ -635,28 +648,11 @@ export const createStudent = async (req: AuthRequest, res: Response) => {
             monthlyRent: monthlyRent || null,
             admissionFee: admission_fee || null,
           }).catch(err => console.error('[createStudent] Student welcome email error:', err.message));
+        } catch (mailErr: any) {
+          console.error('[createStudent] Welcome email exception:', mailErr.message);
         }
-
-        // 2. Send Alert Email to Hostel Owner
-        if (owner?.email && String(owner.email).includes('@')) {
-          await sendNewJoinerOwnerAlertEmail({
-            ownerEmail: String(owner.email).trim(),
-            ownerName: owner.full_name || 'Hostel Owner',
-            studentName: `${first_name} ${last_name || ''}`.trim(),
-            studentPhone: phone,
-            studentEmail: email || null,
-            hostelName,
-            roomNumber: roomDetails?.room_number || null,
-            bedNumber: bed_number || null,
-            admissionDate: convertToDateOnly(admission_date) || new Date().toISOString().split('T')[0],
-            monthlyRent: monthlyRent || null,
-            admissionFee: admission_fee || null,
-          }).catch(err => console.error('[createStudent] Owner alert email error:', err.message));
-        }
-      } catch (mailErr: any) {
-        console.error('[createStudent] Failed to process new joiner emails:', mailErr.message);
-      }
-    })();
+      })();
+    }
 
     res.status(201).json({
       success: true,
@@ -665,14 +661,14 @@ export const createStudent = async (req: AuthRequest, res: Response) => {
     });
   } catch (error: any) {
     console.error('Create student error:', error);
-    
+
     if (error?.code === 'ER_DUP_ENTRY') {
       return res.status(409).json({
         success: false,
         error: 'This phone number or email is already registered.'
       });
     }
-    
+
     res.status(500).json({
       success: false,
       error: error?.message || 'Failed to register student'
@@ -745,7 +741,7 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
     const checkingPhone = req.body.phone !== undefined ? req.body.phone : undefined;
     const checkingEmail = req.body.email !== undefined ? req.body.email : undefined;
     const checkingIdNumber = req.body.id_proof_number !== undefined ? req.body.id_proof_number : undefined;
-    
+
     if (checkingPhone || checkingEmail || checkingIdNumber) {
       const validation = await checkHostelUniqueIdentifiers(
         student.hostel_id,
@@ -772,6 +768,11 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
           updateData[field] = convertToDateOnly(req.body[field]);
         } else if (field === 'is_old_student') {
           updateData[field] = req.body[field] ? 1 : 0;
+        } else if (field === 'admission_status') {
+          const val = req.body[field];
+          updateData[field] = (val === 1 || val === '1' || val === 'Paid' || val === true) ? 1 : 0;
+        } else if (field === 'admission_fee') {
+          updateData[field] = parseFloat(req.body[field] || '0') || 0;
         } else if (field === 'id_proof_type' || field === 'guardian_relation' || field === 'floor_number') {
           const val = req.body[field];
           updateData[field] = (val && val !== '' && val !== 'null' && val !== 'undefined') ? Number(val) : null;
@@ -965,6 +966,37 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
             .where({ room_id: finalRoomId })
             .increment('occupied_beds', 1);
           console.log(`Assigned room ${finalRoomId} to student ${studentId}`);
+
+          // Notify student of room allocation & check-in approval
+          const room = await db('rooms').where({ room_id: finalRoomId }).first();
+          const roomNumber = room?.room_number || '';
+          const studentName = `${updatedStudent.first_name}${updatedStudent.last_name ? ' ' + updatedStudent.last_name : ''}`.trim();
+
+          sendNotificationToStudent(
+            Number(studentId),
+            'New Admission',
+            'Room Allocated & Check-In Approved! 🎉',
+            `Welcome! Room ${roomNumber ? roomNumber : ''} has been assigned to you. Your tenant portal is now active.`,
+            'High',
+            { room_id: finalRoomId, room_number: roomNumber },
+            {
+              screen: 'TenantHome',
+              referenceType: 'room',
+              referenceId: finalRoomId,
+            }
+          ).catch((err) => console.error('Failed to send room allocation notification to student:', err));
+
+          // Notify Developer
+          try {
+            notifyStudentActivated({
+              studentId: Number(studentId),
+              studentName,
+              roomNumber,
+              hostelId: updatedStudent.hostel_id,
+            });
+          } catch (devErr) {
+            console.error('Failed to notify developer of student activation:', devErr);
+          }
         } catch (bedError: any) {
           console.error('Error incrementing room occupied_beds:', bedError);
         }
@@ -1193,7 +1225,7 @@ export const allocateRoom = async (req: AuthRequest, res: Response) => {
       await db('rooms')
         .where({ room_id: oldRoomId })
         .decrement('occupied_beds', 1);
-      
+
       kickUserFromRoomChat(parseInt(studentId), oldRoomId);
     }
 
@@ -1392,7 +1424,7 @@ export const submitVacateNotice = async (req: AuthRequest, res: Response) => {
       });
 
     if (student?.hostel_id) {
-      const name = `${student.first_name}${student.last_name ? ' ' + student.last_name : ''}`;
+      const name = `${student.first_name}${student.last_name ? ' ' + student.last_name : ''}`.trim();
       sendNotificationToHostelOwner(
         student.hostel_id,
         'General',
@@ -1401,7 +1433,13 @@ export const submitVacateNotice = async (req: AuthRequest, res: Response) => {
           ? `${name} has given notice to vacate on ${formattedDate}.${reason ? ` Reason: ${reason}` : ''}`
           : `${name} has cancelled their vacate notice.`,
         'Medium',
-        { student_id: student.student_id }
+        { student_id: student.student_id, studentId: student.student_id },
+        {
+          screen: 'StudentDetails',
+          params: { studentId: student.student_id },
+          referenceType: 'student',
+          referenceId: student.student_id,
+        }
       ).catch(err => console.error('Failed to send vacate-notice owner notification:', err));
     }
 
@@ -1458,23 +1496,30 @@ export const vacateSettlement = async (req: AuthRequest, res: Response) => {
 
       // If there is a refund to be given back to the student, record it as an expense automatically
       if (refundAmount > 0) {
-        let refundCat = await trx('expense_categories').where({ category_name: 'Deposit Refunds' }).first().catch(() => null);
-        if (!refundCat) {
-          refundCat = await trx('expense_categories').where('category_name', 'like', '%refund%').first().catch(() => null);
-        }
-        if (!refundCat) {
+        let refundCat = await trx('expense_categories')
+          .whereRaw('LOWER(category_name) LIKE ?', ['%deposit refund%'])
+          .orWhereRaw('LOWER(category_name) LIKE ?', ['%deposit%'])
+          .orWhereRaw('LOWER(category_name) LIKE ?', ['%refund%'])
+          .first()
+          .catch(() => null);
+
+        let categoryId = refundCat?.category_id || refundCat?.id;
+
+        if (!categoryId) {
           try {
-            const [newCatId] = await trx('expense_categories').insert({
-              category_name: 'Deposit Refunds',
-              description: 'Refund of security deposits upon vacate'
+            const [insertedId] = await trx('expense_categories').insert({
+              category_name: 'Deposit Refund',
+              description: 'Tenant security deposit refunds'
             });
-            refundCat = { category_id: newCatId };
+            categoryId = insertedId;
           } catch {
-            refundCat = await trx('expense_categories').where({ category_id: 7 }).first().catch(() => null);
+            const found = await trx('expense_categories')
+              .whereRaw('LOWER(category_name) LIKE ?', ['%deposit%'])
+              .first()
+              .catch(() => null);
+            categoryId = found?.category_id || found?.id;
           }
         }
-
-        const categoryId = refundCat?.category_id || refundCat?.id || 7;
 
         await trx('expenses').insert({
           hostel_id: student.hostel_id,
@@ -1502,14 +1547,14 @@ export const vacateSettlement = async (req: AuthRequest, res: Response) => {
           refundable_deposit: 0, // Deposit is settled
           updated_at: new Date()
         });
-        
+
       // Decrement room occupancy
       if (oldRoomId && (student.status === 1 || student.status === 'Active')) {
         await trx('rooms')
           .where({ room_id: oldRoomId })
           .decrement('occupied_beds', 1);
       }
-      
+
       // We could optionally clear their Pending rent dues here, or leave them as unpaid bad debt.
       // We will leave them so history is maintained, but the deposit offset the owner's loss.
     });

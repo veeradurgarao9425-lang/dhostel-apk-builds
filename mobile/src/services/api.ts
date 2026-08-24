@@ -5,9 +5,7 @@ import { navigate } from '../navigation/navigationRef';
 // ─── Base URL ─────────────────────────────────────────────────────────────────
 // Priority: EXPO_PUBLIC_API_URL env var → production fallback
 // For local dev: set EXPO_PUBLIC_API_URL in .env file
-// e.g. EXPO_PUBLIC_API_URL=http://10.0.2.2:5000/api (Android emulator)
-//      EXPO_PUBLIC_API_URL=http://192.168.x.x:5000/api (Physical device)
-const BASE_URL = 'http://143.244.131.69:8081/api';
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://api.143-244-131-69.sslip.io/api';
 
 // ─── Axios Instance ───────────────────────────────────────────────────────────
 export const api = axios.create({
@@ -37,13 +35,13 @@ api.interceptors.request.use(
 
       if (isFormData) {
         if (config.headers) {
-          if (typeof (config.headers as any).delete === 'function') {
-            (config.headers as any).delete('Content-Type');
-            (config.headers as any).delete('content-type');
+          if (typeof (config.headers as any).set === 'function') {
+            (config.headers as any).set('Content-Type', 'multipart/form-data');
+          } else {
+            config.headers['Content-Type'] = 'multipart/form-data';
           }
-          delete (config.headers as any)['Content-Type'];
-          delete (config.headers as any)['content-type'];
         }
+        config.timeout = 120000; // 2 min timeout for file uploads
       }
     } catch {
       // Token read failed — proceed without token

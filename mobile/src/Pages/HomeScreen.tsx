@@ -54,6 +54,8 @@ const INITIAL_STATE = {
     leftTenants: 0,
     totalRooms: 0,
     availableRooms: 0,
+    totalFloors: 0,
+    floorBreakdown: [] as any[],
     occupancyRate: 0,
     prebookingsCount: 0,
     noticesCount: 0,
@@ -66,6 +68,8 @@ const INITIAL_STATE = {
     qrRegisterCount: 0,
     openComplaintsCount: 0,
     pendingAdmissionsCount: 0,
+    vacateCount: 0,
+    activeGuestsCount: 0,
     unpaidStudents: [] as any[],
     upcomingDues: [] as any[],
     collectionStats: {
@@ -358,12 +362,18 @@ export default function HomeScreen() {
                 : [];
 
             const activeStudents = studentsRes.data?.success ? (studentsRes.data.data || []) : [];
-            const unallocatedCount = activeStudents.filter((s: any) => s.status === 1 && !s.room_id).length;
-            const qrRegisterCount = activeStudents.filter((s: any) => s.status === 3).length;
-            const pendingAdmissionsCount = activeStudents.filter((s: any) => s.admission_status === 0 && (s.status === 1 || s.status === 2)).length;
+            const unallocatedCount = Number(d2.unallocatedCount ?? activeStudents.filter((s: any) => s.status === 1 && !s.room_id).length);
+            const qrRegisterCount = Number(d2.qrRegisterCount ?? activeStudents.filter((s: any) => s.status === 3).length);
+            const pendingAdmissionsCount = Number(
+                d2.pendingAdmissionsCount ?? 
+                activeStudents.filter((s: any) => (s.admission_status === 0 || s.admission_status === '0' || !s.admission_status) && !s.is_old_student && s.status === 1).length
+            );
+            const prebookingsCount = Number(d2.prebookingsCount ?? activeStudents.filter((s: any) => s.status === 2).length);
+            const vacateCount = Number(d2.vacateCount ?? activeStudents.filter((s: any) => s.vacate_notice_date && s.status === 1).length);
             const totalStudentsCount = activeStudents.filter((s: any) => s.status === 1).length;
             const allComplaints = complaintsRes.data?.success ? (complaintsRes.data.complaints || []) : [];
-            const openComplaintsCount = allComplaints.filter((c: any) => c.status === 'Open' || c.status === 'In Progress').length;
+            const openComplaintsCount = Number(d2.openComplaintsCount ?? allComplaints.filter((c: any) => c.status === 'Open' || c.status === 'In Progress').length);
+            const activeGuestsCount = Number(d2.activeGuestsCount ?? 0);
 
             setData({
                 hostelName: user?.hostel_name || d2.hostel_name || hostelRes?.data?.data?.hostel_name || 'My Hostel',
@@ -381,8 +391,10 @@ export default function HomeScreen() {
                 leftTenants: d2.leftTenants || d2.vacatedStudents || 0,
                 totalRooms: d2.totalRooms || 0,
                 availableRooms: d2.availableRooms || 0,
+                totalFloors: d2.totalFloors || 0,
+                floorBreakdown: d2.floorBreakdown || [],
                 occupancyRate: d2.occupancyRate || 0,
-                prebookingsCount: d2.prebookingsCount || 0,
+                prebookingsCount,
                 noticesCount: d2.noticesCount || 0,
                 newAdmissionsCount: d2.newAdmissionsCount || 0,
                 monthlyExpenses: d2.monthlyExpenses || 0,
@@ -393,6 +405,8 @@ export default function HomeScreen() {
                 qrRegisterCount,
                 openComplaintsCount,
                 pendingAdmissionsCount,
+                vacateCount,
+                activeGuestsCount,
                 unpaidStudents: topDefaulters,
                 upcomingDues: upcomingDuesList,
                 collectionStats,
@@ -713,9 +727,9 @@ export default function HomeScreen() {
                         )}
                     </TouchableOpacity>
 
-                    <View style={{ flex: 1, marginLeft: 12 }}>
+                    <View style={{ flex: 1, marginLeft: 10, marginRight: 8, minWidth: 0, justifyContent: 'center' }}>
                         {/* Greeting + name row */}
-                        <Text style={s.hdrGreeting}>{t(getGreetingKey())} 👋</Text>
+                        <Text style={s.hdrGreeting} numberOfLines={1}>{t(getGreetingKey())} 👋</Text>
                         <Text style={s.headerOwnerName} numberOfLines={1} ellipsizeMode="tail">
                             {user?.full_name?.split(' ')[0] || 'Admin'}
                         </Text>
@@ -727,7 +741,7 @@ export default function HomeScreen() {
                             style={s.hostelNameBtn}
                         >
                             <Ionicons name="business" size={11} color="rgba(255,255,255,0.9)" />
-                            <Text style={s.hostelNameLabel} numberOfLines={1}>
+                            <Text style={s.hostelNameLabel} numberOfLines={1} ellipsizeMode="tail">
                                 {data.hostelName || 'My Hostel'}
                             </Text>
                             <Ionicons name="chevron-down" size={10} color="rgba(255,255,255,0.85)" />
@@ -738,10 +752,17 @@ export default function HomeScreen() {
                     <View style={s.headerActions}>
                         <TouchableOpacity
                             style={s.headerIconBtn}
+                            onPress={() => navigation.navigate('QRSignup')}
+                            activeOpacity={0.8}
+                        >
+                            <Ionicons name="qr-code-outline" size={18} color="#FFF" />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={s.headerIconBtn}
                             onPress={() => scrollToPage(activePageIndex === 0 ? 1 : 0)}
                             activeOpacity={0.8}
                         >
-                            <Ionicons name={activePageIndex === 0 ? "apps-outline" : "grid-outline"} size={19} color="#FFF" />
+                            <Ionicons name={activePageIndex === 0 ? "apps-outline" : "grid-outline"} size={18} color="#FFF" />
                         </TouchableOpacity>
                         {backgroundLoading && (
                             <ActivityIndicator size="small" color="rgba(255,255,255,0.8)" style={{ marginRight: 2 }} />
@@ -806,7 +827,7 @@ export default function HomeScreen() {
                                     />
                                 </View>
                             ) : null}
-                            {(data.unallocatedCount > 0 || data.qrRegisterCount > 0 || data.openComplaintsCount > 0 || data.pendingAdmissionsCount > 0) && (
+                            {(data.unallocatedCount > 0 || data.qrRegisterCount > 0 || data.openComplaintsCount > 0 || data.pendingAdmissionsCount > 0 || (data.prebookingsCount || 0) > 0 || (data.vacateCount || 0) > 0 || (data.activeGuestsCount || 0) > 0) && (
                                 <View collapsable={false}>
                                     <WarningCards data={data} />
                                 </View>
@@ -1138,23 +1159,25 @@ const s = StyleSheet.create({
         borderRadius: 14,
         gap: 4,
         alignSelf: 'flex-start',
+        maxWidth: '100%',
     },
     hostelNameLabel: {
-        fontSize: 11.5,
+        fontSize: 11,
         fontWeight: '700',
         color: 'rgba(255,255,255,0.92)',
-        maxWidth: 140,
+        flexShrink: 1,
     },
 
     headerActions: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 8,
+        gap: 6,
+        flexShrink: 0,
     },
     headerIconBtn: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
+        width: 34,
+        height: 34,
+        borderRadius: 17,
         backgroundColor: 'rgba(255,255,255,0.18)',
         alignItems: 'center',
         justifyContent: 'center',

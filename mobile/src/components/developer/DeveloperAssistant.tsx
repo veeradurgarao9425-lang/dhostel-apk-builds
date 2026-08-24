@@ -192,11 +192,11 @@ export const DeveloperAssistant: React.FC = () => {
     const lower = q.toLowerCase();
 
     try {
-      // 1. OWNERS BREAKDOWN
+      // 1. OWNERS BREAKDOWN & DIRECT INLINE RECORDS
       if (lower.includes('owner')) {
         const oRes = await developerService.getOwners({ page: 1, limit: 50 });
         const list = oRes?.data || [];
-        const activeCount = list.filter((o: any) => o.is_active).length;
+        const activeCount = list.filter((o: any) => o.is_active || o.status === 'ACTIVE' || o.status === 1).length;
         const inactiveCount = list.length - activeCount;
 
         setIsTyping(false);
@@ -220,32 +220,21 @@ export const DeveloperAssistant: React.FC = () => {
             ],
           },
           {
-            type: 'action_buttons',
-            buttons: [
-              {
-                label: 'Open Owners Governance Hub',
-                icon: 'people-outline',
-                onPress: () => { setIsOpen(false); RootNavigation.navigate('DevOwnersTab'); },
-                variant: 'primary',
-              },
-              {
-                label: 'Reset Owner Password',
-                icon: 'key-outline',
-                onPress: () => { setIsOpen(false); RootNavigation.navigate('DevOwnersTab'); },
-                variant: 'outline',
-              },
-            ],
+            type: 'owner_list_card',
+            title: 'Registered Hostel Owners Directory',
+            owners: list,
           },
           {
             type: 'follow_up_chips',
             chips: [
-              { label: 'Show Hostels Roster', icon: 'business-outline', onPress: () => handleQuery('Show all hostels breakdown') },
-              { label: 'Check Tenants Count', icon: 'school-outline', onPress: () => handleQuery('How many students on platform?') },
+              { label: '🏢 Hostels Overview', icon: 'business-outline', onPress: () => handleQuery('Show all hostels breakdown') },
+              { label: '🎓 Students Roster', icon: 'school-outline', onPress: () => handleQuery('How many students on platform?') },
+              { label: '💰 Pending Dues', icon: 'wallet-outline', onPress: () => handleQuery('Show pending dues') },
             ],
           },
         ]);
       }
-      // 2. STUDENTS BREAKDOWN
+      // 2. STUDENTS BREAKDOWN & DIRECT INLINE RECORDS
       else if (lower.includes('student') || lower.includes('tenant') || lower.includes('how many student')) {
         const sRes = await developerService.getStudents({ page: 1, limit: 50 });
         const list = sRes?.data || [];
@@ -256,7 +245,7 @@ export const DeveloperAssistant: React.FC = () => {
         addBot([
           {
             type: 'text',
-            text: `🎓 Platform Students Roster: ${list.length} Registered Tenants`,
+            text: `🎓 Platform Students Roster: ${list.length} Registered Tenants (${activeCount} Active, ${inactiveCount} Vacated)`,
           },
           {
             type: 'student_stats_donut',
@@ -266,31 +255,29 @@ export const DeveloperAssistant: React.FC = () => {
             qrRegister: 0,
           },
           {
-            type: 'student_list_card',
-            title: 'Recent Active Students',
-            students: list.slice(0, 4),
+            type: 'stat_cards',
+            cards: [
+              { label: 'Active Tenants', value: String(activeCount), icon: 'school-outline', color: '#059669', bg: '#ECFDF5' },
+              { label: 'Vacated / Left', value: String(inactiveCount), icon: 'exit-outline', color: '#64748B', bg: '#F1F5F9' },
+            ],
           },
           {
-            type: 'action_buttons',
-            buttons: [
-              {
-                label: 'Open Students Directory',
-                icon: 'school-outline',
-                onPress: () => { setIsOpen(false); RootNavigation.navigate('DevStudentsTab'); },
-                variant: 'primary',
-              },
-              {
-                label: 'Who Joined Today?',
-                icon: 'person-add-outline',
-                onPress: () => handleQuery('Who joined today?'),
-                variant: 'outline',
-              },
+            type: 'student_list_card',
+            title: 'Registered Student Residents',
+            students: list,
+          },
+          {
+            type: 'follow_up_chips',
+            chips: [
+              { label: '🆕 Who Joined Today?', icon: 'person-add-outline', onPress: () => handleQuery('Who joined today?') },
+              { label: '🚪 Vacated Tenants', icon: 'exit-outline', onPress: () => handleQuery('Show vacated students') },
+              { label: '🏢 Hostels Overview', icon: 'business-outline', onPress: () => handleQuery('Show all hostels breakdown') },
             ],
           },
         ]);
       }
       // 3. JOINED TODAY
-      else if (lower.includes('joined today') || lower.includes('register today') || lower.includes('new student')) {
+      else if (lower.includes('joined today') || lower.includes('register today') || lower.includes('new student') || lower.includes('today')) {
         const sRes = await developerService.getStudents({ page: 1, limit: 50 });
         const list = sRes?.data || [];
         const todayStr = new Date().toISOString().split('T')[0];
@@ -308,44 +295,29 @@ export const DeveloperAssistant: React.FC = () => {
               title: "Today's New Registrations",
               students: joinedToday,
             },
-            {
-              type: 'action_buttons',
-              buttons: [
-                {
-                  label: 'Open Students Directory',
-                  icon: 'school-outline',
-                  onPress: () => { setIsOpen(false); RootNavigation.navigate('DevStudentsTab'); },
-                  variant: 'primary',
-                },
-              ],
-            },
           ]);
         } else {
           addBot([
             {
               type: 'text',
-              text: `🆕 No new students joined today (${todayStr}). Showing latest registered tenants:`,
+              text: `🆕 No new students registered today (${todayStr}). Showing latest active tenants:`,
             },
             {
               type: 'student_list_card',
-              title: 'Recent Active Registrations',
-              students: list.slice(0, 3),
+              title: 'Recent Registered Residents',
+              students: list.slice(0, 5),
             },
             {
-              type: 'action_buttons',
-              buttons: [
-                {
-                  label: 'View Students Directory',
-                  icon: 'school-outline',
-                  onPress: () => { setIsOpen(false); RootNavigation.navigate('DevStudentsTab'); },
-                  variant: 'primary',
-                },
+              type: 'follow_up_chips',
+              chips: [
+                { label: '🎓 All Students', icon: 'school-outline', onPress: () => handleQuery('How many students on platform?') },
+                { label: '🏢 Hostels Overview', icon: 'business-outline', onPress: () => handleQuery('Show all hostels breakdown') },
               ],
             },
           ]);
         }
       }
-      // 4. VACATED / LEFT TODAY
+      // 4. VACATED / LEFT
       else if (lower.includes('left') || lower.includes('vacat') || lower.includes('inactive')) {
         const sRes = await developerService.getStudents({ page: 1, limit: 50, status: '0' });
         const vacated = sRes?.data || [];
@@ -359,55 +331,20 @@ export const DeveloperAssistant: React.FC = () => {
           {
             type: 'student_list_card',
             title: 'Vacated Tenants Archive',
-            students: vacated.slice(0, 4),
+            students: vacated,
           },
           {
-            type: 'action_buttons',
-            buttons: [
-              {
-                label: 'Open Students Directory',
-                icon: 'school-outline',
-                onPress: () => { setIsOpen(false); RootNavigation.navigate('DevStudentsTab'); },
-                variant: 'primary',
-              },
+            type: 'follow_up_chips',
+            chips: [
+              { label: '🎓 Active Students', icon: 'school-outline', onPress: () => handleQuery('How many students on platform?') },
+              { label: '🏢 Hostels Overview', icon: 'business-outline', onPress: () => handleQuery('Show all hostels breakdown') },
             ],
           },
         ]);
       }
-      // 5. FREE TRIALS & SUBSCRIPTIONS
-      else if (lower.includes('trial') || lower.includes('subscription') || lower.includes('expir')) {
-        const hRes = await developerService.getHostels({ page: 1, limit: 20 });
-        const list = hRes?.data || [];
-
-        setIsTyping(false);
-        addBot([
-          {
-            type: 'text',
-            text: `⏳ Platform Hostels Trial & Subscription Status (${list.length} Hostels Active)`,
-          },
-          {
-            type: 'stat_cards',
-            cards: [
-              { label: 'Active PG Network', value: `${list.length}`, icon: 'business-outline', color: '#EA580C', bg: '#FFF7ED' },
-              { label: 'Free Trial Grants', value: '100% Active', icon: 'gift-outline', color: '#10B981', bg: '#ECFDF5' },
-            ],
-          },
-          {
-            type: 'action_buttons',
-            buttons: [
-              {
-                label: '+ Grant Free Trial Extension',
-                icon: 'gift-outline',
-                onPress: () => { setIsOpen(false); RootNavigation.navigate('DevHostelsTab'); },
-                variant: 'primary',
-              },
-            ],
-          },
-        ]);
-      }
-      // 6. ALL HOSTELS OVERVIEW
-      else if (lower.includes('hostel') || lower.includes('pg') || lower.includes('bed') || lower.includes('occupan')) {
-        const hRes = await developerService.getHostels({ page: 1, limit: 20 });
+      // 5. ALL HOSTELS OVERVIEW & INLINE RECORDS
+      else if (lower.includes('hostel') || lower.includes('pg') || lower.includes('bed') || lower.includes('occupan') || lower.includes('room')) {
+        const hRes = await developerService.getHostels({ page: 1, limit: 50 });
         const list = hRes?.data || [];
         const totalBeds = list.reduce((acc: number, h: any) => acc + (Number(h.total_beds) || 0), 0);
         const occupiedBeds = list.reduce((acc: number, h: any) => acc + (Number(h.occupied_beds) || 0), 0);
@@ -418,35 +355,131 @@ export const DeveloperAssistant: React.FC = () => {
         addBot([
           {
             type: 'text',
-            text: `🏢 Platform Hostels Network (${list.length} Properties Registered)`,
+            text: `🏢 Platform Hostels Network (${list.length} Properties Registered • ${occupiedBeds}/${totalBeds} Beds Occupied)`,
           },
           {
             type: 'occupancy_donut',
-            occupied: occupiedBeds || 25,
-            available: availBeds || 20,
-            total: totalBeds || 45,
+            occupied: occupiedBeds,
+            available: availBeds,
+            total: totalBeds,
           },
           {
             type: 'occupancy_bar',
-            occupied: occupiedBeds || 25,
-            available: availBeds || 20,
-            total: totalBeds || 45,
-            rate: rate || 56,
+            occupied: occupiedBeds,
+            available: availBeds,
+            total: totalBeds,
+            rate,
           },
           {
-            type: 'action_buttons',
-            buttons: [
-              {
-                label: 'Inspect Hostels Directory',
-                icon: 'business-outline',
-                onPress: () => { setIsOpen(false); RootNavigation.navigate('DevHostelsTab'); },
-                variant: 'primary',
-              },
+            type: 'hostel_list',
+            hostels: list,
+            activeHostelId: list[0]?.hostel_id || 1,
+          },
+          {
+            type: 'follow_up_chips',
+            chips: [
+              { label: '👥 Owners Roster', icon: 'people-outline', onPress: () => handleQuery('How many owners are registered?') },
+              { label: '🎓 Students Roster', icon: 'school-outline', onPress: () => handleQuery('How many students on platform?') },
+              { label: '💰 Pending Dues', icon: 'wallet-outline', onPress: () => handleQuery('Show pending dues') },
             ],
           },
         ]);
       }
-      // 7. SYSTEM DIAGNOSTICS
+      // 6. DUES & FINANCIALS
+      else if (lower.includes('due') || lower.includes('pending') || lower.includes('revenue') || lower.includes('money') || lower.includes('finance')) {
+        const finRes = await developerService.getFinanceOverview().catch(() => null);
+        const summary = finRes?.data?.summary;
+        const totalReceived = summary?.total_received || 0;
+        const totalPending = summary?.total_pending || 0;
+        const paidCount = summary?.paid_hostels || 0;
+        const unpaidCount = summary?.pending_hostels || 0;
+
+        setIsTyping(false);
+        addBot([
+          {
+            type: 'text',
+            text: `💰 Platform Dues & Collections Overview:`,
+          },
+          {
+            type: 'dues_donut',
+            paidCount,
+            partialCount: 0,
+            unpaidCount,
+            totalPaidAmount: totalReceived,
+            totalPending,
+          },
+          {
+            type: 'stat_cards',
+            cards: [
+              { label: 'Total Received', value: `₹${Number(totalReceived).toLocaleString('en-IN')}`, icon: 'checkmark-circle-outline', color: '#10B981', bg: '#ECFDF5' },
+              { label: 'Total Pending', value: `₹${Number(totalPending).toLocaleString('en-IN')}`, icon: 'alert-circle-outline', color: '#EF4444', bg: '#FEF2F2' },
+            ],
+          },
+          {
+            type: 'follow_up_chips',
+            chips: [
+              { label: '🏢 Hostels Overview', icon: 'business-outline', onPress: () => handleQuery('Show all hostels breakdown') },
+              { label: '👥 Owners Roster', icon: 'people-outline', onPress: () => handleQuery('How many owners are registered?') },
+            ],
+          },
+        ]);
+      }
+      // 7. FREE TRIALS & SUBSCRIPTIONS
+      else if (lower.includes('trial') || lower.includes('subscription') || lower.includes('expir')) {
+        const hRes = await developerService.getHostels({ page: 1, limit: 50 });
+        const list = hRes?.data || [];
+
+        setIsTyping(false);
+        addBot([
+          {
+            type: 'text',
+            text: `⏳ Platform Hostels Trial & Subscription Status (${list.length} Hostels Enrolled)`,
+          },
+          {
+            type: 'stat_cards',
+            cards: [
+              { label: 'Active PG Network', value: `${list.length}`, icon: 'business-outline', color: '#EA580C', bg: '#FFF7ED' },
+              { label: 'Free Trial Grants', value: '100% Active', icon: 'gift-outline', color: '#10B981', bg: '#ECFDF5' },
+            ],
+          },
+          {
+            type: 'hostel_list',
+            hostels: list,
+            activeHostelId: list[0]?.hostel_id || 1,
+          },
+        ]);
+      }
+      // 8. AUDIT LOGS
+      else if (lower.includes('audit') || lower.includes('log') || lower.includes('history') || lower.includes('event')) {
+        const logsRes = await developerService.getAuditLogs({ page: 1, limit: 10 }).catch(() => null);
+        const logs = logsRes?.data?.logs || (Array.isArray(logsRes?.data) ? logsRes?.data : []);
+
+        setIsTyping(false);
+        addBot([
+          {
+            type: 'text',
+            text: `📋 Platform Audit Logs (${logs.length} Recent Events):`,
+          },
+          {
+            type: 'stat_cards',
+            cards: logs.slice(0, 4).map((l: any, idx: number) => ({
+              label: l.action || `Audit Event #${idx + 1}`,
+              value: l.developer_username || l.target_type || 'System',
+              icon: 'time-outline',
+              color: '#3B82F6',
+              bg: '#EFF6FF',
+            })),
+          },
+          {
+            type: 'follow_up_chips',
+            chips: [
+              { label: '🏢 Hostels Overview', icon: 'business-outline', onPress: () => handleQuery('Show all hostels breakdown') },
+              { label: '👑 Owners Roster', icon: 'people-outline', onPress: () => handleQuery('How many owners are registered?') },
+            ],
+          },
+        ]);
+      }
+      // 9. SYSTEM DIAGNOSTICS
       else if (lower.includes('diagnostic') || lower.includes('health') || lower.includes('database') || lower.includes('server')) {
         const sysRes = await developerService.getSystemStatus().catch(() => null);
         const s = sysRes?.data || { server: { status: 'ONLINE', memory: { rss_mb: 48 }, node_version: 'v20.x' }, database: { status: 'HEALTHY', latency_ms: 2 } };
@@ -466,20 +499,9 @@ export const DeveloperAssistant: React.FC = () => {
               { label: 'Engine Node', value: s.server?.node_version || 'v20.x', icon: 'logo-nodejs', color: '#059669', bg: '#ECFDF5' },
             ],
           },
-          {
-            type: 'action_buttons',
-            buttons: [
-              {
-                label: 'Open Diagnostics Screen',
-                icon: 'hardware-chip-outline',
-                onPress: () => { setIsOpen(false); RootNavigation.navigate('DeveloperSystem'); },
-                variant: 'primary',
-              },
-            ],
-          },
         ]);
       }
-      // 8. GLOBAL SEARCH FALLBACK
+      // 10. GLOBAL SEARCH FALLBACK
       else {
         const searchRes = await developerService.globalSearch(q).catch(() => null);
         const studentsFound = searchRes?.data?.students || [];
@@ -496,17 +518,6 @@ export const DeveloperAssistant: React.FC = () => {
               title: 'Matching Tenants',
               students: studentsFound,
             },
-            {
-              type: 'action_buttons',
-              buttons: [
-                {
-                  label: 'Open Students Directory',
-                  icon: 'school-outline',
-                  onPress: () => { setIsOpen(false); RootNavigation.navigate('DevStudentsTab'); },
-                  variant: 'primary',
-                },
-              ],
-            },
           ]);
         } else {
           addBot([
@@ -515,11 +526,12 @@ export const DeveloperAssistant: React.FC = () => {
               text: `I've checked the master database for "${q}". Choose an executive view to inspect:`,
             },
             {
-              type: 'action_buttons',
-              buttons: [
-                { label: '👑 Owners Roster', icon: 'people-outline', onPress: () => handleQuery('How many owners are registered?'), variant: 'primary' },
-                { label: '🎓 Students Roster', icon: 'school-outline', onPress: () => handleQuery('How many students on platform?'), variant: 'outline' },
-                { label: '🏢 Hostels Network', icon: 'business-outline', onPress: () => handleQuery('Show all hostels breakdown'), variant: 'outline' },
+              type: 'follow_up_chips',
+              chips: [
+                { label: '👑 Owners Roster', icon: 'people-outline', onPress: () => handleQuery('How many owners are registered?') },
+                { label: '🎓 Students Roster', icon: 'school-outline', onPress: () => handleQuery('How many students on platform?') },
+                { label: '🏢 Hostels Network', icon: 'business-outline', onPress: () => handleQuery('Show all hostels breakdown') },
+                { label: '💰 Pending Dues', icon: 'wallet-outline', onPress: () => handleQuery('Show pending dues') },
               ],
             },
           ]);
@@ -533,10 +545,11 @@ export const DeveloperAssistant: React.FC = () => {
           text: `Master DB is active. Select an executive option below:`,
         },
         {
-          type: 'action_buttons',
-          buttons: [
-            { label: 'Hostels Directory', icon: 'business-outline', onPress: () => handleQuery('Show all hostels breakdown'), variant: 'primary' },
-            { label: 'Owners Hub', icon: 'people-outline', onPress: () => handleQuery('How many owners are registered?'), variant: 'outline' },
+          type: 'follow_up_chips',
+          chips: [
+            { label: '🏢 Hostels Directory', icon: 'business-outline', onPress: () => handleQuery('Show all hostels breakdown') },
+            { label: '👑 Owners Hub', icon: 'people-outline', onPress: () => handleQuery('How many owners are registered?') },
+            { label: '🎓 Students Roster', icon: 'school-outline', onPress: () => handleQuery('How many students on platform?') },
           ],
         },
       ]);
@@ -564,7 +577,7 @@ export const DeveloperAssistant: React.FC = () => {
           activeOpacity={0.85}
         >
           <Image
-            source={require('../../../assets/chatbot.jpeg')}
+            source={require('../../../assets/chatbot-image-newjpeg.jpeg')}
             style={styles.fabAvatarImg}
             resizeMode="cover"
           />
@@ -584,20 +597,12 @@ export const DeveloperAssistant: React.FC = () => {
             style={[styles.body, keyboardInset > 0 && { paddingBottom: keyboardInset }]}
             onLayout={onContainerLayout}
           >
-            {/* Executive Hero Header */}
-            <LinearGradient
-              colors={['#EA580C', '#D97706', '#B45309']}
-              style={styles.header}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-            >
-              <View style={styles.headerDecorCircle1} />
-              <View style={styles.headerDecorCircle2} />
-
+            {/* Clean Light Header matching outside screens */}
+            <View style={styles.header}>
               <View style={styles.headerLeft}>
                 <View style={styles.avatarRing}>
                   <Image
-                    source={require('../../../assets/chatbot.jpeg')}
+                    source={require('../../../assets/chatbot-image-newjpeg.jpeg')}
                     style={styles.avatarImg}
                     resizeMode="cover"
                   />
@@ -607,25 +612,23 @@ export const DeveloperAssistant: React.FC = () => {
                   <Text style={styles.headerGreeting} numberOfLines={1}>
                     {getGreeting(developer?.full_name)}
                   </Text>
-                  <Text style={styles.headerTitle}>Hostix CEO Master Copilot</Text>
+                  <Text style={styles.headerTitle}>Hostix Developer Copilot</Text>
                   <View style={styles.aiBadge}>
-                    <Text style={styles.aiBadgeText}>Executive Governance</Text>
-                    <Text style={styles.aiBadgeSep}>·</Text>
-                    <Ionicons name="shield-checkmark" size={10} color="#FEF08A" />
-                    <Text style={styles.aiBadgeText}>Master Admin</Text>
+                    <Ionicons name="shield-checkmark" size={10} color="#059669" />
+                    <Text style={styles.aiBadgeText}>Master Governance</Text>
                   </View>
                 </View>
               </View>
 
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                 <TouchableOpacity style={styles.headerActionBtn} onPress={handleReset}>
-                  <Ionicons name="refresh-outline" size={16} color="#FFF" />
+                  <Ionicons name="refresh-outline" size={16} color="#475569" />
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.headerActionBtn} onPress={() => setIsOpen(false)}>
-                  <Ionicons name="close" size={18} color="#FFF" />
+                  <Ionicons name="close" size={18} color="#475569" />
                 </TouchableOpacity>
               </View>
-            </LinearGradient>
+            </View>
 
             {/* Scrollable Conversation Content */}
             <View style={styles.chatArea}>
@@ -868,7 +871,7 @@ const styles = StyleSheet.create({
   },
   safe: {
     flex: 1,
-    backgroundColor: '#18181B',
+    backgroundColor: '#FFFFFF',
   },
   body: {
     flex: 1,
@@ -880,26 +883,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    position: 'relative',
-    overflow: 'hidden',
-  },
-  headerDecorCircle1: {
-    position: 'absolute',
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    top: -40,
-    right: -20,
-  },
-  headerDecorCircle2: {
-    position: 'absolute',
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    bottom: -30,
-    left: 40,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
   },
   headerLeft: {
     flexDirection: 'row',
@@ -910,22 +896,23 @@ const styles = StyleSheet.create({
   avatarRing: {
     width: 40,
     height: 40,
-    borderRadius: 14,
+    borderRadius: 20,
     overflow: 'hidden',
     borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.4)',
+    borderColor: '#E2E8F0',
+    backgroundColor: '#F1F5F9',
   },
   avatarImg: {
     width: '100%',
     height: '100%',
   },
   headerGreeting: {
-    color: '#FED7AA',
+    color: '#64748B',
     fontSize: 11,
     fontWeight: '800',
   },
   headerTitle: {
-    color: '#FFFFFF',
+    color: '#0F172A',
     fontSize: 15,
     fontWeight: '900',
   },
@@ -936,19 +923,17 @@ const styles = StyleSheet.create({
     marginTop: 1,
   },
   aiBadgeText: {
-    color: '#FED7AA',
+    color: '#059669',
     fontSize: 10,
     fontWeight: '700',
-  },
-  aiBadgeSep: {
-    color: '#FED7AA',
-    fontSize: 10,
   },
   headerActionBtn: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: '#F1F5F9',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
     alignItems: 'center',
     justifyContent: 'center',
   },

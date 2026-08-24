@@ -28,15 +28,16 @@ export const runOwnerDailyAlerts = async () => {
 
     let vacancyNotified = 0;
     for (const s of upcomingVacancies) {
-      const name = `${s.first_name}${s.last_name ? ' ' + s.last_name : ''}`;
+      const name = `${s.first_name}${s.last_name ? ' ' + s.last_name : ''}`.trim();
       const dateStr = new Date(s.vacate_notice_date).toISOString().split('T')[0];
       await sendNotificationToHostelOwner(
         s.hostel_id,
         'General',
-        'Bed Becoming Vacant',
+        'Bed Becoming Vacant Soon',
         `${s.room_number ? `Room ${s.room_number} — ` : ''}${name} is vacating on ${dateStr}. Prepare for turnover.`,
         'Medium',
-        { student_id: s.student_id }
+        { student_id: s.student_id, studentId: s.student_id },
+        { screen: 'StudentDetails', params: { studentId: s.student_id }, referenceType: 'student', referenceId: s.student_id }
       ).catch((err) => console.error('[ownerDailyAlerts] vacancy notify failed:', err?.message));
 
       await db('students').where('student_id', s.student_id).update({ vacate_reminder_sent: 1 });
@@ -53,10 +54,11 @@ export const runOwnerDailyAlerts = async () => {
       await sendNotificationToHostelOwner(
         r.hostel_id,
         'General',
-        'Reminder',
+        'Personal Reminder Due',
         r.title,
         'Medium',
-        { reminder_id: r.reminder_id }
+        { reminder_id: r.reminder_id },
+        { screen: 'More', referenceType: 'reminder', referenceId: r.reminder_id }
       ).catch((err) => console.error('[ownerDailyAlerts] reminder notify failed:', err?.message));
 
       await db('reminders').where('reminder_id', r.reminder_id).update({ notified: 1 });
@@ -68,7 +70,17 @@ export const runOwnerDailyAlerts = async () => {
     let duesSummariesNotified = 0;
     for (const h of hostels) {
       try {
-        // Find active students only (status = 1) who have an overdue balance
+        // Find active students with due today + fetch up to 3 names
+        const dueTodayList = await db('monthly_fees as mf')
+          .join('students as s', 'mf.student_id', 's.student_id')
+          .where('mf.hostel_id', h.hostel_id)
+          .where('s.status', 1)
+          .where('mf.balance', '>', 0)
+          .whereIn('mf.fee_status', ['Pending', 'Partially Paid', 'Overdue'])
+          .whereRaw('mf.due_date = CURDATE()')
+          .select('s.first_name', 's.last_name', 'mf.balance');
+
+        // Find active students with overdue balance
         const overdueStats = await db('monthly_fees as mf')
           .join('students as s', 'mf.student_id', 's.student_id')
           .where('mf.hostel_id', h.hostel_id)
@@ -76,17 +88,6 @@ export const runOwnerDailyAlerts = async () => {
           .where('mf.balance', '>', 0)
           .whereIn('mf.fee_status', ['Pending', 'Partially Paid', 'Overdue'])
           .whereRaw('mf.due_date < CURDATE()')
-          .count('mf.fee_id as count')
-          .first();
-
-        // Find active students with due today
-        const dueTodayStats = await db('monthly_fees as mf')
-          .join('students as s', 'mf.student_id', 's.student_id')
-          .where('mf.hostel_id', h.hostel_id)
-          .where('s.status', 1)
-          .where('mf.balance', '>', 0)
-          .whereIn('mf.fee_status', ['Pending', 'Partially Paid', 'Overdue'])
-          .whereRaw('mf.due_date = CURDATE()')
           .count('mf.fee_id as count')
           .first();
 
@@ -101,26 +102,35 @@ export const runOwnerDailyAlerts = async () => {
           .first();
 
         const overdueCount = Number(overdueStats?.count || 0);
-        const dueTodayCount = Number(dueTodayStats?.count || 0);
+        const dueTodayCount = dueTodayList.length;
         const pendingAmount = Number(totalPendingStats?.total || 0);
 
-        if (overdueCount > 0 || dueTodayCount > 0) {
-          // Check if already notified today for this hostel to prevent duplicate notifications
-          const alreadyNotified = await db('notifications')
-            .where({ hostel_id: h.hostel_id, title: 'Daily Dues Summary' })
-            .whereRaw('DATE(created_at) = CURDATE()')
-            .first();
+        let message = '';
+        if (dueTodayCount > 0 && dueTodayCount <= 2) {
+          const names = dueTodayList.map((d: any) => d.first_name).join(' & ');
+          message = `Good morning! ${names}'s rent is due today (₹${pendingAmount.toLocaleString('en-IN')}). ${overdueCount > 0 ? `${overdueCount} payment(s) overdue.` : ''}`.trim();
+        } else if (dueTodayCount > 2) {
+          message = `Good morning! ${dueTodayCount} rents are due today (₹${pendingAmount.toLocaleString('en-IN')}). ${overdueCount > 0 ? `${overdueCount} payment(s) overdue.` : ''}`.trim();
+        } else if (overdueCount > 0) {
+          message = `Morning update: ${overdueCount} overdue rent payment(s) totaling ₹${pendingAmount.toLocaleString('en-IN')}. Tap to review.`;
+        }
 
-          if (!alreadyNotified) {
-            await sendNotificationToHostelOwner(
-              h.hostel_id,
-              'System Alert',
-              'Daily Dues Summary',
-              `Dues summary: ${dueTodayCount} due today, ${overdueCount} overdue. Total pending: ₹${pendingAmount.toLocaleString('en-IN')}.`,
-              'High'
-            );
-            duesSummariesNotified++;
-          }
+        if (message) {
+          await sendNotificationToHostelOwner(
+            h.hostel_id,
+            'System Alert',
+            'Daily Dues Morning Summary',
+            message,
+            'High',
+            { dueTodayCount, overdueCount, pendingAmount },
+            {
+              screen: 'PendingTab',
+              referenceType: 'dues_summary',
+              referenceId: h.hostel_id,
+              deduplicateKey: `daily_dues_summary_${h.hostel_id}`
+            }
+          );
+          duesSummariesNotified++;
         }
       } catch (err: any) {
         console.error(`[ownerDailyAlerts] dues summary notify failed for hostel ${h.hostel_id}:`, err?.message);

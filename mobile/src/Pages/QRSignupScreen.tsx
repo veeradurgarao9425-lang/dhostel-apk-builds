@@ -17,7 +17,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import QRCode from 'react-native-qrcode-svg';
-import { QrCode, Home, BedDouble, Info, Share2, ChevronDown, Check, X, ShieldCheck, Download, Link, Smartphone, FileText, User, Wand2, Copy, Shield, Search } from 'lucide-react-native';
+import { QrCode, Home, BedDouble, Info, Share2, ChevronDown, Check, X, ShieldCheck, Download, Link, Smartphone, FileText, User, Wand2, Copy, Shield, Search, UserCheck } from 'lucide-react-native';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { AppHeader } from '../components/AppHeader';
@@ -31,7 +31,7 @@ import * as MediaLibrary from 'expo-media-library';
 import ViewShot from 'react-native-view-shot';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-type Mode = 'general' | 'room';
+type Mode = 'general' | 'guest' | 'room';
 
 // ─── Smooth bottom-sheet modal ────────────────────────────────────────────────
 const ModalSheet = ({ visible, onClose, maxHeight = '85%', children }: any) => {
@@ -296,9 +296,15 @@ export default function QRSignupScreen({ navigation }: any) {
     const baseURL = useMemo(() => (api.defaults.baseURL || '').replace(/\/$/, ''), []);
     const hostelId = user?.hostel_id;
 
-    // General QR URL
+    // General Student QR URL
     const generalUrl = useMemo(() =>
         `${baseURL}/public/qr-signup?hostelId=${encodeURIComponent(hostelId || '')}`,
+        [baseURL, hostelId]
+    );
+
+    // Short-Stay Guest Check-In QR URL
+    const guestUrl = useMemo(() =>
+        `${baseURL}/public/guest-signup?hostelId=${encodeURIComponent(hostelId || '')}`,
         [baseURL, hostelId]
     );
 
@@ -331,7 +337,7 @@ export default function QRSignupScreen({ navigation }: any) {
         }
     };
 
-    const activeUrl = mode === 'general' ? generalUrl : roomUrl;
+    const activeUrl = mode === 'general' ? generalUrl : mode === 'guest' ? guestUrl : roomUrl;
 
     // Load rooms when switching to room mode
     useFocusEffect(useCallback(() => {
@@ -385,20 +391,66 @@ export default function QRSignupScreen({ navigation }: any) {
             />
 
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.body}>
-                {/* Mode Tabs */}
-                <View style={s.tabRow}>
-                    <TouchableOpacity style={[s.tab, { backgroundColor: isDark ? '#1E293B' : '#F1F5F9' }, mode === 'general' && [s.tabActive, { backgroundColor: isDark ? '#334155' : '#FFFFFF' }]]} onPress={() => setMode('general')} activeOpacity={0.8}>
-                        <QrCode size={15} color={mode === 'general' ? theme.primary : theme.textSecondary} />
-                        <Text style={[s.tabText, { fontSize: fontSize - 1, color: theme.textSecondary }, mode === 'general' && { color: theme.primary }]}>General QR</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={[s.tab, { backgroundColor: isDark ? '#1E293B' : '#F1F5F9' }, mode === 'room' && [s.tabActive, { backgroundColor: isDark ? '#334155' : '#FFFFFF' }]]} onPress={() => setMode('room')} activeOpacity={0.8}>
-                        <Home size={15} color={mode === 'room' ? theme.primary : theme.textSecondary} />
-                        <Text style={[s.tabText, { fontSize: fontSize - 1, color: theme.textSecondary }, mode === 'room' && { color: theme.primary }]}>Room QR</Text>
-                    </TouchableOpacity>
+                {/* Mode Scrollable Tabs */}
+                <View style={{ marginBottom: 16 }}>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingRight: 16 }}>
+                        <TouchableOpacity 
+                            style={[
+                                s.tab, 
+                                { backgroundColor: isDark ? '#1E293B' : '#F1F5F9', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20 }, 
+                                mode === 'general' && [s.tabActive, { backgroundColor: isDark ? '#334155' : '#FFFFFF', borderColor: theme.primary, borderWidth: 1.5 }]
+                            ]} 
+                            onPress={() => setMode('general')} 
+                            activeOpacity={0.8}
+                        >
+                            <QrCode size={15} color={mode === 'general' ? theme.primary : theme.textSecondary} />
+                            <Text style={[s.tabText, { fontSize: fontSize - 1, color: theme.textSecondary }, mode === 'general' && { color: theme.primary, fontWeight: '800' }]}>
+                                Student Admission
+                            </Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity 
+                            style={[
+                                s.tab, 
+                                { backgroundColor: isDark ? '#1E293B' : '#F1F5F9', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20 }, 
+                                mode === 'guest' && [s.tabActive, { backgroundColor: isDark ? '#334155' : '#FFFFFF', borderColor: '#7C3AED', borderWidth: 1.5 }]
+                            ]} 
+                            onPress={() => setMode('guest')} 
+                            activeOpacity={0.8}
+                        >
+                            <UserCheck size={15} color={mode === 'guest' ? '#7C3AED' : theme.textSecondary} />
+                            <Text style={[s.tabText, { fontSize: fontSize - 1, color: theme.textSecondary }, mode === 'guest' && { color: '#7C3AED', fontWeight: '800' }]}>
+                                Guest Check-In
+                            </Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity 
+                            style={[
+                                s.tab, 
+                                { backgroundColor: isDark ? '#1E293B' : '#F1F5F9', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20 }, 
+                                mode === 'room' && [s.tabActive, { backgroundColor: isDark ? '#334155' : '#FFFFFF', borderColor: theme.primary, borderWidth: 1.5 }]
+                            ]} 
+                            onPress={() => setMode('room')} 
+                            activeOpacity={0.8}
+                        >
+                            <Home size={15} color={mode === 'room' ? theme.primary : theme.textSecondary} />
+                            <Text style={[s.tabText, { fontSize: fontSize - 1, color: theme.textSecondary }, mode === 'room' && { color: theme.primary, fontWeight: '800' }]}>
+                                Room Allocation
+                            </Text>
+                        </TouchableOpacity>
+                    </ScrollView>
                 </View>
 
                 {/* ── Info Banner ── */}
-                {mode === 'general' ? null : (
+                {mode === 'guest' ? (
+                    <View style={[s.infoBanner, { borderColor: '#7C3AED33', backgroundColor: isDark ? '#2E1065' : '#F5F3FF' }]}>
+                        <UserCheck size={18} color="#7C3AED" />
+                        <Text style={[s.infoText, { color: isDark ? '#E2E8F0' : '#334155', fontWeight: '500' }]}>
+                            <Text style={{ fontWeight: '800', color: isDark ? '#FFFFFF' : '#0F172A' }}>Short-Stay Guest QR: </Text>
+                            Guests scan at your reception or entrance to submit check-in details. You can review and allocate a room under the <Text style={{ fontWeight: '800', color: '#7C3AED' }}>Pending</Text> tab in Guests screen.
+                        </Text>
+                    </View>
+                ) : mode === 'room' ? (
                     <View style={[s.infoBanner, { borderColor: '#7C3AED22', backgroundColor: isDark ? '#1E293B' : '#F5F3FF' }]}>
                         <Info size={18} color="#7C3AED" />
                         <Text style={[s.infoText, { color: isDark ? '#E2E8F0' : '#334155', fontWeight: '500' }]}>
@@ -406,7 +458,7 @@ export default function QRSignupScreen({ navigation }: any) {
                             Select a room (and optionally a bed). The QR pre-fills that allocation. Tenant only needs to enter their personal details.
                         </Text>
                     </View>
-                )}
+                ) : null}
 
                 {/* ── Room Selector (Room Mode only) ── */}
                 {mode === 'room' && (
@@ -494,35 +546,61 @@ export default function QRSignupScreen({ navigation }: any) {
                     ) : (
                         <View style={{ alignItems: 'center', marginBottom: 16 }}>
                             <ViewShot ref={viewShotRef} options={{ format: 'png', quality: 1 }}>
-                                <View style={{ backgroundColor: '#FFFFFF', padding: 24, borderRadius: 16, alignItems: 'center', borderWidth: 1, borderColor: '#F1F5F9', width: 280 }}>
+                                <View style={{ backgroundColor: '#FFFFFF', borderRadius: 20, alignItems: 'center', borderWidth: 1.5, borderColor: '#E2E8F0', width: 300, overflow: 'hidden', shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 10, elevation: 4 }}>
                                     
-                                    <View style={{ backgroundColor: '#FFFFFF', padding: 8, borderRadius: 12, borderWidth: 1, borderColor: '#F1F5F9' }}>
-                                        <QRCode
-                                            value={activeUrl}
-                                            size={180}
-                                            color="#1E293B"
-                                            backgroundColor="#FFFFFF"
-                                        />
-                                    </View>
-                                    
-                                    <Text style={{ fontSize: 12, color: '#64748B', textAlign: 'center', marginTop: 16, marginBottom: 4 }}>
-                                        Anyone who scans this QR can register only for
-                                    </Text>
-                                    
-                                    {mode === 'room' && selectedRoom ? (
-                                        <Text style={{ fontSize: 13, fontWeight: '700', color: theme.primary, textAlign: 'center' }}>
-                                            Room {selectedRoom.room_number} {selectedBed ? `• Bed ${selectedBed.bed_name ?? ''}` : ''}
+                                    {/* Standee Header Banner */}
+                                    <LinearGradient
+                                        colors={mode === 'guest' ? ['#7C3AED', '#6D28D9'] : ['#6366F1', '#4F46E5']}
+                                        start={{ x: 0, y: 0 }}
+                                        end={{ x: 1, y: 1 }}
+                                        style={{ width: '100%', paddingVertical: 14, paddingHorizontal: 16, alignItems: 'center' }}
+                                    >
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                                            <Image source={require('../../assets/HostixNew.png')} style={{ width: 18, height: 18, borderRadius: 4 }} resizeMode="contain" />
+                                            <Text style={{ fontSize: 11, fontWeight: '800', color: 'rgba(255,255,255,0.9)', letterSpacing: 0.8, textTransform: 'uppercase' }}>
+                                                {mode === 'guest' ? 'Visitor Self Check-In QR' : mode === 'room' ? 'Room Allocation QR' : 'Self Registration QR'}
+                                            </Text>
+                                        </View>
+                                        <Text style={{ fontSize: 16, fontWeight: '900', color: '#FFFFFF', textAlign: 'center' }} numberOfLines={1}>
+                                            {user?.hostel_name || 'Hostel Admission'}
                                         </Text>
-                                    ) : (
-                                        <Text style={{ fontSize: 13, fontWeight: '700', color: theme.primary, textAlign: 'center' }}>
-                                            {user?.hostel_name || 'Your Hostel'}
+                                        {mode === 'room' && selectedRoom && (
+                                            <View style={{ backgroundColor: 'rgba(255,255,255,0.22)', paddingHorizontal: 10, paddingVertical: 3, borderRadius: 20, marginTop: 4 }}>
+                                                <Text style={{ fontSize: 12, fontWeight: '800', color: '#FFFFFF' }}>
+                                                    Room {selectedRoom.room_number} {selectedBed ? `• Bed ${selectedBed.bed_name ?? ''}` : ''}
+                                                </Text>
+                                            </View>
+                                        )}
+                                    </LinearGradient>
+                                    
+                                    {/* QR Code Container */}
+                                    <View style={{ padding: 20, alignItems: 'center', backgroundColor: '#FFFFFF' }}>
+                                        <View style={{ backgroundColor: '#FFFFFF', padding: 12, borderRadius: 16, borderWidth: 1, borderColor: '#F1F5F9', shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 6, elevation: 1 }}>
+                                            <QRCode
+                                                value={activeUrl}
+                                                size={185}
+                                                color="#0F172A"
+                                                backgroundColor="#FFFFFF"
+                                                logo={require('../../assets/HostixNew.png')}
+                                                logoSize={38}
+                                                logoMargin={3}
+                                                logoBackgroundColor="#FFFFFF"
+                                                logoBorderRadius={8}
+                                            />
+                                        </View>
+                                        
+                                        <Text style={{ fontSize: 12, fontWeight: '700', color: '#334155', textAlign: 'center', marginTop: 14 }}>
+                                            📷 Scan with phone camera to register
                                         </Text>
-                                    )}
-
-                                    {/* Product Branding Pill */}
-                                    <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 16, opacity: 0.8 }}>
-                                        <Image source={require('../../assets/HostixNew.png')} style={{ width: 12, height: 12, borderRadius: 2, marginRight: 4 }} resizeMode="contain" />
-                                        <Text style={{ fontSize: 9, fontWeight: '700', color: '#64748B', letterSpacing: 0.5 }}>POWERED BY DHOSTEL</Text>
+                                        <Text style={{ fontSize: 10.5, color: '#64748B', textAlign: 'center', marginTop: 2 }}>
+                                            No app download required • Instant profile submission
+                                        </Text>
+                                        
+                                        {/* Product Branding Pill */}
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 14, paddingTop: 10, borderTopWidth: 1, borderTopColor: '#F1F5F9', width: '100%', justifyContent: 'center' }}>
+                                            <Image source={require('../../assets/HostixNew.png')} style={{ width: 12, height: 12, borderRadius: 3, marginRight: 5 }} resizeMode="contain" />
+                                            <Text style={{ fontSize: 9.5, fontWeight: '800', color: '#94A3B8', letterSpacing: 0.6 }}>POWERED BY HOSTIX</Text>
+                                        </View>
                                     </View>
                                 </View>
                             </ViewShot>
@@ -530,7 +608,7 @@ export default function QRSignupScreen({ navigation }: any) {
                     )}
 
                     {/* Action Buttons */}
-                    {(mode === 'general' || selectedRoom) && (
+                    {(mode === 'general' || mode === 'guest' || selectedRoom) && (
                         <View style={s.qrActionsRow}>
                             <TouchableOpacity style={[s.qrActionBtn, { backgroundColor: isDark ? theme.primary + '20' : '#F3E8FF' }]} activeOpacity={0.7} onPress={handleDownload}>
                                 <Download size={16} color={theme.primary} />
@@ -545,7 +623,7 @@ export default function QRSignupScreen({ navigation }: any) {
                 </View>
 
                 {/* ── 2. Link Card ── */}
-                {(mode === 'general' || selectedRoom) && (
+                {(mode === 'general' || mode === 'guest' || selectedRoom) && (
                     <View style={[s.linkCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : 'transparent', borderWidth: isDark ? 1 : 0 }]}>
                         <View style={[s.linkIconCircle, { backgroundColor: isDark ? theme.primary + '20' : '#F3E8FF' }]}>
                             <Link size={20} color={theme.primary} />

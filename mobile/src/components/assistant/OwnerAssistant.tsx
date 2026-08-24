@@ -41,7 +41,9 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
+import * as Clipboard from 'expo-clipboard';
 import { useAuth } from '../../../contexts/AuthContext';
+
 import * as RootNavigation from '../../navigation/navigationRef';
 import { useKeyboardInset } from '../../hooks/useKeyboardInset';
 import { KeyboardInsetDebugOverlay } from '../KeyboardInsetDebugOverlay';
@@ -56,7 +58,7 @@ import {
   switchActiveHostel, fetchStaffList, fetchGuestsList, fetchStudentStats,
   fetchStudentByName, fetchRoomByNumber, fetchRoomsByFloor, fetchPaidStudents,
   fetchStudentsJoinedThisMonth, fetchStudentsVacatedThisMonth, fetchDetailedIncomeBreakdown,
-  fetchNoticesCount, fetchRooms, DashboardSnapshot,
+  fetchNoticesCount, fetchRooms, fetchStudentsReadyToVacate, DashboardSnapshot,
 } from './assistantApi';
 
 
@@ -102,6 +104,7 @@ const BouncingDots = () => {
           Animated.delay(i * 140),
           Animated.timing(a, { toValue: -5, duration: 260, useNativeDriver: true }),
           Animated.timing(a, { toValue: 0, duration: 260, useNativeDriver: true }),
+          Animated.delay((2 - i) * 140),
         ])
       ).start();
     });
@@ -122,13 +125,123 @@ const BouncingDots = () => {
   );
 };
 
+// ─── AI Pulsating Diamond Grid / Searching Indicator ─────────────────────────
+const AISearchingIndicator = () => {
+  const scale = useRef(new Animated.Value(0.9)).current;
+  const opacity = useRef(new Animated.Value(0.6)).current;
+  const rotate = useRef(new Animated.Value(0)).current;
+  const [loadingTextIndex, setLoadingTextIndex] = useState(0);
+
+  const loadingPhrases = [
+    'Analyzing hostel operations...',
+    'Fetching live data for you...',
+    'Synthesizing records...',
+  ];
+
+  useEffect(() => {
+    // Pulse animation
+    Animated.loop(
+      Animated.sequence([
+        Animated.parallel([
+          Animated.timing(scale, { toValue: 1.1, duration: 850, useNativeDriver: true }),
+          Animated.timing(opacity, { toValue: 1, duration: 850, useNativeDriver: true }),
+        ]),
+        Animated.parallel([
+          Animated.timing(scale, { toValue: 0.9, duration: 850, useNativeDriver: true }),
+          Animated.timing(opacity, { toValue: 0.6, duration: 850, useNativeDriver: true }),
+        ]),
+      ])
+    ).start();
+
+    // Subtle rotation
+    Animated.loop(
+      Animated.timing(rotate, { toValue: 1, duration: 7000, useNativeDriver: true })
+    ).start();
+
+    // Cycle text phrases
+    const timer = setInterval(() => {
+      setLoadingTextIndex(prev => (prev + 1) % loadingPhrases.length);
+    }, 1500);
+
+    return () => clearInterval(timer);
+  }, []);
+
+  const spin = rotate.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  });
+
+  return (
+    <View style={s.aiSearchingContainer}>
+      <Animated.View style={[s.aiSearchingOrbWrap, { transform: [{ scale }] }]}>
+        {/* Soft background halo */}
+        <View style={s.aiSearchingHalo} />
+        {/* Animated Diamond Dots Grid matching screenshot */}
+        <Animated.View style={{ transform: [{ rotate: spin }] }}>
+          <View style={s.aiDiamondGrid}>
+            <View style={s.aiDiamondRow}><View style={s.aiDot} /></View>
+            <View style={s.aiDiamondRow}><View style={s.aiDot} /><View style={s.aiDot} /><View style={s.aiDot} /></View>
+            <View style={s.aiDiamondRow}><View style={s.aiDot} /><View style={s.aiDot} /><View style={[s.aiDot, s.aiDotCenter]} /><View style={s.aiDot} /><View style={s.aiDot} /></View>
+            <View style={s.aiDiamondRow}><View style={s.aiDot} /><View style={s.aiDot} /><View style={s.aiDot} /></View>
+            <View style={s.aiDiamondRow}><View style={s.aiDot} /></View>
+          </View>
+        </Animated.View>
+      </Animated.View>
+      <Animated.Text style={[s.aiSearchingText, { opacity }]}>
+        {loadingPhrases[loadingTextIndex]}
+      </Animated.Text>
+    </View>
+  );
+};
+
+// ─── Animated Message Row (FadeIn + SlideUp for smooth response entrance) ───
+const AnimatedMessageRow = ({ children }: { children: React.ReactNode }) => {
+  const opacity = useRef(new Animated.Value(0)).current;
+  const translateY = useRef(new Animated.Value(8)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(opacity, { toValue: 1, duration: 220, useNativeDriver: true }),
+      Animated.spring(translateY, { toValue: 0, friction: 8, tension: 60, useNativeDriver: true }),
+    ]).start();
+  }, []);
+
+  return (
+    <Animated.View style={{ opacity, transform: [{ translateY }] }}>
+      {children}
+    </Animated.View>
+  );
+};
+
+
+
+// ─── Scrollable Top Action Capsules ──────────────────────────────────────────
+const TOP_SCROLL_PILLS = [
+  { label: '💰 Check Dues', icon: 'alert-circle', q: "Who hasn't paid this month?", bg: '#FEF2F2', border: '#FECACA', text: '#B91C1C', iconColor: '#EF4444' },
+  { label: '🚪 Check Vacate', icon: 'exit', q: "Who is ready to vacate?", bg: '#FFF7ED', border: '#FED7AA', text: '#C2410C', iconColor: '#F97316' },
+  { label: '⚠️ Check Overdue', icon: 'time', q: "Overdue dues", bg: '#FEF2F2', border: '#FCA5A5', text: '#991B1B', iconColor: '#DC2626' },
+  { label: '📅 Today Joiners', icon: 'calendar', q: "Joined this month", bg: '#ECFDF5', border: '#A7F3D0', text: '#047857', iconColor: '#10B981' },
+  { label: '⏳ Pending Dues', icon: 'wallet', q: "Pending dues", bg: '#FEF3C7', border: '#FDE68A', text: '#92400E', iconColor: '#F59E0B' },
+  { label: '👥 All Students', icon: 'people', q: "Total students count", bg: '#EEF2FF', border: '#C7D2FE', text: '#4338CA', iconColor: '#6366F1' },
+  { label: '🛏️ Vacant Rooms', icon: 'bed', q: "Vacant rooms list", bg: '#E0F2FE', border: '#BAE6FD', text: '#0369A1', iconColor: '#0EA5E9' },
+  { label: '✅ Verify Rents', icon: 'checkmark-done-circle', q: "How to verify rent", bg: '#F3E8FF', border: '#DDD6FE', text: '#6D28D9', iconColor: '#8B5CF6' },
+  { label: '📈 Monthly Profit', icon: 'trending-up', q: "Profit this month", bg: '#ECFDF5', border: '#6EE7B7', text: '#065F46', iconColor: '#059669' },
+  { label: '💳 Expenses', icon: 'card', q: "Expenses this month", bg: '#FCE7F3', border: '#FBCFE8', text: '#9D174D', iconColor: '#EC4899' },
+  { label: '📱 Send Reminders', icon: 'notifications', q: "How to send reminder", bg: '#FFE4E6', border: '#FECDD3', text: '#9F1239', iconColor: '#F43F5E' },
+  { label: '📷 QR Signups', icon: 'qr-code', q: "QR registrations", bg: '#CCFBF1', border: '#99F6E4', text: '#115E59', iconColor: '#14B8A6' },
+  { label: '👨‍💼 Staff Directory', icon: 'briefcase', q: "Staff list", bg: '#F1F5F9', border: '#CBD5E1', text: '#334155', iconColor: '#64748B' },
+  { label: '🏨 Switch Hostel', icon: 'swap-horizontal', q: "Switch hostel", bg: '#DBEAFE', border: '#93C5FD', text: '#1E40AF', iconColor: '#3B82F6' },
+];
+
 // ─── Message type ──────────────────────────────────────────────────────────
 interface Msg {
   id: string;
   sender: 'bot' | 'user';
   text?: string;
   blocks?: ContentBlock[];
+  timestamp?: number;
 }
+
 
 interface HomeProps {
   snap: DashboardSnapshot | null;
@@ -136,34 +249,105 @@ interface HomeProps {
   onQuestion: (q: string) => void;
   onIntent: (i: AssistantIntent) => void;
 }
-// ─── Merged suggestion chips shown inline in the welcome area ─────────────────
-const WELCOME_CHIPS: Array<{ icon: string; label: string; q: string }> = [
-  { icon: 'alert-circle-outline', label: 'Pending Dues', q: "Who hasn't paid this month?" },
-  { icon: 'bed-outline', label: 'Available Beds', q: 'How many beds available?' },
-  { icon: 'cash-outline', label: 'Month Profit', q: 'Profit this month' },
-  { icon: 'people-outline', label: 'Active Students', q: 'Total students count' },
-  { icon: 'receipt-outline', label: 'Expense Summary', q: 'Expense breakdown' },
-  { icon: 'briefcase-outline', label: 'Staff & Wages', q: 'Show staff list' },
+// ─── Merged suggestion chips shown inline in the welcome area (2x2 Grid) ─────
+const WELCOME_CHIPS: Array<{ icon: string; label: string; q: string; color?: string; bg?: string }> = [
+  { icon: 'alert-circle-outline', label: 'Pending Dues', q: "Who hasn't paid this month?", color: '#EF4444', bg: '#FEE2E2' },
+  { icon: 'time-outline', label: 'Overdue Dues', q: 'Overdue dues', color: '#DC2626', bg: '#FFF1F2' },
+  { icon: 'exit-outline', label: 'Ready to Vacate', q: 'Who is ready to vacate?', color: '#EA580C', bg: '#FFEDD5' },
+  { icon: 'bed-outline', label: 'Available Beds', q: 'How many beds available?', color: '#0284C7', bg: '#E0F2FE' },
+  { icon: 'people-outline', label: 'Active Students', q: 'Total students count', color: '#6366F1', bg: '#EEF2FF' },
+  { icon: 'calendar-outline', label: 'Today Joiners', q: 'Joined this month', color: '#059669', bg: '#ECFDF5' },
+  { icon: 'cash-outline', label: 'Month Profit', q: 'Profit this month', color: '#10B981', bg: '#ECFDF5' },
+  { icon: 'card-outline', label: 'Expenses', q: 'Expenses this month', color: '#DB2777', bg: '#FDF2F8' },
+  { icon: 'person-add-outline', label: 'Add Student', q: 'How to add student', color: '#6366F1', bg: '#EEF2FF' },
+  { icon: 'receipt-outline', label: 'Collect Rent', q: 'How to collect rent', color: '#10B981', bg: '#ECFDF5' },
 ];
 
 
-// ─── Main Component ────────────────────────────────────────────────────────
-export const OwnerAssistant: React.FC = () => {
+
+export const OwnerAssistant: React.FC<{ currentRoute?: string | null }> = ({ currentRoute: propRoute }) => {
   const { user, updateTokenAndUser } = useAuth();
   const insets = useSafeAreaInsets();
   const [isOpen, setIsOpen] = useState(false);
   const [isTourActive, setIsTourActive] = useState(false);
   const [isAssistantHidden, setIsAssistantHidden] = useState(false);
-  const [currentRoute, setCurrentRoute] = useState<string | null>(null);
+  const [currentRoute, setCurrentRoute] = useState<string | null>(propRoute || null);
+
+  useEffect(() => {
+    if (propRoute) setCurrentRoute(propRoute);
+  }, [propRoute]);
+
+  useEffect(() => {
+    const sub = DeviceEventEmitter.addListener('ROUTE_CHANGED', (name: string) => {
+      if (name) setCurrentRoute(name);
+    });
+    return () => sub.remove();
+  }, []);
+
+  const hasPlusButton = (() => {
+    if (!currentRoute) return false;
+    const r = currentRoute.toLowerCase();
+    return (
+      r.includes('student') ||
+      r.includes('staff') ||
+      r.includes('reminder') ||
+      r.includes('guest') ||
+      r.includes('hostel') ||
+      r.includes('notice') ||
+      r.includes('expense')
+    );
+  })();
+
+  const fabBottom = hasPlusButton ? 188 : 140;
 
   // Content state
   const [view, setView] = useState<'home' | 'conversation'>('home');
   const [messages, setMessages] = useState<Msg[]>([]);
+  const [feedbackMap, setFeedbackMap] = useState<Record<string, 'up' | 'down'>>({});
+  const [copiedMsgId, setCopiedMsgId] = useState<string | null>(null);
   const [isTyping, setIsTyping] = useState(false);
   const [inputText, setInputText] = useState('');
   const [isAddMenuOpen, setIsAddMenuOpen] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   const [isKeyboardActive, setIsKeyboardActive] = useState(false);
+
+  const handleFeedback = useCallback((msgIdStr: string, type: 'up' | 'down') => {
+    Haptics.selectionAsync().catch(() => {});
+    setFeedbackMap(prev => ({
+      ...prev,
+      [msgIdStr]: prev[msgIdStr] === type ? (undefined as any) : type,
+    }));
+  }, []);
+
+  const handleCopyMsg = useCallback(async (msg: Msg) => {
+    try {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
+      let content = msg.text || '';
+      if (msg.blocks) {
+        content = msg.blocks
+          .map(b => {
+            if (b.type === 'text') return b.text;
+            if (b.type === 'steps') return `${b.title}\n` + b.steps.map((s, i) => `${i + 1}. ${s}`).join('\n');
+            if (b.type === 'due_list') return b.dues.map(d => `${d.name}: ₹${d.amount} (${d.status})`).join('\n');
+            return '';
+          })
+          .filter(Boolean)
+          .join('\n\n');
+      }
+      if (content) {
+        await Clipboard.setStringAsync(content);
+        setCopiedMsgId(msg.id);
+        setTimeout(() => setCopiedMsgId(null), 2000);
+      }
+    } catch {}
+  }, []);
+
+  const formatMsgTime = (timestamp?: number) => {
+    if (!timestamp) return '';
+    const d = new Date(timestamp);
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
 
 
   // Snapshot data for home screen
@@ -172,20 +356,23 @@ export const OwnerAssistant: React.FC = () => {
 
   const scrollRef = useRef<ScrollView>(null);
   const inputRef = useRef<TextInput>(null);
+  const handleQueryRef = useRef<(text: string) => void>(() => {});
   const msgId = useRef(0);
 
   const menuItems = useMemo(() => {
     return [
       { label: 'Pending Dues', intent: { type: 'SHOW_DUES', filter: 'pending' } as AssistantIntent, icon: 'alert-circle-outline', color: '#EF4444', bg: '#FEE2E2' },
       { label: 'Students', intent: { type: 'SHOW_STUDENTS' } as AssistantIntent, icon: 'people-outline', color: '#6366F1', bg: '#EEF2FF' },
-      { label: 'Reports', intent: { type: 'SHOW_REPORTS' } as AssistantIntent, icon: 'bar-chart-outline', color: '#10B981', bg: '#ECFDF5' },
+      { label: 'Rooms & Beds', intent: { type: 'SHOW_ROOMS' } as AssistantIntent, icon: 'business-outline', color: '#D97706', bg: '#FEF3C7' },
       { label: 'Expenses', intent: { type: 'SHOW_EXPENSES' } as AssistantIntent, icon: 'receipt-outline', color: '#F43F5E', bg: '#FFE4E6' },
-      { label: 'Rooms', intent: { type: 'SHOW_ROOMS' } as AssistantIntent, icon: 'business-outline', color: '#F59E0B', bg: '#FEF3C7' },
+      { label: 'Reports', intent: { type: 'SHOW_REPORTS' } as AssistantIntent, icon: 'bar-chart-outline', color: '#10B981', bg: '#ECFDF5' },
       { label: 'Hostels', intent: { type: 'SHOW_HOSTELS' } as AssistantIntent, icon: 'swap-horizontal-outline', color: '#0EA5E9', bg: '#E0F2FE' },
       { label: 'Guests', intent: { type: 'SHOW_GUESTS' } as AssistantIntent, icon: 'walk-outline', color: '#8B5CF6', bg: '#F5F3FF' },
-      { label: 'Staff', intent: { type: 'SHOW_STAFF' } as AssistantIntent, icon: 'briefcase-outline', color: '#14B8A6', bg: '#E6FFFA' },
+      { label: 'Staff', intent: { type: 'SHOW_STAFF' } as AssistantIntent, icon: 'briefcase-outline', color: '#0D9488', bg: '#E6FFFA' },
     ];
   }, []);
+
+
 
   const handleLinkClick = (path: string) => {
     RootNavigation.navigate(path);
@@ -318,31 +505,36 @@ export const OwnerAssistant: React.FC = () => {
     return () => { clearTimeout(t1); clearTimeout(t2); unsub?.(); };
   }, []);
 
-  const getInitialWelcomeMsgs = useCallback((): Msg[] => {
+  const getInitialWelcomeMsgs = useCallback((snapshot?: DashboardSnapshot | null): Msg[] => {
     const firstName = user?.full_name?.split(' ')[0] || user?.name || 'Owner';
     const now = Date.now();
+
     return [
       {
         id: 'welcome_card_1_' + now,
         sender: 'bot',
+        timestamp: now,
         blocks: [
           {
             type: 'text',
-            text: `Welcome ${firstName}! 👋 Glad to assist you.\nI will show you information related to your hostel.`
+            text: `Hello ${firstName}! 👋 How can I help you manage your hostel today?`
           }
         ]
       }
     ];
+
   }, [user]);
+
+
 
   useEffect(() => {
     if (isOpen && user?.role !== 'TENANT') {
       loadSnap();
       if (messages.length === 0) {
-        setMessages(getInitialWelcomeMsgs());
+        setMessages(getInitialWelcomeMsgs(snap));
       }
     }
-  }, [isOpen, messages.length, getInitialWelcomeMsgs, user?.role]);
+  }, [isOpen, messages.length, getInitialWelcomeMsgs, snap, user?.role]);
 
   const scrollToEnd = useCallback((animated = true) => {
     scrollRef.current?.scrollToEnd({ animated });
@@ -359,8 +551,16 @@ export const OwnerAssistant: React.FC = () => {
   const loadSnap = async () => {
     if (!user || user?.role?.toUpperCase() !== 'OWNER') return;
     setSnapLoading(true);
-    try { setSnap(await fetchDashboardSnapshot()); }
-    catch { }
+    try {
+      const data = await fetchDashboardSnapshot();
+      setSnap(data);
+      setMessages(prev => {
+        if (prev.length === 0 || (prev.length === 1 && prev[0].id.startsWith('welcome_card_1_'))) {
+          return getInitialWelcomeMsgs(data);
+        }
+        return prev;
+      });
+    } catch { }
     finally { setSnapLoading(false); }
   };
 
@@ -387,33 +587,39 @@ export const OwnerAssistant: React.FC = () => {
       'Notices', 'NoticesTab', 'NoticesManagement',
       'Hostels', 'HostelsTab',
       'Reminders',
-      'Expense', 'Expenses',
+      'Expense', 'Expenses', 'AddExpense',
       'Income', 'InCome'
     ];
-    const hasAddFab = pagesWithAddFab.includes(activeRoute);
+    const hasAddFab = pagesWithAddFab.includes(activeRoute) ||
+      activeRoute.toLowerCase().includes('notice') ||
+      activeRoute.toLowerCase().includes('expense') ||
+      activeRoute.toLowerCase().includes('guest') ||
+      activeRoute.toLowerCase().includes('staff') ||
+      activeRoute.toLowerCase().includes('student');
 
     if (hasAddFab) {
-      // Stack directly above the '+' FAB
-      return { bottom: Math.max(insets.bottom + 180, 195), right: 18 };
+      // Stack cleanly directly above the '+' FAB with a balanced, comfortable ~8px gap
+      return { bottom: Math.max(insets.bottom + 145, 155), right: 20 };
     }
-    if (isTabScreen) {
-      // Dashboard, Finance, Pending Dues, Dev Tabs: sit cleanly and high above the bottom tab bar
-      return { bottom: Math.max(insets.bottom + 115, 128), right: 18 };
+    if (isTabScreen || !activeRoute || activeRoute === 'Main' || activeRoute === 'Home') {
+      // Dashboard, Finance, Pending Dues, Dev Tabs: sit cleanly above the bottom tab bar
+      return { bottom: Math.max(insets.bottom + 85, 95), right: 20 };
     }
     // Inside pages / detail / form screens without bottom tabs
-    return { bottom: Math.max(insets.bottom + 45, 55), right: 18 };
+    return { bottom: Math.max(insets.bottom + 25, 35), right: 20 };
   }, [currentRoute, insets.bottom]);
 
   // ── Message helpers ────────────────────────────────────────────────────
   const nid = () => `m${++msgId.current}`;
 
   const addUser = (text: string) =>
-    setMessages(p => [...p.map(m => ({ ...m })), { id: nid(), sender: 'user' as const, text }]);
+    setMessages(p => [...p.map(m => ({ ...m })), { id: nid(), sender: 'user' as const, text, timestamp: Date.now() }]);
 
   const addBot = (blocks: ContentBlock[]) => {
     setIsTyping(false);
-    setMessages(p => [...p, { id: nid(), sender: 'bot' as const, blocks }]);
+    setMessages(p => [...p, { id: nid(), sender: 'bot' as const, blocks, timestamp: Date.now() }]);
   };
+
 
   const removeLoadingBlock = () =>
     setMessages(p => p.filter(m => !(m.blocks?.length === 1 && m.blocks[0].type === 'loading')));
@@ -658,6 +864,7 @@ export const OwnerAssistant: React.FC = () => {
               { type: 'info_tip', text: `${joinedList.length} new student(s) joined your hostel this month.`, icon: 'calendar-outline', color: '#10B981' },
               {
                 type: 'student_list_card', title: 'Students Joined This Month', students: joinedList.map((s: any) => ({
+                  student_id: s.student_id || s.id,
                   name: `${s.first_name || ''} ${s.last_name || ''}`.trim(),
                   roomNumber: s.room_number || 'N/A',
                   phone: s.phone || '',
@@ -674,6 +881,7 @@ export const OwnerAssistant: React.FC = () => {
               { type: 'info_tip', text: `${vacatedList.length} student(s) vacated or left your hostel this month.`, icon: 'exit-outline', color: '#64748B' },
               {
                 type: 'student_list_card', title: 'Students Vacated This Month', students: vacatedList.map((s: any) => ({
+                  student_id: s.student_id || s.id,
                   name: `${s.first_name || ''} ${s.last_name || ''}`.trim(),
                   roomNumber: s.room_number || 'N/A',
                   phone: s.phone || '',
@@ -684,6 +892,37 @@ export const OwnerAssistant: React.FC = () => {
               },
               { type: 'follow_up_chips', label: 'Explore more:', chips: followUpChips },
             ]);
+          } else if (filter === 'vacate_notice' || filter === 'vacate') {
+            const vacateList = await fetchStudentsReadyToVacate();
+            if (vacateList.length === 0) {
+              addBot([
+                { type: 'info_tip', text: 'No active residents have submitted a pending vacate notice right now.', icon: 'information-circle-outline', color: '#10B981' },
+                { type: 'text', text: '0 students are currently on vacate notice. All active residents are continuing their stay.' },
+                {
+                  type: 'follow_up_chips', label: 'Explore related:', chips: [
+                    { label: 'Past Vacated History', icon: 'exit-outline', onPress: () => handleIntent({ type: 'SHOW_STUDENTS', filter: 'inactive' }) },
+                    { label: 'Active Students', icon: 'people-outline', onPress: () => handleIntent({ type: 'SHOW_STUDENTS', filter: 'active' }) },
+                    { label: 'Available Beds', icon: 'bed-outline', onPress: () => handleIntent({ type: 'SHOW_ROOMS' }) },
+                  ]
+                }
+              ]);
+            } else {
+              addBot([
+                { type: 'info_tip', text: `${vacateList.length} resident(s) are ready to vacate / on notice period.`, icon: 'exit-outline', color: '#F97316' },
+                {
+                  type: 'student_list_card', title: 'Students Ready to Vacate / Notice List', students: vacateList.map((s: any) => ({
+                    student_id: s.student_id || s.id,
+                    name: `${s.first_name || ''} ${s.last_name || ''}`.trim(),
+                    roomNumber: s.room_number || 'N/A',
+                    phone: s.phone || '',
+                    badgeText: s.vacate_notice_date ? `Notice: ${new Date(s.vacate_notice_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}` : 'Vacate Applied',
+                    badgeColor: '#FFEDD5',
+                    badgeTextColor: '#C2410C'
+                  }))
+                },
+                { type: 'follow_up_chips', label: 'Explore more:', chips: followUpChips },
+              ]);
+            }
           } else {
             // 'all' — full view
             addBot([
@@ -742,6 +981,7 @@ export const OwnerAssistant: React.FC = () => {
               { type: 'info_tip', text: `Showing list of ${list.length} ${title.toLowerCase()}.`, icon: 'people-outline', color: '#4F46E5' },
               {
                 type: 'student_list_card', title: title, students: list.map(s => ({
+                  student_id: s.id,
                   name: s.name,
                   roomNumber: s.roomNumber || 'N/A',
                   phone: s.phone || '',
@@ -1072,6 +1312,12 @@ export const OwnerAssistant: React.FC = () => {
               ]
             },
             {
+              type: 'vacant_rooms_card',
+              title: 'Floor-Wise Rooms & Bed Availability',
+              rooms: allRooms || [],
+              onSelectRoom: (rn: string | number) => handleIntent({ type: 'SHOW_ROOM_DETAIL', roomNumber: rn })
+            },
+            {
               type: 'follow_up_chips', label: 'Explore Your Hostel Rooms:', chips: [
                 { label: 'Available Beds', icon: 'bed-outline', onPress: () => handleQuery('how many vacant beds') },
                 ...realRoomChips,
@@ -1097,9 +1343,15 @@ export const OwnerAssistant: React.FC = () => {
             addBot([{ type: 'text', text: 'You currently have no rooms.' }]);
           } else {
             addBot([
-              { type: 'info_tip', text: `Showing all ${roomsRes.length} rooms in your hostel.`, icon: 'business-outline', color: '#4F46E5' },
+              { type: 'info_tip', text: `Showing all ${roomsRes.length} rooms in your hostel with live bed availability.`, icon: 'business-outline', color: '#4F46E5' },
               {
-                type: 'follow_up_chips', label: 'Rooms:', chips: roomsRes.map((r: any) => ({
+                type: 'vacant_rooms_card',
+                title: 'All Rooms & Available Beds',
+                rooms: roomsRes,
+                onSelectRoom: (rn: string | number) => handleIntent({ type: 'SHOW_ROOM_DETAIL', roomNumber: rn })
+              },
+              {
+                type: 'follow_up_chips', label: 'Room Shortcuts:', chips: roomsRes.slice(0, 6).map((r: any) => ({
                   label: `Room ${r.room_number}`,
                   icon: 'home-outline',
                   onPress: () => handleIntent({ type: 'SHOW_ROOM_DETAIL', roomNumber: r.room_number })
@@ -1451,6 +1703,21 @@ export const OwnerAssistant: React.FC = () => {
               { label: 'Pending dues', icon: 'alert-circle-outline', onPress: () => handleIntent({ type: 'SHOW_DUES', filter: 'all' }) },
               { label: 'Who hasn\'t paid?', icon: 'wallet-outline', onPress: () => handleIntent({ type: 'SHOW_DUES', filter: 'pending' }) },
             ],
+            add_guest: [
+              { label: 'Guest QR Check-In', icon: 'qr-code-outline', onPress: () => handleIntent({ type: 'SHOW_HOW_TO', action: 'guest_qr_checkin' }) },
+              { label: 'How to checkout guest?', icon: 'exit-outline', onPress: () => handleIntent({ type: 'SHOW_HOW_TO', action: 'guest_checkout' }) },
+              { label: 'View all guests', icon: 'person-outline', onPress: () => handleIntent({ type: 'SHOW_GUESTS' }) },
+            ],
+            guest_qr_checkin: [
+              { label: 'How to add guest?', icon: 'person-add-outline', onPress: () => handleIntent({ type: 'SHOW_HOW_TO', action: 'add_guest' }) },
+              { label: 'View pending guests', icon: 'person-outline', onPress: () => handleIntent({ type: 'SHOW_GUESTS' }) },
+              { label: 'Open QR Screen', icon: 'qr-code-outline', onPress: () => handleIntent({ type: 'SHOW_NAVIGATE', screen: 'QRSignup', label: 'QR Signup' }) },
+            ],
+            guest_checkout: [
+              { label: 'How to add guest?', icon: 'person-add-outline', onPress: () => handleIntent({ type: 'SHOW_HOW_TO', action: 'add_guest' }) },
+              { label: 'Guest QR Check-In', icon: 'qr-code-outline', onPress: () => handleIntent({ type: 'SHOW_HOW_TO', action: 'guest_qr_checkin' }) },
+              { label: 'View guests', icon: 'person-outline', onPress: () => handleIntent({ type: 'SHOW_GUESTS' }) },
+            ],
           };
 
           const chips = relatedChips[action] ?? [
@@ -1491,6 +1758,10 @@ export const OwnerAssistant: React.FC = () => {
     handleIntent(resolveIntent(text));
   }, [handleIntent]);
 
+  useEffect(() => {
+    handleQueryRef.current = handleQuery;
+  }, [handleQuery]);
+
   const triggerMenuAction = useCallback((label: string, intent: AssistantIntent) => {
     addUser(label);
     setIsTyping(true);
@@ -1519,7 +1790,7 @@ export const OwnerAssistant: React.FC = () => {
           activeOpacity={0.85}
         >
           <LinearGradient colors={['#7C3AED', '#6D28D9']} style={s.fabGrad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
-            <Ionicons name="chatbubble-ellipses" size={22} color="#FFF" />
+            <Ionicons name="chatbubble-ellipses" size={24} color="#FFF" />
           </LinearGradient>
         </TouchableOpacity>
       )}
@@ -1554,10 +1825,11 @@ export const OwnerAssistant: React.FC = () => {
                 <View style={s.avatarRing}>
                   <View style={s.avatarBox}>
                     <Image
-                      source={require('../../../assets/chatbot.jpeg')}
+                      source={require('../../../assets/chatbot-image-newjpeg.jpeg')}
                       style={s.avatarImg}
                       resizeMode="cover"
                     />
+
                   </View>
                   <View style={s.onlineDot} />
                 </View>
@@ -1567,7 +1839,7 @@ export const OwnerAssistant: React.FC = () => {
                   <Text style={s.headerGreeting} numberOfLines={1}>
                     {getGreeting(user?.full_name)}
                   </Text>
-                  <Text style={s.headerTitle}>HOSTIX Assistant</Text>
+                  <Text style={s.headerTitle}>HOST<Text style={{ color: '#FCD34D' }}>IX</Text> Assistant</Text>
                   {/* Welcome + hostel pill */}
                   <View style={s.aiBadge}>
                     <Text style={s.aiBadgeText}>Welcome</Text>
@@ -1589,13 +1861,11 @@ export const OwnerAssistant: React.FC = () => {
               </View>
             </LinearGradient>
 
-            {/* TEMPORARY: keyboard diagnostics, long-press the header to toggle.
-                Absolutely positioned + pointerEvents none, so it cannot affect
-                the very layout it is measuring. */}
+            {/* TEMPORARY: keyboard diagnostics, long-press the header to toggle. */}
             <KeyboardInsetDebugOverlay
               breakdown={kbdBreakdown}
               appliedInset={keyboardInset}
-              top={96}  // just under the header; s.body already starts below the status bar
+              top={96}
             />
 
             {/* ── Main content area (flex:1 — fills all remaining space) ── */}
@@ -1610,54 +1880,44 @@ export const OwnerAssistant: React.FC = () => {
                 onContentSizeChange={() => scrollToEnd(true)}
               >
 
-                {/* ── AI Copilot Top Live Hub (replaces blank gap) ── */}
-                {messages.length <= 2 && (
-                  <View style={s.topHubCard}>
-                    {/* Welcome Banner */}
-                    <View style={s.topHubHeader}>
-                      <View style={s.topHubBotBadge}>
-                        <Ionicons name="chatbubble-ellipses" size={16} color="#7C3AED" />
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <Text style={s.topHubTitle}>Hostix AI</Text>
-                        <Text style={s.topHubSub}>Ask any question or tap a quick action below</Text>
-                      </View>
-                    </View>
-
-                    {/* Quick Live Pulse Action Capsules */}
-                    <View style={s.topPulseRow}>
+                {/* ── Scrollable top action capsules (Top swap pill bar) ── */}
+                <View style={{ marginBottom: 12 }}>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={{ gap: 8, flexDirection: 'row', paddingHorizontal: 2, paddingVertical: 4 }}
+                  >
+                    {TOP_SCROLL_PILLS.map((pill, idx) => (
                       <TouchableOpacity
-                        style={[s.topPulseItem, { backgroundColor: '#FEE2E2', borderColor: '#FECACA' }]}
-                        onPress={() => handleQuery("Who hasn't paid this month?")}
+                        key={idx}
+                        style={[
+                          s.topPillCapsule,
+                          {
+                            backgroundColor: pill.bg,
+                            borderColor: pill.border,
+                            borderWidth: 1.2,
+                            shadowColor: pill.iconColor,
+                            shadowOffset: { width: 0, height: 1.5 },
+                            shadowOpacity: 0.12,
+                            shadowRadius: 3,
+                            elevation: 2,
+                          }
+                        ]}
+                        onPress={() => {
+                          Haptics.selectionAsync().catch(() => {});
+                          handleQuery(pill.q);
+                        }}
                         activeOpacity={0.75}
                       >
-                        <Ionicons name="alert-circle" size={13} color="#EF4444" />
-                        <Text style={[s.topPulseText, { color: '#B91C1C' }]}>Check Dues</Text>
+                        <Ionicons name={pill.icon as any} size={14} color={pill.iconColor} />
+                        <Text style={[s.topPillText, { color: pill.text, fontWeight: '700' }]}>{pill.label}</Text>
                       </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
 
-                      <TouchableOpacity
-                        style={[s.topPulseItem, { backgroundColor: '#E0E7FF', borderColor: '#C7D2FE' }]}
-                        onPress={() => handleQuery("How many beds available?")}
-                        activeOpacity={0.75}
-                      >
-                        <Ionicons name="bed" size={13} color="#6366F1" />
-                        <Text style={[s.topPulseText, { color: '#4338CA' }]}>Available Beds</Text>
-                      </TouchableOpacity>
-
-                      <TouchableOpacity
-                        style={[s.topPulseItem, { backgroundColor: '#DCFCE7', borderColor: '#BBF7D0' }]}
-                        onPress={() => handleQuery("Profit this month")}
-                        activeOpacity={0.75}
-                      >
-                        <Ionicons name="trending-up" size={13} color="#16A34A" />
-                        <Text style={[s.topPulseText, { color: '#15803D' }]}>Month Profit</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                )}
-
-                {/* Quick-ask chips — 2-col grid */}
-                {messages.length <= 2 && (
+                {/* Frequently Asked Questions — 2-col 2x2 grid (Placed above the conversation thread) */}
+                {messages.length <= 1 && (
                   <View style={s.chipsSection}>
                     <Text style={s.chipsSectionLabel}>💬 Frequently Asked</Text>
                     <View style={s.chipsGrid}>
@@ -1671,8 +1931,8 @@ export const OwnerAssistant: React.FC = () => {
                           }}
                           activeOpacity={0.75}
                         >
-                          <View style={s.chipsGridIconBox}>
-                            <Ionicons name={chip.icon as any} size={16} color="#6366F1" />
+                          <View style={[s.chipsGridIconBox, chip.bg ? { backgroundColor: chip.bg } : {}]}>
+                            <Ionicons name={chip.icon as any} size={16} color={chip.color || '#6366F1'} />
                           </View>
                           <Text style={s.chipsGridLabel} numberOfLines={1}>{chip.label}</Text>
                         </TouchableOpacity>
@@ -1683,27 +1943,89 @@ export const OwnerAssistant: React.FC = () => {
 
                 {/* Message thread */}
                 {messages.map(msg => (
-                  <View key={msg.id}>
-                    {msg.sender === 'user' ? (
-                      <View style={s.userRow}>
-                        <View style={s.userBubble}>
-                          <Text style={s.userText}>{msg.text}</Text>
+                  <AnimatedMessageRow key={msg.id}>
+                    <View style={{ marginBottom: 10 }}>
+                      {msg.sender === 'user' ? (
+                        <View style={s.userRow}>
+                          <LinearGradient
+                            colors={['#7C3AED', '#6D28D9']}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 1 }}
+                            style={s.userBubble}
+                          >
+                            <Text style={s.userText}>{msg.text}</Text>
+                          </LinearGradient>
+                          {msg.timestamp ? (
+                            <Text style={s.userMsgTimestamp}>{formatMsgTime(msg.timestamp)}</Text>
+                          ) : null}
                         </View>
-                      </View>
-                    ) : (
-                      <View style={s.botRow}>
-                        <View style={[s.botBubble, { flex: 1, width: '100%' }]}>
-                          {msg.blocks && <AssistantResponse blocks={msg.blocks} />}
+                      ) : (
+                        <View style={s.botContainer}>
+                          <View style={[s.botBubble, { width: '100%' }]}>
+                            {msg.blocks && <AssistantResponse blocks={msg.blocks} />}
+                          </View>
+                          {/* Feedback buttons (Thumbs up/down) + Copy + Timestamp */}
+                          <View style={s.botFeedbackRow}>
+                            <TouchableOpacity
+                              style={[
+                                s.botFeedbackBtn,
+                                feedbackMap[msg.id] === 'up' && s.botFeedbackBtnUpActive
+                              ]}
+                              onPress={() => handleFeedback(msg.id, 'up')}
+                              activeOpacity={0.7}
+                              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                            >
+                              <Ionicons
+                                name={feedbackMap[msg.id] === 'up' ? 'thumbs-up' : 'thumbs-up-outline'}
+                                size={12}
+                                color={feedbackMap[msg.id] === 'up' ? '#4F46E5' : '#94A3B8'}
+                              />
+                              {feedbackMap[msg.id] === 'up' && (
+                                <Text style={{ fontSize: 10, fontWeight: '700', color: '#4F46E5', marginLeft: 4 }}>Helpful</Text>
+                              )}
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              style={[
+                                s.botFeedbackBtn,
+                                feedbackMap[msg.id] === 'down' && s.botFeedbackBtnDownActive
+                              ]}
+                              onPress={() => handleFeedback(msg.id, 'down')}
+                              activeOpacity={0.7}
+                              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                            >
+                              <Ionicons
+                                name={feedbackMap[msg.id] === 'down' ? 'thumbs-down' : 'thumbs-down-outline'}
+                                size={12}
+                                color={feedbackMap[msg.id] === 'down' ? '#EF4444' : '#94A3B8'}
+                              />
+                              {feedbackMap[msg.id] === 'down' && (
+                                <Text style={{ fontSize: 10, fontWeight: '700', color: '#EF4444', marginLeft: 4 }}>Noted</Text>
+                              )}
+                            </TouchableOpacity>
+
+                            {/* Timestamp */}
+                            {msg.timestamp ? (
+                              <Text style={s.msgTimestamp}>{formatMsgTime(msg.timestamp)}</Text>
+                            ) : null}
+                          </View>
+
                         </View>
-                      </View>
-                    )}
-                  </View>
+                      )}
+
+
+                    </View>
+                  </AnimatedMessageRow>
                 ))}
+
                 {isTyping && (
-                  <View style={s.botRow}>
-                    <View style={s.botBubble}><BouncingDots /></View>
-                  </View>
+                  <AnimatedMessageRow>
+                    <AISearchingIndicator />
+                  </AnimatedMessageRow>
                 )}
+
+
+
+
               </ScrollView>
             </View>
 
@@ -1743,7 +2065,7 @@ export const OwnerAssistant: React.FC = () => {
                     {menuItems.map((item, idx) => (
                       <TouchableOpacity
                         key={idx}
-                        style={[s.quickMenuItem, { backgroundColor: item.bg, borderColor: item.color + '40' }]}
+                        style={[s.quickMenuItem, { backgroundColor: '#FFFFFF', borderColor: item.color + '35' }]}
                         onPress={() => {
                           setIsAddMenuOpen(false);
                           if (item.intent) {
@@ -1752,18 +2074,21 @@ export const OwnerAssistant: React.FC = () => {
                         }}
                         activeOpacity={0.75}
                       >
-                        <Ionicons name={item.icon as any} size={15} color={item.color} />
+                        <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: item.bg, alignItems: 'center', justifyContent: 'center' }}>
+                          <Ionicons name={item.icon as any} size={17} color={item.color} />
+                        </View>
                         <Text style={[s.quickMenuItemText, { color: '#1E293B' }]} numberOfLines={1}>
                           {item.label}
                         </Text>
                       </TouchableOpacity>
                     ))}
+
                   </ScrollView>
                 </View>
               )}
 
               <View style={[s.inputBar, isFocused && s.inputBarFocused]}>
-                {/* Quick-actions toggle — bolt icon, neutral resting, red when open */}
+                {/* Quick-actions toggle — vibrant illuminated menu icon on left of search */}
                 <TouchableOpacity
                   onPress={toggleQuickMenu}
                   style={[
@@ -1773,9 +2098,9 @@ export const OwnerAssistant: React.FC = () => {
                   activeOpacity={0.7}
                 >
                   <Ionicons
-                    name={isAddMenuOpen ? 'close-outline' : 'flash-outline'}
-                    size={20}
-                    color={isAddMenuOpen ? '#DC2626' : '#64748B'}
+                    name={isAddMenuOpen ? 'close' : 'flash'}
+                    size={19}
+                    color={isAddMenuOpen ? '#DC2626' : '#7C3AED'}
                   />
                 </TouchableOpacity>
 
@@ -1785,14 +2110,16 @@ export const OwnerAssistant: React.FC = () => {
                   style={[s.inputWrap, isFocused && s.inputWrapFocused]}
                   onPress={() => inputRef.current?.focus()}
                 >
-                  <Ionicons name="chatbubble-ellipses-outline" size={17} color={isFocused ? "#4F46E5" : "#94A3B8"} style={{ marginRight: 6 }} />
+                  <Ionicons name="chatbubble-ellipses" size={17} color={isFocused ? "#7C3AED" : "#8B5CF6"} style={{ marginRight: 6 }} />
                   <TextInput
+
                     ref={inputRef}
                     style={s.input}
                     value={inputText}
                     onChangeText={setInputText}
-                    placeholder="Ask me anything..."
+                    placeholder="Ask anything..."
                     placeholderTextColor="#94A3B8"
+
                     returnKeyType="send"
                     editable={true}
                     pointerEvents="auto"
@@ -1843,10 +2170,12 @@ export const OwnerAssistant: React.FC = () => {
                 <View style={s.footerBranding}>
                   <View style={s.footerRule} />
                   <Text style={s.footerBrandingText}>Powered by</Text>
-                  <Text style={s.footerBrandingBold}>HOSTIX</Text>
+                  <Text style={s.footerBrandingBold}>HOST<Text style={{ color: '#FCD34D' }}>IX</Text></Text>
                   <View style={s.footerRule} />
                 </View>
               )}
+
+
             </View>
 
           </View>
@@ -1862,10 +2191,12 @@ const s = StyleSheet.create({
   /* FAB */
   fab: {
     position: 'absolute',
-    width: 52, height: 52, borderRadius: 26,
+    bottom: 188,
+    right: 20,
+    width: 56, height: 56, borderRadius: 28,
     overflow: 'hidden',
     elevation: 20,
-    shadowColor: '#C2410C', shadowOpacity: 0.45, shadowRadius: 8, shadowOffset: { width: 0, height: 4 },
+    shadowColor: '#7C3AED', shadowOpacity: 0.45, shadowRadius: 8, shadowOffset: { width: 0, height: 4 },
     zIndex: 999999,
   },
   fabGrad: { flex: 1, alignItems: 'center', justifyContent: 'center' },
@@ -1878,9 +2209,10 @@ const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: '#FFF' },
   // Chat column. Its bottom padding is the single knob the keyboard turns.
   body: { flex: 1, backgroundColor: '#FFF' },
-  chatArea: { flex: 1, backgroundColor: '#F8FAFC' },
+  chatArea: { flex: 1, backgroundColor: '#FAFAFC' },
 
   /* Header */
+
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 16, paddingTop: 14, paddingBottom: 14,
@@ -1969,19 +2301,16 @@ const s = StyleSheet.create({
 
   /* Messages */
   msgList: { padding: 16, gap: 16, paddingBottom: 12, flexGrow: 1 },
-  topHubCard: {
-    backgroundColor: '#FFF',
+  topPillCapsule: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     borderRadius: 20,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    gap: 12,
-    marginBottom: 4,
-    shadowColor: '#000',
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
+  },
+  topPillText: {
+    fontSize: 12,
   },
   topHubHeader: {
     flexDirection: 'row',
@@ -2085,12 +2414,23 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  userRow: { alignItems: 'flex-end' },
+  userRow: { alignItems: 'flex-end', marginVertical: 4 },
   userBubble: {
-    backgroundColor: '#4338CA', borderRadius: 18, borderBottomRightRadius: 4,
-    paddingHorizontal: 14, paddingVertical: 10, maxWidth: '78%',
+    borderRadius: 20,
+    borderBottomRightRadius: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    maxWidth: '85%',
+    shadowColor: '#7C3AED',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  userText: { color: '#FFF', fontSize: 14, fontWeight: '500', lineHeight: 20 },
+  userText: { color: '#FFFFFF', fontSize: 14.5, fontWeight: '600', lineHeight: 21 },
+
+  botContainer: { width: '100%', marginVertical: 4 },
+  botSparkleRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 6, marginLeft: 2 },
   botRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
   botAvatar: {
     width: 28, height: 28, borderRadius: 14, overflow: 'hidden',
@@ -2102,7 +2442,109 @@ const s = StyleSheet.create({
     elevation: 1, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 4, shadowOffset: { width: 0, height: 1 },
   },
 
+  botFeedbackRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 6,
+    marginLeft: 4,
+    marginBottom: 8,
+  },
+  botFeedbackBtn: {
+    height: 26,
+    paddingHorizontal: 8,
+    borderRadius: 13,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  botFeedbackBtnUpActive: {
+    backgroundColor: '#EEF2FF',
+    borderColor: '#C7D2FE',
+  },
+  botFeedbackBtnDownActive: {
+    backgroundColor: '#FEF2F2',
+    borderColor: '#FECACA',
+  },
+  msgTimestamp: {
+    fontSize: 10,
+    color: '#94A3B8',
+    fontWeight: '500',
+    marginLeft: 4,
+  },
+  userMsgTimestamp: {
+    fontSize: 10,
+    color: '#94A3B8',
+    fontWeight: '500',
+    marginTop: 2,
+    marginRight: 4,
+    textAlign: 'right',
+  },
+
+
+
+  /* AI Searching Animation Styles (Matching Reference Screenshots) */
+  aiSearchingContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 20,
+    paddingHorizontal: 16,
+    width: '100%',
+  },
+  aiSearchingOrbWrap: {
+    width: 60,
+    height: 60,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+    marginBottom: 10,
+  },
+  aiSearchingHalo: {
+    position: 'absolute',
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    backgroundColor: '#F3E8FF',
+    opacity: 0.8,
+  },
+  aiDiamondGrid: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 3,
+  },
+  aiDiamondRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 3,
+  },
+  aiDot: {
+    width: 4.5,
+    height: 4.5,
+    borderRadius: 2.5,
+    backgroundColor: '#A855F7',
+    opacity: 0.75,
+  },
+  aiDotCenter: {
+    backgroundColor: '#7C3AED',
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    opacity: 1,
+  },
+  aiSearchingText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#7C3AED',
+    textAlign: 'center',
+    letterSpacing: 0.2,
+  },
+
   /* Bottom input bar */
+
   inputBarWrapper: {
     backgroundColor: '#FFF',
     borderTopWidth: 1,
@@ -2129,21 +2571,28 @@ const s = StyleSheet.create({
   inputBarWrapperFocused: {
     borderTopColor: '#E0E7FF',
   },
-  /* Neutral resting state — no purple tint unless open */
+  /* Vibrant colored resting state for search left menu toggle button */
   menuBtnWrap: {
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: '#F5F3FF',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderWidth: 1.2,
+    borderColor: '#DDD6FE',
+    shadowColor: '#7C3AED',
+    shadowOffset: { width: 0, height: 1.5 },
+    shadowOpacity: 0.18,
+    shadowRadius: 3,
+    elevation: 2,
   },
   menuBtnWrapActive: {
     backgroundColor: '#FEE2E2',
     borderColor: '#FECACA',
+    shadowColor: '#EF4444',
   },
+
   inputWrap: {
     flex: 1,
     flexDirection: 'row',

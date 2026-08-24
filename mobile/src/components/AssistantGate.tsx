@@ -3,6 +3,8 @@ import { DeviceEventEmitter } from 'react-native';
 import { OwnerAssistant } from './assistant/OwnerAssistant';
 import { DeveloperAssistant } from './developer/DeveloperAssistant';
 import { navigationRef } from '../navigation/navigationRef';
+import { useAuth } from '../../contexts/AuthContext';
+import { useDeveloper } from '../../contexts/DeveloperContext';
 
 // Explicitly hidden screens: only input forms, edit forms, details view pages, and auth screens
 const EXPLICITLY_HIDDEN_ROUTES = [
@@ -43,9 +45,15 @@ const EXPLICITLY_HIDDEN_ROUTES = [
   'Profile',
   'Settings',
   'PrivacyPolicy',
+  'DeveloperStudentDetails',
+  'DeveloperHostelDetails',
+  'DeveloperOwnerDetails',
 ];
 
 export const AssistantGate: React.FC = () => {
+  const { user } = useAuth();
+  const { isDeveloperLoggedIn } = useDeveloper();
+
   const [currentRoute, setCurrentRoute] = useState<string | null>(() => {
     return navigationRef.isReady() ? navigationRef.getCurrentRoute()?.name || null : null;
   });
@@ -70,12 +78,30 @@ export const AssistantGate: React.FC = () => {
     };
   }, []);
 
-  if (!currentRoute) return <OwnerAssistant />;
+  const isDevUser = user?.role === 'DEVELOPER' || (user as any)?.is_developer || isDeveloperLoggedIn;
+  const isTenantUser = user?.role === 'TENANT';
 
-  const isDevRoute = currentRoute.startsWith('Dev') || currentRoute.startsWith('Developer');
+  // Do not show assistant on splash screen, initial mount, or if user is not logged in
+  if (!user || !currentRoute || currentRoute === 'Splash' || currentRoute === 'Onboarding') {
+    return null;
+  }
 
-  if (isDevRoute) {
+  const isDevRoute = currentRoute.startsWith('Dev') || currentRoute.startsWith('Developer') || (isDevUser && currentRoute === 'Main');
+
+  if (isDevRoute || isDevUser) {
+    // Hide on explicitly hidden auth/form/detail screens
+    if (
+      EXPLICITLY_HIDDEN_ROUTES.includes(currentRoute) ||
+      currentRoute.startsWith('Add') ||
+      currentRoute.startsWith('Edit')
+    ) {
+      return null;
+    }
     return <DeveloperAssistant />;
+  }
+
+  if (isTenantUser) {
+    return null;
   }
 
   // Hide only on forms, detail/receipt views, and auth screens
@@ -93,7 +119,7 @@ export const AssistantGate: React.FC = () => {
   }
 
   // Render on all list & dashboard screens for owners
-  return <OwnerAssistant />;
+  return <OwnerAssistant currentRoute={currentRoute} />;
 };
 
 export default AssistantGate;

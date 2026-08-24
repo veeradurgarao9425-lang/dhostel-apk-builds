@@ -54,60 +54,14 @@ const parseSender = () => {
   return { name: 'Hostix Support', email: rawFrom };
 };
 
-// ─── Send via Brevo HTTP API (port 443) ────────────────────────────────────────
-const sendViaBrevo = async (options: EmailOptions): Promise<boolean> => {
-  const apiKey = (process.env.BREVO_API_KEY || '').trim();
-  if (!apiKey) return false;
-
-  // Brevo HTTP API requires a REST API key (starts with 'xkeysib-').
-  // If user configured an SMTP password (starts with 'xsmtpsib-'), log a helpful note.
-  if (apiKey.startsWith('xsmtpsib-')) {
-    console.warn('⚠️ BREVO_API_KEY starts with "xsmtpsib-", which is an SMTP key. Brevo REST API requires an API key starting with "xkeysib-".');
-    return false;
-  }
-
-  const sender = parseSender();
-  const payload: any = {
-    sender: { name: sender.name, email: sender.email },
-    to: [{ email: options.to }],
-    subject: options.subject,
-    htmlContent: options.html,
-  };
-
-  if (options.attachments && options.attachments.length > 0) {
-    payload.attachment = options.attachments.map((a) => ({
-      name: a.filename,
-      content: Buffer.isBuffer(a.content) ? a.content.toString('base64') : Buffer.from(a.content).toString('base64'),
-    }));
-  }
-
-  const res = await fetch('https://api.brevo.com/v3/smtp/email', {
-    method: 'POST',
-    signal: AbortSignal.timeout(6000),
-    headers: {
-      'accept': 'application/json',
-      'api-key': apiKey,
-      'content-type': 'application/json',
-    },
-    body: JSON.stringify(payload),
-  });
-
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`Brevo HTTP API ${res.status}: ${text}`);
-  }
-  console.log(`✅ Email sent via Brevo HTTP API to: ${options.to}`);
-  return true;
-};
-
 // ─── Send via Resend HTTP API (port 443) ───────────────────────────────────────
 const sendViaResend = async (options: EmailOptions): Promise<boolean> => {
   const apiKey = (process.env.RESEND_API_KEY || '').trim();
   if (!apiKey) return false;
 
-  const sender = parseSender();
+  const resendFrom = process.env.RESEND_FROM || 'Hostix <onboarding@resend.dev>';
   const payload: any = {
-    from: `${sender.name} <${sender.email}>`,
+    from: resendFrom,
     to: [options.to],
     subject: options.subject,
     html: options.html,
@@ -122,7 +76,7 @@ const sendViaResend = async (options: EmailOptions): Promise<boolean> => {
 
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
-    signal: AbortSignal.timeout(6000),
+    signal: AbortSignal.timeout(8000),
     headers: {
       'Authorization': `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
@@ -137,6 +91,7 @@ const sendViaResend = async (options: EmailOptions): Promise<boolean> => {
   console.log(`✅ Email sent via Resend HTTP API to: ${options.to}`);
   return true;
 };
+
 
 // ─── Send via SendGrid HTTP API (port 443) ─────────────────────────────────────
 const sendViaSendGrid = async (options: EmailOptions): Promise<boolean> => {
@@ -249,35 +204,20 @@ export const sendEmail = async (options: EmailOptions): Promise<void> => {
   const plainText = options.html ? options.html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim() : '';
 
   try {
-    // 1. For OTP & Password Reset emails: Use EmailJS template
-    if ((options.emailType === 'OTP' || options.emailType === 'ForgotPassword' || /otp|code|reset/i.test(options.subject)) && process.env.EMAILJS_SERVICE_ID) {
+    // 1. For OTP emails ONLY: Use EmailJS template
+    const isStrictOtp = options.emailType === 'OTP' || options.emailType === 'ForgotPassword' || /otp|verification/i.test(options.subject);
+
+    if (isStrictOtp && process.env.EMAILJS_SERVICE_ID && process.env.EMAILJS_TEMPLATE_ID) {
       try {
         const sent = await sendViaEmailJS(options);
         if (sent) return;
       } catch (ejsErr: any) {
-        console.warn('⚠️ EmailJS OTP/Reset delivery notice:', ejsErr.message);
+        console.warn('⚠️ EmailJS OTP delivery notice:', ejsErr.message);
       }
     }
 
-    // 2. For Reports / General emails: Try EmailJS General Template if configured
-    if (process.env.EMAILJS_SERVICE_ID && (process.env.EMAILJS_REPORT_TEMPLATE_ID || process.env.EMAILJS_GENERAL_TEMPLATE_ID || process.env.EMAILJS_TEMPLATE_ID)) {
-      try {
-        const sent = await sendViaEmailJS(options);
-        if (sent) return;
-      } catch (ejsErr: any) {
-        console.warn('⚠️ EmailJS Report delivery notice:', ejsErr.message);
-      }
-    }
-
-    // 3. For Reports, Notifications, and general emails: Try Brevo / Resend / SendGrid if available
-    if (process.env.BREVO_API_KEY) {
-      try {
-        const sent = await sendViaBrevo(options);
-        if (sent) return;
-      } catch (brevoErr: any) {
-        console.warn('⚠️ Brevo API delivery notice:', brevoErr.message);
-      }
-    }
+    // 2. For Reports, New Owner, New User, Notifications, and general HTML emails:
+    // Route via Resend HTTP API over port 443
     if (process.env.RESEND_API_KEY) {
       try {
         const sent = await sendViaResend(options);
@@ -286,6 +226,7 @@ export const sendEmail = async (options: EmailOptions): Promise<void> => {
         console.warn('⚠️ Resend API delivery notice:', resendErr.message);
       }
     }
+
     if (process.env.SENDGRID_API_KEY) {
       try {
         const sent = await sendViaSendGrid(options);
@@ -295,7 +236,9 @@ export const sendEmail = async (options: EmailOptions): Promise<void> => {
       }
     }
 
-    // 4. SMTP Transporter fallback (uses standard Gmail SMTP credentials)
+
+
+    // 3. SMTP Transporter fallback (uses standard Gmail SMTP credentials)
     const transporter = createTransporter();
     const info = await transporter.sendMail({
       from,
@@ -318,6 +261,77 @@ export const sendEmail = async (options: EmailOptions): Promise<void> => {
   }
 };
 
+// ─── Unified OTP Email Template Generator ─────────────────────────────────────
+export interface OtpTemplateOptions {
+  otp: string;
+  title: string;
+  subtitle?: string;
+  description: string;
+  expiresInMinutes?: number;
+  userName?: string;
+  actionButton?: {
+    text: string;
+    url: string;
+  };
+}
+
+export const generateOtpEmailHtml = (options: OtpTemplateOptions): string => {
+  const { otp, title, description, expiresInMinutes = 10, userName, actionButton } = options;
+  return `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>${title}</title>
+    </head>
+    <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f8fafc; margin: 0; padding: 24px; color: #1e293b;">
+      <!-- Hidden Preheader to prevent spam classification -->
+      <div style="display:none;font-size:1px;color:#f8fafc;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;">
+        Your Hostix verification code is ${otp}. Valid for ${expiresInMinutes} minutes.
+      </div>
+      <div style="max-width: 500px; margin: 0 auto; background-color: #ffffff; padding: 32px 28px; border-radius: 16px; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.05);">
+        <!-- Brand Header -->
+        <div style="text-align: center; margin-bottom: 24px;">
+          <div style="display: inline-block; background: linear-gradient(135deg, #7C3AED, #5F2EEA); width: 44px; height: 44px; border-radius: 12px; line-height: 44px; color: #ffffff; font-size: 22px; margin-bottom: 8px;">🏢</div>
+          <h2 style="color: #6366f1; margin: 0; font-size: 24px; font-weight: 800; letter-spacing: -0.5px;">Hostix</h2>
+          <p style="color: #64748b; font-size: 12.5px; margin-top: 4px; margin-bottom: 0;">Smart PG & Hostel Management</p>
+        </div>
+        
+        <div style="border-top: 1px solid #f1f5f9; padding-top: 24px;">
+          <h3 style="color: #0f172a; margin-top: 0; font-size: 19px; font-weight: 700; text-align: center;">${title}</h3>
+          ${userName ? `<p style="color: #475569; font-size: 14px; margin-bottom: 12px; text-align: center;">Hello <strong>${userName}</strong>,</p>` : ''}
+          <p style="color: #475569; font-size: 14px; line-height: 22px; text-align: center; margin-bottom: 24px;">${description}</p>
+          
+          <!-- Prominent OTP Code Box -->
+          <div style="text-align: center; margin: 24px 0;">
+            <div style="font-size: 34px; font-weight: 800; letter-spacing: 8px; color: #4f46e5; background-color: #f1f5f9; padding: 16px 28px; border-radius: 14px; display: inline-block; border: 1.5px dashed #c7d2fe; font-family: 'Courier New', Courier, monospace;">
+              ${otp}
+            </div>
+          </div>
+          
+          ${actionButton ? `
+          <div style="text-align: center; margin: 24px 0;">
+            <a href="${actionButton.url}" style="background: linear-gradient(135deg, #7C3AED, #5F2EEA); color: #ffffff; padding: 12px 28px; text-decoration: none; border-radius: 10px; font-weight: 700; font-size: 14px; display: inline-block;">
+              ${actionButton.text}
+            </a>
+          </div>
+          ` : ''}
+
+          <p style="color: #94a3b8; font-size: 12px; text-align: center; margin-top: 20px; line-height: 18px;">
+            This OTP code is confidential and valid for <strong>${expiresInMinutes} minutes</strong>. If you did not request this, please ignore this email. Your account remains secure.
+          </p>
+        </div>
+
+        <div style="border-top: 1px solid #f1f5f9; margin-top: 28px; padding-top: 16px; text-align: center;">
+          <p style="color: #94a3b8; font-size: 11px; margin: 0;">&copy; ${new Date().getFullYear()} Hostix Systems. All rights reserved.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+};
+
 // ─── Password reset email ──────────────────────────────────────────────────────
 export const sendPasswordResetEmail = async (
   email: string,
@@ -325,55 +339,31 @@ export const sendPasswordResetEmail = async (
   userName: string,
   otp?: string
 ): Promise<void> => {
+  const code = otp || resetToken?.slice(0, 6).toUpperCase();
   const resetLink = `${process.env.FRONTEND_URL || 'https://hostix.in'}/reset-password?token=${resetToken}`;
 
-  const html = `
-    <div style="font-family: Arial, sans-serif; background-color: #f5f5f5; padding: 20px;">
-      <div style="max-width: 600px; margin: 0 auto; background-color: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-        <h2 style="color: #333; margin-bottom: 20px;">Password Reset Request</h2>
-        <p style="color: #666; line-height: 1.6;">Hello ${userName},</p>
-        <p style="color: #666; line-height: 1.6;">
-          We received a request to reset your password. Click the link below to create a new password:
-        </p>
-        <div style="text-align: center; margin: 30px 0;">
-          <a href="${resetLink}" style="background-color: #3b82f6; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; display: inline-block;">
-            Reset Password
-          </a>
-        </div>
-        
-        ${otp ? `
-        <div style="text-align: center; margin: 30px 0;">
-          <p style="color: #666; font-size: 14px;">Or use this 6-digit OTP code in the mobile app:</p>
-          <div style="background-color: #f3f4f6; border-radius: 8px; padding: 15px; margin: 10px auto; max-width: 200px; border: 1px dashed #cbd5e1;">
-            <span style="font-size: 24px; font-weight: bold; color: #4f46e5; letter-spacing: 4px;">${otp}</span>
-          </div>
-        </div>
-        ` : ''}
-
-        <p style="color: #666; line-height: 1.6;">Or copy and paste this link in your browser:</p>
-        <p style="background-color: #f0f0f0; padding: 10px; border-radius: 4px; word-break: break-all; color: #333;">
-          ${resetLink}
-        </p>
-        <p style="color: #999; font-size: 12px; margin-top: 30px;">
-          This link will expire in 1 hour. If you didn't request a password reset, please ignore this email.
-        </p>
-        <p style="color: #999; font-size: 12px;">Hostix System</p>
-      </div>
-    </div>
-  `;
+  const subject = `${code} is your Hostix password reset code`;
+  const html = generateOtpEmailHtml({
+    otp: code,
+    title: 'Reset Your Password',
+    subtitle: 'Password Reset Code',
+    userName: userName || 'Hostix User',
+    description: 'We received a request to reset your password. Use the 6-digit OTP code below in your mobile app to verify and choose a new password:',
+    expiresInMinutes: 10,
+    actionButton: {
+      text: 'Reset Password Online',
+      url: resetLink
+    }
+  });
 
   // In development, log the link even if email fails
   if (process.env.NODE_ENV === 'development') {
     console.log('\n' + '='.repeat(80));
-    console.log('🔐 PASSWORD RESET LINK (Development fallback)');
+    console.log('🔐 PASSWORD RESET CODE (Development)');
     console.log('='.repeat(80));
-    console.log(`Reset Link: ${resetLink}`);
+    console.log(`To: ${email} | Code: ${code} | Reset Link: ${resetLink}`);
     console.log('='.repeat(80) + '\n');
   }
-
-  const subject = otp 
-    ? `${otp} is your Hostix Password Reset Code` 
-    : 'Password Reset Request - Hostix';
 
   await sendEmail({ 
     to: email, 
@@ -389,42 +379,13 @@ export const sendOtpEmail = async (
   otp: string
 ): Promise<void> => {
   const subject = `${otp} is your Hostix verification code`;
-  const html = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="utf-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    </head>
-    <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f8fafc; margin: 0; padding: 24px;">
-      <!-- Hidden Preheader to prevent spam classification -->
-      <div style="display:none;font-size:1px;color:#f8fafc;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;">
-        Your Hostix verification code is ${otp}. Valid for 10 minutes.
-      </div>
-      <div style="max-width: 500px; margin: 0 auto; background-color: #ffffff; padding: 32px; border-radius: 16px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
-        <div style="text-align: center; margin-bottom: 24px;">
-          <h2 style="color: #6366f1; margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -0.5px;">Hostix</h2>
-          <p style="color: #64748b; font-size: 13px; margin-top: 4px; margin-bottom: 0;">Smart PG & Hostel Management</p>
-        </div>
-        <div style="border-top: 1px solid #f1f5f9; padding-top: 24px;">
-          <h3 style="color: #0f172a; margin-top: 0; font-size: 18px; font-weight: 700; text-align: center;">Account Verification Code</h3>
-          <p style="color: #475569; font-size: 14px; line-height: 22px; text-align: center; margin-bottom: 24px;">Please use the following one-time password (OTP) to complete your verification:</p>
-          <div style="text-align: center; margin: 24px 0;">
-            <div style="font-size: 34px; font-weight: 800; letter-spacing: 8px; color: #4f46e5; background-color: #f1f5f9; padding: 16px 28px; border-radius: 12px; display: inline-block; font-family: 'Courier New', Courier, monospace;">
-              ${otp}
-            </div>
-          </div>
-          <p style="color: #94a3b8; font-size: 12px; text-align: center; margin-top: 24px; margin-bottom: 0;">
-            This code will expire in 10 minutes. If you did not request this code, you can safely ignore this email.
-          </p>
-        </div>
-        <div style="border-top: 1px solid #f1f5f9; margin-top: 28px; padding-top: 16px; text-align: center;">
-          <p style="color: #94a3b8; font-size: 11px; margin: 0;">&copy; Hostix Systems. All rights reserved.</p>
-        </div>
-      </div>
-    </body>
-    </html>
-  `;
+  const html = generateOtpEmailHtml({
+    otp,
+    title: 'Account Verification Code',
+    subtitle: 'Verification Code',
+    description: 'Please use the following 6-digit one-time password (OTP) to sign in or verify your account:',
+    expiresInMinutes: 10,
+  });
 
   console.log('\n' + '='.repeat(70));
   console.log(`🔐 OTP VERIFICATION CODE DISPATCH`);
@@ -727,4 +688,104 @@ export const sendPasswordResetNotificationEmail = async (params: {
     console.error('Password reset email dispatch notice:', err?.message || err);
   });
 };
+
+// ─── Login Alert / Intimation Email ──────────────────────────────────────────
+export const sendLoginAlertEmail = async ({
+  recipientEmail,
+  recipientName,
+  userType,
+  hostelName,
+  ipAddress,
+}: {
+  recipientEmail: string;
+  recipientName: string;
+  userType?: string;
+  hostelName?: string;
+  ipAddress?: string;
+}): Promise<void> => {
+  if (!recipientEmail || !recipientEmail.includes('@')) return;
+
+  const now = new Date();
+  const timeFormatted = now.toLocaleString('en-IN', {
+    timeZone: 'Asia/Kolkata',
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+  });
+
+  const subject = `🔐 Security Alert: Successful Sign-in to Hostix`;
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+    <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #F8FAFC; margin: 0; padding: 24px;">
+      <div style="max-width: 540px; margin: 0 auto; background-color: #FFFFFF; border-radius: 16px; border: 1px solid #E2E8F0; overflow: hidden; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.05);">
+        <!-- Header Banner -->
+        <div style="background: linear-gradient(135deg, #1E1B4B 0%, #312E81 100%); padding: 24px; text-align: center;">
+          <h1 style="color: #FCD34D; margin: 0; font-size: 22px; font-weight: 800; letter-spacing: 0.5px;">HOSTIX SIGN-IN INTIMATION</h1>
+          <p style="color: #E0E7FF; font-size: 13px; margin-top: 6px; margin-bottom: 0;">Account Activity Alert</p>
+        </div>
+
+        <div style="padding: 24px;">
+          <p style="color: #1E293B; font-size: 15px; line-height: 22px; margin-top: 0; font-weight: 600;">
+            Hello ${recipientName || 'Hostix User'},
+          </p>
+          <p style="color: #475569; font-size: 14px; line-height: 22px;">
+            Your Hostix account (<strong>${recipientEmail}</strong>) was just accessed successfully.
+          </p>
+
+          <!-- Details Table -->
+          <div style="background-color: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 16px; margin: 20px 0;">
+            <table style="width: 100%; border-collapse: collapse;">
+              <tr>
+                <td style="padding: 6px 0; color: #64748B; font-size: 13px; width: 35%;">Time:</td>
+                <td style="padding: 6px 0; color: #0F172A; font-size: 13px; font-weight: 700;">${timeFormatted} (IST)</td>
+              </tr>
+              ${userType ? `
+              <tr>
+                <td style="padding: 6px 0; color: #64748B; font-size: 13px;">Account Type:</td>
+                <td style="padding: 6px 0; color: #4F46E5; font-size: 13px; font-weight: 700;">${userType}</td>
+              </tr>` : ''}
+              ${hostelName ? `
+              <tr>
+                <td style="padding: 6px 0; color: #64748B; font-size: 13px;">Hostel:</td>
+                <td style="padding: 6px 0; color: #0F172A; font-size: 13px; font-weight: 700;">${hostelName}</td>
+              </tr>` : ''}
+              ${ipAddress ? `
+              <tr>
+                <td style="padding: 6px 0; color: #64748B; font-size: 13px;">IP Address:</td>
+                <td style="padding: 6px 0; color: #0F172A; font-size: 13px; font-weight: 700;">${ipAddress}</td>
+              </tr>` : ''}
+            </table>
+          </div>
+
+          <!-- Security reassurance -->
+          <div style="background-color: #ECFDF5; border: 1px solid #A7F3D0; border-radius: 10px; padding: 12px 16px; margin: 16px 0;">
+            <p style="color: #065F46; font-size: 12.5px; line-height: 18px; margin: 0; font-weight: 600;">
+              ✓ If this was you, you can safely ignore this notification.
+            </p>
+          </div>
+
+          <p style="color: #94A3B8; font-size: 12px; line-height: 18px; margin-top: 18px; margin-bottom: 0;">
+            If you did not initiate this sign-in, please change your password immediately or contact Hostix Support (<a href="tel:6303359425" style="color: #4F46E5; text-decoration: none; font-weight: 700;">6303359425</a>).
+          </p>
+        </div>
+
+        <div style="background-color: #F1F5F9; padding: 14px 24px; text-align: center; border-top: 1px solid #E2E8F0;">
+          <p style="color: #94A3B8; font-size: 11px; margin: 0;">Hostix Security • Automated Dispatch</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  await sendEmail({ to: recipientEmail, subject, html, emailType: 'LoginAlert' }).catch((err) => {
+    console.error('Login alert email dispatch error:', err?.message || err);
+  });
+};
+
 

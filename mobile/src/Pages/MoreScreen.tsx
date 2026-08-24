@@ -201,6 +201,14 @@ export default function MoreScreen({ hideHeader = false }: MoreScreenProps) {
                     iconBg: '#CFFAFE',
                     route: 'Guests',
                 },
+                {
+                    label: 'Vacate Bed & Checkouts',
+                    subtitle: 'Manage vacating tenants & settlements',
+                    icon: 'log-out-outline',
+                    iconColor: '#EF4444',
+                    iconBg: '#FEE2E2',
+                    route: 'Notices',
+                },
                 /*
                 {
                     label: 'Tenant Reviews',

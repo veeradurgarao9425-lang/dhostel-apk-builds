@@ -72,7 +72,9 @@ import RoleSelectScreen from '../Pages/RoleSelectScreen';
 import { TenantHostelKeyScreen } from '../Pages/tenant/TenantHostelKeyScreen';
 import { TenantLoginScreen } from '../Pages/tenant/TenantLoginScreen';
 import RegistrationScreen from '../Pages/tenant/RegistrationScreen';
+import PublicRegistrationScreen from '../Pages/tenant/PublicRegistrationScreen';
 import LoginScreen from '../Pages/LoginScreen';
+
 import ForgotPasswordScreen from '../Pages/ForgotPasswordScreen';
 import RegisterScreen from '../Pages/RegisterScreen';
 import NotificationScreen from '../Pages/NotificationScreen';
@@ -110,6 +112,7 @@ import StaffPaymentsScreen from '../Pages/StaffPaymentsScreen';
 import StaffDetailsScreen from '../Pages/StaffDetailsScreen';
 import GuestsScreen from '../Pages/GuestsScreen';
 import AddGuestScreen from '../Pages/AddGuestScreen';
+import GuestDetailsScreen from '../Pages/GuestDetailsScreen';
 import BillRemindersScreen from '../Pages/BillRemindersScreen';
 import RemindersScreen from '../Pages/RemindersScreen';
 import TenantTransactionsScreen from '../Pages/TenantTransactionsScreen';
@@ -218,7 +221,9 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
 
             // Setup listeners for foreground notifications and clicks
             const unsubscribe = notificationService.setupNotificationListeners((screen, params) => {
-                navigationRef.current?.navigate(screen as any, params);
+                if (navigationRef.isReady()) {
+                    (navigationRef as any).navigate(screen, params);
+                }
             });
 
             return () => {
@@ -231,6 +236,16 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
         <>
             <NavigationContainer
                 ref={navigationRef}
+
+                onReady={() => {
+                    const route = navigationRef.current?.getCurrentRoute();
+                    if (route?.name) {
+                        DeviceEventEmitter.emit('ROUTE_CHANGED', route.name);
+                        if (onRouteChange) {
+                            onRouteChange(route.name);
+                        }
+                    }
+                }}
                 onStateChange={() => {
                     const route = navigationRef.current?.getCurrentRoute();
                     if (route?.name) {
@@ -245,6 +260,7 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
                     screenOptions={{ headerShown: false }}
                     initialRouteName="Splash"
                 >
+
                     {/* Auth */}
                     <Stack.Screen name="Splash" component={SplashScreen} />
                     <Stack.Screen
@@ -259,6 +275,9 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
                     <Stack.Screen name="TenantHostelKey" component={TenantHostelKeyScreen} />
                     <Stack.Screen name="TenantLogin" component={TenantLoginScreen} />
                     <Stack.Screen name="TenantRegister" component={RegistrationScreen} />
+                    <Stack.Screen name="PublicRegistration" component={PublicRegistrationScreen} />
+
+
 
                     {/* Main tab container */}
                     <Stack.Screen
@@ -311,6 +330,7 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
 
                     {/* Guests (short-stay) */}
                     <Stack.Screen name="Guests" component={GuestsScreen} />
+                    <Stack.Screen name="GuestDetails" component={GuestDetailsScreen} />
                     <Stack.Screen
                         name="AddGuest"
                         component={AddGuestScreen}

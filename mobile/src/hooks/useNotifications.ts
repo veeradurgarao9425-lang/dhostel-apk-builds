@@ -44,6 +44,19 @@ export const useNotifications = () => {
                         }
                     }
 
+                    let extraData = {};
+                    if (item.metadata) {
+                        try {
+                            extraData = typeof item.metadata === 'string' ? JSON.parse(item.metadata) : item.metadata;
+                        } catch {}
+                    }
+                    let parsedParams = item.params;
+                    if (typeof parsedParams === 'string') {
+                        try {
+                            parsedParams = JSON.parse(parsedParams);
+                        } catch {}
+                    }
+
                     return {
                         id: item.notification_id,
                         type,
@@ -52,8 +65,17 @@ export const useNotifications = () => {
                         time: new Date(item.created_at).toLocaleString(),
                         date: item.created_at,
                         read: item.is_read === 1,
-                        data: item
+                        data: {
+                            ...item,
+                            ...extraData,
+                            params: parsedParams,
+                            student_id: item.student_id || (extraData as any)?.student_id || (extraData as any)?.studentId || (parsedParams as any)?.studentId,
+                            studentId: item.student_id || (extraData as any)?.student_id || (extraData as any)?.studentId || (parsedParams as any)?.studentId,
+                            student_name: item.student_name || (extraData as any)?.student_name || (extraData as any)?.studentName || (parsedParams as any)?.studentName,
+                            studentName: item.student_name || (extraData as any)?.student_name || (extraData as any)?.studentName || (parsedParams as any)?.studentName
+                        }
                     };
+
                 });
 
                 setNotifications(formattedNotifications);

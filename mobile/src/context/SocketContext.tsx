@@ -5,7 +5,7 @@ import { DeviceEventEmitter, AppState, AppStateStatus } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
 
 const envUrl = process.env.EXPO_PUBLIC_API_URL as string | undefined;
-const BASE_URL = (envUrl && !envUrl.includes('192.168.')) ? envUrl : 'http://143.244.131.69:8081/api';
+const BASE_URL = (envUrl && !envUrl.includes('192.168.')) ? envUrl : 'https://api.143-244-131-69.sslip.io/api';
 const SOCKET_URL = BASE_URL.replace('/api', '');
 
 /**

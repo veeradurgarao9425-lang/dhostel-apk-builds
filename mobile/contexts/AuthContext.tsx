@@ -150,6 +150,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           } else {
             await enrichUserInBackground(parsedUser);
           }
+
+          // Register & sync device push token with backend on session restore
+          try {
+            const pushToken = await notificationService.registerForPushNotificationsAsync();
+            if (pushToken) {
+              await notificationService.sendTokenToBackend(pushToken, true);
+            }
+          } catch (pushErr) {
+            if (__DEV__) console.warn('Push notification token sync notice:', pushErr);
+          }
         }
       } catch (error) {
         if (__DEV__) console.error('Failed to load user from storage', error);
@@ -247,7 +257,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         try {
           const pushToken = await notificationService.registerForPushNotificationsAsync();
           if (pushToken) {
-            await notificationService.sendTokenToBackend(pushToken);
+            await notificationService.sendTokenToBackend(pushToken, true);
           }
         } catch (e) {
           console.error('Notification setup failed:', e);
@@ -269,7 +279,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       let errorMessage = '';
       if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
-        errorMessage = `Server Timeout (15s): Cannot reach ${api.defaults.baseURL}. Please verify server at http://143.244.131.69:8081 is running.`;
+        errorMessage = `Server Timeout: Cannot reach ${api.defaults.baseURL}. Please check your connection.`;
       } else if (!error.response) {
         errorMessage = `Network Error: Cannot connect to ${api.defaults.baseURL}. (${error.message || 'Server offline or unreachable'})`;
       } else if (error.response?.data?.error) {
@@ -305,7 +315,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
         try {
           const pushToken = await notificationService.registerForPushNotificationsAsync();
-          if (pushToken) await notificationService.sendTokenToBackend(pushToken);
+          if (pushToken) await notificationService.sendTokenToBackend(pushToken, true);
         } catch (e) {
           if (__DEV__) console.error('Notification setup failed:', e);
         }
@@ -401,7 +411,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
         try {
           const pushToken = await notificationService.registerForPushNotificationsAsync();
-          if (pushToken) await notificationService.sendTokenToBackend(pushToken);
+          if (pushToken) await notificationService.sendTokenToBackend(pushToken, true);
         } catch {}
 
         return { error: null, user: finalUser };
@@ -428,7 +438,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     try {
       const pushToken = await notificationService.registerForPushNotificationsAsync();
-      if (pushToken) await notificationService.sendTokenToBackend(pushToken);
+      if (pushToken) await notificationService.sendTokenToBackend(pushToken, true);
     } catch (e) {
       if (__DEV__) console.error('Notification setup failed:', e);
     }
@@ -463,6 +473,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setLogoutLoading(true);
     try {
       delete api.defaults.headers.common['Authorization'];
+      notificationService._lastRegisteredToken = null;
       setUser(null);
       setHostels([]);
       await removeSecureItem('token');

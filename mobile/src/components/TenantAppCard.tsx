@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Share, ToastAndroid } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Share } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import QRCode from 'react-native-qrcode-svg';
 import * as Clipboard from 'expo-clipboard';
-import { TenantAppQRModal } from './TenantAppQRModal';
+import { useNavigation } from '@react-navigation/native';
+import { useAuth } from '../../contexts/AuthContext';
+import api from '../services/api';
 
 interface TenantAppCardProps {
     theme: any;
@@ -13,15 +15,21 @@ interface TenantAppCardProps {
     isMini?: boolean;
 }
 
-export const TenantAppCard: React.FC<TenantAppCardProps> = ({ theme, isDark, hostelCode = 'HOSTEX', isMini = false }) => {
-    const [modalVisible, setModalVisible] = useState(false);
+export const TenantAppCard: React.FC<TenantAppCardProps> = ({ theme, isDark, hostelCode = 'HOSTIX', isMini = false }) => {
+    const navigation = useNavigation<any>();
+    const { user } = useAuth();
     const [isCopied, setIsCopied] = useState(false);
+
+    const hostelId = user?.hostel_id || '1';
+    const apiBase = api.defaults.baseURL || 'https://api.143-244-131-69.sslip.io/api';
+    const baseUrl = apiBase.replace(/\/api$/, '');
+    const studentUrl = `${baseUrl}/register?hostelId=${hostelId}`;
 
     const handleShare = async () => {
         try {
             await Share.share({
-                message: `Download the Hostex Tenant App! Use our Hostel Code: ${hostelCode}. https://hostex.in/app`,
-                title: 'Hostex Tenant App',
+                message: `Self-register for our hostel/PG online: ${studentUrl}\nHostel Code: ${hostelCode}`,
+                title: 'Hostix Self-Registration',
             });
         } catch (error) {
             console.error('Error sharing:', error);
@@ -29,46 +37,48 @@ export const TenantAppCard: React.FC<TenantAppCardProps> = ({ theme, isDark, hos
     };
 
     const handleCopyCode = async () => {
-        await Clipboard.setStringAsync(hostelCode);
+        await Clipboard.setStringAsync(studentUrl);
         setIsCopied(true);
         setTimeout(() => setIsCopied(false), 2000);
+    };
+
+    const openQRSignup = () => {
+        navigation.navigate('QRSignup');
     };
 
     return (
         <View style={styles.wrapper}>
             <TouchableOpacity 
                 activeOpacity={0.9} 
-                onPress={() => setModalVisible(true)}
+                onPress={openQRSignup}
                 style={styles.cardShadow}
             >
                 {isMini ? (
                     <View style={{ backgroundColor: isDark ? '#2E1A47' : '#F5F3FF', borderRadius: 16, padding: 16, flexDirection: 'row', alignItems: 'center' }}>
                         <View style={{ flex: 1, paddingRight: 8 }}>
-                            <Text style={{ color: '#7C3AED', fontWeight: '800', fontSize: 13, marginBottom: 6 }}>Hostex Tenant App</Text>
-                            <Text style={{ color: isDark ? '#C4B5FD' : '#6B7280', fontSize: 10, marginBottom: 10, lineHeight: 14 }} numberOfLines={2}>
-                                Manage rent, maintenance & dues on the go.
+                            <Text style={{ color: '#7C3AED', fontWeight: '800', fontSize: 13, marginBottom: 4 }}>Student & Guest QR</Text>
+                            <Text style={{ color: isDark ? '#C4B5FD' : '#6B7280', fontSize: 10, marginBottom: 8, lineHeight: 14 }} numberOfLines={2}>
+                                Scan to self-register new admissions and short-stay guests.
                             </Text>
                             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                                 <TouchableOpacity 
-                                    style={{ backgroundColor: isDark ? '#4C1D95' : '#FFFFFF', paddingHorizontal: 6, paddingVertical: 4, borderRadius: 6, flexDirection: 'row', alignItems: 'center', gap: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 1 }}
-                                    onPress={handleCopyCode}
+                                    style={{ backgroundColor: isDark ? '#4C1D95' : '#FFFFFF', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, flexDirection: 'row', alignItems: 'center', gap: 4, elevation: 1 }}
+                                    onPress={openQRSignup}
                                 >
-                                    <Text style={{ color: isDark ? '#DDD6FE' : '#7C3AED', fontSize: 9, fontWeight: '700' }}>
-                                        {isCopied ? 'Copied' : `Code: ${hostelCode}`}
-                                    </Text>
-                                    <Ionicons name={isCopied ? "checkmark-outline" : "copy-outline"} size={10} color={isDark ? '#DDD6FE' : '#7C3AED'} />
+                                    <Ionicons name="qr-code" size={10} color={isDark ? '#DDD6FE' : '#7C3AED'} />
+                                    <Text style={{ color: isDark ? '#DDD6FE' : '#7C3AED', fontSize: 9, fontWeight: '700' }}>Open QR</Text>
                                 </TouchableOpacity>
                                 <TouchableOpacity 
-                                    style={{ backgroundColor: isDark ? '#4C1D95' : '#FFFFFF', paddingHorizontal: 6, paddingVertical: 4, borderRadius: 6, flexDirection: 'row', alignItems: 'center', gap: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 1 }}
+                                    style={{ backgroundColor: isDark ? '#4C1D95' : '#FFFFFF', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, flexDirection: 'row', alignItems: 'center', gap: 4, elevation: 1 }}
                                     onPress={handleShare}
                                 >
                                     <Ionicons name="share-social" size={10} color={isDark ? '#DDD6FE' : '#7C3AED'} />
-                                    <Text style={{ color: isDark ? '#DDD6FE' : '#7C3AED', fontSize: 9, fontWeight: '700' }}>Share</Text>
+                                    <Text style={{ color: isDark ? '#DDD6FE' : '#7C3AED', fontSize: 9, fontWeight: '700' }}>Share Link</Text>
                                 </TouchableOpacity>
                             </View>
                         </View>
                         <View style={{ backgroundColor: '#FFF', padding: 4, borderRadius: 8, justifyContent: 'center', alignItems: 'center' }}>
-                            <QRCode value="https://hostex.in/app" size={40} color="#1E293B" backgroundColor="#FFFFFF" />
+                            <QRCode value={studentUrl} size={42} color="#1E293B" backgroundColor="#FFFFFF" />
                         </View>
                     </View>
                 ) : (
@@ -81,26 +91,31 @@ export const TenantAppCard: React.FC<TenantAppCardProps> = ({ theme, isDark, hos
                         <View style={styles.contentRow}>
                             {/* Left Side: Text and Code */}
                             <View style={styles.leftContent}>
-                                <Text style={styles.title}>Install Hostex Tenant App</Text>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                                    <View style={{ backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 }}>
+                                        <Text style={{ color: '#FFFFFF', fontSize: 9.5, fontWeight: '800', textTransform: 'uppercase' }}>QR Signup</Text>
+                                    </View>
+                                </View>
+                                <Text style={styles.title}>Register Students & Guests</Text>
                                 <Text style={styles.subtitle} numberOfLines={2}>
-                                    Manage rent, maintenance, & dues directly from your mobile.
+                                    Self-admission & visitor check-in QR poster for your reception or entrance.
                                 </Text>
 
                                 <View style={styles.actionRow}>
                                     <TouchableOpacity 
                                         style={styles.codeButton}
-                                        onPress={handleCopyCode}
+                                        onPress={openQRSignup}
                                     >
-                                        <Text style={styles.codeText}>{isCopied ? 'Copied!' : `Code: ${hostelCode}`}</Text>
-                                        <Ionicons name={isCopied ? "checkmark-outline" : "copy-outline"} size={14} color="#7C3AED" />
+                                        <Ionicons name="qr-code" size={13} color="#7C3AED" />
+                                        <Text style={styles.codeText}>View QR Poster</Text>
                                     </TouchableOpacity>
                                     
                                     <TouchableOpacity 
                                         style={styles.secondaryButton}
                                         onPress={handleShare}
                                     >
-                                        <Ionicons name="share-social" size={14} color="#FFFFFF" />
-                                        <Text style={styles.secondaryButtonText}>Share</Text>
+                                        <Ionicons name="share-social" size={13} color="#FFFFFF" />
+                                        <Text style={styles.secondaryButtonText}>Share Link</Text>
                                     </TouchableOpacity>
                                 </View>
                             </View>
@@ -109,8 +124,8 @@ export const TenantAppCard: React.FC<TenantAppCardProps> = ({ theme, isDark, hos
                             <View style={styles.rightContent}>
                                 <View style={styles.qrWrapper}>
                                     <QRCode
-                                        value="https://hostex.in/app"
-                                        size={45}
+                                        value={studentUrl}
+                                        size={48}
                                         color="#1E293B"
                                         backgroundColor="#FFFFFF"
                                     />
@@ -120,14 +135,6 @@ export const TenantAppCard: React.FC<TenantAppCardProps> = ({ theme, isDark, hos
                     </LinearGradient>
                 )}
             </TouchableOpacity>
-
-            <TenantAppQRModal
-                visible={modalVisible}
-                onClose={() => setModalVisible(false)}
-                onShare={handleShare}
-                theme={theme}
-                isDark={isDark}
-            />
         </View>
     );
 };
@@ -162,12 +169,12 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
         fontSize: 15,
         fontWeight: '800',
-        marginBottom: 4,
+        marginBottom: 3,
     },
     subtitle: {
         color: 'rgba(255, 255, 255, 0.9)',
         fontSize: 11,
-        lineHeight: 16,
+        lineHeight: 15,
         marginBottom: 10,
     },
     actionRow: {
@@ -182,7 +189,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 10,
         paddingVertical: 6,
         borderRadius: 8,
-        gap: 6,
+        gap: 5,
     },
     codeText: {
         color: '#7C3AED',

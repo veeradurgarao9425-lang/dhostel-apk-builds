@@ -2,6 +2,7 @@ import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from './api';
 
 // Configure how notifications are handled when the app is open (foreground).
@@ -30,15 +31,19 @@ export const notificationService = {
     let token = null;
 
     if (Platform.OS === 'android') {
-      await Notifications.setNotificationChannelAsync('default', {
-        name: 'Hostix Notifications',
-        importance: Notifications.AndroidImportance.MAX,
-        vibrationPattern: [0, 250, 250, 250],
-        lightColor: '#6D4AFF',
-        sound: 'default',
-        enableVibrate: true,
-        showBadge: true,
-      });
+      try {
+        await Notifications.setNotificationChannelAsync('default', {
+          name: 'Hostix Notifications',
+          importance: Notifications.AndroidImportance.MAX,
+          vibrationPattern: [0, 250, 250, 250],
+          lightColor: '#6D4AFF',
+          sound: 'default',
+          enableVibrate: true,
+          showBadge: true,
+        });
+      } catch (channelErr) {
+        console.warn('Failed to configure Android notification channel:', channelErr);
+      }
     }
 
     if (Device.isDevice) {
@@ -53,38 +58,44 @@ export const notificationService = {
         return null;
       }
       
+      // Fetch native FCM Device Token (for direct Google Firebase Cloud Messaging)
       try {
-        // Retrieve projectId for Expo push token safely
-        const projectId =
-          Constants?.expoConfig?.extra?.eas?.projectId ??
-          Constants?.easConfig?.projectId;
-          
-        const tokenOptions = projectId ? { projectId } : undefined;
-        const tokenResponse = await Notifications.getExpoPushTokenAsync(tokenOptions);
-        token = tokenResponse.data;
-        console.log('Expo Push Token retrieved:', token);
-        
-        if (token) {
+        const deviceTokenResponse = await Notifications.getDevicePushTokenAsync();
+        if (deviceTokenResponse?.data) {
+          token = deviceTokenResponse.data;
+          console.log('Native FCM Device Token retrieved:', token);
           await this.sendTokenToBackend(token);
         }
-      } catch (error: any) {
-        console.warn('Push token retrieval skipped:', error?.message || error);
+      } catch (fcmTokenErr: any) {
+        console.log('Device push token note:', fcmTokenErr?.message || fcmTokenErr);
       }
     } else {
-      console.log('Must use physical device for Push Notifications');
+      console.log('Push notifications require a physical device or development build');
     }
 
     return token;
   },
 
-  async sendTokenToBackend(token: string) {
-    if (this._lastRegisteredToken === token) {
+  async sendTokenToBackend(token: string, force = false) {
+    if (!token) return;
+    if (!force && this._lastRegisteredToken === token) {
       return;
     }
-    // Only register when an active authorization header is present
+    
+    // Ensure Authorization header is present, fallback to AsyncStorage if needed
     if (!api.defaults.headers.common['Authorization']) {
-      return;
+      try {
+        const storedToken = await AsyncStorage.getItem('token');
+        if (storedToken) {
+          api.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
+        } else {
+          return;
+        }
+      } catch {
+        return;
+      }
     }
+
     try {
       const response = await api.post('/notifications/register-token', {
         push_token: token,
@@ -131,7 +142,7 @@ export const notificationService = {
       if (!response) return;
 
       const identifier = response.notification?.request?.identifier;
-      if (identifier) {
+      if (isColdStart && identifier) {
         if (this._handledNotificationIds.has(identifier)) {
           return;
         }
@@ -143,39 +154,146 @@ export const notificationService = {
       const title = (response?.notification?.request?.content?.title || '').toLowerCase();
       const dataType = typeof data.type === 'string' ? data.type.toUpperCase() : '';
 
-      // Direct screen targeting if provided in payload data
+      // 1. Direct screen targeting if provided in payload data
       if (data.screen && typeof data.screen === 'string') {
-        navigate(data.screen, data.params || data);
+        let parsedParams = data.params;
+        if (typeof parsedParams === 'string') {
+          try { parsedParams = JSON.parse(parsedParams); } catch {}
+        }
+        navigate(data.screen, parsedParams || data);
         return;
       }
       
-      if (dataType === 'NEW ADMISSION' || dataType === 'NEW_ADMISSION' || title.includes('admission')) {
-        if (data.id || data.studentId || data.student_id) {
-          navigate('StudentDetails', { studentId: data.id || data.studentId || data.student_id });
+      const sid = data.studentId || data.student_id || data.id;
+      const rid = data.roomId || data.room_id;
+      const gid = data.guestId || data.guest_id;
+      const nid = data.noticeId || data.notice_id;
+      const cid = data.complaintId || data.complaint_id;
+
+      // 2. Overdue / Due / Pending Rent / Vacate Bed -> Student Details (Single) or Students List (Bulk)
+      if (
+        dataType === 'VACATE' ||
+        dataType === 'DUE_REMINDER' ||
+        dataType === 'PENDING_PAYMENT' ||
+        dataType === 'OVERDUE' ||
+        dataType === 'PAYMENT DUE' ||
+        dataType === 'PAYMENT_DUE' ||
+        title.includes('vacat') ||
+        title.includes('overdue') ||
+        title.includes('due') ||
+        title.includes('reminder')
+      ) {
+        if (sid) {
+          navigate('StudentDetails', { studentId: sid, activeTab: 'payments' });
         } else {
-          navigate('Students');
+          navigate('Students', { tab: 'Overdue' });
         }
-      } else if (title.includes('payment') || title.includes('collect') || title.includes('due') || dataType === 'PAYMENT' || dataType === 'SUCCESS' || dataType === 'DUE_REMINDER') {
-        navigate('FeeManagement');
-      } else if (title.includes('room') || title.includes('assign') || title.includes('vacate') || dataType === 'ROOM_ALLOCATED' || dataType === 'VACATE') {
-        navigate('Rooms');
-      } else if (dataType === 'NOTICE' || title.includes('notice')) {
-        navigate('Notices');
-      } else if (dataType === 'COMPLAINT' || dataType === 'MAINTENANCE' || title.includes('complaint')) {
-        navigate('ComplaintsManagement');
-      } else if (dataType === 'EXPENSE' || title.includes('expense')) {
+        return;
+      }
+
+      // 3. New Admission / QR Code / Registration
+      if (
+        dataType === 'QR_CODE' ||
+        dataType === 'PREBOOKING' ||
+        dataType === 'NEW_ADMISSION_REQUEST' ||
+        dataType === 'NEW ADMISSION' ||
+        dataType === 'NEW_ADMISSION' ||
+        title.includes('qr') ||
+        title.includes('registration') ||
+        title.includes('admission') ||
+        title.includes('enrolled')
+      ) {
+        if (sid) {
+          navigate('StudentDetails', { studentId: sid });
+        } else {
+          navigate('Students', { tab: 'All' });
+        }
+        return;
+      }
+
+      // 4. Payment Verification / Verify Rent / Payment Proof
+      if (
+        dataType === 'PAYMENT_PROOF' ||
+        dataType === 'PAYMENT PROOF' ||
+        dataType === 'PAYMENT_VERIFICATION' ||
+        title.includes('proof') ||
+        title.includes('verify')
+      ) {
+        navigate('PaymentVerification', data);
+        return;
+      }
+
+      // 5. Payment Received / Collected Rent -> Tenant Transactions (Single) or Collected Payments (Bulk)
+      if (
+        dataType === 'PAYMENT' ||
+        dataType === 'PAYMENT_SUCCESS' ||
+        dataType === 'PAYMENT_COLLECTED' ||
+        title.includes('payment') ||
+        title.includes('collect') ||
+        title.includes('receipt') ||
+        title.includes('paid')
+      ) {
+        if (sid) {
+          navigate('TenantTransactions', {
+            studentId: sid,
+            studentName: data.student_name || data.studentName,
+          });
+        } else {
+          navigate('CollectedPayments');
+        }
+        return;
+      }
+
+      // 6. Room Related -> Single Room Details or Rooms List
+      if (dataType === 'ROOM' || dataType === 'ROOM_ALLOCATED' || title.includes('room') || title.includes('bed')) {
+        if (rid) {
+          navigate('RoomDetails', { roomId: rid });
+        } else {
+          navigate('Rooms');
+        }
+        return;
+      }
+
+      // 7. Guest / Short-Stay Check-in -> Single Guest Details or Guests List
+      if (dataType === 'GUEST' || dataType === 'GUEST_CHECKIN' || title.includes('guest')) {
+        if (gid) {
+          navigate('GuestDetails', { guestId: gid });
+        } else {
+          navigate('Guests');
+        }
+        return;
+      }
+
+      // 8. Complaint / Maintenance -> Complaints Management
+      if (dataType === 'COMPLAINT' || dataType === 'MAINTENANCE' || title.includes('complaint') || title.includes('maintenance')) {
+        navigate('ComplaintsManagement', data);
+        return;
+      }
+
+      // 9. Notice -> Notice Details or Notices List
+      if (dataType === 'NOTICE' || title.includes('notice')) {
+        if (nid) {
+          navigate('NoticeDetails', { noticeId: nid, notice: data });
+        } else {
+          navigate('Notices');
+        }
+        return;
+      }
+
+      // 10. Expenses
+      if (dataType === 'EXPENSE' || title.includes('expense')) {
         navigate('Expenses');
-      } else if (dataType === 'PREBOOKING' || title.includes('pre-booking')) {
-        navigate('PreBooking');
-      } else if (dataType === 'DOCUMENT' || title.includes('receipt')) {
-        navigate('FeeManagement');
-      } else if (dataType === 'SUMMARY' || title.includes('summary')) {
+        return;
+      }
+
+      // 11. Summary Reports
+      if (dataType === 'SUMMARY' || title.includes('summary') || title.includes('report')) {
         navigate('Reports');
-      } else if (title.includes('tenant')) {
-        navigate('Rooms');
-      } else if (!isColdStart) {
-        // Only navigate to general Notifications screen if this was an active user tap,
-        // never from an automatic cold-start resolution
+        return;
+      }
+
+      // Fallback: Notifications screen
+      if (!isColdStart) {
         navigate('Notifications');
       }
     };

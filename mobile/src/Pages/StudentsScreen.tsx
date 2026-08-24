@@ -23,6 +23,7 @@ import DateTimePickerModal from "react-native-modal-datetime-picker";
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../services/api';
+import { getResolvedImageUrl } from '../utils/imageHelper';
 import { ProfileMenu } from '../components/ProfileMenu';
 import { HeaderNotification } from '../components/HeaderNotification';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -128,17 +129,7 @@ const StudentCard = React.memo(({ student, onPress, onWhatsApp, onCall, onToggle
                     <View style={[styles.avatarBox, { backgroundColor: avatarBg, borderColor: isDark ? '#334155' : '#E2E8F0' }]}>
                         {(() => {
                             const rawPhoto = student.profile_photo_url || student.photo || student.profile_photo;
-                            let photoUri: string | null = null;
-                            if (rawPhoto) {
-                                if (rawPhoto.includes('r2.cloudflarestorage.com/hostix-media/')) {
-                                    const key = rawPhoto.split('hostix-media/')[1];
-                                    photoUri = `http://143.244.131.69:8081/api/media/${key}`;
-                                } else if (rawPhoto.startsWith('http://') || rawPhoto.startsWith('https://')) {
-                                    photoUri = rawPhoto;
-                                } else {
-                                    photoUri = `http://143.244.131.69:8081${rawPhoto.startsWith('/') ? '' : '/'}${rawPhoto}`;
-                                }
-                            }
+                            const photoUri = getResolvedImageUrl(rawPhoto);
                             return photoUri && !imageError ? (
                                 <Image 
                                     source={{ uri: photoUri }} 
@@ -455,12 +446,13 @@ export default function StudentsScreen({ navigation, route }: any) {
             const params: Record<string, any> = { page: pageNum, limit: PAGE_SIZE };
             if (debouncedSearch) params.search = debouncedSearch;
 
-            const statusParam = activeTab === 'Active' ? 1 : activeTab === 'Inactive' ? 0 : activeTab === 'PreBooked' ? 2 : activeTab === 'QRRegister' ? 3 : activeTab === 'Rejected' ? 4 : undefined;
+            const statusParam = activeTab === 'Active' ? 1 : activeTab === 'Inactive' ? 0 : activeTab === 'PreBooked' ? 2 : activeTab === 'QRRegister' ? 3 : activeTab === 'Rejected' ? 4 : activeTab === 'Unallocated' ? 1 : undefined;
             if (statusParam !== undefined) {
                 params.status = statusParam;
             }
             if (activeTab === 'Unallocated') {
                 params.unallocated = true;
+                params.status = 1;
             }
             if (activeTab === 'AdmissionPending') {
                 params.admissionPending = true;
@@ -895,7 +887,7 @@ export default function StudentsScreen({ navigation, route }: any) {
                 style={[styles.fab, { backgroundColor: COLORS.primary }]}
                 onPress={() => navigation.navigate('AddStudent')}
             >
-                <Plus color="#FFF" size={20} strokeWidth={3.0} />
+                <Plus color="#FFF" size={24} strokeWidth={3.0} />
             </TouchableOpacity>
 
             {/* Confirm Dialog for status toggle */}
@@ -1222,7 +1214,7 @@ const styles = StyleSheet.create({
     allocateBannerText: { fontSize: 13, fontWeight: '800', color: '#DC2626', flexShrink: 1 },
     allocateBannerHint: { fontSize: 11, fontWeight: '700', color: '#B91C1C', marginLeft: 8 },
     fab: {
-        position: 'absolute', bottom: 140, right: 20,
+        position: 'absolute', bottom: 95, right: 20,
         width: 52, height: 52, borderRadius: 26,
         justifyContent: 'center', alignItems: 'center', elevation: 10,
         shadowColor: '#4F46E5', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.35, shadowRadius: 6,

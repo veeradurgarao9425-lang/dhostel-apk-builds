@@ -3,6 +3,8 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
+    "build": "npm --prefix backend run build",
+    "start": "npm --prefix backend start",
     "build-apk": "git push origin main",
     "build-apk:secondary": "git checkout --orphan temp-build-apk && git add . && git commit -m \"Trigger APK Build\" && git push build-repo temp-build-apk:main -f && git checkout main && git branch -D temp-build-apk"
   },

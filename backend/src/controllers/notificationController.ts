@@ -17,10 +17,11 @@ export const registerToken = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ success: false, error: 'push_token is required' });
     }
 
-    // Tenants (role_id 3) store by student_id; owners/staff store by user_id
+    // Tenants (role_id 3) store both student_id and user_id; owners/staff store user_id
     const isTenant = user.role_id === 3;
     const upsertData: any = {
       push_token,
+      user_id: user.user_id,
       device_name: device_name || null,
       platform: platform || null,
       updated_at: new Date(),
@@ -29,9 +30,7 @@ export const registerToken = async (req: AuthRequest, res: Response) => {
     if (isTenant) {
       const realStudentId = await getAuthenticatedStudentId(user) || user.user_id;
       upsertData.student_id = realStudentId;
-      upsertData.user_id = null;
     } else {
-      upsertData.user_id = user.user_id;
       upsertData.student_id = null;
     }
 

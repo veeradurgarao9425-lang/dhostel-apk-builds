@@ -366,6 +366,33 @@ export async function patchDatabaseSchema() {
       console.error('[schema-patch] Error creating relations_master table:', e.message);
     }
 
+    // Ensure students table has admission_status, admission_fee, is_old_student, and guardian_relation
+    try {
+      if (tableNamesLower.includes('students')) {
+        const [studentCols] = await db.raw("SHOW COLUMNS FROM students");
+        const sColNames = (studentCols as any[]).map(c => c.Field?.toLowerCase());
+
+        if (!sColNames.includes('admission_status')) {
+          console.log('[schema-patch] Adding admission_status to students table...');
+          await db.raw("ALTER TABLE students ADD COLUMN admission_status TINYINT DEFAULT 0");
+        }
+        if (!sColNames.includes('admission_fee')) {
+          console.log('[schema-patch] Adding admission_fee to students table...');
+          await db.raw("ALTER TABLE students ADD COLUMN admission_fee DECIMAL(10,2) DEFAULT 0");
+        }
+        if (!sColNames.includes('is_old_student')) {
+          console.log('[schema-patch] Adding is_old_student to students table...');
+          await db.raw("ALTER TABLE students ADD COLUMN is_old_student TINYINT DEFAULT 0");
+        }
+        if (!sColNames.includes('guardian_relation')) {
+          console.log('[schema-patch] Adding guardian_relation to students table...');
+          await db.raw("ALTER TABLE students ADD COLUMN guardian_relation INT NULL");
+        }
+      }
+    } catch (e: any) {
+      console.error('[schema-patch] Error checking/patching students table columns:', e.message);
+    }
+
     // 1.5 Ensure room_amenities_master exists
     try {
       if (!tableNamesLower.includes('room_amenities_master')) {
@@ -546,6 +573,9 @@ export async function patchDatabaseSchema() {
           await db.raw("ALTER TABLE students ADD COLUMN is_active TINYINT DEFAULT 1");
           await db.raw("UPDATE students SET is_active = IF(status = 1, 1, 0)");
         }
+        try {
+          await db.raw("ALTER TABLE students MODIFY COLUMN admission_status VARCHAR(50) DEFAULT 'Unpaid'");
+        } catch (_) {}
         if (!columnNames.includes('floor_number')) {
           console.log('[schema-patch] adding floor_number to students...');
           if (columnNames.includes('floor')) {
@@ -610,6 +640,34 @@ export async function patchDatabaseSchema() {
         if (!columnNames.includes('inactive_date')) {
           console.log('[schema-patch] adding inactive_date to students...');
           await db.raw("ALTER TABLE students ADD COLUMN inactive_date DATE NULL COMMENT 'Date student became inactive/vacated'");
+        }
+        if (!columnNames.includes('date_of_birth')) {
+          console.log('[schema-patch] adding date_of_birth to students...');
+          await db.raw("ALTER TABLE students ADD COLUMN date_of_birth DATE NULL");
+        }
+        if (!columnNames.includes('gender')) {
+          console.log('[schema-patch] adding gender to students...');
+          await db.raw("ALTER TABLE students ADD COLUMN gender VARCHAR(20) NULL");
+        }
+        if (!columnNames.includes('guardian_name')) {
+          console.log('[schema-patch] adding guardian_name to students...');
+          await db.raw("ALTER TABLE students ADD COLUMN guardian_name VARCHAR(100) NULL");
+        }
+        if (!columnNames.includes('guardian_phone')) {
+          console.log('[schema-patch] adding guardian_phone to students...');
+          await db.raw("ALTER TABLE students ADD COLUMN guardian_phone VARCHAR(20) NULL");
+        }
+        if (!columnNames.includes('guardian_relation')) {
+          console.log('[schema-patch] adding guardian_relation to students...');
+          await db.raw("ALTER TABLE students ADD COLUMN guardian_relation VARCHAR(50) NULL");
+        }
+        if (!columnNames.includes('id_proof_type')) {
+          console.log('[schema-patch] adding id_proof_type to students...');
+          await db.raw("ALTER TABLE students ADD COLUMN id_proof_type INT NULL");
+        }
+        if (!columnNames.includes('present_working_address')) {
+          console.log('[schema-patch] adding present_working_address to students...');
+          await db.raw("ALTER TABLE students ADD COLUMN present_working_address TEXT NULL");
         }
       }
     } catch (e: any) {
@@ -804,6 +862,88 @@ export async function patchDatabaseSchema() {
       console.error('[schema-patch] Error checking/updating rooms columns:', e.message);
     }
 
+    // 2.9 Ensure guests table exists & has all columns
+    try {
+      if (!tableNamesLower.includes('guests')) {
+        console.log('[schema-patch] creating missing guests table...');
+        await db.raw(`
+          CREATE TABLE guests (
+            guest_id INT AUTO_INCREMENT PRIMARY KEY,
+            hostel_id INT NOT NULL,
+            full_name VARCHAR(255) NOT NULL,
+            phone VARCHAR(20) NULL,
+            email VARCHAR(255) NULL,
+            gender VARCHAR(20) NULL DEFAULT 'Male',
+            id_proof_type_id INT NULL,
+            id_proof_number VARCHAR(100) NULL,
+            check_in_date DATE NOT NULL,
+            check_out_date DATE NULL,
+            days INT NOT NULL DEFAULT 1,
+            per_day_amount DECIMAL(10, 2) NULL DEFAULT 0,
+            amount_paid DECIMAL(10, 2) NULL DEFAULT 0,
+            purpose VARCHAR(255) NULL,
+            room_number VARCHAR(50) NULL,
+            status VARCHAR(50) NOT NULL DEFAULT 'staying',
+            notes TEXT NULL,
+            profile_photo_url VARCHAR(500) NULL,
+            id_proof_front_url VARCHAR(500) NULL,
+            id_proof_back_url VARCHAR(500) NULL,
+            overstay_notified TINYINT DEFAULT 0,
+            checked_out_at DATETIME NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            FOREIGN KEY (hostel_id) REFERENCES hostel_master(hostel_id) ON DELETE CASCADE
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        `);
+        console.log('[schema-patch] creating indexes for guests table...');
+        await db.raw("CREATE INDEX idx_guests_hostel ON guests(hostel_id)");
+        await db.raw("CREATE INDEX idx_guests_status ON guests(status)");
+      } else {
+        console.log('[schema-patch] Checking guests columns...');
+        const [columns] = await db.raw("SHOW COLUMNS FROM guests");
+        const columnNames = (columns as any[]).map(col => col.Field.toLowerCase());
+
+        if (!columnNames.includes('gender')) {
+          console.log('[schema-patch] adding gender to guests...');
+          await db.raw("ALTER TABLE guests ADD COLUMN gender VARCHAR(20) NULL DEFAULT 'Male'");
+        }
+        if (!columnNames.includes('status')) {
+          console.log('[schema-patch] adding status to guests...');
+          await db.raw("ALTER TABLE guests ADD COLUMN status VARCHAR(50) NOT NULL DEFAULT 'staying'");
+        }
+        if (!columnNames.includes('purpose')) {
+          console.log('[schema-patch] adding purpose to guests...');
+          await db.raw("ALTER TABLE guests ADD COLUMN purpose VARCHAR(255) NULL");
+        }
+        if (!columnNames.includes('notes')) {
+          console.log('[schema-patch] adding notes to guests...');
+          await db.raw("ALTER TABLE guests ADD COLUMN notes TEXT NULL");
+        }
+        if (!columnNames.includes('profile_photo_url')) {
+          console.log('[schema-patch] adding profile_photo_url to guests...');
+          await db.raw("ALTER TABLE guests ADD COLUMN profile_photo_url VARCHAR(500) NULL");
+        }
+        if (!columnNames.includes('id_proof_front_url')) {
+          console.log('[schema-patch] adding id_proof_front_url to guests...');
+          await db.raw("ALTER TABLE guests ADD COLUMN id_proof_front_url VARCHAR(500) NULL");
+        }
+        if (!columnNames.includes('id_proof_back_url')) {
+          console.log('[schema-patch] adding id_proof_back_url to guests...');
+          await db.raw("ALTER TABLE guests ADD COLUMN id_proof_back_url VARCHAR(500) NULL");
+        }
+        if (!columnNames.includes('overstay_notified')) {
+          console.log('[schema-patch] adding overstay_notified to guests...');
+          await db.raw("ALTER TABLE guests ADD COLUMN overstay_notified TINYINT DEFAULT 0");
+        }
+        if (!columnNames.includes('checked_out_at')) {
+          console.log('[schema-patch] adding checked_out_at to guests...');
+          await db.raw("ALTER TABLE guests ADD COLUMN checked_out_at DATETIME NULL");
+        }
+      }
+    } catch (e: any) {
+      console.error('[schema-patch] Error checking/updating guests table:', e.message);
+    }
+
     // 3. Ensure income table exists
     try {
       if (!tableNamesLower.includes('income')) {
@@ -879,6 +1019,10 @@ export async function patchDatabaseSchema() {
         if (!columnNames.includes('updated_at')) {
           console.log('[schema-patch] adding updated_at to expenses...');
           await db.raw("ALTER TABLE expenses ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP");
+        }
+        if (!columnNames.includes('attachment_url')) {
+          console.log('[schema-patch] adding attachment_url to expenses...');
+          await db.raw("ALTER TABLE expenses ADD COLUMN attachment_url TEXT NULL");
         }
       }
     } catch (e: any) {
@@ -1288,7 +1432,9 @@ export async function patchDatabaseSchema() {
           { name: 'Salary', desc: 'Staff salaries' },
           { name: 'Maintenance', desc: 'Repairs and maintenance' },
           { name: 'Internet Bill', desc: 'Internet and WiFi charges' },
-          { name: 'Lift Bill', desc: 'Lift maintenance and electricity charges' }
+          { name: 'Lift Bill', desc: 'Lift maintenance and electricity charges' },
+          { name: 'Deposit Refund', desc: 'Tenant security deposit refunds' },
+          { name: 'Rent', desc: 'Property and building rent' }
         ];
 
         for (const cat of defaultCats) {
@@ -1299,6 +1445,19 @@ export async function patchDatabaseSchema() {
               description: cat.desc
             });
           }
+        }
+
+        // Re-link any miscategorized deposit refund expenses to Deposit Refund category
+        const depRefundCat = await db('expense_categories')
+          .whereRaw('LOWER(category_name) LIKE ?', ['%deposit refund%'])
+          .orWhereRaw('LOWER(category_name) LIKE ?', ['%deposit%'])
+          .first();
+
+        if (depRefundCat && (depRefundCat.category_id || depRefundCat.id)) {
+          const targetCatId = depRefundCat.category_id || depRefundCat.id;
+          await db('expenses')
+            .whereRaw("LOWER(description) LIKE ? OR LOWER(description) LIKE ?", ['%deposit refund%', '%vacate%'])
+            .update({ category_id: targetCatId });
         }
       }
     } catch (e: any) {
@@ -1395,8 +1554,12 @@ export async function patchDatabaseSchema() {
         }
         // Make user_id nullable since notifications can now be for students
         await db.raw("ALTER TABLE notifications MODIFY COLUMN user_id INT NULL");
-        // Change notification_type to VARCHAR to support new types without ENUM issues
-        await db.raw("ALTER TABLE notifications MODIFY COLUMN notification_type VARCHAR(100) NOT NULL");
+        if (!columnNames.includes('notification_type')) {
+          console.log('[schema-patch] adding notification_type to notifications...');
+          await db.raw("ALTER TABLE notifications ADD COLUMN notification_type VARCHAR(100) DEFAULT 'General'");
+        } else {
+          await db.raw("ALTER TABLE notifications MODIFY COLUMN notification_type VARCHAR(100) NOT NULL");
+        }
       }
     } catch (e: any) {
       console.error('[schema-patch] Error updating notifications for ecosystem:', e.message);
@@ -2047,6 +2210,45 @@ export async function patchDatabaseSchema() {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
       `);
 
+      // ── Centralized notifications enhancements ──────────────────────────────
+      if (tableNamesLower.includes('notifications')) {
+        try {
+          const [notifCols] = await db.raw("SHOW COLUMNS FROM notifications");
+          const notifColNames = (notifCols as any[]).map(c => (c.Field || c.field || '').toLowerCase());
+          
+          if (!notifColNames.includes('screen')) {
+            console.log('[schema-patch] adding screen column to notifications...');
+            await db.raw("ALTER TABLE notifications ADD COLUMN screen VARCHAR(100) NULL");
+          }
+          if (!notifColNames.includes('params')) {
+            console.log('[schema-patch] adding params column to notifications...');
+            await db.raw("ALTER TABLE notifications ADD COLUMN params TEXT NULL");
+          }
+          if (!notifColNames.includes('reference_type')) {
+            console.log('[schema-patch] adding reference_type column to notifications...');
+            await db.raw("ALTER TABLE notifications ADD COLUMN reference_type VARCHAR(100) NULL");
+          }
+          if (!notifColNames.includes('reference_id')) {
+            console.log('[schema-patch] adding reference_id column to notifications...');
+            await db.raw("ALTER TABLE notifications ADD COLUMN reference_id VARCHAR(100) NULL");
+          }
+          if (!notifColNames.includes('deep_link')) {
+            console.log('[schema-patch] adding deep_link column to notifications...');
+            await db.raw("ALTER TABLE notifications ADD COLUMN deep_link VARCHAR(255) NULL");
+          }
+          if (!notifColNames.includes('metadata')) {
+            console.log('[schema-patch] adding metadata column to notifications...');
+            await db.raw("ALTER TABLE notifications ADD COLUMN metadata JSON NULL");
+          }
+          if (!notifColNames.includes('deduplicate_key')) {
+            console.log('[schema-patch] adding deduplicate_key column to notifications...');
+            await db.raw("ALTER TABLE notifications ADD COLUMN deduplicate_key VARCHAR(150) NULL");
+          }
+        } catch (notifErr: any) {
+          console.warn('[schema-patch] notifications table patch warning:', notifErr.message);
+        }
+      }
+
       // Developer-facing notification centre. Separate from `notifications`
       // (which is hostel-scoped, NOT NULL hostel_id, and consumed by the owner /
       // tenant apps) because platform events like "new owner registered" have no
@@ -2068,28 +2270,32 @@ export async function patchDatabaseSchema() {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
       `);
 
-      // Seed default developer account if not exists
-      const existingDev = await db('developer_users')
-        .where('username', 'durgarao9425')
-        .orWhere('email', 'durgarao9425@hostix.com')
-        .first();
+      // Seed initial developer account if configured in environment variables and not already present
+      const devUsername = process.env.SUPER_ADMIN_USERNAME;
+      const devPassword = process.env.SUPER_ADMIN_PASSWORD;
+      const devEmail = process.env.SUPER_ADMIN_EMAIL || (devUsername ? `${devUsername}@hostix.com` : null);
 
-      if (!existingDev) {
-        console.log('[schema-patch] Seeding default Master Admin (durgarao9425)...');
-        // Pre-computed bcrypt hash of 'Durgarao@9425' with salt rounds 10
-        const defaultHash = '$2a$10$7Z2v1V4v3eG.4z4GzK5H1uV7uM8oY0H9lE.uR4H6V8L1jK9X9Q1y6'; // or hash dynamically
-        const { hashPassword } = await import('../utils/bcrypt.js');
-        const dynamicHash = await hashPassword('Durgarao@9425');
+      if (devUsername && devPassword) {
+        const existingDev = await db('developer_users')
+          .where('username', devUsername)
+          .orWhere('email', devEmail)
+          .first();
 
-        await db('developer_users').insert({
-          username: 'durgarao9425',
-          email: 'durgarao9425@hostix.com',
-          password_hash: dynamicHash || defaultHash,
-          full_name: 'Durgarao Developer',
-          role_title: 'Developer Super Admin',
-          status: 'ACTIVE',
-        });
-        console.log('[schema-patch] Default Master Admin user seeded successfully.');
+        if (!existingDev) {
+          console.log(`[schema-patch] Seeding initial developer user (${devUsername})...`);
+          const { hashPassword } = await import('../utils/bcrypt.js');
+          const passwordHash = await hashPassword(devPassword);
+
+          await db('developer_users').insert({
+            username: devUsername,
+            email: devEmail,
+            password_hash: passwordHash,
+            full_name: 'Developer Super Admin',
+            role_title: 'Developer Super Admin',
+            status: 'ACTIVE',
+          });
+          console.log('[schema-patch] Developer user seeded successfully from environment configuration.');
+        }
       }
       // Ensure high-performance composite indexes on tables
       try {

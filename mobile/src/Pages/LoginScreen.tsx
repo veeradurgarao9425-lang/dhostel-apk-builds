@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import {
     View,
     Text,
@@ -13,7 +13,9 @@ import {
     Keyboard,
     TouchableWithoutFeedback,
     Image,
+    BackHandler,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
@@ -41,16 +43,39 @@ export default function LoginScreen({ navigation }: any) {
     const scrollRef = useRef<ScrollView>(null);
     const passwordRef = useRef<TextInput>(null);
 
-    // If user is already authenticated when landing on LoginScreen, route immediately
+    // Static navigation handler: Back ALWAYS routes strictly to the RoleSelect screen
+    const handleGoBackToRoleSelect = useCallback(() => {
+        navigation.reset({
+            index: 0,
+            routes: [{ name: 'RoleSelect' }],
+        });
+        return true;
+    }, [navigation]);
+
+    // Hardware back press listener on Android
+    useFocusEffect(
+        useCallback(() => {
+            const onBackPress = () => {
+                handleGoBackToRoleSelect();
+                return true;
+            };
+            const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+            return () => subscription.remove();
+        }, [handleGoBackToRoleSelect])
+    );
+
+    // If user is already authenticated when landing on LoginScreen, route immediately (initial mount only)
+    const navigatedRef = useRef(false);
     React.useEffect(() => {
-        if (user) {
+        if (user && !isLoading && !navigatedRef.current) {
+            navigatedRef.current = true;
             if (user.role === 'DEVELOPER' || (user as any).is_developer) {
                 navigation.reset({ index: 0, routes: [{ name: 'DeveloperMain' }] });
             } else {
                 navigation.reset({ index: 0, routes: [{ name: 'Main' }] });
             }
         }
-    }, [user, navigation]);
+    }, [user, isLoading, navigation]);
 
     // Keyboard handling. Replaces KeyboardAvoidingView(behavior="height"), whose
     // stale container height was leaving a grey band along the bottom of this
@@ -150,7 +175,7 @@ export default function LoginScreen({ navigation }: any) {
                     {/* Back Button */}
                     <TouchableOpacity
                         activeOpacity={0.8}
-                        onPress={() => navigation.canGoBack() ? navigation.goBack() : navigation.replace('RoleSelect')}
+                        onPress={handleGoBackToRoleSelect}
                         style={[styles.backBtn, { top: insets.top > 0 ? insets.top + 10 : 20 }]}
                     >
                         <Ionicons name="arrow-back" size={22} color="#FFFFFF" />
@@ -299,7 +324,7 @@ export default function LoginScreen({ navigation }: any) {
 
                 {/* Bottom branding */}
                 <View style={[styles.bottomBranding, { flex: 1, justifyContent: 'flex-end', paddingBottom: Math.max(insets.bottom, 10) }]}>
-                    <Text style={styles.bottomBrandingText}>Powered by Hostix • PG OS</Text>
+                    <Text style={styles.bottomBrandingText}>Powered by Host<Text style={{ color: '#FCD34D' }}>ix</Text> • PG OS</Text>
                 </View>
             </ScrollView>
         </View>
@@ -397,19 +422,21 @@ const styles = StyleSheet.create({
     alertBox: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#F3EEFF',
+        backgroundColor: '#FEF2F2',
         borderRadius: 12,
         padding: 14,
         marginBottom: 20,
+        borderWidth: 1,
+        borderColor: '#FEE2E2',
         borderLeftWidth: 4,
-        borderLeftColor: '#7C3AED',
+        borderLeftColor: '#EF4444',
         gap: 10,
     },
     alertText: {
         fontSize: 13,
-        color: '#5F2EEA',
+        color: '#DC2626',
         flex: 1,
-        fontWeight: '500',
+        fontWeight: '600',
     },
     inputGroup: {
         marginBottom: 18,

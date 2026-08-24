@@ -1,13 +1,14 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
     View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity,
-    StatusBar, RefreshControl, ScrollView, Image,
+    StatusBar, RefreshControl, ScrollView, Image, Linking, Modal, Pressable,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Plus } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import { toLocalDateStr } from '../utils/dateUtils';
+import { getResolvedImageUrl } from '../utils/imageHelper';
 import api from '../services/api';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useToast } from '../context/ToastContext';
@@ -54,7 +55,7 @@ export default function GuestsScreen() {
     const [refreshing, setRefreshing] = useState(false);
     const [search, setSearch] = useState('');
     const [dateFilter, setDateFilter] = useState<string | null>(null);
-    const [activeTab, setActiveTab] = useState<'All' | 'staying' | 'checked_out'>('All');
+    const [activeTab, setActiveTab] = useState<'All' | 'pending' | 'staying' | 'checked_out'>('All');
     const [showDatePicker, setShowDatePicker] = useState(false);
 
     const isMounted = useRef(false);
@@ -64,6 +65,8 @@ export default function GuestsScreen() {
     const [dangerModal, setDangerModal] = useState<{ visible: boolean; guest: any | null; mode: 'checkout' | 'delete' }>({
         visible: false, guest: null, mode: 'delete'
     });
+
+    const [previewImage, setPreviewImage] = useState<string | null>(null);
 
     // Auto-bill checkout sheet state
     const [checkoutSheet, setCheckoutSheet] = useState<{ visible: boolean; guest: any | null; totalBill: number; finalAmount: string }>({
@@ -173,29 +176,32 @@ export default function GuestsScreen() {
     });
 
     const renderItem = ({ item }: any) => {
-        const isStaying = item.status === 'staying' || !item.status;
+        const isPending = item.status === 'pending';
+        const isStaying = item.status === 'staying' || (!item.status && !isPending);
         const isOverstay = item.is_overstay;
         const isCheckedOut = item.status === 'checked_out';
 
         return (
             <TouchableOpacity 
-                activeOpacity={0.8}
-                onPress={() => navigation.navigate('AddGuest', { guest: item, isEdit: true })}
+                activeOpacity={0.85}
+                onPress={() => {
+                    navigation.navigate('GuestDetails', { guestId: item.guest_id, guest: item });
+                }}
                 style={[
                     s.card,
                     {
                         backgroundColor: theme.cardBg,
-                        borderColor: isOverstay ? '#FCA5A5' : (isDark ? '#334155' : '#E2E8F0'),
+                        borderColor: isPending ? '#FDE68A' : isOverstay ? '#FCA5A5' : (isDark ? '#334155' : '#E2E8F0'),
                     }
                 ]}
             >
                 <View style={s.cardTop}>
                     {/* Photo Avatar or Initials */}
-                    <View style={[s.avatar, { backgroundColor: isDark ? '#334155' : '#EDE9FE', borderColor: theme.primary }]}>
+                    <View style={[s.avatar, { backgroundColor: isDark ? '#334155' : '#EDE9FE', borderColor: isPending ? '#F59E0B' : theme.primary }]}>
                         {item.profile_photo_url ? (
                             <Image source={{ uri: item.profile_photo_url }} style={s.avatarImg} />
                         ) : (
-                            <Text style={[s.avatarText, { color: theme.primary }]}>
+                            <Text style={[s.avatarText, { color: isPending ? '#F59E0B' : theme.primary }]}>
                                 {(item.full_name || 'G')[0].toUpperCase()}
                             </Text>
                         )}
@@ -208,6 +214,11 @@ export default function GuestsScreen() {
                                 {item.full_name}
                             </Text>
                             
+                            {isPending && (
+                                <View style={{ backgroundColor: '#FEF3C7', paddingHorizontal: 7, paddingVertical: 2, borderRadius: 6, borderWidth: 1, borderColor: '#FDE68A' }}>
+                                    <Text style={{ fontSize: 10, fontWeight: '800', color: '#D97706' }}>PENDING QR</Text>
+                                </View>
+                            )}
                             {isOverstay && (
                                 <View style={s.overstayBadge}>
                                     <Text style={s.overstayText}>OVERSTAY</Text>
@@ -218,7 +229,7 @@ export default function GuestsScreen() {
                                     <Text style={s.checkedOutText}>CHECKED OUT</Text>
                                 </View>
                             )}
-                            {isStaying && !isOverstay && (
+                            {isStaying && !isOverstay && !isPending && (
                                 <View style={s.stayingBadge}>
                                     <Text style={s.stayingText}>ACTIVE STAY</Text>
                                 </View>
@@ -232,13 +243,23 @@ export default function GuestsScreen() {
                         )}
                     </View>
 
-                    {/* Amount Collected & Delete */}
+                    {/* Amount Collected & Quick Edit */}
                     <View style={{ alignItems: 'flex-end', gap: 6 }}>
-                        <View style={s.amountBadge}>
-                            <Text style={s.amountText}>₹{Number(item.amount_paid || 0).toLocaleString('en-IN')}</Text>
-                        </View>
-                        <TouchableOpacity onPress={() => handleDelete(item)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                            <Ionicons name="trash-outline" size={17} color="#DC2626" />
+                        {!isPending ? (
+                            <View style={s.amountBadge}>
+                                <Text style={s.amountText}>₹{Number(item.amount_paid || 0).toLocaleString('en-IN')}</Text>
+                            </View>
+                        ) : (
+                            <View style={{ backgroundColor: '#FEF3C7', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 }}>
+                                <Text style={{ fontSize: 11, fontWeight: '800', color: '#D97706' }}>New Request</Text>
+                            </View>
+                        )}
+                        <TouchableOpacity 
+                            onPress={() => navigation.navigate('AddGuest', { guest: item, isEdit: true, isCheckinPending: isPending })} 
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                            style={{ padding: 2 }}
+                        >
+                            <Ionicons name="create-outline" size={18} color="#3B82F6" />
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -274,7 +295,16 @@ export default function GuestsScreen() {
 
                     <View style={{ flex: 1 }} />
 
-                    {isStaying && (
+                    {isPending ? (
+                        <TouchableOpacity 
+                            style={[s.btn, { backgroundColor: '#DCFCE7', borderColor: '#86EFAC' }]} 
+                            onPress={() => navigation.navigate('AddGuest', { guest: item, isEdit: true, isCheckinPending: true })}
+                            activeOpacity={0.85}
+                        >
+                            <Ionicons name="checkmark-circle" size={14} color="#16A34A" />
+                            <Text style={[s.btnText, { color: '#16A34A', fontWeight: '800' }]}>Check-In</Text>
+                        </TouchableOpacity>
+                    ) : isStaying ? (
                         <TouchableOpacity 
                             style={[s.btn, { backgroundColor: isDark ? '#1E1B4B' : '#EDE9FE', borderColor: '#C4B5FD' }]} 
                             onPress={() => handleCheckout(item)}
@@ -283,7 +313,7 @@ export default function GuestsScreen() {
                             <Ionicons name="log-out-outline" size={14} color="#7C3AED" />
                             <Text style={[s.btnText, { color: '#7C3AED' }]}>Check Out</Text>
                         </TouchableOpacity>
-                    )}
+                    ) : null}
                 </View>
             </TouchableOpacity>
         );
@@ -309,7 +339,7 @@ export default function GuestsScreen() {
                     )}
                     <View style={{ width: 1, height: 20, backgroundColor: '#E2E8F0', marginHorizontal: 6 }} />
                     <TouchableOpacity onPress={() => setShowDatePicker(true)} activeOpacity={0.7} style={{ padding: 4 }}>
-                        <Ionicons name="calendar" size={18} color={dateFilter ? theme.primary : '#94A3B8'} />
+                        <Ionicons name={dateFilter ? "calendar" : "calendar-outline"} size={20} color={dateFilter ? theme.primary : "#64748B"} />
                     </TouchableOpacity>
                     {dateFilter && (
                         <TouchableOpacity onPress={() => setDateFilter(null)} style={{ marginLeft: 4, padding: 4 }}>
@@ -319,27 +349,27 @@ export default function GuestsScreen() {
                 </View>
             </AppHeader>
 
-            {/* Summary strip */}
-            <View style={s.summaryContainer}>
-                <View style={{ flexDirection: 'row', gap: 12 }}>
-                    <MiniStatCard 
-                        title="Total Guests" 
-                        value={summary.count} 
-                        icon="people-outline" 
-                        color="#7C3AED" 
-                    />
+            {/* Stat Row */}
+            <View style={{ paddingHorizontal: 16, marginTop: 12, marginBottom: 8 }}>
+                <View style={{ flexDirection: 'row', gap: 10 }}>
                     <MiniStatCard 
                         title="Collected Fees" 
                         value={`₹${summary.totalCollected.toLocaleString('en-IN')}`} 
                         icon="cash-outline" 
                         color="#10B981" 
                     />
-                    {filtered.filter(g => g.status === 'staying').length > 0 && (
+                    <MiniStatCard 
+                        title="Active Guests" 
+                        value={guests.filter(g => g.status === 'staying').length} 
+                        icon="log-in-outline" 
+                        color="#F59E0B" 
+                    />
+                    {guests.filter(g => g.status === 'pending').length > 0 && (
                         <MiniStatCard 
-                            title="Active Guests" 
-                            value={filtered.filter(g => g.status === 'staying').length} 
-                            icon="log-in-outline" 
-                            color="#F59E0B" 
+                            title="Pending QR" 
+                            value={guests.filter(g => g.status === 'pending').length} 
+                            icon="qr-code-outline" 
+                            color="#8B5CF6" 
                         />
                     )}
                 </View>
@@ -348,14 +378,18 @@ export default function GuestsScreen() {
             {/* Tabs */}
             <View style={{ paddingHorizontal: 16, marginBottom: 0 }}>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
-                    {['All', 'staying', 'checked_out'].map(tab => {
-                        const isSel = activeTab === tab;
-                        const label = tab === 'staying' ? 'Checked In' : tab === 'checked_out' ? 'Checked Out' : 'All';
-                        const count = guests.filter(g => tab === 'All' ? true : g.status === tab).length;
+                    {[
+                        { id: 'All', label: 'All' },
+                        { id: 'pending', label: 'Pending' },
+                        { id: 'staying', label: 'Active Stay' },
+                        { id: 'checked_out', label: 'Checked Out' },
+                    ].map(tab => {
+                        const isSel = activeTab === tab.id;
+                        const count = guests.filter(g => tab.id === 'All' ? true : g.status === tab.id).length;
                         return (
                             <TouchableOpacity
-                                key={tab}
-                                onPress={() => setActiveTab(tab as any)}
+                                key={tab.id}
+                                onPress={() => setActiveTab(tab.id as any)}
                                 style={{
                                     paddingHorizontal: 14,
                                     paddingVertical: 7,
@@ -373,7 +407,7 @@ export default function GuestsScreen() {
                                     fontSize: 13,
                                     fontWeight: '700',
                                     color: isSel ? '#FFF' : theme.textSecondary,
-                                }}>{label}</Text>
+                                }}>{tab.label}</Text>
                                 <View style={{ backgroundColor: isSel ? '#FFF' : (isDark ? '#334155' : '#F1F5F9'), paddingHorizontal: 6, paddingVertical: 2, borderRadius: 10 }}>
                                     <Text style={{ fontSize: 10, fontWeight: '700', color: isSel ? theme.primary : theme.textSecondary }}>{count}</Text>
                                 </View>
@@ -452,7 +486,7 @@ export default function GuestsScreen() {
                             <Ionicons name="log-out-outline" size={22} color="#D97706" />
                         </View>
                         <View style={{ flex: 1 }}>
-                            <Text style={{ fontSize: 16, fontWeight: '800', color: '#1F2937' }}>
+                            <Text style={{ fontSize: 16, fontWeight: '800', color: isDark ? '#FFF' : '#1F2937' }}>
                                 Check Out — {checkoutSheet.guest?.full_name || 'Guest'}
                             </Text>
                             <Text style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>
@@ -462,42 +496,43 @@ export default function GuestsScreen() {
                     </View>
 
                     {/* Bill Summary */}
-                    <View style={{ backgroundColor: '#F0FDF4', borderRadius: 12, padding: 14, borderWidth: 1, borderColor: '#BBF7D0', gap: 8 }}>
+                    <View style={{ backgroundColor: isDark ? '#14532D30' : '#F0FDF4', borderRadius: 12, padding: 14, borderWidth: 1, borderColor: '#BBF7D0', gap: 8 }}>
                         <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                            <Text style={{ fontSize: 13, color: '#374151' }}>Computed Bill</Text>
+                            <Text style={{ fontSize: 13, color: isDark ? '#CBD5E1' : '#374151' }}>Computed Bill</Text>
                             <Text style={{ fontSize: 14, fontWeight: '800', color: '#059669' }}>₹{checkoutSheet.totalBill.toLocaleString('en-IN')}</Text>
                         </View>
-                        <View style={{ height: 1, backgroundColor: '#BBF7D0' }} />
-                        <Text style={{ fontSize: 11, color: '#6B7280' }}>
+                        <View style={{ height: 1, backgroundColor: isDark ? '#334155' : '#BBF7D0' }} />
+                        <Text style={{ fontSize: 11, color: isDark ? '#94A3B8' : '#6B7280' }}>
                             💡 You can adjust the amount below if there are additional charges or discounts.
                         </Text>
                     </View>
 
                     {/* Editable final amount */}
                     <View>
-                        <Text style={{ fontSize: 12, fontWeight: '700', color: '#374151', marginBottom: 6 }}>Final Amount to Collect (₹)</Text>
+                        <Text style={{ fontSize: 12, fontWeight: '700', color: isDark ? '#CBD5E1' : '#374151', marginBottom: 6 }}>Final Amount to Collect (₹)</Text>
                         <TextInput
                             style={{
-                                borderWidth: 1.5, borderColor: '#D1D5DB', borderRadius: 10,
+                                borderWidth: 1.5, borderColor: isDark ? '#475569' : '#D1D5DB', borderRadius: 10,
                                 paddingHorizontal: 14, paddingVertical: 10,
-                                fontSize: 18, fontWeight: '800', color: '#1F2937',
-                                backgroundColor: '#FFF',
+                                fontSize: 18, fontWeight: '800', color: theme.textPrimary,
+                                backgroundColor: isDark ? '#1E293B' : '#FFF',
                             }}
                             keyboardType="numeric"
                             value={checkoutSheet.finalAmount}
                             onChangeText={(v) => setCheckoutSheet(p => ({ ...p, finalAmount: v.replace(/[^0-9.]/g, '') }))}
                             placeholder="0"
+                            placeholderTextColor="#94A3B8"
                         />
                     </View>
 
                     {/* Action Buttons */}
                     <View style={{ flexDirection: 'row', gap: 12 }}>
                         <TouchableOpacity
-                            style={{ flex: 1, paddingVertical: 13, borderRadius: 12, backgroundColor: '#F1F5F9', alignItems: 'center' }}
+                            style={{ flex: 1, paddingVertical: 13, borderRadius: 12, backgroundColor: isDark ? '#334155' : '#F1F5F9', alignItems: 'center' }}
                             onPress={() => setCheckoutSheet(p => ({ ...p, visible: false }))}
                             activeOpacity={0.8}
                         >
-                            <Text style={{ fontSize: 14, fontWeight: '700', color: '#64748B' }}>Cancel</Text>
+                            <Text style={{ fontSize: 14, fontWeight: '700', color: isDark ? '#CBD5E1' : '#64748B' }}>Cancel</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
                             style={{ flex: 2, paddingVertical: 13, borderRadius: 12, backgroundColor: '#059669', alignItems: 'center', opacity: checkoutLoading ? 0.7 : 1 }}
@@ -512,6 +547,24 @@ export default function GuestsScreen() {
                     </View>
                 </View>
             </ModalSheet>
+
+            {/* ── Zoomed Fullscreen Image Preview Modal ── */}
+            {previewImage && (
+                <Modal visible={true} transparent={true} animationType="fade" onRequestClose={() => setPreviewImage(null)}>
+                    <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.92)', justifyContent: 'center', alignItems: 'center' }}>
+                        <TouchableOpacity
+                            style={{ position: 'absolute', top: 50, right: 20, zIndex: 10, width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' }}
+                            onPress={() => setPreviewImage(null)}
+                        >
+                            <Ionicons name="close" size={24} color="#FFF" />
+                        </TouchableOpacity>
+                        <Image
+                            source={{ uri: previewImage }}
+                            style={{ width: '92%', height: '80%', resizeMode: 'contain' }}
+                        />
+                    </View>
+                </Modal>
+            )}
         </View>
     );
 }
@@ -573,7 +626,7 @@ const s = StyleSheet.create({
     btn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 10, borderWidth: 1 },
     btnText: { fontSize: 12, fontWeight: '800' },
     fab: {
-        position: 'absolute', bottom: 140, right: 20, width: 54, height: 54, borderRadius: 27,
+        position: 'absolute', bottom: 95, right: 20, width: 52, height: 52, borderRadius: 26,
         justifyContent: 'center', alignItems: 'center', elevation: 10,
         shadowColor: '#4F46E5', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.35, shadowRadius: 6, zIndex: 99999,
     },

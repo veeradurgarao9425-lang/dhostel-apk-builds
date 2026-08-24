@@ -2,6 +2,7 @@ import { Response } from 'express';
 import db from '../config/database.js';
 import { AuthRequest } from '../middleware/auth.js';
 import { resolveScopedHostelId, resolveOwnerHostelId } from '../utils/scope.js';
+import { processFileUpload } from '../utils/fileUpload.js';
 
 // Get all expenses
 export const getExpenses = async (req: AuthRequest, res: Response) => {
@@ -40,43 +41,60 @@ export const getExpenses = async (req: AuthRequest, res: Response) => {
             description: `Auto-expenses cloned status for hostel ${hostel_id} for ${currentMonthStr}`
           });
 
-          // Check if current month has 0 expenses
-          const lastDayCurrent = new Date(currentYear, currentMonthNum, 0).getDate();
-          const startDateCurrent = `${currentMonthStr}-01`;
-          const endDateCurrent = `${currentMonthStr}-${String(lastDayCurrent).padStart(2, '0')}`;
-
-          const currentMonthCount = await db('expenses')
+          // Check if expenses already exist for this month
+          const firstDayOfCurrentMonth = `${currentMonthStr}-01`;
+          const existingCurrentMonthCount = await db('expenses')
             .where('hostel_id', hostel_id)
-            .whereBetween('expense_date', [startDateCurrent, endDateCurrent])
+            .where('expense_date', '>=', firstDayOfCurrentMonth)
             .count('expense_id as count')
             .first();
 
-          const count = parseInt(currentMonthCount?.count?.toString() || '0');
-
-          if (count === 0) {
-            // Find previous month
-            const prevMonthNum = currentMonthNum === 1 ? 12 : currentMonthNum - 1;
-            const prevYear = currentMonthNum === 1 ? currentYear - 1 : currentYear;
+          if (!existingCurrentMonthCount || Number(existingCurrentMonthCount.count) === 0) {
+            // Find previous month string
+            const prevMonthDate = new Date(currentYear, currentMonthNum - 2, 1);
+            const prevYear = prevMonthDate.getFullYear();
+            const prevMonthNum = prevMonthDate.getMonth() + 1;
             const prevMonthStr = `${prevYear}-${String(prevMonthNum).padStart(2, '0')}`;
+            const firstDayOfPrevMonth = `${prevMonthStr}-01`;
+            const lastDayOfPrevMonth = new Date(prevYear, prevMonthNum, 0).getDate();
+            const lastDayOfPrevMonthStr = `${prevMonthStr}-${String(lastDayOfPrevMonth).padStart(2, '0')}`;
 
-            const lastDayPrev = new Date(prevYear, prevMonthNum, 0).getDate();
-            const startDatePrev = `${prevMonthStr}-01`;
-            const endDatePrev = `${prevMonthStr}-${String(lastDayPrev).padStart(2, '0')}`;
+            // Fetch recurring expense categories (Rent, Maintenance, Internet, Lift, Utilities) - EXCLUDE deposits & refunds
+            const prevMonthExpenses = await db('expenses as e')
+              .leftJoin('expense_categories as ec', 'e.category_id', 'ec.category_id')
+              .where('e.hostel_id', hostel_id)
+              .whereBetween('e.expense_date', [firstDayOfPrevMonth, lastDayOfPrevMonthStr])
+              .where(function () {
+                this.where(function () {
+                  this.where('ec.category_name', 'like', '%Rent%')
+                    .orWhere('ec.category_name', 'like', '%Maintenance%')
+                    .orWhere('ec.category_name', 'like', '%Internet%')
+                    .orWhere('ec.category_name', 'like', '%Lift%')
+                    .orWhere('ec.category_name', 'like', '%Electricity%')
+                    .orWhere('ec.category_name', 'like', '%Water%');
+                })
+                .andWhereNot('ec.category_name', 'like', '%Deposit%')
+                .andWhereNot('ec.category_name', 'like', '%Refund%');
+              })
+              .where(function () {
+                this.whereNull('e.description')
+                  .orWhere(function () {
+                    this.whereNot('e.description', 'like', '%Deposit%')
+                      .whereNot('e.description', 'like', '%Refund%')
+                      .whereNot('e.description', 'like', '%Vacate%');
+                  });
+              })
+              .select('e.*');
 
-            // Fetch previous month's expenses
-            const prevExpenses = await db('expenses')
-              .where('hostel_id', hostel_id)
-              .whereBetween('expense_date', [startDatePrev, endDatePrev]);
+            if (prevMonthExpenses && prevMonthExpenses.length > 0) {
+              const daysInCurrentMonth = new Date(currentYear, currentMonthNum, 0).getDate();
 
-            if (prevExpenses && prevExpenses.length > 0) {
-              // Clone expenses to the current month, preserving original day of month.
-              // If the day doesn't exist in the current month (e.g. Jan 31 → Feb), clamp to last valid day.
-              const lastDayCurrent = new Date(currentYear, currentMonthNum, 0).getDate();
-              const newExpenses = prevExpenses.map(exp => {
+              const newExpenses = prevMonthExpenses.map((exp: any) => {
                 const origDate = new Date(exp.expense_date);
                 const origDay = origDate.getDate();
-                const clampedDay = Math.min(origDay, lastDayCurrent);
-                const clonedDate = `${currentMonthStr}-${String(clampedDay).padStart(2, '0')}`;
+                const targetDay = Math.min(origDay, daysInCurrentMonth);
+                const clonedDate = `${currentMonthStr}-${String(targetDay).padStart(2, '0')}`;
+
                 return {
                   hostel_id: exp.hostel_id,
                   category_id: exp.category_id,
@@ -101,41 +119,38 @@ export const getExpenses = async (req: AuthRequest, res: Response) => {
       }
     }
 
-    let query = db('expenses as e')
+    let baseQuery = db('expenses as e')
       .leftJoin('hostel_master as h', 'e.hostel_id', 'h.hostel_id')
       .leftJoin('expense_categories as ec', 'e.category_id', 'ec.category_id')
-      .leftJoin('payment_modes as pm', 'e.payment_mode_id', 'pm.payment_mode_id')
-      .select(
-        'e.*',
-        'h.hostel_name',
-        'ec.category_name',
-        'pm.payment_mode_name as payment_mode'
-      );
-
+      .leftJoin('payment_modes as pm', 'e.payment_mode_id', 'pm.payment_mode_id');
 
     if (scopedHostelId) {
-      query = query.where('e.hostel_id', scopedHostelId);
+      baseQuery = baseQuery.where('e.hostel_id', scopedHostelId);
     }
 
     // Apply filters
     if (categoryId) {
-      query = query.where('e.category_id', categoryId);
+      baseQuery = baseQuery.where('e.category_id', categoryId);
     }
 
     if (startDate && endDate) {
-      query = query.whereBetween('e.expense_date', [startDate, endDate]);
+      baseQuery = baseQuery.whereBetween('e.expense_date', [startDate, endDate]);
     }
 
     // Apply search filter if provided
     if (search) {
       const searchTerm = `%${search}%`;
-      query = query.where(function () {
+      baseQuery = baseQuery.where(function () {
         this.where('e.vendor_name', 'like', searchTerm)
           .orWhere('e.description', 'like', searchTerm)
           .orWhere('ec.category_name', 'like', searchTerm)
           .orWhere('e.bill_number', 'like', searchTerm);
       });
     }
+
+    // Get total matching count before pagination
+    const countResult = await baseQuery.clone().count('e.expense_id as count').first();
+    let totalCount = parseInt(String(countResult?.count || 0));
 
     // Calculate total stats before pagination is applied
     let totalExpenses = 0;
@@ -182,6 +197,13 @@ export const getExpenses = async (req: AuthRequest, res: Response) => {
       } catch (e) { /* staff_payments table may not exist yet */ }
     }
 
+    let query = baseQuery.select(
+      'e.*',
+      'h.hostel_name',
+      'ec.category_name',
+      'pm.payment_mode_name as payment_mode'
+    );
+
     // Apply pagination
     if (page && limit) {
       const p = parseInt(page as string);
@@ -189,7 +211,10 @@ export const getExpenses = async (req: AuthRequest, res: Response) => {
       query = query.limit(l).offset((p - 1) * l);
     }
 
-    const expenses = await query.orderBy('e.expense_date', 'desc');
+    // Sort newest date and newest ID first
+    const expenses = await query
+      .orderBy('e.expense_date', 'desc')
+      .orderBy('e.expense_id', 'desc');
 
     // Surface staff wages as expense line-items (first page / unfiltered only, to keep pagination intact)
     let wageRows: any[] = [];
@@ -217,18 +242,24 @@ export const getExpenses = async (req: AuthRequest, res: Response) => {
           description: w.note || 'Wage payment',
           is_wage: true,
         }));
+        totalCount += wageRows.length;
       } catch (e) { wageRows = []; }
     }
 
-    const data = [...wageRows, ...expenses].sort((a, b) =>
-      String(b.expense_date).localeCompare(String(a.expense_date))
-    );
+    const data = [...wageRows, ...expenses].sort((a, b) => {
+      const dateDiff = String(b.expense_date).localeCompare(String(a.expense_date));
+      if (dateDiff !== 0) return dateDiff;
+      const idA = typeof a.expense_id === 'number' ? a.expense_id : 0;
+      const idB = typeof b.expense_id === 'number' ? b.expense_id : 0;
+      return idB - idA;
+    });
 
     res.json({
       success: true,
       data,
       totalExpenses,
-      monthExpensesTotal
+      monthExpensesTotal,
+      totalCount
     });
   } catch (error) {
     console.error('Get expenses error:', error);
@@ -380,6 +411,11 @@ export const createExpense = async (req: AuthRequest, res: Response) => {
       }
     }
 
+    let attachment_url = req.body.attachment_url || null;
+    if (req.file) {
+      attachment_url = await processFileUpload(req.file, 'expenses');
+    }
+
     const [expense_id] = await db('expenses').insert({
       hostel_id,
       category_id,
@@ -389,6 +425,7 @@ export const createExpense = async (req: AuthRequest, res: Response) => {
       vendor_name,
       description,
       bill_number,
+      attachment_url,
       created_by: req.user?.user_id,
       created_at: new Date()
     });
@@ -396,7 +433,7 @@ export const createExpense = async (req: AuthRequest, res: Response) => {
     res.status(201).json({
       success: true,
       message: 'Expense recorded successfully',
-      data: { expense_id }
+      data: { expense_id, attachment_url }
     });
   } catch (error) {
     console.error('Create expense error:', error);
@@ -473,7 +510,7 @@ export const updateExpense = async (req: AuthRequest, res: Response) => {
 
     const allowedFields = [
       'category_id', 'expense_date', 'amount', 'payment_mode_id',
-      'vendor_name', 'description', 'bill_number'
+      'vendor_name', 'description', 'bill_number', 'attachment_url'
     ];
 
     allowedFields.forEach(field => {
@@ -482,13 +519,18 @@ export const updateExpense = async (req: AuthRequest, res: Response) => {
       }
     });
 
+    if (req.file) {
+      updateData.attachment_url = await processFileUpload(req.file, 'expenses');
+    }
+
     await db('expenses')
       .where({ expense_id: expenseId })
       .update(updateData);
 
     res.json({
       success: true,
-      message: 'Expense updated successfully'
+      message: 'Expense updated successfully',
+      data: { attachment_url: updateData.attachment_url }
     });
   } catch (error) {
     console.error('Update expense error:', error);

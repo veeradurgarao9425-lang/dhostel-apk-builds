@@ -18,6 +18,7 @@ import Svg, { Circle } from 'react-native-svg';
 import { CustomDateRangePicker } from '../components/ui/pickers/CustomDateRangePicker';
 import { CustomMonthYearPicker } from '../components/ui/pickers/CustomMonthYearPicker';
 import { ModalSheet } from '../components/FormComponents';
+import { FullScreenLoader } from '../components/FullScreenLoader';
 
 const fmt = (n: number) => n.toLocaleString('en-IN');
 
@@ -212,13 +213,6 @@ export default function ReportsScreen() {
         let start = new Date();
         let end = new Date();
 
-        if (activeTab !== 'reports') {
-            start = new Date(now.getFullYear(), now.getMonth(), 1);
-            end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-            const monthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-            return { startDate: toLocalDateStr(start), endDate: toLocalDateStr(end), monthStr };
-        }
-
         if (datePreset === 'Today') {
             start.setHours(0, 0, 0, 0);
             end.setHours(23, 59, 59, 999);
@@ -254,7 +248,7 @@ export default function ReportsScreen() {
             }
         }
         return { startDate: toLocalDateStr(start), endDate: toLocalDateStr(end), monthStr: null };
-    }, [activeTab, datePreset, customStart, customEnd, currentMonthName]);
+    }, [datePreset, customStart, customEnd, currentMonthName]);
 
     const loadExpensePreview = useCallback(async () => {
         try {
@@ -352,7 +346,7 @@ export default function ReportsScreen() {
             const token = (await getSecureItem('token')) || (await AsyncStorage.getItem('token'));
             if (!token) { showError('Authentication token not found. Please log in again.'); return; }
 
-            const base = (api.defaults.baseURL || 'http://143.244.131.69:8081/api').replace(/\/$/, '');
+            const base = (api.defaults.baseURL || 'https://api.143-244-131-69.sslip.io/api').replace(/\/$/, '');
             let startStr = '';
             let endStr = '';
 
@@ -365,9 +359,19 @@ export default function ReportsScreen() {
                 endStr = dates.endDate;
             }
 
-            // Uses the same proven endpoint as Collect Payment screen
-            const url = `${base}/income/export?startDate=${startStr}&endDate=${endStr}&token=${encodeURIComponent(token)}&all=true`;
-            const filename = `${reportId}_report_${startStr}_to_${endStr}.xlsx`;
+            // Calls report download endpoint with specific reportType (collection, dues, expenses, occupancy, tenants, full_excel)
+            const url = `${base}/reports/download/excel?startDate=${startStr}&endDate=${endStr}&reportType=${encodeURIComponent(reportId)}&token=${encodeURIComponent(token)}`;
+            
+            const titles: Record<string, string> = {
+                collection: 'Rent_Collection_Report',
+                dues: 'Pending_Dues_Report',
+                expenses: 'Expenses_Report',
+                occupancy: 'Rooms_Occupancy_Report',
+                tenants: 'Tenants_Report',
+                full_excel: 'Complete_Hostel_Report',
+            };
+            const prefix = titles[reportId] || `${reportId}_report`;
+            const filename = `${prefix}_${startStr}_to_${endStr}.xlsx`;
 
             await downloadAndSaveFile(url, filename, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         } catch (e: any) {
@@ -422,13 +426,11 @@ export default function ReportsScreen() {
                 titleColor="#FFF"
                 iconColor="#FFF"
                 rightComponent={
-                    activeTab === 'reports' ? (
-                        <TouchableOpacity style={[R.topFilterBtn, { marginBottom: 0 }]} onPress={() => setFilterSelectModal(true)} activeOpacity={0.8}>
-                            <Ionicons name="calendar-outline" size={14} color="#FFF" />
-                            <Text style={R.topFilterTxt}>{periodLabel}</Text>
-                            <Ionicons name="chevron-down" size={12} color="#FFF" />
-                        </TouchableOpacity>
-                    ) : null
+                    <TouchableOpacity style={[R.topFilterBtn, { marginBottom: 0 }]} onPress={() => setFilterSelectModal(true)} activeOpacity={0.8}>
+                        <Ionicons name="calendar-outline" size={14} color="#FFF" />
+                        <Text style={R.topFilterTxt}>{periodLabel}</Text>
+                        <Ionicons name="chevron-down" size={12} color="#FFF" />
+                    </TouchableOpacity>
                 }
             />
 
@@ -715,17 +717,27 @@ export default function ReportsScreen() {
                 initialEnd={customEnd}
             />
 
-            {/* Reusable Loading Overlay */}
-            {!!exporting && (
-                <View style={R.overlay}>
-                    <View style={[R.overlayBox, { backgroundColor: theme.cardBg }]}>
-                        <ActivityIndicator size="large" color={theme.primary} />
-                        <Text style={[R.overlayTxt, { color: theme.textPrimary }]}>
-                            {exporting === 'pdf' ? 'Generating PDF...' : 'Downloading Report...'}
-                        </Text>
-                    </View>
-                </View>
-            )}
+            {/* FullScreen Loader */}
+            <FullScreenLoader
+                visible={!!exporting}
+                message={
+                    exporting === 'pdf'
+                        ? 'Generating PDF Report...'
+                        : exporting === 'full_excel'
+                        ? 'Generating Complete Audit Excel Report...'
+                        : exporting === 'collection'
+                        ? 'Generating Rent Collection Excel Report...'
+                        : exporting === 'expenses'
+                        ? 'Generating Expenses Excel Report...'
+                        : exporting === 'dues'
+                        ? 'Generating Pending Dues Excel Report...'
+                        : exporting === 'occupancy'
+                        ? 'Generating Rooms & Occupancy Excel Report...'
+                        : exporting === 'tenants'
+                        ? 'Generating Tenants List Excel Report...'
+                        : 'Preparing Excel Report...'
+                }
+            />
         </View>
     );
 }

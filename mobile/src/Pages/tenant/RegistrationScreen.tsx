@@ -126,7 +126,7 @@ const SelectRow = ({ icon: Icon, value, placeholder, onPress }: any) => (
 );
 
 // ─── Photo Upload Widget ───────────────────────────────────────────────────────
-const PhotoUpload = ({ uri, onCapture, label = 'Add Photo' }: any) => {
+const PhotoUpload = ({ uri, onCapture, onRemove, label = 'Add Photo' }: any) => {
   const pick = () => {
     Alert.alert('Upload Photo', 'Choose an option', [
       { text: 'Camera', onPress: async () => {
@@ -150,9 +150,19 @@ const PhotoUpload = ({ uri, onCapture, label = 'Add Photo' }: any) => {
         {uri
           ? <Image source={{ uri }} style={st.photoImg} />
           : <Camera size={28} color={BLUE} />}
-        <View style={st.photoBadge}>
-          <Camera size={12} color={WHITE} />
-        </View>
+        {uri ? (
+          <TouchableOpacity
+            style={[st.photoBadge, { backgroundColor: DANGER }]}
+            onPress={(e) => { e.stopPropagation?.(); onRemove?.(); }}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Text style={{ color: WHITE, fontSize: 10, fontWeight: '900' }}>✕</Text>
+          </TouchableOpacity>
+        ) : (
+          <View style={st.photoBadge}>
+            <Camera size={12} color={WHITE} />
+          </View>
+        )}
       </View>
       <Text style={st.photoLabel}>{label}</Text>
     </TouchableOpacity>
@@ -493,6 +503,7 @@ export default function RegistrationScreen({ route, navigation }: any) {
                 <PhotoUpload
                   uri={profilePhoto}
                   onCapture={(uri: string) => { setProfilePhoto(uri); setErrors(p => ({...p, profilePhoto: ''})); }}
+                  onRemove={() => setProfilePhoto(null)}
                   label="Add Profile Photo"
                 />
                 {errors.profilePhoto ? <Text style={st.fieldErr}>{errors.profilePhoto}</Text> : null}

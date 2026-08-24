@@ -23,14 +23,76 @@ export const HeaderNotification = ({ navigation }: { navigation?: any }) => {
 
         const title = (notif.title || '').toLowerCase();
         const type = notif.type;
-        const data = notif.data;
+        const data = notif.data || {};
 
-        // Navigation logic based on type/content
-        if (title.includes('payment') || title.includes('collect') || title.includes('fee')) {
-            nav.navigate('CollectedPayments');
-        } else if (title.includes('due') || title.includes('pending')) {
-            nav.navigate('PendingPayments');
-        } else if (title.includes('verify') || title.includes('verification')) {
+        // 1. Direct screen payload if present
+        if (data.screen && typeof data.screen === 'string') {
+            let params = data.params;
+            if (typeof params === 'string') {
+                try { params = JSON.parse(params); } catch {}
+            }
+            nav.navigate(data.screen, params || data);
+            return;
+        }
+
+        // 2. New Registration / QR Code / Admission -> Students list page
+        if (
+            title.includes('qr') ||
+            title.includes('registration') ||
+            title.includes('admission') ||
+            title.includes('pre-booking') ||
+            title.includes('enrolled')
+        ) {
+            nav.navigate('Students');
+            return;
+        }
+
+        // 3. Vacate Bed / Vacate Notice -> Student Details Page (or Students)
+        if (title.includes('vacat')) {
+            const sid = data.student_id || data.studentId || data.id;
+            if (sid) {
+                nav.navigate('StudentDetails', { studentId: sid });
+            } else {
+                nav.navigate('Students');
+            }
+            return;
+        }
+
+        // 4. Payment received / collected / proof -> Tenant Transactions (or Collected Payments)
+        if (
+            title.includes('payment') ||
+            title.includes('collect') ||
+            title.includes('proof') ||
+            title.includes('receipt')
+        ) {
+            const sid = data.student_id || data.studentId || data.id;
+            if (sid) {
+                nav.navigate('TenantTransactions', {
+                    studentId: sid,
+                    studentName: data.student_name || data.studentName,
+                });
+            } else {
+                nav.navigate('CollectedPayments');
+            }
+            return;
+        }
+
+        // 5. Pending / Overdue Rent / Due Reminder -> Student Details (or Pending Payments)
+        if (
+            title.includes('due') ||
+            title.includes('pending') ||
+            title.includes('overdue')
+        ) {
+            const sid = data.student_id || data.studentId || data.id;
+            if (sid) {
+                nav.navigate('StudentDetails', { studentId: sid });
+            } else {
+                nav.navigate('PendingPayments');
+            }
+            return;
+        }
+
+        if (title.includes('verify') || title.includes('verification')) {
             nav.navigate('PaymentVerification');
         } else if (title.includes('notice') || title.includes('publish')) {
             nav.navigate('Notices');
@@ -38,16 +100,9 @@ export const HeaderNotification = ({ navigation }: { navigation?: any }) => {
             nav.navigate('ComplaintsManagement');
         } else if (title.includes('room') || title.includes('assign')) {
             nav.navigate('Rooms');
-        } else if (title.includes('admission') || title.includes('tenant') || type === 'info') {
-            if (data && (data.id || data.student_id)) {
-                nav.navigate('StudentDetails', { studentId: data.id || data.student_id });
-            } else {
-                nav.navigate('Students');
-            }
         } else if (type === 'warning' && title.includes('expense')) {
             nav.navigate('Expenses');
         } else {
-            // Default fallback
             nav.navigate('Main', { screen: 'HomeTab' });
         }
     };

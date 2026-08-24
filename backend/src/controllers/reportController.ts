@@ -323,7 +323,55 @@ export const getDashboardStats = async (req: AuthRequest, res: Response) => {
       noticesCountQuery = noticesCountQuery.whereIn('hostel_id', hostelIds);
     }
     const noticesCountData = await noticesCountQuery.first();
-    const noticesCount = noticesCountData?.count || 0;
+    const noticesCount = Number(noticesCountData?.count || 0);
+
+    // Get QR registrations pending approval count (status = 3)
+    let qrRegisterQuery = db('students')
+      .where('status', 3)
+      .count('* as count');
+    if (hostelIds.length > 0) {
+      qrRegisterQuery = qrRegisterQuery.whereIn('hostel_id', hostelIds);
+    }
+    const qrRegisterData = await qrRegisterQuery.first();
+    const qrRegisterCount = Number(qrRegisterData?.count || 0);
+
+    // Get pending admissions fee count (status = 1, admission_status = 0, is_old_student != 1)
+    let pendingAdmQuery = db('students')
+      .where('status', 1)
+      .where(function() {
+        this.where('admission_status', 0).orWhereNull('admission_status');
+      })
+      .where(function() {
+        this.where('is_old_student', 0).orWhereNull('is_old_student');
+      })
+      .count('* as count');
+    if (hostelIds.length > 0) {
+      pendingAdmQuery = pendingAdmQuery.whereIn('hostel_id', hostelIds);
+    }
+    const pendingAdmData = await pendingAdmQuery.first();
+    const pendingAdmissionsCount = Number(pendingAdmData?.count || 0);
+
+    // Get open complaints count
+    let complaintsQuery = db('complaints')
+      .whereIn('status', ['Open', 'In Progress', 'Pending'])
+      .count('* as count');
+    if (hostelIds.length > 0) {
+      complaintsQuery = complaintsQuery.whereIn('hostel_id', hostelIds);
+    }
+    const complaintsData = await complaintsQuery.first().catch(() => ({ count: 0 }));
+    const openComplaintsCount = Number(complaintsData?.count || 0);
+
+    // Get active short-stay guests count
+    let activeGuestsQuery = db('guests')
+      .where(function() {
+        this.where('status', 'Active').orWhere('status', 'Checked-In').orWhere('status', '1');
+      })
+      .count('* as count');
+    if (hostelIds.length > 0) {
+      activeGuestsQuery = activeGuestsQuery.whereIn('hostel_id', hostelIds);
+    }
+    const activeGuestsData = await activeGuestsQuery.first().catch(() => ({ count: 0 }));
+    const activeGuestsCount = Number(activeGuestsData?.count || 0);
 
     // Get active staff count
     let staffQuery = db('staff')
@@ -416,11 +464,54 @@ export const getDashboardStats = async (req: AuthRequest, res: Response) => {
     console.log('[DEBUG] staffCount:', staffCount);
     console.log('[DEBUG] newAdmissionsCount:', newAdmissionsCount);
 
+    // Get total floors and floor-by-floor room & bed occupancy breakdown
+    let totalFloors = 0;
+    let floorBreakdown: any[] = [];
+    if (hostelIds.length > 0) {
+      try {
+        const hostelInfo = await db('hostel_master').whereIn('hostel_id', hostelIds).first('total_floors');
+        totalFloors = Number(hostelInfo?.total_floors || 0);
+
+        const floorRooms = await db('rooms as r')
+          .leftJoin('room_types as rt', 'r.room_type_id', 'rt.room_type_id')
+          .whereIn('r.hostel_id', hostelIds)
+          .select(
+            'r.floor_number',
+            db.raw('COUNT(DISTINCT r.room_id) as total_rooms'),
+            db.raw('SUM(COALESCE(NULLIF(r.capacity, 0), rt.occupancy, 1)) as total_beds'),
+            db.raw('SUM(COALESCE(r.occupied_beds, 0)) as occupied_beds')
+          )
+          .groupBy('r.floor_number')
+          .orderBy('r.floor_number', 'asc');
+
+        floorBreakdown = floorRooms.map((f: any) => {
+          const tBeds = Number(f.total_beds || 0);
+          const oBeds = Number(f.occupied_beds || 0);
+          return {
+            floor_number: f.floor_number ?? 0,
+            total_rooms: Number(f.total_rooms || 0),
+            total_beds: tBeds,
+            occupied_beds: oBeds,
+            available_beds: Math.max(0, tBeds - oBeds),
+            fill_percentage: tBeds > 0 ? Math.round((oBeds / tBeds) * 100) : 0,
+          };
+        });
+
+        if (totalFloors === 0 && floorBreakdown.length > 0) {
+          totalFloors = floorBreakdown.length;
+        }
+      } catch (floorErr) {
+        console.warn('Could not compute floor breakdown:', floorErr);
+      }
+    }
+
     res.json({
       success: true,
       data: {
         totalRooms: Number(totalRooms?.count || 0),
         availableRooms: Number(availableRooms?.count || 0),
+        totalFloors,
+        floorBreakdown,
         totalStudents: Number(totalStudents?.count || 0),
         occupancyRate: Number(occupancyRate),
         totalBeds: Number(totalBeds),
@@ -437,6 +528,11 @@ export const getDashboardStats = async (req: AuthRequest, res: Response) => {
         leftTenants: Number(leftTenants),
         prebookingsCount: Number(prebookingsCount),
         noticesCount: Number(noticesCount),
+        vacateCount: Number(noticesCount),
+        qrRegisterCount,
+        pendingAdmissionsCount,
+        openComplaintsCount,
+        activeGuestsCount,
         monthlyRentDue,
         monthlyRentPending,
         monthlyRentCollected,

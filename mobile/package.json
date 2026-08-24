@@ -9,9 +9,10 @@
     "web": "expo start --web",
     "test": "node --test --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON \"src/**/__tests__/*.test.ts\"",
     "typecheck": "tsc --noEmit",
-    "build-apk": "git push origin main",
-    "build-apk:secondary": "git checkout --orphan temp-build-apk && git add . && git commit -m \"Trigger APK Build\" && git push build-repo temp-build-apk:main -f && git checkout main && git branch -D temp-build-apk"
+    "build-apk": "git commit --allow-empty -m \"Trigger APK Build [build]\" && git push origin main && git push build-repo main",
+    "build-apk:secondary": "git commit --allow-empty -m \"Trigger APK Build [build]\" && git push build-repo main"
   },
+
   "dependencies": {
     "@expo-google-fonts/inter": "^0.4.2",
     "@expo/metro-runtime": "~6.1.2",

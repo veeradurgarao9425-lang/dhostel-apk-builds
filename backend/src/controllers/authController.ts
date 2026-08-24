@@ -5,13 +5,13 @@ import { hashPassword, comparePassword } from '../utils/bcrypt.js';
 import { generateToken } from '../utils/jwt.js';
 import { AuthRequest } from '../middleware/auth.js';
 import jwt from 'jsonwebtoken';
-import { sendPasswordResetEmail, sendOtpEmail, sendEmail, sendNewJoinerOwnerAlertEmail, sendNewJoinerStudentEmail } from '../utils/email.js';
-import { sendNotificationToHostelOwner, sendNotificationToStudent } from '../utils/notification.js';
+import { sendPasswordResetEmail, sendOtpEmail, sendEmail, sendNewJoinerOwnerAlertEmail, sendNewJoinerStudentEmail, sendLoginAlertEmail } from '../utils/email.js';
+import { sendNotificationToHostelOwner, sendNotificationToStudent, sendNotificationToUser } from '../utils/notification.js';
 import crypto from 'crypto';
 import { checkHostelUniqueIdentifiers } from '../utils/validation.js';
 import { sendDailyOwnerReportEmail } from '../utils/excelReport.js';
 import { generateDeveloperToken, logDeveloperAction } from '../middleware/developerAuth.js';
-import { notifyNewOwnerRegistered } from '../services/developerNotificationService.js';
+import { notifyNewOwnerRegistered, notifyNewStudentRegistered, notifyUserSignIn } from '../services/developerNotificationService.js';
 
 export const authController = {
   // Login
@@ -136,6 +136,26 @@ export const authController = {
         email: user.email,
         role_id: user.role_id,
         hostel_id: activeHostelId, // Include hostel_id in JWT token
+      });
+
+      // Send login intimation email to user
+      const ipAddress = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.socket?.remoteAddress || '';
+      sendLoginAlertEmail({
+        recipientEmail: user.email,
+        recipientName: user.full_name,
+        userType: user.role_name || (user.role_id === 2 ? 'Hostel Owner' : 'Student/Tenant'),
+        hostelName: user.hostel_name,
+        ipAddress: ipAddress.replace('::ffff:', ''),
+      }).catch((e: any) => console.warn('Login alert email dispatch warning:', e));
+
+      // Dispatch admin sign-in notification
+      notifyUserSignIn({
+        userId: user.user_id,
+        fullName: user.full_name,
+        email: user.email,
+        role: user.role_name || (user.role_id === 2 ? 'Hostel Owner' : 'Student/Tenant'),
+        hostelName: user.hostel_name,
+        ipAddress: ipAddress.replace('::ffff:', ''),
       });
 
       // Return response
@@ -523,36 +543,38 @@ export const authController = {
   // Forgot Password
   async forgotPassword(req: Request, res: Response) {
     try {
-      const { email } = req.body;
+      const emailInput = req.body.email || req.body.identifier;
 
-      if (!email) {
+      if (!emailInput || typeof emailInput !== 'string' || !emailInput.trim()) {
         return res.status(400).json({
           success: false,
           error: 'Email is required',
         });
       }
 
+      const cleanEmail = emailInput.trim().toLowerCase();
+
       // Validate email format
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(email)) {
+      if (!emailRegex.test(cleanEmail)) {
         return res.status(400).json({
           success: false,
-          error: 'Invalid email format',
+          error: 'Invalid email format. Please enter a valid email address.',
         });
       }
 
-      const cleanEmail = email.trim().toLowerCase();
-
-      // Find user by email (case-insensitive)
+      // Find user by email (case-insensitive and active check)
       const user = await db('users')
         .whereRaw('LOWER(email) = ?', [cleanEmail])
-        .where('is_active', true)
+        .where(function() {
+          this.where('is_active', 1).orWhere('is_active', true).orWhereNull('is_active');
+        })
         .first();
 
       if (!user) {
         return res.status(404).json({
           success: false,
-          error: 'No account found with this email address. Please check your spelling and try again.',
+          error: 'This email is not registered in our system. Please check your spelling or create a new account.',
         });
       }
 
@@ -593,15 +615,13 @@ export const authController = {
         console.log('='.repeat(80));
         console.log(`User Email: ${user.email}`);
         console.log(`Reset Link: ${resetLink}`);
-        console.log(`OTP: ${otp}`);
         console.log(`Expires at: ${resetExpiresAt}`);
         console.log('='.repeat(80) + '\n');
       }
 
       return res.status(200).json({
         success: true,
-        message: 'If email exists, a password reset link has been sent',
-        dev_otp: otp,
+        message: 'Password reset OTP has been sent to your email',
       });
     } catch (error: any) {
       console.error('Forgot password error:', error);
@@ -687,6 +707,63 @@ export const authController = {
         password_reset_expires_at: null,
       });
 
+      // Send in-app & push notification
+      sendNotificationToUser({
+        userId: user.user_id,
+        hostelId: user.hostel_id || null,
+        type: 'System Alert',
+        title: 'Password Changed Successfully',
+        message: 'Your account password has been updated. If you did not make this change, please contact support immediately.',
+        priority: 'High',
+        metadata: { action: 'password_reset', timestamp: new Date() }
+      }).catch((e: any) => console.warn('Password reset notification warning:', e));
+
+      // Send confirmation security email
+      try {
+        const notifHtml = `
+          <!DOCTYPE html>
+          <html lang="en">
+          <head><meta charset="utf-8"><title>Password Changed Successfully</title></head>
+          <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f8fafc; margin:0; padding: 24px; color: #1e293b;">
+            <div style="max-width: 500px; margin: 0 auto; background-color: #ffffff; padding: 32px 28px; border-radius: 16px; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.05);">
+              <div style="text-align: center; margin-bottom: 24px;">
+                <div style="display: inline-block; background: linear-gradient(135deg, #10B981, #059669); width: 48px; height: 48px; border-radius: 12px; line-height: 48px; color: #ffffff; font-size: 24px; margin-bottom: 8px;">🔒</div>
+                <h2 style="color: #6366f1; margin: 0; font-size: 24px; font-weight: 800;">Hostix Security</h2>
+              </div>
+              <div style="border-top: 1px solid #f1f5f9; padding-top: 20px;">
+                <h3 style="color: #0f172a; margin-top: 0; font-size: 18px; font-weight: 700; text-align: center;">Password Changed Successfully</h3>
+                <p style="color: #475569; font-size: 14px; line-height: 22px; margin-bottom: 16px;">
+                  Hello <strong>${user.full_name || 'Hostix User'}</strong>,
+                </p>
+                <p style="color: #475569; font-size: 14px; line-height: 22px; margin-bottom: 16px;">
+                  This is a confirmation that your account password was changed successfully.
+                </p>
+                <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; padding: 14px 18px; margin: 20px 0;">
+                  <p style="color: #166534; font-size: 13px; font-weight: 600; margin: 0;">
+                    ✓ Your account is secure and your new password is now active.
+                  </p>
+                </div>
+                <p style="color: #64748b; font-size: 12.5px; line-height: 18px; margin-top: 16px;">
+                  If you did <strong>not</strong> make this change, please contact Hostix support or reset your password immediately.
+                </p>
+              </div>
+              <div style="border-top: 1px solid #f1f5f9; margin-top: 24px; padding-top: 14px; text-align: center;">
+                <p style="color: #94a3b8; font-size: 11px; margin: 0;">&copy; ${new Date().getFullYear()} Hostix Systems. All rights reserved.</p>
+              </div>
+            </div>
+          </body>
+          </html>
+        `;
+        sendEmail({
+          to: user.email,
+          subject: 'Security Alert: Password Changed Successfully - Hostix',
+          html: notifHtml,
+          emailType: 'SECURITY'
+        }).catch((e: any) => console.warn('Password change email warning:', e));
+      } catch (emailErr) {
+        console.warn('Could not send password change alert email:', emailErr);
+      }
+
       return res.json({
         success: true,
         message: 'Password reset successfully',
@@ -769,35 +846,39 @@ export const authController = {
   // Verify Reset OTP
   async verifyResetOtp(req: Request, res: Response) {
     try {
-      const { email, otp } = req.body;
+      const emailInput = req.body.email || req.body.identifier;
+      const { otp } = req.body;
 
-      if (!email || !otp) {
+      if (!emailInput || !otp) {
         return res.status(400).json({
           success: false,
-          error: 'Email and OTP are required',
+          error: 'Email and 6-digit OTP code are required',
         });
       }
 
-      const cleanEmail = email.trim().toLowerCase();
+      const cleanEmail = String(emailInput).trim().toLowerCase();
+      const cleanOtp = String(otp).trim();
 
       // Find user by email
       const user = await db('users')
         .whereRaw('LOWER(email) = ?', [cleanEmail])
-        .where('is_active', true)
+        .where(function() {
+          this.where('is_active', 1).orWhere('is_active', true).orWhereNull('is_active');
+        })
         .first();
 
       if (!user) {
-        return res.status(400).json({
+        return res.status(404).json({
           success: false,
           error: 'No account found with this email address.',
         });
       }
 
       // Strictly verify OTP generated for this account
-      if (user.password_reset_otp !== otp) {
+      if (!user.password_reset_otp || String(user.password_reset_otp).trim() !== cleanOtp) {
         return res.status(400).json({
           success: false,
-          error: 'Invalid OTP code',
+          error: 'Invalid OTP code. Please enter the correct 6-digit code.',
         });
       }
 
@@ -808,7 +889,7 @@ export const authController = {
       ) {
         return res.status(400).json({
           success: false,
-          error: 'OTP code has expired',
+          error: 'OTP code has expired. Please request a new code.',
         });
       }
 
@@ -944,11 +1025,12 @@ export const authController = {
         expires_at: expiresAt,
       });
 
-      console.log(`\n${'='.repeat(60)}`);
-      console.log(`📧 OTP GENERATION — ${email}`);
-      console.log(`   OTP: ${otp}  |  Expires: ${expiresAt.toISOString()}`);
-      console.log(`   EMAIL_USER env: ${process.env.EMAIL_USER || '⚠️  NOT SET'}`);
-      console.log(`${'='.repeat(60)}\n`);
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`\n${'='.repeat(60)}`);
+        console.log(`📧 OTP GENERATION — ${email}`);
+        console.log(`   Expires: ${expiresAt.toISOString()}`);
+        console.log(`${'='.repeat(60)}\n`);
+      }
 
       // Send the OTP via email asynchronously (don't block HTTP response if SMTP is slow/failing)
       sendOtpEmail(email, otp).catch((emailErr) => {
@@ -958,7 +1040,6 @@ export const authController = {
       return res.status(200).json({
         success: true,
         message: 'Verification OTP sent to your email',
-        dev_otp: otp,
       });
     } catch (error: any) {
       console.error('❌ Send OTP error:', error?.message || error);
@@ -1134,7 +1215,6 @@ export const authController = {
       return res.json({ 
         success: true, 
         message: 'OTP sent successfully',
-        dev_otp: otp,
       });
     } catch (error: any) {
       console.error('tenantSendOtp error:', error);
@@ -1325,13 +1405,16 @@ export const authController = {
       // Clear OTP just in case
       await db('otps').where('email', identifier).del();
 
+      const tenantFullName = `${first_name}${last_name ? ' ' + last_name : ''}`.trim();
+
       sendNotificationToHostelOwner(
         hostel_id,
         'General',
         'New Registration Awaiting Approval',
-        `${first_name}${last_name ? ' ' + last_name : ''} registered via QR code and is awaiting room allocation.`,
+        `${tenantFullName} registered via QR code and is awaiting room allocation.`,
         'Medium',
-        { id: student_id }
+        { id: student_id, student_id },
+        { screen: 'Students', params: { tab: 'pending', studentId: student_id }, referenceType: 'student', referenceId: student_id }
       ).catch(err => console.error('Failed to send tenant registration notification:', err));
 
       sendNotificationToStudent(
@@ -1340,8 +1423,22 @@ export const authController = {
         'Registration Submitted',
         'Your registration is pending owner approval. We will notify you as soon as a room is allocated.',
         'Medium',
-        { id: student_id }
+        { id: student_id, student_id },
+        { screen: 'TenantHome', referenceType: 'student', referenceId: student_id }
       ).catch(err => console.error('Failed to send registration-pending notification to tenant:', err));
+
+      // Notify developer of new tenant signup
+      try {
+        notifyNewStudentRegistered({
+          studentId: student_id,
+          studentName: tenantFullName,
+          phone: finalPhone,
+          email: finalEmail || null,
+          hostelId: hostel_id,
+        });
+      } catch (devNotifErr) {
+        console.error('Failed to send developer tenant registration notification:', devNotifErr);
+      }
 
       // Dispatch Email Alert to Hostel Owner
       (async () => {

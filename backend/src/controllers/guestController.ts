@@ -5,6 +5,7 @@ import { isOverstaying, expectedLastDay } from '../jobs/guestOverstay.js';
 import { checkHostelUniqueIdentifiers } from '../utils/validation.js';
 import { resolveScopedHostelId } from '../utils/scope.js';
 import { processFileUpload } from '../utils/fileUpload.js';
+import { sendNotificationToHostelOwner } from '../utils/notification.js';
 
 // Resolve the hostel the request is scoped to (owner = JWT hostel, admin = body/query)
 function resolveHostelId(req: AuthRequest): number | null {
@@ -61,6 +62,7 @@ export const getGuests = async (req: AuthRequest, res: Response) => {
 
     const totalCollected = guests.reduce((sum: number, g: any) => sum + Number(g.amount_paid || 0), 0);
     const staying = guests.filter((g: any) => g.status === 'staying').length;
+    const pending = guests.filter((g: any) => g.status === 'pending').length;
     const overstay = guests.filter((g: any) => g.is_overstay).length;
 
     res.json({
@@ -70,13 +72,114 @@ export const getGuests = async (req: AuthRequest, res: Response) => {
         count: guests.length,
         totalCollected,
         staying,
-        checkedOut: guests.length - staying,
+        pending,
+        checkedOut: guests.filter((g: any) => g.status === 'checked_out').length,
         overstay,
       },
     });
   } catch (error: any) {
     console.error('Get guests error:', error);
     res.status(500).json({ success: false, error: error?.message || 'Failed to fetch guests' });
+  }
+};
+
+// POST /api/public/guest-signup — public registration form for walk-in / short-stay guests
+export const publicGuestSignup = async (req: any, res: Response) => {
+  try {
+    const hostelId = req.query.hostelId || req.query.hostel_id || req.body.hostel_id || req.body.hostelId;
+    if (!hostelId) {
+      return res.status(400).json({ success: false, error: 'hostel_id is required' });
+    }
+
+    const {
+      full_name,
+      phone,
+      email,
+      gender,
+      id_proof_type_id,
+      id_proof_number,
+      check_in_date,
+      check_out_date,
+      days,
+      purpose,
+      notes,
+    } = req.body;
+
+    if (!full_name || !phone || !check_in_date) {
+      return res.status(400).json({ success: false, error: 'Required fields: Full Name, Phone, Check-in Date' });
+    }
+
+    // Process files if uploaded
+    const files = req.files as { [field: string]: Express.Multer.File[] } | undefined;
+    let profile_photo_url: string | null = req.body.profile_photo_url || null;
+    let id_proof_front_url: string | null = req.body.id_proof_front_url || null;
+    let id_proof_back_url: string | null = req.body.id_proof_back_url || null;
+
+    if (files?.profile_photo?.[0]) {
+      profile_photo_url = await processFileUpload(files.profile_photo[0], 'avatars');
+    }
+    if (files?.id_proof_front?.[0]) {
+      id_proof_front_url = await processFileUpload(files.id_proof_front[0], 'documents');
+    }
+    if (files?.id_proof_back?.[0]) {
+      id_proof_back_url = await processFileUpload(files.id_proof_back[0], 'documents');
+    }
+
+    const [guest_id] = await db('guests').insert({
+      hostel_id: Number(hostelId),
+      full_name: full_name.trim(),
+      phone: phone ? phone.replace(/\D/g, '').slice(0, 10) : null,
+      email: email ? email.trim() : null,
+      gender: gender || 'Male',
+      id_proof_type_id: id_proof_type_id ? Number(id_proof_type_id) : null,
+      id_proof_number: id_proof_number ? id_proof_number.trim() : null,
+      check_in_date,
+      check_out_date: check_out_date || null,
+      days: days ? Number(days) : 1,
+      per_day_amount: 0,
+      amount_paid: 0,
+      purpose: purpose ? purpose.trim() : null,
+      room_number: null,
+      status: 'pending',
+      notes: notes ? notes.trim() : null,
+      profile_photo_url,
+      id_proof_front_url,
+      id_proof_back_url,
+      created_at: new Date(),
+    });
+
+    // Notify hostel owner via Push Notification & In-App Alert
+    sendNotificationToHostelOwner(
+      Number(hostelId),
+      'General',
+      'New Guest Check-in Request',
+      `${full_name} submitted a short-stay check-in request. Tap to review and allocate a room.`,
+      'High',
+      {
+        guest_id,
+        status: 'pending',
+      },
+      {
+        screen: 'Guests',
+        referenceType: 'guest',
+        referenceId: guest_id,
+      }
+    ).catch((err: any) => console.error('[guest-signup] Notification error:', err));
+
+    res.status(201).json({
+      success: true,
+      message: 'Guest registration submitted successfully. Please contact the front desk.',
+      data: {
+        guest_id,
+        reference_id: `GST-${new Date().getFullYear()}-${String(guest_id).padStart(4, '0')}`,
+        full_name,
+        check_in_date,
+        days: days ? Number(days) : 1,
+      },
+    });
+  } catch (error: any) {
+    console.error('Public guest signup error:', error);
+    res.status(500).json({ success: false, error: error?.sqlMessage || error?.message || 'Failed to submit guest registration' });
   }
 };
 

@@ -51,18 +51,6 @@ export default function DeveloperStudentsScreen() {
   const [viewDetailsModalVisible, setViewDetailsModalVisible] = useState(false);
   const [detailStudent, setDetailStudent] = useState<any>(null);
 
-  // Reset Password Modal State
-  const [passwordModalVisible, setPasswordModalVisible] = useState(false);
-  const [selectedStudent, setSelectedStudent] = useState<any>(null);
-  const [newPassword, setNewPassword] = useState('');
-  const [resettingPassword, setResettingPassword] = useState(false);
-  const [passwordSuccessData, setPasswordSuccessData] = useState<{
-    name: string;
-    account: string;
-    password: string;
-    role: 'Owner' | 'Tenant';
-  } | null>(null);
-
   // Load Hostels and Owners lists for top tabs
   useEffect(() => {
     developerService.getHostels({ page: 1, limit: 50 }).then((res) => {
@@ -208,42 +196,6 @@ export default function DeveloperStudentsScreen() {
     setViewDetailsModalVisible(true);
   };
 
-  const handleOpenResetPassword = (student: any) => {
-    setSelectedStudent(student);
-    setNewPassword('');
-    setPasswordModalVisible(true);
-  };
-
-  const handleSavePassword = async () => {
-    if (!newPassword.trim() || newPassword.trim().length < 4) {
-      Alert.alert('Invalid Password', 'Please enter a password with at least 4 characters.');
-      return;
-    }
-
-    try {
-      setResettingPassword(true);
-      await developerService.resetStudentPassword(selectedStudent.student_id, newPassword.trim());
-      const savedPass = newPassword.trim();
-      const studentObj = selectedStudent;
-      setPasswordModalVisible(false);
-      setPasswordSuccessData({
-        name: `${studentObj?.first_name || ''} ${studentObj?.last_name || ''}`.trim() || 'Student',
-        account: studentObj?.phone || studentObj?.email || 'Tenant Account',
-        password: savedPass,
-        role: 'Tenant',
-      });
-    } catch (err: any) {
-      Alert.alert('Reset Failed', err.message || 'Could not reset student password.');
-    } finally {
-      setResettingPassword(false);
-    }
-  };
-
-  const handleGenerateRandomPassword = () => {
-    const randomPass = Math.floor(100000 + Math.random() * 900000).toString();
-    setNewPassword(randomPass);
-  };
-
   const handleImpersonate = (student: any) => {
     setSelectedStudentForSupport(student);
     setSupportModalVisible(true);
@@ -283,7 +235,7 @@ export default function DeveloperStudentsScreen() {
 
         <View style={styles.roomMetaRow}>
           <View style={styles.metaChip}>
-            <Ionicons name="bed-outline" size={13} color="#C2410C" />
+            <Ionicons name="bed-outline" size={13} color="#059669" />
             <Text style={styles.metaChipText}>Room {item.room_number || 'N/A'}</Text>
           </View>
           {item.bed_number ? (
@@ -307,15 +259,6 @@ export default function DeveloperStudentsScreen() {
 
           <TouchableOpacity
             activeOpacity={0.8}
-            onPress={() => handleOpenResetPassword(item)}
-            style={styles.resetPassBtn}
-          >
-            <Ionicons name="key-outline" size={13} color="#D97706" />
-            <Text style={styles.resetPassBtnText}>Reset Password</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            activeOpacity={0.8}
             onPress={() => handleImpersonate(item)}
             disabled={impersonatingId === item.student_id}
             style={styles.impersonateBtn}
@@ -325,7 +268,7 @@ export default function DeveloperStudentsScreen() {
             ) : (
               <>
                 <Ionicons name="shield-half-outline" size={13} color="#FFF" />
-                <Text style={styles.impersonateBtnText}>Support</Text>
+                <Text style={styles.impersonateBtnText}>Support Mode</Text>
               </>
             )}
           </TouchableOpacity>
@@ -529,21 +472,10 @@ export default function DeveloperStudentsScreen() {
                     student: detailStudent,
                   });
                 }}
-                style={[styles.detailResetBtn, { backgroundColor: '#FFF7ED', borderColor: '#FED7AA' }]}
+                style={[styles.detailResetBtn, { backgroundColor: '#ECFDF5', borderColor: '#A7F3D0', flex: 1 }]}
               >
-                <Ionicons name="document-text-outline" size={13} color="#EA580C" />
-                <Text style={[styles.detailResetBtnText, { color: '#EA580C' }]}>Full Dossier</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={() => {
-                  setViewDetailsModalVisible(false);
-                  handleOpenResetPassword(detailStudent);
-                }}
-                style={styles.detailResetBtn}
-              >
-                <Ionicons name="key-outline" size={13} color="#D97706" />
-                <Text style={styles.detailResetBtnText}>Reset Pass</Text>
+                <Ionicons name="document-text-outline" size={13} color="#059669" />
+                <Text style={[styles.detailResetBtnText, { color: '#059669' }]}>Full Dossier</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -551,89 +483,10 @@ export default function DeveloperStudentsScreen() {
                   setViewDetailsModalVisible(false);
                   handleImpersonate(detailStudent);
                 }}
-                style={styles.detailSupportBtn}
+                style={[styles.detailSupportBtn, { flex: 1 }]}
               >
                 <Ionicons name="shield-half-outline" size={13} color="#FFF" />
-                <Text style={styles.detailSupportBtnText}>Support</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Reset Password Modal */}
-      <Modal
-        visible={passwordModalVisible}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setPasswordModalVisible(false)}
-      >
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalCard}>
-            <View style={styles.modalHeader}>
-              <View style={[styles.modalIconWrap, { backgroundColor: '#FFF7ED' }]}>
-                <Ionicons name="key" size={20} color="#EA580C" />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.modalTitle}>Reset Student Password</Text>
-                <Text style={styles.modalSub}>{selectedStudent?.first_name} {selectedStudent?.last_name || ''}</Text>
-              </View>
-              <TouchableOpacity onPress={() => setPasswordModalVisible(false)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                <Ionicons name="close" size={22} color="#78716C" />
-              </TouchableOpacity>
-            </View>
-
-            {/* Security Email Dispatch Info Alert */}
-            <View style={{ flexDirection: 'row', alignItems: 'flex-start', backgroundColor: '#FFFBEB', borderColor: '#FDE68A', borderWidth: 1, borderRadius: 12, padding: 10, marginBottom: 12, gap: 8 }}>
-              <Ionicons name="mail" size={15} color="#D97706" style={{ marginTop: 2 }} />
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 11, fontWeight: '800', color: '#92400E', marginBottom: 2 }}>Automated Email Notification</Text>
-                <Text style={{ fontSize: 10, color: '#B45309', lineHeight: 14 }}>
-                  A security notice with Admin / Developer contact (<Text style={{ fontWeight: '700', color: '#92400E' }}>Durgarao: 6303359425</Text>) will be sent to the resident.
-                </Text>
-              </View>
-            </View>
-
-            <Text style={styles.inputLabel}>New Secure Password</Text>
-            <View style={styles.passInputRow}>
-              <TextInput
-                placeholder="Enter password or tap 6-digit"
-                placeholderTextColor="#A89687"
-                value={newPassword}
-                onChangeText={setNewPassword}
-                style={styles.passTextInput}
-                autoCapitalize="none"
-              />
-              <TouchableOpacity
-                onPress={handleGenerateRandomPassword}
-                style={[styles.generateBtn, { backgroundColor: '#FFF7ED', borderWidth: 1, borderColor: '#FED7AA' }]}
-                activeOpacity={0.8}
-              >
-                <Ionicons name="shuffle" size={13} color="#EA580C" style={{ marginRight: 3 }} />
-                <Text style={[styles.generateBtnText, { color: '#EA580C', fontWeight: '800' }]}>PIN</Text>
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.modalBtnRow}>
-              <TouchableOpacity
-                onPress={() => setPasswordModalVisible(false)}
-                style={styles.cancelBtn}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.cancelBtnText}>Cancel</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={handleSavePassword}
-                disabled={resettingPassword}
-                style={[styles.confirmSaveBtn, { backgroundColor: '#EA580C' }]}
-                activeOpacity={0.8}
-              >
-                {resettingPassword ? (
-                  <ActivityIndicator size="small" color="#FFF" />
-                ) : (
-                  <Text style={styles.confirmSaveBtnText}>Update & Send</Text>
-                )}
+                <Text style={styles.detailSupportBtnText}>Support Mode</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -647,88 +500,6 @@ export default function DeveloperStudentsScreen() {
         targetUser={selectedStudentForSupport}
         targetRole="TENANT"
       />
-
-      {/* ── MODERN CREDENTIALS SUCCESS POPUP MODAL ── */}
-      <Modal
-        visible={!!passwordSuccessData}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setPasswordSuccessData(null)}
-      >
-        <View style={styles.modalBackdrop}>
-          <View style={[styles.modalCard, { padding: 0, overflow: 'hidden' }]}>
-            <LinearGradient
-              colors={['#059669', '#047857']}
-              style={{ padding: 20, alignItems: 'center', justifyContent: 'center' }}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-            >
-              <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}>
-                <Ionicons name="checkmark-done-circle" size={30} color="#FFFFFF" />
-              </View>
-              <Text style={{ color: '#FFFFFF', fontSize: 16, fontWeight: '900' }}>Password Reset Successful</Text>
-              <Text style={{ color: '#A7F3D0', fontSize: 11, fontWeight: '700', marginTop: 2 }}>
-                Credentials Generated & Security Email Sent
-              </Text>
-            </LinearGradient>
-
-            <View style={{ padding: 18 }}>
-              <Text style={{ fontSize: 10, fontWeight: '800', color: '#64748B', letterSpacing: 0.5, marginBottom: 2 }}>
-                {passwordSuccessData?.role?.toUpperCase()} ACCOUNT
-              </Text>
-              <Text style={{ fontSize: 15, fontWeight: '900', color: '#0F172A', marginBottom: 12 }}>
-                {passwordSuccessData?.name}
-              </Text>
-
-              {/* Highlighted Password Box */}
-              <View style={{ backgroundColor: '#FFF7ED', borderWidth: 1.5, borderColor: '#FED7AA', borderRadius: 14, padding: 12, marginBottom: 12, alignItems: 'center' }}>
-                <Text style={{ fontSize: 10, fontWeight: '800', color: '#9A3412', letterSpacing: 0.5 }}>
-                  NEW TEMPORARY PASSWORD
-                </Text>
-                <Text style={{ fontSize: 24, fontWeight: '900', color: '#EA580C', letterSpacing: 2, marginVertical: 4 }}>
-                  {passwordSuccessData?.password}
-                </Text>
-                <Text style={{ fontSize: 10.5, color: '#C2410C' }}>
-                  Student can sign in immediately with this PIN
-                </Text>
-              </View>
-
-              {/* Security Alert Note */}
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#F8FAFC', padding: 9, borderRadius: 10, borderWidth: 1, borderColor: '#E2E8F0', marginBottom: 14 }}>
-                <Ionicons name="shield-checkmark" size={15} color="#059669" />
-                <Text style={{ fontSize: 10.5, color: '#475569', flex: 1, lineHeight: 14 }}>
-                  Security alert dispatched with Admin/Dev contact (<Text style={{ fontWeight: '700', color: '#0F172A' }}>Durgarao: 6303359425</Text>).
-                </Text>
-              </View>
-
-              {/* Share & Done Buttons */}
-              <View style={{ flexDirection: 'row', gap: 8 }}>
-                <TouchableOpacity
-                  onPress={() => {
-                    Share.share({
-                      title: 'Hostix Account Credentials',
-                      message: `Hostix Student Portal\nAccount: ${passwordSuccessData?.account}\nNew Password: ${passwordSuccessData?.password}\nAdmin Support: Durgarao (6303359425)`,
-                    }).catch(() => {});
-                  }}
-                  style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#ECFDF5', borderWidth: 1, borderColor: '#A7F3D0', paddingVertical: 11, borderRadius: 12 }}
-                  activeOpacity={0.8}
-                >
-                  <Ionicons name="share-social" size={15} color="#059669" />
-                  <Text style={{ fontSize: 12.5, fontWeight: '800', color: '#059669' }}>Share / Copy</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  onPress={() => setPasswordSuccessData(null)}
-                  style={{ flex: 1, backgroundColor: '#0F172A', paddingVertical: 11, borderRadius: 12, alignItems: 'center', justifyContent: 'center' }}
-                  activeOpacity={0.8}
-                >
-                  <Text style={{ fontSize: 12.5, fontWeight: '800', color: '#FFFFFF' }}>Done</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </View>
   );
 }
@@ -833,23 +604,23 @@ const styles = StyleSheet.create({
   },
   hdrHostelChip: {
     paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: 14,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    paddingVertical: 6,
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.12)',
+    borderColor: '#E2E8F0',
   },
   hdrHostelChipActive: {
-    backgroundColor: '#EA580C',
-    borderColor: '#FB923C',
+    backgroundColor: '#ECFDF5',
+    borderColor: '#A7F3D0',
   },
   hdrHostelChipText: {
-    color: '#D1D5DB',
+    color: '#475569',
     fontSize: 11,
     fontWeight: '700',
   },
   hdrHostelChipTextActive: {
-    color: '#FFFFFF',
+    color: '#059669',
     fontWeight: '800',
   },
   hdrStatusRow: {
@@ -870,7 +641,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   hdrStatusChipActive: {
-    backgroundColor: '#EA580C',
+    backgroundColor: '#059669',
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.2,
@@ -900,7 +671,7 @@ const styles = StyleSheet.create({
   tabSectionTitle: {
     fontSize: 9.5,
     fontWeight: '800',
-    color: '#C2410C',
+    color: '#059669',
     letterSpacing: 0.6,
   },
   tabsScroll: {
@@ -913,19 +684,19 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#EFE7DC',
+    borderColor: '#E2E8F0',
   },
   hostelChipActive: {
-    backgroundColor: '#C2410C',
-    borderColor: '#C2410C',
+    backgroundColor: '#ECFDF5',
+    borderColor: '#A7F3D0',
   },
   hostelChipText: {
-    color: '#C2410C',
+    color: '#64748B',
     fontSize: 11,
     fontWeight: '700',
   },
   hostelChipTextActive: {
-    color: '#FFFFFF',
+    color: '#059669',
     fontWeight: '800',
   },
   ownerChip: {
@@ -934,19 +705,19 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#EFE7DC',
+    borderColor: '#E2E8F0',
   },
   ownerChipActive: {
-    backgroundColor: '#7C3AED',
-    borderColor: '#7C3AED',
+    backgroundColor: '#ECFDF5',
+    borderColor: '#A7F3D0',
   },
   ownerChipText: {
-    color: '#7C3AED',
+    color: '#64748B',
     fontSize: 11,
     fontWeight: '700',
   },
   ownerChipTextActive: {
-    color: '#FFFFFF',
+    color: '#059669',
     fontWeight: '800',
   },
   statusTabsSection: {
@@ -963,22 +734,22 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     paddingVertical: 6,
-    borderRadius: 8,
+    borderRadius: 10,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#EFE7DC',
+    borderColor: '#E2E8F0',
   },
   statusFilterChipActive: {
-    backgroundColor: '#059669',
-    borderColor: '#059669',
+    backgroundColor: '#ECFDF5',
+    borderColor: '#A7F3D0',
   },
   statusFilterChipText: {
-    color: '#78716C',
+    color: '#64748B',
     fontSize: 11,
     fontWeight: '700',
   },
   statusFilterChipTextActive: {
-    color: '#FFFFFF',
+    color: '#059669',
     fontWeight: '800',
   },
   listContent: {

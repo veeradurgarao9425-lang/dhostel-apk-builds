@@ -56,6 +56,7 @@ export interface DueRecord {
   dueDate?: string;
   status: 'overdue' | 'pending' | 'paid';
   studentId?: number;
+  phone?: string;
 }
 
 export interface FinancialOverview {
@@ -228,6 +229,7 @@ export async function fetchDuesSummary(): Promise<DueSummary | null> {
         dueDate: f.due_date,
         status: (due < nowMs) ? ('overdue' as const) : ('pending' as const),
         studentId: f.student_id,
+        phone: f.phone || f.contact_number || f.mobile_number || f.student_phone || undefined,
       };
     });
     
@@ -633,5 +635,13 @@ export async function fetchDetailedIncomeBreakdown(): Promise<any> {
     guestFees,
     otherIncome,
   };
+}
+
+// ─── Students Ready to Vacate / Vacate Notice Submitted ─────────────────────
+export async function fetchStudentsReadyToVacate(): Promise<any[]> {
+  const data = await safeGet('/students', { limit: 250, status: 1 });
+  if (!data?.data || !Array.isArray(data.data)) return [];
+
+  return data.data.filter((s: any) => Boolean(s.vacate_notice_date));
 }
 

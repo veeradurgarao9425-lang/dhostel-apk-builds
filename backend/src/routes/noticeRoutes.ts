@@ -13,14 +13,10 @@ import {
   deleteNoticeCategory
 } from '../controllers/noticeController.js';
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, 'uploads/'),
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    cb(null, `notice-${Date.now()}${ext}`);
-  }
+const upload = multer({
+  dest: 'uploads/',
+  limits: { fileSize: 10 * 1024 * 1024 }
 });
-const upload = multer({ storage, limits: { fileSize: 5 * 1024 * 1024 } });
 
 const router = express.Router();
 

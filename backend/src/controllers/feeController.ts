@@ -504,13 +504,20 @@ export const uploadPaymentProof = async (req: AuthRequest, res: Response) => {
       if (io) {
         io.to(`hostel_${student.hostel_id}`).emit('payment_proof_uploaded', { payment_id, student_id });
       }
+      const studentFullName = `${student.first_name} ${student.last_name || ''}`.trim();
       await sendNotificationToHostelOwner(
         student.hostel_id,
         'Payment Proof',
         'New Payment Proof',
-        `${student.first_name} ${student.last_name || ''}`.trim() + ` uploaded a payment proof for ₹${amount_paid || 0}.`,
+        `${studentFullName} uploaded a payment proof for ₹${amount_paid || 0}.`,
         'Medium',
-        { payment_id, student_id }
+        { payment_id, student_id, studentName: studentFullName, studentId: student_id },
+        {
+          screen: 'TenantTransactions',
+          params: { studentId: student_id, studentName: studentFullName },
+          referenceType: 'payment_proof',
+          referenceId: payment_id,
+        }
       );
     } catch (err) {
       console.error('Failed to notify owner about payment proof:', err);

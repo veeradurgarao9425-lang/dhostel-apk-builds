@@ -32,7 +32,7 @@ import {
 } from '../../services/developerService';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { DeveloperDashboardSkeleton } from '../../components/ui/SkeletonCard';
+import { DeveloperDashboardSkeleton } from '../../components/developer/DeveloperSkeletons';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const FREQUENCIES: BillingFrequency[] = ['MONTHLY', 'QUARTERLY', 'HALF_YEARLY', 'YEARLY'];
@@ -243,26 +243,19 @@ export default function DeveloperDashboardScreen() {
         developerService.getDeveloperNotifications({ limit: 20 }),
       ]);
 
-      if (dashRes.status === 'fulfilled' && dashRes.value?.success && dashRes.value.data) {
-        setData(dashRes.value.data);
-      }
+      const nextData = dashRes.status === 'fulfilled' && dashRes.value?.success ? dashRes.value.data : null;
+      const nextFin = finRes.status === 'fulfilled' && finRes.value?.success ? finRes.value.data : null;
+      const nextBill = billRes.status === 'fulfilled' && billRes.value?.success ? (billRes.value.data || []) : [];
+      const nextExp = expRes.status === 'fulfilled' && expRes.value?.success ? (expRes.value.data || []) : [];
+      const nextNotif = notifRes.status === 'fulfilled' && notifRes.value?.success ? (notifRes.value.data || []) : [];
+      const nextUnread = notifRes.status === 'fulfilled' && notifRes.value?.success ? (notifRes.value.unreadCount || 0) : 0;
 
-      if (finRes.status === 'fulfilled' && finRes.value?.success && finRes.value.data) {
-        setFinanceData(finRes.value.data);
-      }
-
-      if (billRes.status === 'fulfilled' && billRes.value?.success) {
-        setBillingList(billRes.value.data || []);
-      }
-
-      if (expRes.status === 'fulfilled' && expRes.value?.success) {
-        setExpenses(expRes.value.data || []);
-      }
-
-      if (notifRes.status === 'fulfilled' && notifRes.value?.success) {
-        setNotifications(notifRes.value.data || []);
-        setUnreadNotifCount(notifRes.value.unreadCount || 0);
-      }
+      if (nextData) setData(nextData);
+      if (nextFin) setFinanceData(nextFin);
+      setBillingList(nextBill);
+      setExpenses(nextExp);
+      setNotifications(nextNotif);
+      setUnreadNotifCount(nextUnread);
     } catch (err: any) {
       setError(err.message || 'Error fetching platform data.');
     } finally {

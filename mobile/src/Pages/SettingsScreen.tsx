@@ -379,72 +379,88 @@ export const SettingsScreen = ({ navigation }: any) => {
 
                     {showPasswordFields && (
                         <View style={[styles.passwordForm, { borderTopWidth: 1, borderTopColor: isDark ? '#334155' : '#F1F5F9' }]}>
-                            <View style={styles.inputRow}>
-                                <View style={styles.inputIcon}>
-                                    <Lock size={18} color={isDark ? '#94A3B8' : '#64748B'} />
+                            {/* Current Password Field */}
+                            <View style={{ marginBottom: 12 }}>
+                                <Text style={{ fontSize: 12, fontWeight: '700', color: isDark ? '#94A3B8' : '#475569', marginBottom: 4 }}>
+                                    Current Password <Text style={{ color: '#EF4444' }}>*</Text>
+                                </Text>
+                                <View style={styles.inputRow}>
+                                    <View style={styles.inputIcon}>
+                                        <Lock size={18} color={isDark ? '#94A3B8' : '#64748B'} />
+                                    </View>
+                                    <TextInput
+                                        style={[styles.input, { fontSize, color: theme.textPrimary }]}
+                                        value={currentPassword}
+                                        onChangeText={setCurrentPassword}
+                                        placeholder={t('settings.currentPassword', 'Enter current password')}
+                                        secureTextEntry={!showCurrentPassword}
+                                        placeholderTextColor={isDark ? '#64748B' : '#A0AEC0'}
+                                        editable={!passwordLoading}
+                                    />
+                                    <TouchableOpacity onPress={() => setShowCurrentPassword(!showCurrentPassword)} style={{ padding: 4 }}>
+                                        {showCurrentPassword ? (
+                                            <EyeOff size={18} color={isDark ? '#94A3B8' : '#64748B'} />
+                                        ) : (
+                                            <Eye size={18} color={isDark ? '#94A3B8' : '#64748B'} />
+                                        )}
+                                    </TouchableOpacity>
                                 </View>
-                                <TextInput
-                                    style={[styles.input, { fontSize, color: theme.textPrimary }]}
-                                    value={currentPassword}
-                                    onChangeText={setCurrentPassword}
-                                    placeholder={t('settings.currentPassword', 'Current Password')}
-                                    secureTextEntry={!showCurrentPassword}
-                                    placeholderTextColor={isDark ? '#64748B' : '#A0AEC0'}
-                                    editable={!passwordLoading}
-                                />
-                                <TouchableOpacity onPress={() => setShowCurrentPassword(!showCurrentPassword)} style={{ padding: 4 }}>
-                                    {showCurrentPassword ? (
-                                        <EyeOff size={18} color={isDark ? '#94A3B8' : '#64748B'} />
-                                    ) : (
-                                        <Eye size={18} color={isDark ? '#94A3B8' : '#64748B'} />
-                                    )}
-                                </TouchableOpacity>
                             </View>
-                            <View style={[styles.divider, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]} />
 
-                            <View style={styles.inputRow}>
-                                <View style={styles.inputIcon}>
-                                    <Lock size={18} color={isDark ? '#94A3B8' : '#64748B'} />
+                            {/* New Password Field */}
+                            <View style={{ marginBottom: 12 }}>
+                                <Text style={{ fontSize: 12, fontWeight: '700', color: isDark ? '#94A3B8' : '#475569', marginBottom: 4 }}>
+                                    New Password <Text style={{ color: '#EF4444' }}>*</Text>
+                                </Text>
+                                <View style={styles.inputRow}>
+                                    <View style={styles.inputIcon}>
+                                        <Lock size={18} color={isDark ? '#94A3B8' : '#64748B'} />
+                                    </View>
+                                    <TextInput
+                                        style={[styles.input, { fontSize, color: theme.textPrimary }]}
+                                        value={newPassword}
+                                        onChangeText={setNewPassword}
+                                        placeholder={t('settings.newPassword', 'Enter new password (min. 6 characters)')}
+                                        secureTextEntry={!showNewPassword}
+                                        placeholderTextColor={isDark ? '#64748B' : '#A0AEC0'}
+                                        editable={!passwordLoading}
+                                    />
+                                    <TouchableOpacity onPress={() => setShowNewPassword(!showNewPassword)} style={{ padding: 4 }}>
+                                        {showNewPassword ? (
+                                            <EyeOff size={18} color={isDark ? '#94A3B8' : '#64748B'} />
+                                        ) : (
+                                            <Eye size={18} color={isDark ? '#94A3B8' : '#64748B'} />
+                                        )}
+                                    </TouchableOpacity>
                                 </View>
-                                <TextInput
-                                    style={[styles.input, { fontSize, color: theme.textPrimary }]}
-                                    value={newPassword}
-                                    onChangeText={setNewPassword}
-                                    placeholder={t('settings.newPassword', 'New Password')}
-                                    secureTextEntry={!showNewPassword}
-                                    placeholderTextColor={isDark ? '#64748B' : '#A0AEC0'}
-                                    editable={!passwordLoading}
-                                />
-                                <TouchableOpacity onPress={() => setShowNewPassword(!showNewPassword)} style={{ padding: 4 }}>
-                                    {showNewPassword ? (
-                                        <EyeOff size={18} color={isDark ? '#94A3B8' : '#64748B'} />
-                                    ) : (
-                                        <Eye size={18} color={isDark ? '#94A3B8' : '#64748B'} />
-                                    )}
-                                </TouchableOpacity>
                             </View>
-                            <View style={[styles.divider, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]} />
 
-                            <View style={styles.inputRow}>
-                                <View style={styles.inputIcon}>
-                                    <Lock size={18} color={isDark ? '#94A3B8' : '#64748B'} />
+                            {/* Re-enter Password Field */}
+                            <View style={{ marginBottom: 14 }}>
+                                <Text style={{ fontSize: 12, fontWeight: '700', color: isDark ? '#94A3B8' : '#475569', marginBottom: 4 }}>
+                                    Re-enter Password <Text style={{ color: '#EF4444' }}>*</Text>
+                                </Text>
+                                <View style={styles.inputRow}>
+                                    <View style={styles.inputIcon}>
+                                        <Lock size={18} color={isDark ? '#94A3B8' : '#64748B'} />
+                                    </View>
+                                    <TextInput
+                                        style={[styles.input, { fontSize, color: theme.textPrimary }]}
+                                        value={confirmPassword}
+                                        onChangeText={setConfirmPassword}
+                                        placeholder={t('settings.confirmNewPassword', 'Re-enter your new password')}
+                                        secureTextEntry={!showConfirmPassword}
+                                        placeholderTextColor={isDark ? '#64748B' : '#A0AEC0'}
+                                        editable={!passwordLoading}
+                                    />
+                                    <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)} style={{ padding: 4 }}>
+                                        {showConfirmPassword ? (
+                                            <EyeOff size={18} color={isDark ? '#94A3B8' : '#64748B'} />
+                                        ) : (
+                                            <Eye size={18} color={isDark ? '#94A3B8' : '#64748B'} />
+                                        )}
+                                    </TouchableOpacity>
                                 </View>
-                                <TextInput
-                                    style={[styles.input, { fontSize, color: theme.textPrimary }]}
-                                    value={confirmPassword}
-                                    onChangeText={setConfirmPassword}
-                                    placeholder={t('settings.confirmNewPassword', 'Confirm New Password')}
-                                    secureTextEntry={!showConfirmPassword}
-                                    placeholderTextColor={isDark ? '#64748B' : '#A0AEC0'}
-                                    editable={!passwordLoading}
-                                />
-                                <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)} style={{ padding: 4 }}>
-                                    {showConfirmPassword ? (
-                                        <EyeOff size={18} color={isDark ? '#94A3B8' : '#64748B'} />
-                                    ) : (
-                                        <Eye size={18} color={isDark ? '#94A3B8' : '#64748B'} />
-                                    )}
-                                </TouchableOpacity>
                             </View>
 
                             <TouchableOpacity

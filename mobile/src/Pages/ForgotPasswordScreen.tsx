@@ -14,10 +14,12 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useToast } from '../context/ToastContext';
 import api from '../services/api';
 
 export default function ForgotPasswordScreen({ navigation }: any) {
     const insets = useSafeAreaInsets();
+    const { showSuccess, showError } = useToast();
     
     // Steps: 'EMAIL' -> 'RESET'
     const [step, setStep] = useState<'EMAIL' | 'OTP' | 'RESET'>('EMAIL');
@@ -27,8 +29,11 @@ export default function ForgotPasswordScreen({ navigation }: any) {
     const [otp, setOtp] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
+    const [showNewPassword, setShowNewPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     
     const [isLoading, setIsLoading] = useState(false);
+    const [isRedirecting, setIsRedirecting] = useState(false);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
     const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
@@ -36,7 +41,9 @@ export default function ForgotPasswordScreen({ navigation }: any) {
 
     const handleSendOTP = async () => {
         if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-            setErrorMsg('Please enter a valid email address');
+            const msg = 'Please enter a valid email address';
+            setErrorMsg(msg);
+            showError(msg);
             return;
         }
         Keyboard.dismiss();
@@ -48,13 +55,19 @@ export default function ForgotPasswordScreen({ navigation }: any) {
         try {
             const response = await api.post('/auth/forgot-password', { email: email.trim() });
             if (response.data?.success || response.status === 200) {
-                setSuccessMsg('OTP sent successfully to your email.');
+                const msg = 'OTP sent successfully to your email.';
+                setSuccessMsg(msg);
+                showSuccess(msg);
                 setStep('OTP');
             } else {
-                setErrorMsg(response.data?.error || response.data?.message || 'Failed to send OTP.');
+                const msg = response.data?.error || response.data?.message || 'Failed to send OTP.';
+                setErrorMsg(msg);
+                showError(msg);
             }
         } catch (err: any) {
-            setErrorMsg(err.response?.data?.error || err.response?.data?.message || 'Network error while sending OTP.');
+            const msg = err.response?.data?.error || err.response?.data?.message || 'Network error while sending OTP.';
+            setErrorMsg(msg);
+            showError(msg);
         } finally {
             setIsLoading(false);
         }
@@ -62,7 +75,9 @@ export default function ForgotPasswordScreen({ navigation }: any) {
 
     const handleVerifyOTP = async () => {
         if (!otp.trim() || otp.trim().length !== 6) {
-            setErrorMsg('Please enter a valid 6-digit OTP');
+            const msg = 'Please enter a valid 6-digit OTP';
+            setErrorMsg(msg);
+            showError(msg);
             return;
         }
         Keyboard.dismiss();
@@ -71,14 +86,6 @@ export default function ForgotPasswordScreen({ navigation }: any) {
         setSuccessMsg(null);
 
         try {
-            // Verify OTP using verify-reset-token or a combined check, or we can use the backend reset token if it can be verified.
-            // Wait, the backend has /verify-reset-token which checks the token. But the user has OTP.
-            // Let's create or use verify OTP endpoint in backend or let the backend verify the OTP first.
-            // Let's check how the backend verifies the reset token/otp. 
-            // In backend, `/auth/forgot-password` generates a token and updates password_reset_token and password_reset_otp.
-            // We can add a simple backend route or logic to verify the password reset OTP and return the token, 
-            // OR we can make a call to a verification endpoint to check if the OTP matches, so the app knows it is correct.
-            // Let's look at what endpoints we have in backend.
             const response = await api.post('/auth/verify-reset-otp', {
                 email: email.trim(),
                 otp: otp.trim()
@@ -86,13 +93,19 @@ export default function ForgotPasswordScreen({ navigation }: any) {
 
             if (response.data?.success || response.status === 200) {
                 setResetToken(response.data.token);
-                setSuccessMsg('OTP verified successfully.');
+                const msg = 'OTP verified successfully!';
+                setSuccessMsg(msg);
+                showSuccess(msg);
                 setStep('RESET');
             } else {
-                setErrorMsg(response.data?.error || 'Invalid OTP');
+                const msg = response.data?.error || 'Invalid OTP';
+                setErrorMsg(msg);
+                showError(msg);
             }
         } catch (err: any) {
-            setErrorMsg(err.response?.data?.error || err.response?.data?.message || 'Invalid OTP or verification error.');
+            const msg = err.response?.data?.error || err.response?.data?.message || 'Invalid OTP or verification error.';
+            setErrorMsg(msg);
+            showError(msg);
         } finally {
             setIsLoading(false);
         }
@@ -100,20 +113,27 @@ export default function ForgotPasswordScreen({ navigation }: any) {
 
     const handleResetPassword = async () => {
         if (!newPassword.trim() || !confirmPassword.trim()) {
-            setErrorMsg('Password fields are required');
+            const msg = 'Please enter and re-enter your new password.';
+            setErrorMsg(msg);
+            showError(msg);
             return;
         }
         if (newPassword !== confirmPassword) {
-            setErrorMsg('Passwords do not match');
+            const msg = 'Passwords do not match. Please re-check.';
+            setErrorMsg(msg);
+            showError(msg);
             return;
         }
         if (newPassword.length < 6) {
-            setErrorMsg('Password must be at least 6 characters long');
+            const msg = 'Password must be at least 6 characters long.';
+            setErrorMsg(msg);
+            showError(msg);
             return;
         }
 
         Keyboard.dismiss();
         setIsLoading(true);
+        setIsRedirecting(true);
         setErrorMsg(null);
         setSuccessMsg(null);
 
@@ -125,17 +145,28 @@ export default function ForgotPasswordScreen({ navigation }: any) {
             });
             
             if (response.data?.success || response.status === 200) {
-                setSuccessMsg('Password reset successfully! You can now log in.');
+                const msg = 'Password reset successfully! Redirecting to login...';
+                setSuccessMsg(msg);
+                showSuccess(msg);
                 setTimeout(() => {
-                    navigation.navigate('Login');
-                }, 2000);
+                    navigation.reset({
+                        index: 0,
+                        routes: [{ name: 'Login' }],
+                    });
+                }, 1000);
             } else {
-                setErrorMsg(response.data?.error || response.data?.message || 'Failed to reset password.');
+                setIsRedirecting(false);
+                setIsLoading(false);
+                const msg = response.data?.error || response.data?.message || 'Failed to reset password.';
+                setErrorMsg(msg);
+                showError(msg);
             }
         } catch (err: any) {
-            setErrorMsg(err.response?.data?.error || err.response?.data?.message || 'Error resetting password.');
-        } finally {
+            setIsRedirecting(false);
             setIsLoading(false);
+            const msg = err.response?.data?.error || err.response?.data?.message || 'Error resetting password. Please try again.';
+            setErrorMsg(msg);
+            showError(msg);
         }
     };
 
@@ -184,9 +215,21 @@ export default function ForgotPasswordScreen({ navigation }: any) {
                             />
                         </View>
 
-                        <TouchableOpacity style={styles.submitBtn} onPress={handleSendOTP} disabled={isLoading}>
+                        <TouchableOpacity 
+                            style={[styles.submitBtn, isLoading && { opacity: 0.8 }]} 
+                            onPress={handleSendOTP} 
+                            disabled={isLoading}
+                            activeOpacity={0.85}
+                        >
                             <LinearGradient colors={['#7C3AED', '#5F2EEA']} style={styles.submitGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-                                {isLoading ? <ActivityIndicator color="#FFF" /> : <Text style={styles.submitTxt}>Send OTP</Text>}
+                                {isLoading ? (
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+                                        <ActivityIndicator color="#FFFFFF" size="small" />
+                                        <Text style={styles.submitTxt}>Sending OTP...</Text>
+                                    </View>
+                                ) : (
+                                    <Text style={styles.submitTxt}>Send OTP</Text>
+                                )}
                             </LinearGradient>
                         </TouchableOpacity>
                     </>
@@ -215,9 +258,21 @@ export default function ForgotPasswordScreen({ navigation }: any) {
                             />
                         </View>
 
-                        <TouchableOpacity style={styles.submitBtn} onPress={handleVerifyOTP}>
+                        <TouchableOpacity 
+                            style={[styles.submitBtn, isLoading && { opacity: 0.8 }]} 
+                            onPress={handleVerifyOTP} 
+                            disabled={isLoading}
+                            activeOpacity={0.85}
+                        >
                             <LinearGradient colors={['#7C3AED', '#5F2EEA']} style={styles.submitGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-                                <Text style={styles.submitTxt}>Verify Code</Text>
+                                {isLoading ? (
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+                                        <ActivityIndicator color="#FFFFFF" size="small" />
+                                        <Text style={styles.submitTxt}>Verifying Code...</Text>
+                                    </View>
+                                ) : (
+                                    <Text style={styles.submitTxt}>Verify Code</Text>
+                                )}
                             </LinearGradient>
                         </TouchableOpacity>
 
@@ -237,33 +292,61 @@ export default function ForgotPasswordScreen({ navigation }: any) {
                         {errorMsg && <Text style={styles.errorText}>{errorMsg}</Text>}
                         {successMsg && <Text style={styles.successText}>{successMsg}</Text>}
 
-                        <View style={styles.inputContainer}>
-                            <Ionicons name="lock-closed-outline" size={20} color="#94A3B8" style={styles.inputIcon} />
-                            <TextInput
-                                style={styles.input}
-                                placeholder="Enter new password"
-                                placeholderTextColor="#94A3B8"
-                                secureTextEntry
-                                value={newPassword}
-                                onChangeText={(t) => { setNewPassword(t); setErrorMsg(null); }}
-                            />
+                        <View style={{ marginBottom: 14 }}>
+                            <Text style={styles.inputLabel}>
+                                New Password <Text style={{ color: '#EF4444' }}>*</Text>
+                            </Text>
+                            <View style={styles.inputContainer}>
+                                <Ionicons name="lock-closed-outline" size={20} color="#94A3B8" style={styles.inputIcon} />
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="Enter new password (min. 6 characters)"
+                                    placeholderTextColor="#94A3B8"
+                                    secureTextEntry={!showNewPassword}
+                                    value={newPassword}
+                                    onChangeText={(t) => { setNewPassword(t); setErrorMsg(null); }}
+                                />
+                                <TouchableOpacity onPress={() => setShowNewPassword(!showNewPassword)} style={{ padding: 6 }}>
+                                    <Ionicons name={showNewPassword ? "eye-off-outline" : "eye-outline"} size={20} color="#94A3B8" />
+                                </TouchableOpacity>
+                            </View>
                         </View>
 
-                        <View style={styles.inputContainer}>
-                            <Ionicons name="lock-closed-outline" size={20} color="#94A3B8" style={styles.inputIcon} />
-                            <TextInput
-                                style={styles.input}
-                                placeholder="Confirm new password"
-                                placeholderTextColor="#94A3B8"
-                                secureTextEntry
-                                value={confirmPassword}
-                                onChangeText={(t) => { setConfirmPassword(t); setErrorMsg(null); }}
-                            />
+                        <View style={{ marginBottom: 14 }}>
+                            <Text style={styles.inputLabel}>
+                                Re-enter Password <Text style={{ color: '#EF4444' }}>*</Text>
+                            </Text>
+                            <View style={styles.inputContainer}>
+                                <Ionicons name="lock-closed-outline" size={20} color="#94A3B8" style={styles.inputIcon} />
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="Re-enter your new password"
+                                    placeholderTextColor="#94A3B8"
+                                    secureTextEntry={!showConfirmPassword}
+                                    value={confirmPassword}
+                                    onChangeText={(t) => { setConfirmPassword(t); setErrorMsg(null); }}
+                                />
+                                <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)} style={{ padding: 6 }}>
+                                    <Ionicons name={showConfirmPassword ? "eye-off-outline" : "eye-outline"} size={20} color="#94A3B8" />
+                                </TouchableOpacity>
+                            </View>
                         </View>
 
-                        <TouchableOpacity style={styles.submitBtn} onPress={handleResetPassword} disabled={isLoading}>
+                        <TouchableOpacity 
+                            style={[styles.submitBtn, isLoading && { opacity: 0.8 }]} 
+                            onPress={handleResetPassword} 
+                            disabled={isLoading}
+                            activeOpacity={0.85}
+                        >
                             <LinearGradient colors={['#7C3AED', '#5F2EEA']} style={styles.submitGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
-                                {isLoading ? <ActivityIndicator color="#FFF" /> : <Text style={styles.submitTxt}>Save & Login</Text>}
+                                {isLoading ? (
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
+                                        <ActivityIndicator color="#FFFFFF" size="small" />
+                                        <Text style={styles.submitTxt}>Saving Password...</Text>
+                                    </View>
+                                ) : (
+                                    <Text style={styles.submitTxt}>Save & Login</Text>
+                                )}
                             </LinearGradient>
                         </TouchableOpacity>
 
@@ -273,6 +356,15 @@ export default function ForgotPasswordScreen({ navigation }: any) {
                     </>
                 )}
             </View>
+
+            {/* Full-Screen Loading Overlay */}
+            {isRedirecting && (
+                <View style={styles.redirectOverlay}>
+                    <View style={styles.redirectCard}>
+                        <ActivityIndicator size="large" color="#7C3AED" />
+                    </View>
+                </View>
+            )}
         </KeyboardAvoidingView>
     );
 }
@@ -392,5 +484,33 @@ const styles = StyleSheet.create({
         fontWeight: '500',
         marginBottom: 16,
         textAlign: 'center',
-    }
+    },
+    inputLabel: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: '#475569',
+        marginBottom: 6,
+    },
+    redirectOverlay: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: 'rgba(15, 23, 42, 0.45)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 999,
+        elevation: 999,
+        padding: 24,
+    },
+    redirectCard: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 20,
+        width: 80,
+        height: 80,
+        justifyContent: 'center',
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.18,
+        shadowRadius: 16,
+        elevation: 10,
+    },
 });

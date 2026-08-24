@@ -1,6 +1,6 @@
 import { Platform } from 'react-native';
 
-const API_FALLBACK_URL = 'http://143.244.131.69:8081';
+const API_FALLBACK_URL = (process.env.EXPO_PUBLIC_API_URL || 'https://api.143-244-131-69.sslip.io/api').replace(/\/api\/?$/, '');
 
 /**
  * Resolves any raw photo/document URL to a fully-qualified, renderable URL.
@@ -8,8 +8,13 @@ const API_FALLBACK_URL = 'http://143.244.131.69:8081';
  */
 export function getResolvedImageUrl(rawUrl: string | null | undefined): string | null {
   if (!rawUrl || typeof rawUrl !== 'string') return null;
-  const clean = rawUrl.trim();
+  let clean = rawUrl.trim();
   if (!clean) return null;
+
+  // Upgrade legacy HTTP IP links to HTTPS domain
+  if (clean.includes('143.244.131.69:8081')) {
+    clean = clean.replace('http://143.244.131.69:8081', API_FALLBACK_URL).replace('https://143.244.131.69:8081', API_FALLBACK_URL);
+  }
 
   // Data URLs or local file uris
   if (clean.startsWith('data:') || clean.startsWith('file://') || clean.startsWith('content://') || clean.startsWith('ph://')) {
@@ -56,17 +61,27 @@ export function appendImageFileToFormData(
   uri: string,
   fallbackName = 'photo.jpg'
 ) {
-  let filename = uri.split('/').pop() || fallbackName;
+  if (!uri || typeof uri !== 'string') return;
+  const cleanUri = uri.trim();
+  if (!cleanUri) return;
+
+  let filename = cleanUri.split('/').pop() || fallbackName;
   filename = filename.split('?')[0];
 
   const match = /\.(\w+)$/.exec(filename);
   const ext = match ? match[1].toLowerCase() : 'jpg';
   const mimeType = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
-
   const finalName = !/\.(jpg|jpeg|png|webp|gif)$/i.test(filename) ? `${filename}.${ext}` : filename;
 
+  let finalUri = cleanUri;
+  if (Platform.OS === 'android') {
+    finalUri = cleanUri.startsWith('file://') || cleanUri.startsWith('content://') ? cleanUri : `file://${cleanUri}`;
+  } else {
+    finalUri = cleanUri.replace('file://', '');
+  }
+
   formData.append(fieldName, {
-    uri: Platform.OS === 'android' ? uri : uri.replace('file://', ''),
+    uri: finalUri,
     name: finalName,
     type: mimeType,
   } as any);

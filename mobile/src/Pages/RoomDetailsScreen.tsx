@@ -31,6 +31,7 @@ import {
     Armchair,
     TrendingUp,
     UserPlus,
+    LogOut,
 } from 'lucide-react-native';
 import api from '../services/api';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -119,14 +120,24 @@ export const RoomDetailsScreen = ({ route }: any) => {
                         </Text>
                     </View>
                 </View>
-                <TouchableOpacity
-                    style={[styles.callBtn, { backgroundColor: '#ECFDF5' }]}
-                    onPress={onCall}
-                    activeOpacity={0.7}
-                >
-                    <Phone size={13} color="#10B981" />
-                    <Text style={[styles.callText, { color: '#10B981' }]}>Call Tenant</Text>
-                </TouchableOpacity>
+                <View style={{ flexDirection: 'row', gap: 6, marginTop: 10 }}>
+                    <TouchableOpacity
+                        style={[styles.callBtn, { backgroundColor: '#ECFDF5', flex: 1 }]}
+                        onPress={onCall}
+                        activeOpacity={0.7}
+                    >
+                        <Phone size={13} color="#10B981" />
+                        <Text style={[styles.callText, { color: '#10B981' }]}>Call</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[styles.callBtn, { backgroundColor: '#FEF2F2', borderColor: '#FCA5A5', borderWidth: 1, flex: 1 }]}
+                        onPress={() => navigation.navigate('StudentDetails', { studentId: item.student_id })}
+                        activeOpacity={0.7}
+                    >
+                        <LogOut size={13} color="#EF4444" />
+                        <Text style={[styles.callText, { color: '#EF4444' }]}>Vacate Bed</Text>
+                    </TouchableOpacity>
+                </View>
             </TouchableOpacity>
         );
     });

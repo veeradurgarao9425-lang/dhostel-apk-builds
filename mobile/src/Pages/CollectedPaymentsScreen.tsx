@@ -205,10 +205,10 @@ export default function CollectedPaymentsScreen() {
                 return;
             }
 
-            const baseURL = (api.defaults.baseURL || 'http://143.244.131.69:8081/api').replace(/\/$/, '');
-            const exportUrl = `${baseURL}/income/export?startDate=${startStr}&endDate=${endStr}&token=${encodeURIComponent(token)}&all=true`;
+            const baseURL = (api.defaults.baseURL || 'https://api.143-244-131-69.sslip.io/api').replace(/\/$/, '');
+            const exportUrl = `${baseURL}/reports/download/excel?startDate=${startStr}&endDate=${endStr}&reportType=collection&token=${encodeURIComponent(token)}`;
 
-            const filename = `payments_report_${startStr}_to_${endStr}.xlsx`;
+            const filename = `Collected_Rent_Report_${startStr}_to_${endStr}.xlsx`;
 
             setShowExportModal(false);
             await downloadAndSaveFile(exportUrl, filename, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');

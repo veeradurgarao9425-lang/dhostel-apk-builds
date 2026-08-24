@@ -44,7 +44,7 @@ export const DeveloperProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [developerToken, setDeveloperToken] = useState<string | null>(null);
   const [supportSession, setSupportSession] = useState<SupportSessionState | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
-  const { updateTokenAndUser, signOut } = useAuth();
+  const { user, updateTokenAndUser, signOut } = useAuth();
 
   // Load existing developer session or active support session from storage
   useEffect(() => {
@@ -52,15 +52,24 @@ export const DeveloperProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       try {
         let storedDevToken = await getSecureItem('developer_token');
         if (!storedDevToken) {
-          storedDevToken = await AsyncStorage.getItem('developer_token');
+          storedDevToken = await getSecureItem('token');
         }
-        const storedDevUser = await AsyncStorage.getItem('developer_user');
+        if (!storedDevToken) {
+          storedDevToken = await AsyncStorage.getItem('developer_token') || await AsyncStorage.getItem('token');
+        }
+        const storedDevUser = await AsyncStorage.getItem('developer_user') || await AsyncStorage.getItem('user');
         const storedSupport = await AsyncStorage.getItem('support_session');
 
         if (storedDevToken && storedDevUser) {
-          setDeveloperToken(storedDevToken);
-          setDeveloper(JSON.parse(storedDevUser));
-          api.defaults.headers.common['Authorization'] = `Bearer ${storedDevToken}`;
+          const parsed = JSON.parse(storedDevUser);
+          if (parsed.role === 'DEVELOPER' || parsed.is_developer) {
+            setDeveloperToken(storedDevToken);
+            setDeveloper(parsed);
+            api.defaults.headers.common['Authorization'] = `Bearer ${storedDevToken}`;
+          }
+        } else if (user && (user.role === 'DEVELOPER' || (user as any).is_developer)) {
+          setDeveloper(user as any);
+          if (storedDevToken) setDeveloperToken(storedDevToken);
         }
 
         if (storedSupport) {
@@ -80,7 +89,7 @@ export const DeveloperProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     };
 
     initDev();
-  }, []);
+  }, [user]);
 
   // Developer Login
   const login = async (identifier: string, pass: string) => {
@@ -202,7 +211,7 @@ export const DeveloperProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       value={{
         developer,
         developerToken,
-        isDeveloperLoggedIn: !!developer && !!developerToken,
+        isDeveloperLoggedIn: (!!developer && !!developerToken) || (user?.role === 'DEVELOPER') || !!(user as any)?.is_developer,
         isSupportMode: !!supportSession,
         supportSession,
         loading,
