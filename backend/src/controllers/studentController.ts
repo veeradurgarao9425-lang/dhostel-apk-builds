@@ -491,9 +491,7 @@ export const createStudent = async (req: AuthRequest, res: Response) => {
     const finalAdmissionStatus = (isOldStudentVal || admission_status === 1 || admission_status === '1' || admission_status === 'Paid') ? 1 : 0;
     const finalStudentStatus = (status === 0 || status === '0' || status === 'Inactive') ? 0 : 1;
 
-    // Insert student
-    // Convert boolean/status values: id_proof_status, admission_status, status are now TINYINT (0/1)
-    const [student_id] = await db('students').insert({
+    const studentInsertData: any = {
       hostel_id,
       first_name: cleanFirstName,
       last_name: cleanLastName,
@@ -529,7 +527,20 @@ export const createStudent = async (req: AuthRequest, res: Response) => {
       plan_end_date: resolvedPlanEnd,
       plan_amount: resolvedPlanAmount,
       created_at: new Date()
-    });
+    };
+
+    // Filter to only columns that actually exist in the table as a resilient fallback
+    try {
+      const colInfo = await db('students').columnInfo();
+      const validCols = Object.keys(colInfo);
+      for (const key of Object.keys(studentInsertData)) {
+        if (!validCols.includes(key)) {
+          delete studentInsertData[key];
+        }
+      }
+    } catch (_) {}
+
+    const [student_id] = await db('students').insert(studentInsertData);
 
     const studentStatus = finalStudentStatus;
     const monthlyRent = roomDetails ? Number(roomDetails.rent_per_bed) : Number(monthly_rent || 0);

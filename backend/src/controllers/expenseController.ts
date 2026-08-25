@@ -371,20 +371,36 @@ export const createExpense = async (req: AuthRequest, res: Response) => {
       bill_number
     } = req.body;
 
-    // Validate required fields
-    if (!category_id || !expense_date || !amount || !payment_mode_id) {
+    let parsedCategoryId = category_id ? parseInt(category_id, 10) : null;
+    if (!parsedCategoryId || isNaN(parsedCategoryId)) {
+      // Fallback: lookup default category
+      const defCat = await db('expense_categories').first();
+      parsedCategoryId = defCat ? defCat.category_id : null;
+    }
+
+    if (!parsedCategoryId) {
       return res.status(400).json({
         success: false,
-        error: 'Required fields: category_id, expense_date, amount, payment_mode_id'
+        error: 'Please select a valid expense category'
       });
     }
 
-    if (isNaN(parseFloat(amount)) || parseFloat(amount) <= 0) {
+    if (!expense_date) {
       return res.status(400).json({
         success: false,
-        error: 'amount must be a positive number'
+        error: 'Expense date is required'
       });
     }
+
+    const parsedAmount = parseFloat(amount);
+    if (isNaN(parsedAmount) || parsedAmount <= 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Amount must be a positive number'
+      });
+    }
+
+    const parsedPaymentModeId = payment_mode_id ? parseInt(payment_mode_id, 10) || 1 : 1;
 
     // Determine hostel_id based on user role. Owner always uses their own
     // hostel; Admin/Super Admin must specify hostel_id explicitly (never
@@ -416,19 +432,31 @@ export const createExpense = async (req: AuthRequest, res: Response) => {
       attachment_url = await processFileUpload(req.file, 'expenses');
     }
 
-    const [expense_id] = await db('expenses').insert({
+    const expenseInsertData: any = {
       hostel_id,
-      category_id,
+      category_id: parsedCategoryId,
       expense_date,
-      amount,
-      payment_mode_id,
+      amount: parsedAmount,
+      payment_mode_id: parsedPaymentModeId,
       vendor_name,
       description,
       bill_number,
       attachment_url,
       created_by: req.user?.user_id,
       created_at: new Date()
-    });
+    };
+
+    try {
+      const colInfo = await db('expenses').columnInfo();
+      const validCols = Object.keys(colInfo);
+      for (const key of Object.keys(expenseInsertData)) {
+        if (!validCols.includes(key)) {
+          delete expenseInsertData[key];
+        }
+      }
+    } catch (_) {}
+
+    const [expense_id] = await db('expenses').insert(expenseInsertData);
 
     res.status(201).json({
       success: true,

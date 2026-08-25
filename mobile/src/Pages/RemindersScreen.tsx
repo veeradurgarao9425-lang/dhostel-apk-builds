@@ -376,8 +376,18 @@ export default function RemindersScreen() {
             )}
 
             {/* Add FAB */}
-            <TouchableOpacity style={[s.fab, { backgroundColor: theme.primary }]} onPress={handleOpenCreate} activeOpacity={0.85}>
-                <Ionicons name="add" size={26} color="#FFF" />
+            <TouchableOpacity
+                style={[
+                    s.fab,
+                    {
+                        backgroundColor: theme.primary,
+                        bottom: Math.max(insets.bottom + 85, 100),
+                    },
+                ]}
+                onPress={handleOpenCreate}
+                activeOpacity={0.85}
+            >
+                <Ionicons name="add" size={28} color="#FFF" />
             </TouchableOpacity>
 
             <Modal visible={isModalVisible} animationType="slide" onRequestClose={() => setIsModalVisible(false)}>
@@ -610,18 +620,18 @@ const s = StyleSheet.create({
 
     fab: {
         position: 'absolute',
-        bottom: 95,
+        bottom: 100,
         right: 20,
-        width: 52,
-        height: 52,
-        borderRadius: 26,
+        width: 56,
+        height: 56,
+        borderRadius: 28,
         justifyContent: 'center',
         alignItems: 'center',
-        elevation: 10,
+        elevation: 12,
         shadowColor: '#4F46E5',
-        shadowOffset: { width: 0, height: 4 },
+        shadowOffset: { width: 0, height: 6 },
         shadowOpacity: 0.35,
-        shadowRadius: 6,
+        shadowRadius: 8,
         zIndex: 99999,
     },
 

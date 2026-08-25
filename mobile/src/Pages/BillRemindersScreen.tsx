@@ -227,57 +227,59 @@ export default function BillRemindersScreen() {
 
             {/* Search inputs */}
             <View style={s.searchWrap}>
-                <Ionicons name="search" size={18} color="#94A3B8" />
+                <Ionicons name="search" size={18} color="#7C3AED" />
                 <TextInput
                     style={s.searchInput}
-                    placeholder="Search by name or room..."
+                    placeholder="Search by name or room number..."
                     placeholderTextColor="#94A3B8"
                     value={search}
                     onChangeText={setSearch}
                 />
                 {search.length > 0 && (
-                    <TouchableOpacity onPress={() => setSearch('')}>
+                    <TouchableOpacity onPress={() => setSearch('')} style={{ padding: 4 }}>
                         <Ionicons name="close-circle" size={18} color="#94A3B8" />
                     </TouchableOpacity>
                 )}
             </View>
 
-            {/* Tabs */}
-            <View style={{ paddingHorizontal: 16, marginBottom: 8 }}>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+            {/* Filter Tabs with Proper Breathing Room */}
+            <View style={s.tabsWrapper}>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.tabsScrollContent}>
                     {/* All Tab */}
                     <TouchableOpacity 
-                        style={[s.tabButton, activeTab === 'All' && s.tabButtonActive]}
+                        style={[s.tabButton, activeTab === 'All' && s.tabButtonActiveAll]}
                         onPress={() => setActiveTab('All')}
                         activeOpacity={0.8}
                     >
-                        <Text style={[s.tabText, activeTab === 'All' && s.tabTextActive]}>All</Text>
-                        <View style={[s.tabBadge, activeTab === 'All' && s.tabBadgeActive]}>
-                            <Text style={[s.tabBadgeText, activeTab === 'All' && s.tabBadgeTextActive]}>{allCount}</Text>
+                        <Text style={[s.tabText, activeTab === 'All' && s.tabTextActiveAll]}>All Dues</Text>
+                        <View style={[s.tabBadge, activeTab === 'All' && s.tabBadgeActiveAll]}>
+                            <Text style={[s.tabBadgeText, activeTab === 'All' && s.tabBadgeTextActiveAll]}>{allCount}</Text>
                         </View>
                     </TouchableOpacity>
 
                     {/* Overdue Tab */}
                     <TouchableOpacity 
-                        style={[s.tabButton, activeTab === 'Overdue' && s.tabButtonActive, activeTab === 'Overdue' && { backgroundColor: '#FEE2E2', borderColor: '#FEE2E2' }]}
+                        style={[s.tabButton, activeTab === 'Overdue' && s.tabButtonActiveOverdue]}
                         onPress={() => setActiveTab('Overdue')}
                         activeOpacity={0.8}
                     >
-                        <Text style={[s.tabText, activeTab === 'Overdue' && { color: '#DC2626' }]}>Overdue</Text>
-                        <View style={[s.tabBadge, activeTab === 'Overdue' && { backgroundColor: '#DC2626' }]}>
-                            <Text style={[s.tabBadgeText, activeTab === 'Overdue' && { color: '#FFFFFF' }]}>{overdueCount}</Text>
+                        <Ionicons name="alert-circle" size={14} color={activeTab === 'Overdue' ? '#DC2626' : '#EF4444'} />
+                        <Text style={[s.tabText, activeTab === 'Overdue' && s.tabTextActiveOverdue]}>Overdue</Text>
+                        <View style={[s.tabBadge, activeTab === 'Overdue' && s.tabBadgeActiveOverdue]}>
+                            <Text style={[s.tabBadgeText, activeTab === 'Overdue' && s.tabBadgeTextActiveOverdue]}>{overdueCount}</Text>
                         </View>
                     </TouchableOpacity>
 
                     {/* Next 7 Days Tab */}
                     <TouchableOpacity 
-                        style={[s.tabButton, activeTab === 'Next 7 Days' && s.tabButtonActive, activeTab === 'Next 7 Days' && { backgroundColor: '#FEF3C7', borderColor: '#FEF3C7' }]}
+                        style={[s.tabButton, activeTab === 'Next 7 Days' && s.tabButtonActiveNext7]}
                         onPress={() => setActiveTab('Next 7 Days')}
                         activeOpacity={0.8}
                     >
-                        <Text style={[s.tabText, activeTab === 'Next 7 Days' && { color: '#D97706' }]}>Next 7 Days</Text>
-                        <View style={[s.tabBadge, activeTab === 'Next 7 Days' && { backgroundColor: '#D97706' }]}>
-                            <Text style={[s.tabBadgeText, activeTab === 'Next 7 Days' && { color: '#FFFFFF' }]}>{next7Count}</Text>
+                        <Ionicons name="time" size={14} color={activeTab === 'Next 7 Days' ? '#D97706' : '#F59E0B'} />
+                        <Text style={[s.tabText, activeTab === 'Next 7 Days' && s.tabTextActiveNext7]}>Next 7 Days</Text>
+                        <View style={[s.tabBadge, activeTab === 'Next 7 Days' && s.tabBadgeActiveNext7]}>
+                            <Text style={[s.tabBadgeText, activeTab === 'Next 7 Days' && s.tabBadgeTextActiveNext7]}>{next7Count}</Text>
                         </View>
                     </TouchableOpacity>
                 </ScrollView>
@@ -285,8 +287,8 @@ export default function BillRemindersScreen() {
 
             {/* Tip Banner */}
             <View style={s.tipBanner}>
-                <Ionicons name="information-circle-outline" size={16} color="#16A34A" />
-                <Text style={s.tipText}>Tap WhatsApp icon to send bill reminder instantly.</Text>
+                <Ionicons name="logo-whatsapp" size={16} color="#16A34A" />
+                <Text style={s.tipText}>Tap the green WhatsApp icon to send a payment reminder directly.</Text>
             </View>
 
             <FlatList
@@ -344,52 +346,70 @@ const s = StyleSheet.create({
     searchWrap: {
         flexDirection: 'row', alignItems: 'center',
         backgroundColor: '#FFF', borderRadius: 14,
-        marginHorizontal: 16, marginTop: 16, paddingHorizontal: 12, paddingVertical: 10,
-        elevation: 1, shadowColor: '#000', shadowOpacity: 0.03, shadowRadius: 4,
-        borderWidth: 1, borderColor: '#F1F5F9',
+        marginHorizontal: 16, marginTop: 14, marginBottom: 12,
+        paddingHorizontal: 14, paddingVertical: 11,
+        elevation: 2, shadowColor: '#0F172A', shadowOpacity: 0.04, shadowRadius: 6,
+        borderWidth: 1, borderColor: '#E2E8F0',
     },
-    searchInput: { flex: 1, marginLeft: 8, fontSize: 13, color: '#1E293B', fontWeight: '600' },
+    searchInput: { flex: 1, marginLeft: 8, fontSize: 13.5, color: '#1E293B', fontWeight: '600' },
 
-    tabsContainer: {
-        flexDirection: 'row',
+    tabsWrapper: {
         paddingHorizontal: 16,
-        marginTop: 12,
+        marginBottom: 10,
+    },
+    tabsScrollContent: {
         gap: 8,
+        paddingVertical: 2,
     },
     tabButton: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        paddingHorizontal: 16,
+        paddingHorizontal: 14,
         paddingVertical: 8,
         backgroundColor: '#FFFFFF',
-        borderRadius: 20,
-        borderWidth: 1.5,
+        borderRadius: 12,
+        borderWidth: 1.2,
         borderColor: '#E2E8F0',
         gap: 6,
     },
-    tabButtonActive: {
-        backgroundColor: '#FEF3C7',
+    tabButtonActiveAll: {
+        backgroundColor: '#F5F3FF',
+        borderColor: '#7C3AED',
+    },
+    tabButtonActiveOverdue: {
+        backgroundColor: '#FEF2F2',
+        borderColor: '#EF4444',
+    },
+    tabButtonActiveNext7: {
+        backgroundColor: '#FFFBEB',
         borderColor: '#F59E0B',
     },
-    tabText: { fontSize: 14, fontWeight: '700', color: '#64748B' },
-    tabTextActive: { color: '#D97706' },
+    tabText: { fontSize: 13, fontWeight: '700', color: '#64748B' },
+    tabTextActiveAll: { color: '#7C3AED' },
+    tabTextActiveOverdue: { color: '#DC2626' },
+    tabTextActiveNext7: { color: '#D97706' },
+    
     tabBadge: {
         backgroundColor: '#F1F5F9',
-        paddingHorizontal: 6,
+        paddingHorizontal: 7,
         paddingVertical: 2,
         borderRadius: 8,
     },
-    tabBadgeActive: { backgroundColor: '#F59E0B' },
-    tabBadgeText: { fontSize: 11, fontWeight: '800', color: '#94A3B8' },
-    tabBadgeTextActive: { color: '#FFFFFF' },
+    tabBadgeActiveAll: { backgroundColor: '#7C3AED' },
+    tabBadgeActiveOverdue: { backgroundColor: '#DC2626' },
+    tabBadgeActiveNext7: { backgroundColor: '#D97706' },
+    tabBadgeText: { fontSize: 11, fontWeight: '800', color: '#64748B' },
+    tabBadgeTextActiveAll: { color: '#FFFFFF' },
+    tabBadgeTextActiveOverdue: { color: '#FFFFFF' },
+    tabBadgeTextActiveNext7: { color: '#FFFFFF' },
 
     tipBanner: {
-        flexDirection: 'row', alignItems: 'center', gap: 6,
-        backgroundColor: '#E8F5E9', borderWidth: 1, borderColor: '#C8E6C9',
-        borderRadius: 10, marginHorizontal: 16, marginTop: 12, padding: 10,
+        flexDirection: 'row', alignItems: 'center', gap: 7,
+        backgroundColor: '#F0FDF4', borderWidth: 1, borderColor: '#DCFCE7',
+        borderRadius: 12, marginHorizontal: 16, marginBottom: 6, padding: 10,
     },
-    tipText: { fontSize: 11, fontWeight: '700', color: '#16A34A' },
+    tipText: { fontSize: 11.5, fontWeight: '600', color: '#15803D', flex: 1 },
 
     listContent: { paddingHorizontal: 16, paddingTop: 14, paddingBottom: 60 },
 

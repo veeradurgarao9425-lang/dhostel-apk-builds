@@ -138,9 +138,16 @@ export default function OverviewScreen() {
         }
     }, [filterMode, statsMonth, customStart, customEnd]);
 
-    const fetchData = useCallback(async (isRefresh = false) => {
+    const lastOverviewFetchRef = React.useRef<number>(0);
+
+    const fetchData = useCallback(async (isRefresh = false, force = false) => {
+        const now = Date.now();
+        if (!force && isRefresh && now - lastOverviewFetchRef.current < 15000 && data) {
+            return;
+        }
         try {
-            if (!isRefresh) {
+            lastOverviewFetchRef.current = now;
+            if (!isRefresh && !data) {
                 setLoading(true);
             } else if (data !== null) {
                 setBackgroundLoading(true);
@@ -163,13 +170,13 @@ export default function OverviewScreen() {
             setRefreshing(false);
             setBackgroundLoading(false);
         }
-    }, [getQueryDates]);
+    }, [getQueryDates, data]);
 
     useFocusEffect(useCallback(() => { fetchData(true); }, [fetchData]));
 
     useEffect(() => {
-        fetchData(false);
-    }, [filterMode, statsMonth, customStart, customEnd, fetchData]);
+        fetchData(false, true);
+    }, [filterMode, statsMonth, customStart, customEnd]);
 
     // ── Auto-refresh when anything is added/updated globally (expenses, income, students) ──
     useEffect(() => {
@@ -178,6 +185,24 @@ export default function OverviewScreen() {
     }, [refreshCounter]);
 
     const canGoBack = navigation.canGoBack();
+
+    const handlePrevMonth = () => {
+        setFilterMode('month');
+        setStatsMonth(prev => {
+            const d = new Date(prev);
+            d.setMonth(d.getMonth() - 1);
+            return d;
+        });
+    };
+
+    const handleNextMonth = () => {
+        setFilterMode('month');
+        setStatsMonth(prev => {
+            const d = new Date(prev);
+            d.setMonth(d.getMonth() + 1);
+            return d;
+        });
+    };
 
     // ── Loading ──
     if (loading && !data) {
@@ -235,6 +260,10 @@ export default function OverviewScreen() {
         ? `${statsMonth.getFullYear()}-${String(statsMonth.getMonth() + 1).padStart(2, '0')}`
         : null;
 
+    const isCurrentMonth = filterMode === 'month' && 
+        statsMonth.getMonth() === new Date().getMonth() && 
+        statsMonth.getFullYear() === new Date().getFullYear();
+
     const periodLabel = filterMode === 'month'
         ? statsMonth.toLocaleString('default', { month: 'short', year: 'numeric' })
         : `${customStart.getDate()} ${customStart.toLocaleString('default', { month: 'short' })} - ${customEnd.getDate()} ${customEnd.toLocaleString('default', { month: 'short' })}`;
@@ -257,23 +286,39 @@ export default function OverviewScreen() {
                     </View>
                 }
             >
-                <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 10, marginTop: 12 }}>
-                    <TouchableOpacity 
-                        style={{
-                            flexDirection: 'row', alignItems: 'center', gap: 6,
-                            paddingHorizontal: 12, paddingVertical: 8,
-                            borderRadius: 10,
-                            backgroundColor: 'rgba(255,255,255,0.18)',
-                            borderWidth: 1,
-                            borderColor: 'rgba(255,255,255,0.25)',
-                        }} 
-                        onPress={() => setFilterSelectModal(true)} 
-                        activeOpacity={0.8}
-                    >
-                        <Ionicons name="calendar-outline" size={14} color="#FFF" />
-                        <Text style={{ color: '#FFF', fontSize: 13, fontWeight: '700' }}>{periodLabel}</Text>
-                        <Ionicons name="chevron-down" size={13} color="#FFF" />
-                    </TouchableOpacity>
+                <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, marginTop: 12 }}>
+                    
+                    {/* Month Navigator Group */}
+                    <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.18)', borderRadius: 12, padding: 3, borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)' }}>
+                        <TouchableOpacity 
+                            onPress={handlePrevMonth}
+                            style={{ paddingHorizontal: 8, paddingVertical: 6 }}
+                            activeOpacity={0.7}
+                        >
+                            <Ionicons name="chevron-back" size={16} color="#FFF" />
+                        </TouchableOpacity>
+
+                        <TouchableOpacity 
+                            style={{
+                                flexDirection: 'row', alignItems: 'center', gap: 5,
+                                paddingHorizontal: 8, paddingVertical: 4,
+                            }} 
+                            onPress={() => setFilterSelectModal(true)} 
+                            activeOpacity={0.8}
+                        >
+                            <Ionicons name="calendar-outline" size={13} color="#FFF" />
+                            <Text style={{ color: '#FFF', fontSize: 13, fontWeight: '700' }}>{periodLabel}</Text>
+                            <Ionicons name="chevron-down" size={12} color="#FFF" />
+                        </TouchableOpacity>
+
+                        <TouchableOpacity 
+                            onPress={handleNextMonth}
+                            style={{ paddingHorizontal: 8, paddingVertical: 6 }}
+                            activeOpacity={0.7}
+                        >
+                            <Ionicons name="chevron-forward" size={16} color="#FFF" />
+                        </TouchableOpacity>
+                    </View>
 
                     {/* Quick shortcut redirection to daily income view */}
                     <TouchableOpacity
@@ -282,7 +327,7 @@ export default function OverviewScreen() {
                             flexDirection: 'row',
                             alignItems: 'center',
                             backgroundColor: '#FFFFFF',
-                            borderRadius: 10,
+                            borderRadius: 12,
                             paddingVertical: 8,
                             paddingHorizontal: 12,
                             gap: 5,
@@ -314,6 +359,33 @@ export default function OverviewScreen() {
                 }
             >
                 <View style={s.body}>
+
+                    {/* ── Active Filter Badge (Always visible so owner knows what's loaded) ── */}
+                    {(!isCurrentMonth || (filterMode as string) === 'custom') && (
+                        <View style={{
+                            flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+                            backgroundColor: isDark ? '#1E293B' : '#F5F3FF',
+                            paddingHorizontal: 12, paddingVertical: 8,
+                            borderRadius: 10, marginBottom: 12,
+                            borderWidth: 1, borderColor: isDark ? '#334155' : '#DDD6FE',
+                        }}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
+                                <Ionicons name={filterMode === 'month' ? "calendar" : "funnel"} size={13} color="#7C3AED" />
+                                <Text style={{ fontSize: 12, fontWeight: '700', color: isDark ? '#C4B5FD' : '#6D28D9' }}>
+                                    {filterMode === 'month'
+                                        ? `Filtered: ${statsMonth.toLocaleString('default', { month: 'long', year: 'numeric' })}`
+                                        : `Custom: ${periodLabel}`}
+                                </Text>
+                            </View>
+                            <TouchableOpacity 
+                                onPress={() => { setFilterMode('month'); setStatsMonth(new Date()); }}
+                                style={{ backgroundColor: '#7C3AED', paddingHorizontal: 8, paddingVertical: 3.5, borderRadius: 6 }}
+                                activeOpacity={0.8}
+                            >
+                                <Text style={{ fontSize: 11, fontWeight: '800', color: '#FFF' }}>Reset</Text>
+                            </TouchableOpacity>
+                        </View>
+                    )}
 
                     {/* ── Net Profit/Loss Hero Card ── */}
                     <LinearGradient

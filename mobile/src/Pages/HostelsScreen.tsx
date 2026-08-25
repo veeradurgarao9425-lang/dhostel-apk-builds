@@ -23,9 +23,11 @@ import { EmptyState } from '../components/ui/EmptyState';
 import { ErrorState } from '../components/ui/ErrorState';
 import { SkeletonList } from '../components/ui/SkeletonCard';
 import { useToast } from '../context/ToastContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Clipboard from 'expo-clipboard';
 
 export const HostelsScreen = () => {
+    const insets = useSafeAreaInsets();
     const navigation = useNavigation<any>();
     const { user, updateTokenAndUser } = useAuth();
     const { theme, isDark, fontSize } = useTheme();
@@ -387,11 +389,17 @@ export const HostelsScreen = () => {
 
             {hostels.length < 2 && (
                 <TouchableOpacity
-                    style={[styles.fab, { backgroundColor: theme.primary }]}
+                    style={[
+                        styles.fab,
+                        {
+                            backgroundColor: theme.primary,
+                            bottom: Math.max(insets.bottom + 85, 100),
+                        },
+                    ]}
                     onPress={() => navigation.navigate('AddHostel')}
                     activeOpacity={0.85}
                 >
-                    <Plus color="#FFF" size={24} strokeWidth={3} />
+                    <Plus color="#FFF" size={26} strokeWidth={2.8} />
                 </TouchableOpacity>
             )}
         </View>
@@ -532,18 +540,18 @@ const styles = StyleSheet.create({
     },
     fab: {
         position: 'absolute',
-        bottom: 120,
+        bottom: 100,
         right: 20,
         width: 56,
         height: 56,
         borderRadius: 28,
         justifyContent: 'center',
         alignItems: 'center',
-        elevation: 10,
+        elevation: 12,
         shadowColor: '#4F46E5',
-        shadowOffset: { width: 0, height: 4 },
+        shadowOffset: { width: 0, height: 6 },
         shadowOpacity: 0.35,
-        shadowRadius: 6,
+        shadowRadius: 8,
         zIndex: 99999,
     },
     modalOverlay: {

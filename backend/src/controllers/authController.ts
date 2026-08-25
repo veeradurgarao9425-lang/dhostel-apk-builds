@@ -26,16 +26,36 @@ export const authController = {
         });
       }
 
-      // Check Developer Users first
-      const devUser = await db('developer_users')
-        .where('username', identifier)
-        .orWhere('email', identifier)
-        .first();
+      const cleanIdentifier = String(identifier).trim().toLowerCase();
+
+      // Parallelize developer user and standard user lookups for max speed
+      const [devUser, user] = await Promise.all([
+        db('developer_users')
+          .where('username', cleanIdentifier)
+          .orWhere('email', cleanIdentifier)
+          .first(),
+        db('users')
+          .select(
+            'users.user_id',
+            'users.email',
+            'users.password_hash',
+            'users.full_name',
+            'users.phone',
+            'users.role_id',
+            'users.hostel_id',
+            'users.is_active',
+            'user_roles.role_name'
+          )
+          .leftJoin('user_roles', 'users.role_id', 'user_roles.role_id')
+          .where('users.email', cleanIdentifier)
+          .where('users.is_active', true)
+          .first(),
+      ]);
 
       if (devUser && devUser.status === 'ACTIVE') {
         const isValidDevPass = await comparePassword(password, devUser.password_hash);
         if (isValidDevPass) {
-          await db('developer_users').where('id', devUser.id).update({ last_login_at: new Date() });
+          db('developer_users').where('id', devUser.id).update({ last_login_at: new Date() }).catch(() => {});
           const devToken = generateDeveloperToken({
             developer_id: devUser.id,
             username: devUser.username,
@@ -44,7 +64,7 @@ export const authController = {
             role: 'DEVELOPER',
           });
 
-          await logDeveloperAction({
+          logDeveloperAction({
             developer_id: devUser.id,
             developer_username: devUser.username,
             action: 'DEVELOPER_LOGIN',
@@ -52,7 +72,7 @@ export const authController = {
             target_id: devUser.id,
             metadata: { login_flow: 'owner_login_auto_detect', login_time: new Date() },
             req,
-          });
+          }).catch(() => {});
 
           return res.json({
             success: true,
@@ -73,28 +93,9 @@ export const authController = {
         }
       }
 
-      // Find user by email only
-      const user = await db('users')
-        .select(
-          'users.user_id',
-          'users.email',
-          'users.password_hash',
-          'users.full_name',
-          'users.phone',
-          'users.role_id',
-          'users.hostel_id',
-          'users.is_active',
-          'user_roles.role_name'
-        )
-        .leftJoin('user_roles', 'users.role_id', 'user_roles.role_id')
-        .where('users.email', identifier)
-        .where('users.is_active', true)
-        .first();
-
       if (!user) {
         return res.status(401).json({
           success: false,
-          // Generic message — do not reveal whether the email exists or the password is wrong
           error: 'Invalid email or password.',
         });
       }
@@ -138,7 +139,7 @@ export const authController = {
         hostel_id: activeHostelId, // Include hostel_id in JWT token
       });
 
-      // Send login intimation email to user
+      // Send login intimation email to user (non-blocking)
       const ipAddress = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.socket?.remoteAddress || '';
       sendLoginAlertEmail({
         recipientEmail: user.email,
@@ -148,17 +149,21 @@ export const authController = {
         ipAddress: ipAddress.replace('::ffff:', ''),
       }).catch((e: any) => console.warn('Login alert email dispatch warning:', e));
 
-      // Dispatch admin sign-in notification
-      notifyUserSignIn({
-        userId: user.user_id,
-        fullName: user.full_name,
-        email: user.email,
-        role: user.role_name || (user.role_id === 2 ? 'Hostel Owner' : 'Student/Tenant'),
-        hostelName: user.hostel_name,
-        ipAddress: ipAddress.replace('::ffff:', ''),
-      });
+      // Dispatch admin sign-in notification (non-blocking)
+      try {
+        notifyUserSignIn({
+          userId: user.user_id,
+          fullName: user.full_name,
+          email: user.email,
+          role: user.role_name || (user.role_id === 2 ? 'Hostel Owner' : 'Student/Tenant'),
+          hostelName: user.hostel_name,
+          ipAddress: ipAddress.replace('::ffff:', ''),
+        });
+      } catch (notifErr) {
+        console.warn('Sign-in notification warning:', notifErr);
+      }
 
-      // Return response
+      // Return response immediately
       return res.json({
         success: true,
         data: {
@@ -169,7 +174,7 @@ export const authController = {
             role: user.role_name,
             role_id: user.role_id,
             phone: user.phone,
-            hostel_id: user.hostel_id,
+            hostel_id: activeHostelId || user.hostel_id,
           },
           token,
         },
@@ -1180,11 +1185,14 @@ export const authController = {
         return res.status(400).json({ success: false, error: 'Identifier and hostel_id are required' });
       }
 
+      const cleanIdentifier = String(identifier).trim().toLowerCase();
+
       // Check if tenant exists in this hostel
       const tenant = await db('students')
         .where('hostel_id', hostel_id)
         .andWhere(function() {
-          this.where('email', identifier).orWhere('phone', identifier);
+          this.whereRaw('LOWER(TRIM(email)) = ?', [cleanIdentifier])
+            .orWhereRaw('TRIM(phone) = ?', [cleanIdentifier]);
         })
         .first();
 
@@ -1194,21 +1202,19 @@ export const authController = {
       const otp = Math.floor(100000 + Math.random() * 900000).toString();
       const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
-      await db('otps').where('email', identifier).del();
-      await db('otps').insert({ email: identifier, otp, expires_at: expiresAt });
+      await db('otps').whereRaw('LOWER(TRIM(email)) = ?', [cleanIdentifier]).del();
+      await db('otps').insert({ email: cleanIdentifier, otp, expires_at: expiresAt });
 
       // If identifier is a phone number: SMS OTP is not yet integrated.
-      // Return a clear error instead of silently generating an OTP that
-      // is never delivered, then returning success: true misleadingly.
-      if (!identifier.includes('@')) {
+      if (!cleanIdentifier.includes('@')) {
         return res.status(501).json({
           success: false,
           error: 'SMS OTP delivery is not supported yet. Please use your email address to log in.'
         });
       }
 
-      // Send the OTP via email asynchronously (don't block HTTP response if SMTP is slow/failing)
-      sendOtpEmail(identifier, otp).catch((emailErr) => {
+      // Send the OTP via email asynchronously
+      sendOtpEmail(cleanIdentifier, otp).catch((emailErr) => {
         console.warn('⚠️ Failed to deliver tenant OTP email, but OTP was saved in DB:', emailErr?.message || emailErr);
       });
 
@@ -1229,7 +1235,14 @@ export const authController = {
         return res.status(400).json({ success: false, error: 'Identifier, otp, and hostel_id are required' });
       }
 
-      const record = await db('otps').where('email', identifier).where('otp', otp).first();
+      const cleanIdentifier = String(identifier).trim().toLowerCase();
+      const cleanOtp = String(otp).trim();
+
+      const record = await db('otps')
+        .whereRaw('LOWER(TRIM(email)) = ?', [cleanIdentifier])
+        .where('otp', cleanOtp)
+        .first();
+
       if (!record) {
         return res.status(400).json({ success: false, error: 'Invalid OTP' });
       }
@@ -1249,7 +1262,8 @@ export const authController = {
         .leftJoin('hostel_master', 'hostel_master.hostel_id', 'students.hostel_id')
         .where('students.hostel_id', hostel_id)
         .andWhere(function() {
-          this.where('students.email', identifier).orWhere('students.phone', identifier);
+          this.whereRaw('LOWER(TRIM(students.email)) = ?', [cleanIdentifier])
+            .orWhereRaw('TRIM(students.phone) = ?', [cleanIdentifier]);
         })
         .first();
 
@@ -1344,9 +1358,13 @@ export const authController = {
       const { identifier, hostel_id, first_name, last_name, phone, email, gender, date_of_birth, guardian_name, guardian_phone, guardian_relation, current_address, permanent_address, id_proof_type, id_proof_number } = req.body;
 
       const files = req.files as { [field: string]: Express.Multer.File[] } | undefined;
-      const profilePhotoUrl = files?.profile_photo?.[0] ? await processFileUpload(files.profile_photo[0], 'avatars').catch(() => null) : null;
-      const idProofFrontUrl = files?.id_proof_front?.[0] ? await processFileUpload(files.id_proof_front[0], 'id_proofs').catch(() => null) : null;
-      const idProofBackUrl = files?.id_proof_back?.[0] ? await processFileUpload(files.id_proof_back[0], 'id_proofs').catch(() => null) : null;
+      
+      // Parallelize image uploads to Cloudflare R2 / disk for maximum speed
+      const [profilePhotoUrl, idProofFrontUrl, idProofBackUrl] = await Promise.all([
+        files?.profile_photo?.[0] ? processFileUpload(files.profile_photo[0], 'avatars').catch(() => null) : Promise.resolve(null),
+        files?.id_proof_front?.[0] ? processFileUpload(files.id_proof_front[0], 'id_proofs').catch(() => null) : Promise.resolve(null),
+        files?.id_proof_back?.[0] ? processFileUpload(files.id_proof_back[0], 'id_proofs').catch(() => null) : Promise.resolve(null),
+      ]);
 
       if (!identifier || !hostel_id || !first_name || !gender) {
         return res.status(400).json({ success: false, error: 'Missing required fields' });

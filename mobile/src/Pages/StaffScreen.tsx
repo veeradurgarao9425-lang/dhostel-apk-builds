@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
     View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity,
     StatusBar, LayoutAnimation, Platform, UIManager,
@@ -27,11 +27,11 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 
 // ─── Staff Categories ────────────────────────────────────────────────────────
 const CATEGORIES = [
-    { key: 'All',          label: 'Management',  icon: 'briefcase',          color: '#4F46E5', bg: '#EEF2FF' },
-    { key: 'Cook',         label: 'Kitchen',     icon: 'restaurant',         color: '#D97706', bg: '#FEF3C7' },
-    { key: 'Housekeeping', label: 'Housekeeping',icon: 'brush',              color: '#059669', bg: '#D1FAE5' },
-    { key: 'Security',     label: 'Security',    icon: 'shield-checkmark',   color: '#DC2626', bg: '#FEE2E2' },
-    { key: 'Others',       label: 'Others',      icon: 'ellipsis-horizontal',color: '#475569', bg: '#F1F5F9' },
+    { key: 'All', label: 'Management', icon: 'briefcase', color: '#4F46E5', bg: '#EEF2FF' },
+    { key: 'Cook', label: 'Kitchen', icon: 'restaurant', color: '#D97706', bg: '#FEF3C7' },
+    { key: 'Housekeeping', label: 'Housekeeping', icon: 'brush', color: '#059669', bg: '#D1FAE5' },
+    { key: 'Security', label: 'Security', icon: 'shield-checkmark', color: '#DC2626', bg: '#FEE2E2' },
+    { key: 'Others', label: 'Others', icon: 'ellipsis-horizontal', color: '#475569', bg: '#F1F5F9' },
 ];
 
 const ROLES = ['Cook', 'Housekeeping', 'Security', 'Warden', 'Cleaner', 'Others'];
@@ -128,6 +128,7 @@ const StaffCard = React.memo(({ item, onCall, onWhatsApp, onToggleStatus, onPaym
 
 // ─── Main Component ──────────────────────────────────────────────────────────
 export default function StaffScreen() {
+    const insets = useSafeAreaInsets();
     const navigation = useNavigation<any>();
     const { theme } = useTheme();
     const { user } = useAuth();
@@ -138,13 +139,20 @@ export default function StaffScreen() {
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
 
+    const lastStaffFetchRef = useRef<number>(0);
+
     // ── Fetch Staff list ─────────────────────────────────────────────────────
-    const fetchStaff = async (isSilent = false) => {
+    const fetchStaff = async (isSilent = false, force = false) => {
+        const now = Date.now();
+        if (!force && staffList.length > 0 && now - lastStaffFetchRef.current < 15000) {
+            return;
+        }
         try {
-            if (!isSilent) setLoading(true);
+            lastStaffFetchRef.current = now;
+            if (!isSilent && staffList.length === 0) setLoading(true);
             const res = await api.get('/staff');
-            if (res.data.success) {
-                setStaffList(res.data.data);
+            if (res.data?.success) {
+                setStaffList(res.data.data || []);
             }
         } catch (e) {
             showApiError(e, 'Failed to fetch staff list');
@@ -155,8 +163,8 @@ export default function StaffScreen() {
 
     useFocusEffect(
         useCallback(() => {
-            fetchStaff();
-        }, [])
+            fetchStaff(true);
+        }, [staffList.length])
     );
 
     // ── Group filtered staff by role category ──────────────────────────────────
@@ -252,8 +260,8 @@ export default function StaffScreen() {
             <StatusBar barStyle="light-content" />
 
             {/* Header */}
-            <AppHeader 
-                title="Staff Management" 
+            <AppHeader
+                title="Staff Management"
                 subtitle={`${staffList.length} Total Members`}
                 rightComponent={
                     <View style={s.headerActions}>
@@ -321,11 +329,17 @@ export default function StaffScreen() {
 
             {/* Floating Action Button (FAB) to Add Staff */}
             <TouchableOpacity
-                style={[s.fab, { backgroundColor: theme.primary }]}
+                style={[
+                    s.fab,
+                    {
+                        backgroundColor: theme.primary,
+                        bottom: Math.max(insets.bottom + 85, 100),
+                    },
+                ]}
                 onPress={() => navigation.navigate('AddStaff')}
                 activeOpacity={0.85}
             >
-                <Plus color="#FFF" size={24} strokeWidth={3.0} />
+                <Plus color="#FFF" size={26} strokeWidth={2.8} />
             </TouchableOpacity>
         </View>
     );
@@ -379,7 +393,7 @@ const s = StyleSheet.create({
     },
 
     listContent: { padding: 16, paddingBottom: 180 },
-    
+
     // Cards
     card: {
         backgroundColor: '#FFF',
@@ -431,9 +445,19 @@ const s = StyleSheet.create({
     statusToggleTextNew: { fontSize: 11, fontWeight: '800' },
 
     fab: {
-        position: 'absolute', bottom: 95, right: 20, width: 52, height: 52, borderRadius: 26,
-        justifyContent: 'center', alignItems: 'center', elevation: 10,
-        shadowColor: '#4F46E5', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.35, shadowRadius: 6, zIndex: 99999,
+        position: 'absolute',
+        right: 20,
+        width: 56,
+        height: 56,
+        borderRadius: 28,
+        justifyContent: 'center',
+        alignItems: 'center',
+        elevation: 12,
+        shadowColor: '#4F46E5',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.35,
+        shadowRadius: 8,
+        zIndex: 99999,
     },
 
     emptyWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', marginTop: 80 },
@@ -441,7 +465,7 @@ const s = StyleSheet.create({
 
     formLabel: { fontSize: 12, fontWeight: '800', color: '#475569', marginBottom: 6, marginTop: 12 },
     formInput: { backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, padding: 10, fontSize: 14, color: '#1E293B', fontWeight: '600' },
-    
+
     // Selfie box
     selfieBox: { borderStyle: 'dashed', borderWidth: 1.5, borderColor: '#FCA5A5', backgroundColor: '#FFF5F5', borderRadius: 16, padding: 16, alignItems: 'center', justifyContent: 'center', marginTop: 4 },
     selfieLabel: { fontSize: 13, fontWeight: '800', color: '#EC4899', marginTop: 8 },

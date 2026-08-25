@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   StyleSheet, Text, TouchableOpacity, View, ScrollView, Image, StatusBar, Modal, TextInput, KeyboardAvoidingView, Platform, Dimensions, ActivityIndicator, ToastAndroid, Alert, FlatList
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChevronLeft, Plus, FileImage, X, UploadCloud, ChevronDown, Calendar, CheckCircle2, Search, Filter, Wrench, ClipboardList, Check, Edit2 } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { CustomDateTimePicker } from '../../components/tenant/pickers/CustomDateTimePicker';
@@ -481,6 +481,7 @@ function StepperForm({ visible, onClose, onSubmit, hostelId }: { visible: boolea
 }
 
 export default function ComplaintsScreen({ navigation }: any) {
+  const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<FilterTab>('All');
   const [selectedComplaint, setSelectedComplaint] = useState<any>(null);
@@ -670,9 +671,18 @@ export default function ComplaintsScreen({ navigation }: any) {
       </View>
 
       {/* ── FLOATING ADD BTN ── */}
-      <TouchableOpacity style={s.fabWrapper} onPress={() => setShowForm(true)} activeOpacity={0.85}>
+      <TouchableOpacity
+        style={[
+          s.fabWrapper,
+          {
+            bottom: Math.max(insets.bottom + 85, 100),
+          },
+        ]}
+        onPress={() => setShowForm(true)}
+        activeOpacity={0.85}
+      >
         <View style={s.fab}>
-          <Plus size={26} color={WHITE} strokeWidth={4} />
+          <Plus size={26} color={WHITE} strokeWidth={3} />
         </View>
       </TouchableOpacity>
 

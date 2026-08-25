@@ -820,17 +820,17 @@ export const AddRoomScreen = ({ navigation, route }: any) => {
                             </TouchableOpacity>
                         </View>
 
-                        {/* Next line: Done / Go to Dashboard */}
+                        {/* Next line: Done / View Rooms */}
                         <TouchableOpacity
                             style={[styles.successActionBtnDone, { borderColor: isDark ? '#334155' : '#E2E8F0', backgroundColor: isDark ? '#0F172A' : '#F1F5F9' }]}
                             onPress={() => {
                                 setSuccessModalVisible(false);
-                                navigation.navigate('Main', { screen: 'HomeTab' });
+                                navigation.replace('Rooms');
                             }}
                             activeOpacity={0.7}
                         >
-                            <Ionicons name="home-outline" size={15} color={theme.textSecondary} style={{ marginRight: 6 }} />
-                            <Text style={[styles.successActionBtnDoneText, { color: theme.textSecondary }]}>Done / Go to Dashboard</Text>
+                            <Ionicons name="bed-outline" size={15} color={theme.textSecondary} style={{ marginRight: 6 }} />
+                            <Text style={[styles.successActionBtnDoneText, { color: theme.textSecondary }]}>Done / View Rooms</Text>
                         </TouchableOpacity>
                     </View>
                 </View>

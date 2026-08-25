@@ -284,22 +284,6 @@ export const OwnerAssistant: React.FC<{ currentRoute?: string | null }> = ({ cur
     return () => sub.remove();
   }, []);
 
-  const hasPlusButton = (() => {
-    if (!currentRoute) return false;
-    const r = currentRoute.toLowerCase();
-    return (
-      r.includes('student') ||
-      r.includes('staff') ||
-      r.includes('reminder') ||
-      r.includes('guest') ||
-      r.includes('hostel') ||
-      r.includes('notice') ||
-      r.includes('expense')
-    );
-  })();
-
-  const fabBottom = hasPlusButton ? 188 : 140;
-
   // Content state
   const [view, setView] = useState<'home' | 'conversation'>('home');
   const [messages, setMessages] = useState<Msg[]>([]);
@@ -598,15 +582,15 @@ export const OwnerAssistant: React.FC<{ currentRoute?: string | null }> = ({ cur
       activeRoute.toLowerCase().includes('student');
 
     if (hasAddFab) {
-      // Stack cleanly directly above the '+' FAB with a balanced, comfortable ~8px gap
-      return { bottom: Math.max(insets.bottom + 145, 155), right: 20 };
+      // Stack cleanly directly above the Add '+' FAB button with an optimal 12-14px gap
+      return { bottom: Math.max(insets.bottom + 152, 164), right: 20 };
     }
     if (isTabScreen || !activeRoute || activeRoute === 'Main' || activeRoute === 'Home') {
       // Dashboard, Finance, Pending Dues, Dev Tabs: sit cleanly above the bottom tab bar
-      return { bottom: Math.max(insets.bottom + 85, 95), right: 20 };
+      return { bottom: Math.max(insets.bottom + 75, 82), right: 20 };
     }
     // Inside pages / detail / form screens without bottom tabs
-    return { bottom: Math.max(insets.bottom + 25, 35), right: 20 };
+    return { bottom: Math.max(insets.bottom + 22, 28), right: 20 };
   }, [currentRoute, insets.bottom]);
 
   // ── Message helpers ────────────────────────────────────────────────────

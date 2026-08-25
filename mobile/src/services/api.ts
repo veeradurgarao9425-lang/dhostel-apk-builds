@@ -61,8 +61,8 @@ api.interceptors.response.use(
     return response;
   },
   async (error) => {
-    // Ignore logging for intentionally canceled requests (e.g. AbortController on tab switch)
-    if (axios.isCancel(error) || error?.message === 'canceled' || error?.name === 'CanceledError') {
+    // Ignore logging for intentionally canceled requests (e.g. AbortController on tab switch) or health pre-warming
+    if (axios.isCancel(error) || error?.message === 'canceled' || error?.name === 'CanceledError' || error?.config?.url?.includes('/health')) {
       return Promise.reject(error);
     }
 

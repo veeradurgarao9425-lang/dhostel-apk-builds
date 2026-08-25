@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useRef } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View, ScrollView, StatusBar } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { FileText, FileCheck2, Receipt, IdCard, Download, File, ArrowLeft, Plus } from 'lucide-react-native';
 import * as Print from 'expo-print';
@@ -38,6 +38,7 @@ const DOC_FILTERS: DocFilter[] = ['All', 'Receipt', 'Agreement', 'KYC', 'Other']
 type DlStatus = 'loading' | 'done' | 'error';
 
 export default function DocumentsScreen({ navigation }: any) {
+  const insets = useSafeAreaInsets();
   const { showError } = useToast();
   const [documents, setDocuments]       = useState<any[]>([]);
   const [loading, setLoading]           = useState(true);
@@ -259,11 +260,16 @@ export default function DocumentsScreen({ navigation }: any) {
 
       {/* Floating Action Button for Upload */}
       <TouchableOpacity 
-        style={s.fab}
+        style={[
+          s.fab,
+          {
+            bottom: Math.max(insets.bottom + 85, 100),
+          },
+        ]}
         onPress={() => showError('Document upload feature coming soon!')}
-        activeOpacity={0.9}
+        activeOpacity={0.85}
       >
-        <Plus size={24} color="#FFF" />
+        <Plus size={26} color="#FFF" strokeWidth={2.8} />
       </TouchableOpacity>
 
       {/* ── Download Progress Sheet ── */}
@@ -296,5 +302,5 @@ const s = StyleSheet.create({
   metaTxt: { fontSize: 13, color: TEXT_MID, fontWeight: '500' },
   dlBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: BLUE_SOFT, alignItems: 'center', justifyContent: 'center' },
   divider: { height: 1, backgroundColor: BORDER, marginLeft: 64 },
-  fab: { position: 'absolute', bottom: 32, right: 24, width: 60, height: 60, borderRadius: 30, backgroundColor: BLUE, justifyContent: 'center', alignItems: 'center', shadowColor: BLUE, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.4, shadowRadius: 16, elevation: 12 },
+  fab: { position: 'absolute', bottom: 100, right: 20, width: 56, height: 56, borderRadius: 28, backgroundColor: BLUE, justifyContent: 'center', alignItems: 'center', shadowColor: BLUE, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.35, shadowRadius: 8, elevation: 12, zIndex: 99999 },
 });

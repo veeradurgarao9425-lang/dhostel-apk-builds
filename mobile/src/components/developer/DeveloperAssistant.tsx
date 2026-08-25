@@ -569,7 +569,7 @@ export const DeveloperAssistant: React.FC = () => {
       {/* Floating Executive CEO AI Trigger Button */}
       {!isOpen && (
         <TouchableOpacity
-          style={[styles.fab, { bottom: Math.max(insets.bottom + 105, 118) }]}
+          style={[styles.fab, { bottom: Math.max(insets.bottom + 152, 164) }]}
           onPress={() => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
             setIsOpen(true);

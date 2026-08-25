@@ -3,7 +3,7 @@ import {
   View, Text, TouchableOpacity, StyleSheet,
   ScrollView, StatusBar, Modal, TextInput, ActivityIndicator
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { ArrowLeft, CheckCircle, Ticket, QrCode, X, Plus, XCircle, Calendar } from 'lucide-react-native';
 import api from '../../services/api';
@@ -29,6 +29,7 @@ const WARN_BG   = '#FEF3C7';
 type PassStatus = 'none' | 'pending' | 'approved';
 
 export default function GatePassScreen({ navigation }: any) {
+  const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const { showError } = useToast();
   const [status, setStatus] = useState<PassStatus>('none');
@@ -306,11 +307,16 @@ export default function GatePassScreen({ navigation }: any) {
       {/* FAB */}
       {!loading && !showForm && leaveRequests.length > 0 && (
         <TouchableOpacity
-          style={s.fab}
+          style={[
+            s.fab,
+            {
+              bottom: Math.max(insets.bottom + 85, 100),
+            },
+          ]}
           onPress={openForm}
           activeOpacity={0.85}
         >
-          <Plus size={24} color={WHITE} strokeWidth={3} />
+          <Plus size={26} color={WHITE} strokeWidth={2.8} />
         </TouchableOpacity>
       )}
 

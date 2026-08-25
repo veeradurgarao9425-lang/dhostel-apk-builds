@@ -221,47 +221,33 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           role: isDeveloper ? 'DEVELOPER' : (userData?.role || 'OWNER'),
         };
 
-        if (isDeveloper) {
-          await setSecureItem('developer_token', token);
-          await AsyncStorage.setItem('developer_token', token);
-          await AsyncStorage.setItem('developer_user', JSON.stringify(finalUser));
-        }
-        
-        if (!isDeveloper && finalUser.hostel_id && !finalUser.hostel_name) {
-          try {
-            const res = await api.get(`/hostels/${finalUser.hostel_id}`);
-            if (res.data?.success && res.data?.data?.hostel_name) {
-              finalUser = { ...finalUser, hostel_name: res.data.data.hostel_name };
-            }
-          } catch (e) {
-            console.warn('Failed to load hostel details in signIn:', e);
-          }
-        }
-        
         setUser(finalUser);
-        await setSecureItem('token', token);
-        await AsyncStorage.setItem('token', token);
-        await AsyncStorage.setItem('user', JSON.stringify(finalUser));
 
+        // Fast parallel storage write (non-blocking for UI)
+        const storagePromises = [
+          setSecureItem('token', token),
+          AsyncStorage.setItem('token', token),
+          AsyncStorage.setItem('user', JSON.stringify(finalUser)),
+        ];
+        if (isDeveloper) {
+          storagePromises.push(setSecureItem('developer_token', token));
+          storagePromises.push(AsyncStorage.setItem('developer_token', token));
+          storagePromises.push(AsyncStorage.setItem('developer_user', JSON.stringify(finalUser)));
+        }
+        Promise.all(storagePromises).catch(() => {});
+
+        // Background non-blocking auxiliary fetches
         if (!isDeveloper) {
-          try {
-            const res = await api.get('/hostels?my_hostels=true');
-            if (res.data?.success) {
-              setHostels(res.data.data || []);
-            }
-          } catch (e) {
-            console.warn('Failed to load hostels list in signIn:', e);
-          }
+          api.get('/hostels?my_hostels=true')
+            .then(res => { if (res.data?.success) setHostels(res.data.data || []); })
+            .catch(() => {});
         }
 
-        try {
-          const pushToken = await notificationService.registerForPushNotificationsAsync();
-          if (pushToken) {
-            await notificationService.sendTokenToBackend(pushToken, true);
-          }
-        } catch (e) {
-          console.error('Notification setup failed:', e);
-        }
+        notificationService.registerForPushNotificationsAsync()
+          .then(pushToken => {
+            if (pushToken) notificationService.sendTokenToBackend(pushToken, true).catch(() => {});
+          })
+          .catch(() => {});
 
         return { error: null, user: finalUser };
       } else {
@@ -304,21 +290,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         const finalUser: User = { ...userData, role: 'OWNER' };
         api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
         setUser(finalUser);
-        await setSecureItem('token', token);
-        await AsyncStorage.setItem('token', token);
-        await AsyncStorage.setItem('user', JSON.stringify(finalUser));
 
-        try {
-          const res = await api.get('/hostels?my_hostels=true');
-          if (res.data?.success) setHostels(res.data.data || []);
-        } catch { /* non-fatal */ }
+        Promise.all([
+          setSecureItem('token', token),
+          AsyncStorage.setItem('token', token),
+          AsyncStorage.setItem('user', JSON.stringify(finalUser)),
+        ]).catch(() => {});
 
-        try {
-          const pushToken = await notificationService.registerForPushNotificationsAsync();
-          if (pushToken) await notificationService.sendTokenToBackend(pushToken, true);
-        } catch (e) {
-          if (__DEV__) console.error('Notification setup failed:', e);
-        }
+        api.get('/hostels?my_hostels=true')
+          .then(res => { if (res.data?.success) setHostels(res.data.data || []); })
+          .catch(() => {});
+
+        notificationService.registerForPushNotificationsAsync()
+          .then(pushToken => {
+            if (pushToken) notificationService.sendTokenToBackend(pushToken, true).catch(() => {});
+          })
+          .catch(() => {});
 
         return { error: null, user: finalUser };
       }

@@ -18,6 +18,7 @@ import { ErrorState } from '../components/ui/ErrorState';
 import { SkeletonList } from '../components/ui/SkeletonCard';
 import { StatCard } from '../components/ui/StatCard';
 import { ModalSheet } from '../components/FormComponents';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 
 const MiniStatCard = ({ title, value, icon, color }: any) => {
@@ -29,7 +30,7 @@ const MiniStatCard = ({ title, value, icon, color }: any) => {
                 </View>
                 <Text style={{ fontSize: 10, fontWeight: '700', color: color, flex: 1, opacity: 0.8 }} numberOfLines={1}>{title}</Text>
             </View>
-            <Text style={{ fontSize: 17, fontWeight: '900', color: color }}>{value}</Text>
+            <Text style={{ fontSize: 14, fontWeight: '900', color: '#1E293B' }}>{value}</Text>
         </View>
     );
 };
@@ -45,6 +46,7 @@ const fmtDate = (d?: string) => {
 };
 
 export default function GuestsScreen() {
+    const insets = useSafeAreaInsets();
     const navigation = useNavigation<any>();
     const { theme, isDark } = useTheme();
 
@@ -450,11 +452,17 @@ export default function GuestsScreen() {
             )}
 
             <TouchableOpacity
-                style={[s.fab, { backgroundColor: theme.primary }]}
+                style={[
+                    s.fab,
+                    {
+                        backgroundColor: theme.primary,
+                        bottom: Math.max(insets.bottom + 85, 100),
+                    },
+                ]}
                 onPress={() => navigation.navigate('AddGuest')}
                 activeOpacity={0.85}
             >
-                <Plus color="#FFF" size={26} strokeWidth={3.5} />
+                <Plus color="#FFF" size={26} strokeWidth={2.8} />
             </TouchableOpacity>
 
             <DateTimePickerModal
@@ -626,8 +634,19 @@ const s = StyleSheet.create({
     btn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 10, borderWidth: 1 },
     btnText: { fontSize: 12, fontWeight: '800' },
     fab: {
-        position: 'absolute', bottom: 95, right: 20, width: 52, height: 52, borderRadius: 26,
-        justifyContent: 'center', alignItems: 'center', elevation: 10,
-        shadowColor: '#4F46E5', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.35, shadowRadius: 6, zIndex: 99999,
+        position: 'absolute',
+        bottom: 100,
+        right: 20,
+        width: 56,
+        height: 56,
+        borderRadius: 28,
+        justifyContent: 'center',
+        alignItems: 'center',
+        elevation: 12,
+        shadowColor: '#4F46E5',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.35,
+        shadowRadius: 8,
+        zIndex: 99999,
     },
 });

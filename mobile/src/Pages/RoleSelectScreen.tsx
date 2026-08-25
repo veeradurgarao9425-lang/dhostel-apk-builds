@@ -7,11 +7,14 @@ import {
   StatusBar,
   Image,
   Dimensions,
+  ScrollView,
+  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
+import { api } from '../services/api';
 
 const { width, height } = Dimensions.get('window');
 const isSmall = height < 700;
@@ -20,6 +23,11 @@ const isTiny = height < 600;
 export default function RoleSelectScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
   const [selectedRole, setSelectedRole] = useState<'OWNER' | 'TENANT' | null>(null);
+
+  React.useEffect(() => {
+    // Proactively pre-warm backend connection & TLS handshake in the background
+    api.get('/health').catch(() => {});
+  }, []);
 
   const handleSelectRole = (role: 'OWNER' | 'TENANT') => {
     setSelectedRole(role);
@@ -30,202 +38,245 @@ export default function RoleSelectScreen({ navigation }: any) {
       } else {
         navigation.navigate('TenantHostelKey', { role: 'TENANT' });
       }
-    }, 150);
+    }, 180);
   };
+
+  const headerHeight = (isSmall ? 170 : Math.min(height * 0.26, 220)) + (insets.top > 0 ? insets.top : 0);
 
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
-      {/* ── Purple Gradient Header Matching Login / Brand ── */}
-      <View
-        style={[
-          styles.topSection,
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={[
+          styles.scrollContent,
           {
-            height: Math.max(Math.min(height * 0.30 + (insets.top > 0 ? insets.top : 0), height * 0.33), isSmall ? 160 : 190),
+            paddingBottom: Math.max(insets.bottom + 40, 48),
           },
         ]}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        bounces={true}
+        overScrollMode="always"
       >
-        <LinearGradient
-          colors={['#7C3AED', '#5F2EEA']}
-          style={[
-            StyleSheet.absoluteFillObject,
-            styles.topSectionContent,
-            { paddingTop: insets.top > 0 ? insets.top + 8 : 24 },
-          ]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-        >
-          {/* Decorative background circles */}
-          <View style={styles.decorCircle1} />
-          <View style={styles.decorCircle2} />
+        {/* ─── Curved Purple Hero Header Banner ─── */}
+        <View style={[styles.topSection, { height: headerHeight }]}>
+          <LinearGradient
+            colors={['#7C3AED', '#5F2EEA']}
+            style={[
+              StyleSheet.absoluteFillObject,
+              styles.topSectionContent,
+              { paddingTop: insets.top > 0 ? insets.top + (isSmall ? 6 : 14) : 20 },
+            ]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+          >
+            {/* Ambient decorative glowing circles */}
+            <View style={styles.decorCircle1} />
+            <View style={styles.decorCircle2} />
 
-          <View style={styles.logoWrapper}>
-            <View style={[styles.logoImageContainer, isSmall && { width: 52, height: 52, borderRadius: 14, marginBottom: 4 }]}>
-              <Image
-                source={require('../../assets/HostixNew.png')}
-                style={styles.logoImage}
-                resizeMode="cover"
-              />
+            {/* Brand Logo & Title */}
+            <View style={styles.logoWrapper}>
+              <View style={[styles.logoImageContainer, isSmall && { width: 54, height: 54, borderRadius: 15, marginBottom: 5 }]}>
+                <Image
+                  source={require('../../assets/HostixNew.png')}
+                  style={styles.logoImage}
+                  resizeMode="cover"
+                />
+              </View>
+
+              <Text style={[styles.appName, isSmall && { fontSize: 24 }]}>
+                Host<Text style={{ color: '#FCD34D' }}>ix</Text>
+              </Text>
+              
+              {!isTiny && (
+                <Text style={[styles.tagline, isSmall && { fontSize: 11 }]}>
+                  Smart PG & Hostel Management
+                </Text>
+              )}
             </View>
-            <Text style={[styles.appName, isSmall && { fontSize: 24, marginBottom: 2 }]}>
-              Host<Text style={{ color: '#FCD34D' }}>ix</Text>
+          </LinearGradient>
+        </View>
+
+        {/* ─── Bottom Content Sheet ─── */}
+        <View style={styles.sheetSection}>
+          
+          {/* Header Title Section */}
+          <View style={styles.titleArea}>
+            <View style={styles.portalPill}>
+              <Ionicons name="sparkles" size={12} color="#7C3AED" />
+              <Text style={styles.portalPillText}>CHOOSE YOUR PORTAL</Text>
+            </View>
+
+            <Text style={[styles.sheetTitle, isSmall && { fontSize: 20 }]}>Select Account Type</Text>
+            <Text style={[styles.sheetSubtitle, isSmall && { fontSize: 12, marginBottom: 14 }]}>
+              Tap your role below to access your personalized portal
             </Text>
-            {!isTiny && <Text style={[styles.tagline, isSmall && { fontSize: 12 }]}>Smart PG Management</Text>}
-          </View>
-        </LinearGradient>
-      </View>
-
-      {/* ── Main Sheet Section ── */}
-      <View style={[styles.sheetSection, { paddingBottom: Math.max(insets.bottom + 12, 20) }]}>
-        
-        {/* Top Title & 256-Bit Security Badge */}
-        <View style={styles.titleArea}>
-          <View style={styles.trustBadgeTop}>
-            <Ionicons name="shield-checkmark" size={12} color="#7C3AED" />
-            <Text style={styles.trustTextTop}>256-Bit SSL Encrypted Workspace</Text>
           </View>
 
-          <Text style={[styles.sheetTitle, isSmall && { fontSize: 20 }]}>Choose Your Portal</Text>
-          <Text style={[styles.sheetSubtitle, isSmall && { fontSize: 12 }]}>
-            Select your account type to access your dedicated features
-          </Text>
-        </View>
+          {/* ─── Elevated Interactive Cards ─── */}
+          <View style={styles.cardsContainer}>
 
-        {/* ── Expanded Portal Cards ── */}
-        <View style={styles.cardsContainer}>
+            {/* ════ 1. PG & HOSTEL OWNER CARD ════ */}
+            <TouchableOpacity
+              activeOpacity={0.90}
+              onPress={() => handleSelectRole('OWNER')}
+              style={[
+                styles.card,
+                styles.ownerCardShadow,
+                selectedRole === 'OWNER' && styles.cardActiveOwner,
+              ]}
+            >
+              <LinearGradient
+                colors={selectedRole === 'OWNER' ? ['#F5F3FF', '#EEF2FF'] : ['#FFFFFF', '#FAF9FF']}
+                style={styles.cardInner}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
+                {/* Header Row: 3D Artwork + Title + Status */}
+                <View style={styles.cardHeaderRow}>
+                  <View style={styles.iconBoxOwner}>
+                    <Image
+                      source={require('../../assets/hostel_only_3d.png')}
+                      style={styles.card3dImg}
+                      resizeMode="contain"
+                    />
+                  </View>
 
-          {/* 1. PG & HOSTEL OWNER CARD */}
-          <TouchableOpacity
-            activeOpacity={0.88}
-            onPress={() => handleSelectRole('OWNER')}
-            style={[
-              styles.card,
-              selectedRole === 'OWNER' && styles.cardActiveOwner,
-            ]}
-          >
-            <View style={styles.cardHeader}>
-              <View style={[styles.iconBox, { backgroundColor: '#EEF2FF' }]}>
-                <Image
-                  source={require('../../assets/hostel_only_3d.png')}
-                  style={styles.card3dImage}
-                  resizeMode="contain"
-                />
-              </View>
-
-              <View style={styles.cardTitleCol}>
-                <View style={styles.ownerBadge}>
-                  <Text style={styles.ownerBadgeText}>OWNER / ADMIN</Text>
+                  <View style={styles.cardTitleCol}>
+                    <View style={styles.ownerBadge}>
+                      <View style={styles.ownerDot} />
+                      <Text style={styles.ownerBadgeText}>OWNER / ADMIN</Text>
+                    </View>
+                    <Text style={styles.cardTitle}>PG & Hostel Owner</Text>
+                    <Text style={styles.cardDesc}>
+                      Complete property control, rooms, KYC & finance
+                    </Text>
+                  </View>
                 </View>
-                <Text style={styles.cardTitle}>PG & Hostel Owner</Text>
-                <Text style={styles.cardDesc}>
-                  Manage rooms & beds, track tenants, collect rent & monitor expenses
-                </Text>
-              </View>
 
-              <View style={[styles.arrowBtn, { backgroundColor: '#EEF2FF' }]}>
-                <Ionicons
-                  name="chevron-forward"
-                  size={20}
-                  color="#6366F1"
-                />
-              </View>
-            </View>
-
-            {/* Feature Pills */}
-            <View style={styles.tagsRow}>
-              <View style={styles.tagPill}>
-                <Ionicons name="business" size={11} color="#6366F1" />
-                <Text style={styles.tagText}>Rooms</Text>
-              </View>
-              <View style={styles.tagPill}>
-                <Ionicons name="people" size={11} color="#6366F1" />
-                <Text style={styles.tagText}>Tenants</Text>
-              </View>
-              <View style={styles.tagPill}>
-                <Ionicons name="wallet" size={11} color="#6366F1" />
-                <Text style={styles.tagText}>Rent Dues</Text>
-              </View>
-              <View style={styles.tagPill}>
-                <Ionicons name="receipt" size={11} color="#6366F1" />
-                <Text style={styles.tagText}>Expenses</Text>
-              </View>
-            </View>
-
-            {/* Bottom Continue Bar */}
-            <View style={styles.cardFooterOwner}>
-              <Text style={styles.cardFooterOwnerText}>Continue to Owner Dashboard</Text>
-              <Ionicons name="arrow-forward" size={14} color="#4F46E5" />
-            </View>
-          </TouchableOpacity>
-
-          {/* 2. TENANT & RESIDENT CARD */}
-          <TouchableOpacity
-            activeOpacity={0.88}
-            onPress={() => handleSelectRole('TENANT')}
-            style={[
-              styles.card,
-              selectedRole === 'TENANT' && styles.cardActiveTenant,
-            ]}
-          >
-            <View style={styles.cardHeader}>
-              <View style={[styles.iconBox, { backgroundColor: '#ECFDF5' }]}>
-                <Image
-                  source={require('../../assets/tenant_3d.png')}
-                  style={styles.card3dImage}
-                  resizeMode="contain"
-                />
-              </View>
-
-              <View style={styles.cardTitleCol}>
-                <View style={styles.tenantBadge}>
-                  <Text style={styles.tenantBadgeText}>TENANT / RESIDENT</Text>
+                {/* Capability Chips */}
+                <View style={styles.chipsRow}>
+                  <View style={styles.chipOwner}>
+                    <Ionicons name="business" size={11} color="#4F46E5" />
+                    <Text style={styles.chipTextOwner}>Rooms & Beds</Text>
+                  </View>
+                  <View style={styles.chipOwner}>
+                    <Ionicons name="people" size={11} color="#4F46E5" />
+                    <Text style={styles.chipTextOwner}>Tenant KYC</Text>
+                  </View>
+                  <View style={styles.chipOwner}>
+                    <Ionicons name="wallet" size={11} color="#4F46E5" />
+                    <Text style={styles.chipTextOwner}>Rent Dues</Text>
+                  </View>
+                  <View style={styles.chipOwner}>
+                    <Ionicons name="pie-chart" size={11} color="#4F46E5" />
+                    <Text style={styles.chipTextOwner}>Expenses</Text>
+                  </View>
                 </View>
-                <Text style={styles.cardTitle}>Tenant & Resident</Text>
-                <Text style={styles.cardDesc}>
-                  Pay rent dues, download receipts, view mess menu & raise complaints
-                </Text>
-              </View>
 
-              <View style={[styles.arrowBtn, { backgroundColor: '#ECFDF5' }]}>
-                <Ionicons
-                  name="chevron-forward"
-                  size={20}
-                  color="#10B981"
-                />
-              </View>
-            </View>
+                {/* Primary Action Button */}
+                <View style={styles.ctaButtonOwner}>
+                  <LinearGradient
+                    colors={['#6366F1', '#4F46E5']}
+                    style={styles.ctaGradient}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                  >
+                    <Text style={styles.ctaButtonText}>Continue as Owner</Text>
+                    <Ionicons name="arrow-forward" size={15} color="#FFFFFF" />
+                  </LinearGradient>
+                </View>
+              </LinearGradient>
+            </TouchableOpacity>
 
-            {/* Feature Pills */}
-            <View style={styles.tagsRow}>
-              <View style={styles.tagPillTenant}>
-                <Ionicons name="card" size={11} color="#059669" />
-                <Text style={styles.tagTextTenant}>Pay Rent</Text>
-              </View>
-              <View style={styles.tagPillTenant}>
-                <Ionicons name="receipt" size={11} color="#059669" />
-                <Text style={styles.tagTextTenant}>Receipts</Text>
-              </View>
-              <View style={styles.tagPillTenant}>
-                <Ionicons name="restaurant" size={11} color="#059669" />
-                <Text style={styles.tagTextTenant}>Mess Menu</Text>
-              </View>
-              <View style={styles.tagPillTenant}>
-                <Ionicons name="construct" size={11} color="#059669" />
-                <Text style={styles.tagTextTenant}>Complaints</Text>
-              </View>
-            </View>
+            {/* ════ 2. TENANT & RESIDENT CARD ════ */}
+            <TouchableOpacity
+              activeOpacity={0.90}
+              onPress={() => handleSelectRole('TENANT')}
+              style={[
+                styles.card,
+                styles.tenantCardShadow,
+                selectedRole === 'TENANT' && styles.cardActiveTenant,
+              ]}
+            >
+              <LinearGradient
+                colors={selectedRole === 'TENANT' ? ['#ECFDF5', '#E6F4EA'] : ['#FFFFFF', '#F6FEF9']}
+                style={styles.cardInner}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
+                {/* Header Row: 3D Artwork + Title + Status */}
+                <View style={styles.cardHeaderRow}>
+                  <View style={styles.iconBoxTenant}>
+                    <Image
+                      source={require('../../assets/tenant_3d.png')}
+                      style={styles.card3dImg}
+                      resizeMode="contain"
+                    />
+                  </View>
 
-            {/* Bottom Continue Bar */}
-            <View style={styles.cardFooterTenant}>
-              <Text style={styles.cardFooterTenantText}>Continue to Resident Portal</Text>
-              <Ionicons name="arrow-forward" size={14} color="#059669" />
+                  <View style={styles.cardTitleCol}>
+                    <View style={styles.tenantBadge}>
+                      <View style={styles.tenantDot} />
+                      <Text style={styles.tenantBadgeText}>TENANT / RESIDENT</Text>
+                    </View>
+                    <Text style={styles.cardTitle}>Tenant & Resident</Text>
+                    <Text style={styles.cardDesc}>
+                      Online payments, digital receipts, mess & support
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Capability Chips */}
+                <View style={styles.chipsRow}>
+                  <View style={styles.chipTenant}>
+                    <Ionicons name="card" size={11} color="#059669" />
+                    <Text style={styles.chipTextTenant}>1-Tap Pay</Text>
+                  </View>
+                  <View style={styles.chipTenant}>
+                    <Ionicons name="receipt" size={11} color="#059669" />
+                    <Text style={styles.chipTextTenant}>Receipts</Text>
+                  </View>
+                  <View style={styles.chipTenant}>
+                    <Ionicons name="restaurant" size={11} color="#059669" />
+                    <Text style={styles.chipTextTenant}>Mess Menu</Text>
+                  </View>
+                  <View style={styles.chipTenant}>
+                    <Ionicons name="construct" size={11} color="#059669" />
+                    <Text style={styles.chipTextTenant}>Complaints</Text>
+                  </View>
+                </View>
+
+                {/* Primary Action Button */}
+                <View style={styles.ctaButtonTenant}>
+                  <LinearGradient
+                    colors={['#10B981', '#059669']}
+                    style={styles.ctaGradient}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                  >
+                    <Text style={styles.ctaButtonText}>Continue as Resident</Text>
+                    <Ionicons name="arrow-forward" size={15} color="#FFFFFF" />
+                  </LinearGradient>
+                </View>
+              </LinearGradient>
+            </TouchableOpacity>
+
+          </View>
+
+          {/* ─── Footer Security Note ─── */}
+          <View style={styles.footerWrap}>
+            <View style={styles.securityPill}>
+              <Ionicons name="shield-checkmark" size={13} color="#7C3AED" />
+              <Text style={styles.securityText}>256-Bit SSL Encrypted • Switch Anytime</Text>
             </View>
-          </TouchableOpacity>
+            <Text style={styles.bottomBrand}>Powered by Host<Text style={{ color: '#F59E0B' }}>ix</Text> • PG OS</Text>
+          </View>
 
         </View>
-
-      </View>
+      </ScrollView>
     </View>
   );
 }
@@ -235,10 +286,19 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FFFFFF',
   },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+  },
   topSection: {
     width: '100%',
     position: 'relative',
+    borderBottomLeftRadius: 36,
+    borderBottomRightRadius: 36,
     overflow: 'hidden',
+    backgroundColor: '#7C3AED',
   },
   topSectionContent: {
     alignItems: 'center',
@@ -246,90 +306,87 @@ const styles = StyleSheet.create({
   },
   decorCircle1: {
     position: 'absolute',
-    width: width * 0.7,
-    height: width * 0.7,
-    borderRadius: width * 0.35,
+    width: width * 0.75,
+    height: width * 0.75,
+    borderRadius: width * 0.375,
     backgroundColor: 'rgba(255, 255, 255, 0.08)',
     top: -width * 0.25,
     right: -width * 0.2,
   },
   decorCircle2: {
     position: 'absolute',
-    width: width * 0.5,
-    height: width * 0.5,
-    borderRadius: width * 0.25,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    bottom: -width * 0.15,
-    left: -width * 0.1,
+    width: width * 0.55,
+    height: width * 0.55,
+    borderRadius: width * 0.275,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    bottom: -width * 0.18,
+    left: -width * 0.12,
   },
   logoWrapper: {
     alignItems: 'center',
+    justifyContent: 'center',
   },
   logoImageContainer: {
-    width: 58,
-    height: 58,
-    borderRadius: 16,
-    overflow: 'hidden',
-    marginBottom: 6,
-    backgroundColor: '#FFFFFF',
-    padding: 3,
+    width: 64,
+    height: 64,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255, 255, 255, 0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 7,
+    borderWidth: 1.2,
+    borderColor: 'rgba(255, 255, 255, 0.28)',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    elevation: 6,
   },
   logoImage: {
-    width: '100%',
-    height: '100%',
+    width: '82%',
+    height: '82%',
+    borderRadius: 12,
   },
   appName: {
-    fontSize: 26,
+    fontSize: 27,
     fontWeight: '900',
     color: '#FFFFFF',
-    letterSpacing: -0.5,
+    letterSpacing: 0.4,
   },
   tagline: {
     fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.85)',
-    fontWeight: '500',
+    color: 'rgba(255, 255, 255, 0.9)',
+    fontWeight: '600',
+    letterSpacing: 0.3,
     marginTop: 2,
   },
   sheetSection: {
     flex: 1,
     backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    marginTop: -20,
     paddingHorizontal: 18,
-    paddingTop: 16,
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.06,
-    shadowRadius: 10,
-    elevation: 4,
+    paddingTop: 18,
   },
   titleArea: {
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 4,
   },
-  trustBadgeTop: {
+  portalPill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
     backgroundColor: '#F5F3FF',
-    paddingHorizontal: 10,
-    paddingVertical: 3.5,
-    borderRadius: 14,
+    paddingHorizontal: 11,
+    paddingVertical: 4,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: '#EDE9FE',
     marginBottom: 6,
   },
-  trustTextTop: {
-    fontSize: 10,
-    fontWeight: '700',
+  portalPillText: {
+    fontSize: 9.5,
+    fontWeight: '800',
     color: '#7C3AED',
-    letterSpacing: 0.2,
+    letterSpacing: 0.6,
   },
   sheetTitle: {
     fontSize: 22,
@@ -343,86 +400,125 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: '#64748B',
     textAlign: 'center',
-    paddingHorizontal: 10,
-    lineHeight: 17,
+    marginBottom: 16,
   },
   cardsContainer: {
-    gap: 12,
-    marginTop: 2,
+    gap: 16,
   },
   card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    borderWidth: 1.4,
+    borderRadius: 22,
+    borderWidth: 1.5,
     borderColor: '#E2E8F0',
-    padding: 16,
-    shadowColor: '#0F172A',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 3,
+    backgroundColor: '#FFFFFF',
+    overflow: 'hidden',
+  },
+  ownerCardShadow: {
+    shadowColor: '#4F46E5',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.09,
+    shadowRadius: 14,
+    elevation: 4,
+    borderColor: '#E0E7FF',
+  },
+  tenantCardShadow: {
+    shadowColor: '#059669',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.09,
+    shadowRadius: 14,
+    elevation: 4,
+    borderColor: '#D1FAE5',
   },
   cardActiveOwner: {
-    borderColor: '#6366F1',
+    borderColor: '#4F46E5',
     borderWidth: 2,
-    shadowColor: '#6366F1',
-    shadowOpacity: 0.18,
-    shadowRadius: 12,
-    elevation: 5,
+    shadowOpacity: 0.22,
+    elevation: 7,
   },
   cardActiveTenant: {
-    borderColor: '#10B981',
+    borderColor: '#059669',
     borderWidth: 2,
-    shadowColor: '#10B981',
-    shadowOpacity: 0.18,
-    shadowRadius: 12,
-    elevation: 5,
+    shadowOpacity: 0.22,
+    elevation: 7,
   },
-  cardHeader: {
+  cardInner: {
+    padding: 16,
+  },
+  cardHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 12,
   },
-  iconBox: {
-    width: 52,
-    height: 52,
+  iconBoxOwner: {
+    width: 54,
+    height: 54,
     borderRadius: 16,
+    backgroundColor: '#EEF2FF',
     alignItems: 'center',
     justifyContent: 'center',
-    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#E0E7FF',
+    marginRight: 12,
   },
-  card3dImage: {
+  iconBoxTenant: {
+    width: 54,
+    height: 54,
+    borderRadius: 16,
+    backgroundColor: '#ECFDF5',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#D1FAE5',
+    marginRight: 12,
+  },
+  card3dImg: {
     width: 42,
     height: 42,
   },
   cardTitleCol: {
     flex: 1,
-    marginLeft: 12,
   },
   ownerBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
     alignSelf: 'flex-start',
     backgroundColor: '#EEF2FF',
-    paddingHorizontal: 7,
+    paddingHorizontal: 8,
     paddingVertical: 2.5,
-    borderRadius: 5,
+    borderRadius: 6,
     marginBottom: 3,
   },
+  ownerDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: '#4F46E5',
+  },
   ownerBadgeText: {
-    fontSize: 8.5,
+    fontSize: 9,
     fontWeight: '800',
     color: '#4F46E5',
     letterSpacing: 0.5,
   },
   tenantBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
     alignSelf: 'flex-start',
     backgroundColor: '#ECFDF5',
-    paddingHorizontal: 7,
+    paddingHorizontal: 8,
     paddingVertical: 2.5,
-    borderRadius: 5,
+    borderRadius: 6,
     marginBottom: 3,
   },
+  tenantDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: '#059669',
+  },
   tenantBadgeText: {
-    fontSize: 8.5,
+    fontSize: 9,
     fontWeight: '800',
     color: '#059669',
     letterSpacing: 0.5,
@@ -434,89 +530,112 @@ const styles = StyleSheet.create({
     letterSpacing: -0.3,
   },
   cardDesc: {
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: '400',
     color: '#64748B',
-    lineHeight: 16,
+    lineHeight: 15,
     marginTop: 2,
   },
-  arrowBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: 6,
-  },
-  tagsRow: {
+  chipsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 6,
-    paddingVertical: 10,
-    borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
+    paddingTop: 4,
+    paddingBottom: 12,
   },
-  tagPill: {
+  chipOwner: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#F5F3FF',
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 6,
+    borderRadius: 7,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: '#EDE9FE',
   },
-  tagText: {
+  chipTextOwner: {
     fontSize: 10.5,
     fontWeight: '600',
-    color: '#475569',
+    color: '#4F46E5',
   },
-  tagPillTenant: {
+  chipTenant: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
     backgroundColor: '#F0FDF4',
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 6,
+    borderRadius: 7,
     borderWidth: 1,
     borderColor: '#DCFCE7',
   },
-  tagTextTenant: {
+  chipTextTenant: {
     fontSize: 10.5,
     fontWeight: '600',
-    color: '#166534',
-  },
-  cardFooterOwner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: '#EEF2FF',
-  },
-  cardFooterOwnerText: {
-    fontSize: 12.5,
-    fontWeight: '800',
-    color: '#4F46E5',
-    letterSpacing: -0.1,
-  },
-  cardFooterTenant: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: '#ECFDF5',
-  },
-  cardFooterTenantText: {
-    fontSize: 12.5,
-    fontWeight: '800',
     color: '#059669',
-    letterSpacing: -0.1,
+  },
+  ctaButtonOwner: {
+    borderRadius: 12,
+    overflow: 'hidden',
+    shadowColor: '#4F46E5',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  ctaButtonTenant: {
+    borderRadius: 12,
+    overflow: 'hidden',
+    shadowColor: '#059669',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  ctaGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    gap: 8,
+  },
+  ctaButtonText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 0.2,
+  },
+  footerWrap: {
+    alignItems: 'center',
+    marginTop: 18,
+    gap: 6,
+  },
+  securityPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#F5F3FF',
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#EDE9FE',
+  },
+  securityText: {
+    fontSize: 10.5,
+    fontWeight: '700',
+    color: '#6D28D9',
+  },
+  bottomBrand: {
+    fontSize: 11,
+    color: '#94A3B8',
+    fontWeight: '500',
   },
 });
+
+
+
 
 
 

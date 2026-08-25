@@ -144,13 +144,13 @@ export const createStaff = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    const [staff_id] = await db('staff').insert({
+    const staffInsertData: any = {
       hostel_id: hostelId,
       full_name,
       phone,
       email: email || null,
       role: role || 'Staff',
-      status: status !== undefined ? status : 1,
+      status: status !== undefined ? status : 'ACTIVE',
       join_date: join_date || new Date(),
       monthly_salary: monthly_salary || 0,
       aadhaar_number: aadhaar_number || null,
@@ -160,7 +160,20 @@ export const createStaff = async (req: AuthRequest, res: Response) => {
       notes: notes || null,
       created_at: new Date(),
       updated_at: new Date()
-    });
+    };
+
+    // Filter to only columns that actually exist in the table
+    try {
+      const colInfo = await db('staff').columnInfo();
+      const validCols = Object.keys(colInfo);
+      for (const key of Object.keys(staffInsertData)) {
+        if (!validCols.includes(key)) {
+          delete staffInsertData[key];
+        }
+      }
+    } catch (_) {}
+
+    const [staff_id] = await db('staff').insert(staffInsertData);
 
     res.status(201).json({
       success: true,

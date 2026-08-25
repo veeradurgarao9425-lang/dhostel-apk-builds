@@ -1085,91 +1085,100 @@ export const emailIncomeExport = async (req: AuthRequest, res: Response) => {
 
     const emailHtml = `
       <!DOCTYPE html>
-      <html>
+      <html lang="en">
       <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+          @media only screen and (max-width: 480px) {
+            .mobile-stack { display: block !important; width: 100% !important; box-sizing: border-box !important; padding-right: 0 !important; padding-left: 0 !important; margin-bottom: 10px !important; }
+            .mobile-pad { padding: 18px 16px !important; }
+            .mobile-title { font-size: 20px !important; }
+          }
+        </style>
       </head>
-      <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f1f5f9; margin: 0; padding: 24px; color: #1e293b;">
-        <div style="max-width: 620px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05); border: 1px solid #e2e8f0;">
+      <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f8fafc; margin: 0; padding: 12px; color: #0f172a;">
+        <div style="max-width: 580px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; border: 1px solid #e2e8f0;">
           
           <!-- Banner Header -->
-          <div style="background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); background-color: #4f46e5; padding: 32px 24px; text-align: center; color: #ffffff;">
-            <div style="font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 2px; color: #c7d2fe; margin-bottom: 6px;">Hostix Hostel Management</div>
-            <h1 style="margin: 0; font-size: 24px; font-weight: 800; letter-spacing: -0.5px;">${hostelName}</h1>
-            <div style="font-size: 13px; font-weight: 600; color: #e0e7ff; margin-top: 6px;">${periodLabel}</div>
+          <div style="background: linear-gradient(135deg, #6366f1 0%, #7c3aed 100%); background-color: #6366f1; padding: 26px 20px; text-align: center; color: #ffffff;">
+            <div style="font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px; color: #e0e7ff; margin-bottom: 4px;">Hostix Hostel Management</div>
+            <h1 class="mobile-title" style="margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -0.4px; color: #ffffff;">${hostelName}</h1>
+            <div style="display: inline-block; background-color: rgba(255,255,255,0.18); border-radius: 20px; padding: 4px 12px; font-size: 12px; font-weight: 700; color: #ffffff; margin-top: 8px;">${periodLabel}</div>
           </div>
 
           <!-- Body Content -->
-          <div style="padding: 28px 24px;">
-            <p style="margin-top: 0; font-size: 15px; line-height: 22px; color: #334151;">
+          <div class="mobile-pad" style="padding: 24px 20px;">
+            <p style="margin-top: 0; font-size: 14px; line-height: 20px; color: #334155;">
               Hello <strong>${owner?.full_name || 'Owner'}</strong>,
             </p>
-            <p style="font-size: 14px; line-height: 22px; color: #475569; margin-bottom: 20px;">
+            <p style="font-size: 13.5px; line-height: 20px; color: #475569; margin-bottom: 18px;">
               Your requested financial & income report for <strong>${hostelName}</strong> has been generated and is attached below as an Excel spreadsheet.
             </p>
 
-            <!-- KPI Cards Grid -->
-            <div style="display: table; width: 100%; margin-bottom: 20px;">
-              <div style="display: table-row;">
-                <div style="display: table-cell; width: 50%; padding-right: 6px; padding-bottom: 12px;">
-                  <div style="background-color: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 12px; padding: 14px 16px;">
-                    <div style="font-size: 11px; font-weight: 700; color: #047857; text-transform: uppercase; letter-spacing: 0.5px;">Total Income</div>
-                    <div style="font-size: 22px; font-weight: 800; color: #065f46; margin-top: 4px;">₹${Number(stats.totalIncome).toLocaleString('en-IN')}</div>
-                    <div style="font-size: 11px; color: #047857; margin-top: 2px;">${stats.totalTransactions} transactions</div>
+            <!-- KPI Cards Grid (Responsive Table) -->
+            <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom: 14px; border-collapse: separate;">
+              <tr>
+                <td class="mobile-stack" width="50%" valign="top" style="padding-right: 5px; padding-bottom: 8px;">
+                  <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 12px 14px;">
+                    <div style="font-size: 11px; font-weight: 700; color: #15803d; text-transform: uppercase; letter-spacing: 0.5px;">Total Income</div>
+                    <div style="font-size: 20px; font-weight: 800; color: #166534; margin-top: 2px;">₹${Number(stats.totalIncome).toLocaleString('en-IN')}</div>
+                    <div style="font-size: 11px; color: #15803d; margin-top: 2px;">${stats.totalTransactions} transaction${stats.totalTransactions !== 1 ? 's' : ''}</div>
                   </div>
-                </div>
-                <div style="display: table-cell; width: 50%; padding-left: 6px; padding-bottom: 12px;">
-                  <div style="background-color: #fef2f2; border: 1px solid #fecaca; border-radius: 12px; padding: 14px 16px;">
+                </td>
+                <td class="mobile-stack" width="50%" valign="top" style="padding-left: 5px; padding-bottom: 8px;">
+                  <div style="background-color: #fef2f2; border: 1px solid #fecaca; border-radius: 12px; padding: 12px 14px;">
                     <div style="font-size: 11px; font-weight: 700; color: #b91c1c; text-transform: uppercase; letter-spacing: 0.5px;">Total Expenses</div>
-                    <div style="font-size: 22px; font-weight: 800; color: #991b1b; margin-top: 4px;">₹${Number(stats.totalExpenses).toLocaleString('en-IN')}</div>
-                    <div style="font-size: 11px; color: #b91c1c; margin-top: 2px;">${stats.totalExpenseRecords} records</div>
+                    <div style="font-size: 20px; font-weight: 800; color: #991b1b; margin-top: 2px;">₹${Number(stats.totalExpenses).toLocaleString('en-IN')}</div>
+                    <div style="font-size: 11px; color: #b91c1c; margin-top: 2px;">${stats.totalExpenseRecords} record${stats.totalExpenseRecords !== 1 ? 's' : ''}</div>
                   </div>
-                </div>
-              </div>
-            </div>
+                </td>
+              </tr>
+            </table>
 
             <!-- Net Balance Highlight -->
-            <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; margin-bottom: 24px;">
-              <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px; margin-bottom: 8px;">
-                <span style="font-size: 13px; font-weight: 600; color: #64748b;">Net Profit / Balance</span>
-                <span style="font-size: 17px; font-weight: 800; color: ${stats.netProfit >= 0 ? '#10b981' : '#ef4444'};">
-                  ₹${Number(stats.netProfit).toLocaleString('en-IN')}
-                </span>
-              </div>
-              <table style="width: 100%; font-size: 12px; color: #64748b; border-collapse: collapse;">
+            <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px 16px; margin-bottom: 18px;">
+              <table width="100%" cellpadding="0" cellspacing="0" border="0" style="border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 8px;">
                 <tr>
-                  <td style="padding: 4px 0;">Rent Collections</td>
+                  <td style="font-size: 13px; font-weight: 700; color: #475569;">Net Profit / Balance</td>
+                  <td style="text-align: right; font-size: 18px; font-weight: 800; color: ${stats.netProfit >= 0 ? '#16a34a' : '#dc2626'};">
+                    ₹${Number(stats.netProfit).toLocaleString('en-IN')}
+                  </td>
+                </tr>
+              </table>
+              <table width="100%" cellpadding="0" cellspacing="0" border="0" style="font-size: 12px; color: #64748b;">
+                <tr>
+                  <td style="padding: 3px 0;">Rent Collections</td>
                   <td style="text-align: right; font-weight: 700; color: #1e293b;">₹${Number(stats.totalRent).toLocaleString('en-IN')}</td>
                 </tr>
                 <tr>
-                  <td style="padding: 4px 0;">Guest Stays</td>
+                  <td style="padding: 3px 0;">Guest Stays</td>
                   <td style="text-align: right; font-weight: 700; color: #1e293b;">₹${Number(stats.totalGuest).toLocaleString('en-IN')}</td>
                 </tr>
                 <tr>
-                  <td style="padding: 4px 0;">Student Admissions</td>
+                  <td style="padding: 3px 0;">Student Admissions</td>
                   <td style="text-align: right; font-weight: 700; color: #1e293b;">₹${Number(stats.totalAdmissions).toLocaleString('en-IN')}</td>
                 </tr>
                 <tr>
-                  <td style="padding: 4px 0;">Other Recorded Income</td>
+                  <td style="padding: 3px 0;">Other Income</td>
                   <td style="text-align: right; font-weight: 700; color: #1e293b;">₹${Number(stats.totalOther).toLocaleString('en-IN')}</td>
                 </tr>
               </table>
             </div>
 
             <!-- Attachment Note -->
-            <div style="background-color: #eef2ff; border-left: 4px solid #4f46e5; padding: 12px 16px; border-radius: 8px; font-size: 13px; color: #3730a3; line-height: 18px;">
-              📎 <strong>Excel File Attached:</strong> <code>${filename}</code> with itemized income, room details, and categorized expense sheets.
+            <div style="background-color: #f5f3ff; border: 1px solid #ddd6fe; border-left: 4px solid #7c3aed; padding: 10px 14px; border-radius: 8px; font-size: 12.5px; color: #5b21b6; line-height: 18px;">
+              📎 <strong>Attached:</strong> <code>${filename}</code> (Excel report spreadsheet).
             </div>
 
-            <p style="font-size: 12px; color: #94a3b8; margin-top: 24px; margin-bottom: 0;">
+            <p style="font-size: 11.5px; color: #94a3b8; margin-top: 18px; margin-bottom: 0;">
               Generated on ${formattedDate} by Hostix Automation System.
             </p>
           </div>
 
           <!-- Footer -->
-          <div style="background-color: #f8fafc; border-top: 1px solid #e2e8f0; padding: 16px; text-align: center; font-size: 11px; color: #94a3b8;">
-            Sent by Hostix Support (<a href="mailto:hostixhelp@gmail.com" style="color: #4f46e5; text-decoration: none;">hostixhelp@gmail.com</a>) &copy; ${now.getFullYear()} Hostix Systems.
+          <div style="background-color: #f8fafc; border-top: 1px solid #e2e8f0; padding: 12px 16px; text-align: center; font-size: 11px; color: #94a3b8;">
+            Hostix Support (<a href="mailto:hostixhelp@gmail.com" style="color: #6366f1; text-decoration: none;">hostixhelp@gmail.com</a>) &copy; ${now.getFullYear()} Hostix Systems.
           </div>
 
         </div>

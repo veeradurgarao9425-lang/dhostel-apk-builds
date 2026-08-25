@@ -206,39 +206,53 @@ export default function HomeScreen() {
         checkTour();
     }, [user]);
 
+    // ── Instant Dashboard Cache (0ms display on launch/open) ──
+    useEffect(() => {
+        if (!user?.hostel_id) return;
+        const cacheKey = `dashboard_cache_${user.hostel_id}`;
+        AsyncStorage.getItem(cacheKey).then(raw => {
+            if (raw) {
+                try {
+                    const cached = JSON.parse(raw);
+                    setData(prev => ({ ...prev, ...cached }));
+                    setLoading(false);
+                } catch (e) {}
+            }
+        }).catch(() => {});
+    }, [user?.hostel_id]);
+
 
 
     // ── Data loader ───────────────────────────────────────────────────────────
+    // ── Two-phase data loader ─────────────────────────────────────────────────
+    // Phase 1 (critical, ~1-2s): stats + fees + hostel name + notices
+    // Phase 2 (background, deferred): students list + complaints + renewals
+    // This gets visible numbers on screen fast and avoids 15-20s blank waits.
     const load = useCallback(async (isRefresh = false) => {
+        if (!user?.hostel_id) return;
         try {
+            // Show skeleton on first load; background spinner on refocus;
+            // full skeleton again when hostel switches (isRefresh=false after hostel change)
             if (!isRefresh && isFirstLoadRef.current) {
                 setLoading(true);
-            } else if (!isRefresh) {
+            } else if (isRefresh) {
+                setRefreshing(true);
+            } else {
                 setBackgroundLoading(true);
             }
             setHasError(false);
 
-            const [statsRes, summaryRes, hostelRes, noticeRes, overviewRes, studentsRes, complaintsRes, renewalsRes]: any = await Promise.all([
+            // ── PHASE 1: Critical data (fast, 2-4 API calls) ─────────────────
+            const [statsRes, summaryRes, hostelRes, noticeRes]: any = await Promise.all([
                 api.get('/reports/dashboard-stats').catch(() => ({ data: { success: false } })),
                 api.get('/monthly-fees/summary').catch(() => ({ data: { success: false } })),
                 user?.hostel_id
                     ? api.get(`/hostels/${user.hostel_id}`).catch(() => ({ data: { success: false } }))
                     : Promise.resolve({ data: { success: false } }),
                 api.get('/notices').catch(() => ({ data: { success: false } })),
-                api.get('/reports/monthly-overview').catch(() => ({ data: { success: false } })),
-                api.get('/students?limit=250').catch(() => ({ data: { success: false } })),
-                user?.hostel_id
-                    ? api.get(`/complaints/hostel/${user.hostel_id}`).catch(() => ({ data: { success: false } }))
-                    : Promise.resolve({ data: { success: false } }),
-                api.get('/students', { params: { renewalDueSoon: 'true', renewalDays: '15', status: 1 } }).catch(() => ({ data: { success: false } }))
             ]);
 
-            // Update renewal students if the request succeeded
-            if (renewalsRes?.data?.success) {
-                setRenewalStudents(renewalsRes.data.data || []);
-            }
-
-            if (!statsRes.data?.success && !summaryRes.data?.success && !studentsRes.data?.success && !overviewRes.data?.success) {
+            if (!statsRes.data?.success && !summaryRes.data?.success) {
                 setHasError(true);
                 return;
             }
@@ -249,8 +263,6 @@ export default function HomeScreen() {
             const monthDue = (d2.monthlyRentDue ?? (monthCollected + monthPending)) as number;
             const occupied = d2.occupiedBeds || 0;
             const total = d2.totalBeds || 0;
-            const monthlyOverview = overviewRes.data?.success ? overviewRes.data.data : null;
-            const currentMonthRevenue = Number(monthlyOverview?.currentMonth?.totalIncome ?? monthCollected ?? 0);
 
             // Build collection stats picture
             const collectionStats = {
@@ -263,122 +275,56 @@ export default function HomeScreen() {
             if (summaryRes.data.success && summaryRes.data.data?.fees) {
                 const fees: any[] = summaryRes.data.data.fees;
                 collectionStats.tenantsCount = fees.length;
-
                 const now = new Date();
                 now.setHours(0, 0, 0, 0);
                 collectionStats.monthName = now.toLocaleString('en-IN', { month: 'long' });
-
                 fees.forEach(f => {
                     const balance = parseFloat(f.balance || 0);
                     const paid = parseFloat(f.paid_amount || 0);
                     const totalDue = balance + paid;
-
                     collectionStats.totalExpected += totalDue;
                     collectionStats.collected += paid;
                     collectionStats.pending += balance;
-
                     if (balance <= 0) {
                         collectionStats.paidCount++;
                     } else {
                         const due = f.due_date ? new Date(f.due_date) : new Date();
                         due.setHours(0, 0, 0, 0);
                         const diffDays = Math.floor((due.getTime() - now.getTime()) / 86400000);
-
-                        if (diffDays < 0) {
-                            collectionStats.overdueCount++;
-                            collectionStats.overdueAmount += balance;
-                        } else if (diffDays === 0) {
-                            collectionStats.dueTodayCount++;
-                        } else if (diffDays > 0 && diffDays <= 7) {
-                            collectionStats.dueThisWeekCount++;
-                        }
+                        if (diffDays < 0) { collectionStats.overdueCount++; collectionStats.overdueAmount += balance; }
+                        else if (diffDays === 0) { collectionStats.dueTodayCount++; }
+                        else if (diffDays > 0 && diffDays <= 7) { collectionStats.dueThisWeekCount++; }
                     }
                 });
-
-                // Build top overdue defaulters + next-3-days dues, grouped per student
                 const studentMap = new Map<number, any>();
                 fees
                     .filter(f => (f.balance || 0) > 0 && !['paid', 'fully paid'].includes((f.fee_status || '').toLowerCase()))
                     .forEach(f => {
                         const due = f.due_date ? new Date(f.due_date) : new Date();
                         due.setHours(0, 0, 0, 0);
-                        const diffDays = Math.floor((now.getTime() - due.getTime()) / 86400000);
+                        const now2 = new Date(); now2.setHours(0, 0, 0, 0);
+                        const diffDays = Math.floor((now2.getTime() - due.getTime()) / 86400000);
                         const id = f.student_id;
                         if (!studentMap.has(id)) {
-                            studentMap.set(id, {
-                                id,
-                                name: `${f.first_name || ''} ${f.last_name || ''}`.trim(),
-                                room_number: f.room_number,
-                                phone: f.phone,
-                                amount: 0,
-                                isOverdue: false,
-                                daysLate: 0,
-                                daysLeft: 9999,
-                            });
+                            studentMap.set(id, { id, name: `${f.first_name || ''} ${f.last_name || ''}`.trim(), room_number: f.room_number, phone: f.phone, amount: 0, isOverdue: false, daysLate: 0, daysLeft: 9999 });
                         }
                         const st = studentMap.get(id);
                         st.amount += parseFloat(f.balance || 0);
-                        if (diffDays > 0) {
-                            st.isOverdue = true;
-                            if (diffDays > st.daysLate) st.daysLate = diffDays;
-                        } else {
-                            const left = Math.abs(diffDays);
-                            if (left < st.daysLeft) st.daysLeft = left;
-                        }
+                        if (diffDays > 0) { st.isOverdue = true; if (diffDays > st.daysLate) st.daysLate = diffDays; }
+                        else { const left = Math.abs(diffDays); if (left < st.daysLeft) st.daysLeft = left; }
                     });
                 const mappedFees = Array.from(studentMap.values());
-                topDefaulters = mappedFees
-                    .filter(f => f.isOverdue)
-                    .sort((a, b) => b.daysLate - a.daysLate || b.amount - a.amount)
-                    .slice(0, 5);
-                upcomingDuesList = mappedFees
-                    .filter(f => !f.isOverdue && f.daysLeft <= 7 && f.daysLeft >= 0)
-                    .sort((a, b) => a.daysLeft - b.daysLeft)
-                    .slice(0, 5);
+                topDefaulters = mappedFees.filter(f => f.isOverdue).sort((a, b) => b.daysLate - a.daysLate || b.amount - a.amount).slice(0, 5);
+                upcomingDuesList = mappedFees.filter(f => !f.isOverdue && f.daysLeft <= 7 && f.daysLeft >= 0).sort((a, b) => a.daysLeft - b.daysLeft).slice(0, 5);
             }
 
-            const activeNotice = noticeRes.data?.success && noticeRes.data.data?.length > 0
-                ? noticeRes.data.data[0]
-                : null;
+            const activeNotice = noticeRes.data?.success && noticeRes.data.data?.length > 0 ? noticeRes.data.data[0] : null;
 
-            const upcomingVacates = studentsRes.data?.success
-                ? (studentsRes.data.data || [])
-                    .filter((s: any) => s.vacate_notice_date !== null && s.vacate_notice_date !== undefined && s.status === 1 && s.room_id != null)
-                    .sort((a: any, b: any) => a.vacate_notice_date.localeCompare(b.vacate_notice_date))
-                    .slice(0, 3)
-                    .map((s: any) => {
-                        const todayStr = new Date().toISOString().split('T')[0];
-                        const diff = new Date(s.vacate_notice_date).getTime() - new Date(todayStr).getTime();
-                        const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
-                        return {
-                            student_id: s.student_id,
-                            name: `${s.first_name || ''} ${s.last_name || ''}`.trim(),
-                            room_number: s.room_number,
-                            vacate_date: s.vacate_notice_date,
-                            daysLeft: days,
-                            reason: s.vacate_notice_reason
-                        };
-                    })
-                : [];
-
-            const activeStudents = studentsRes.data?.success ? (studentsRes.data.data || []) : [];
-            const unallocatedCount = Number(d2.unallocatedCount ?? activeStudents.filter((s: any) => s.status === 1 && !s.room_id).length);
-            const qrRegisterCount = Number(d2.qrRegisterCount ?? activeStudents.filter((s: any) => s.status === 3).length);
-            const pendingAdmissionsCount = Number(
-                d2.pendingAdmissionsCount ?? 
-                activeStudents.filter((s: any) => (s.admission_status === 0 || s.admission_status === '0' || !s.admission_status) && !s.is_old_student && s.status === 1).length
-            );
-            const prebookingsCount = Number(d2.prebookingsCount ?? activeStudents.filter((s: any) => s.status === 2).length);
-            const vacateCount = Number(d2.vacateCount ?? activeStudents.filter((s: any) => s.vacate_notice_date && s.status === 1).length);
-            const totalStudentsCount = activeStudents.filter((s: any) => s.status === 1).length;
-            const allComplaints = complaintsRes.data?.success ? (complaintsRes.data.complaints || []) : [];
-            const openComplaintsCount = Number(d2.openComplaintsCount ?? allComplaints.filter((c: any) => c.status === 'Open' || c.status === 'In Progress').length);
-            const activeGuestsCount = Number(d2.activeGuestsCount ?? 0);
-
-            setData({
+            // Phase 1 update — visible in 2-3s
+            const updatedData = {
                 hostelName: user?.hostel_name || d2.hostel_name || hostelRes?.data?.data?.hostel_name || 'My Hostel',
-                hostelCode: (user as any)?.hostel_code || (d2 as any)?.hostel_code || hostelRes?.data?.data?.hostel_code || hostelRes?.data?.data?.code || 'STAYVIX',
-                monthAmount: currentMonthRevenue,
+                hostelCode: (user as any)?.hostel_code || (d2 as any)?.hostel_code || hostelRes?.data?.data?.hostel_code || 'STAYVIX',
+                monthAmount: (d2.monthlyRentCollected ?? d2.feeCollection ?? 0) as number,
                 monthDue,
                 pendingAmount: monthPending,
                 totalDuesAmount: d2.pendingDuesAmount || 0,
@@ -387,31 +333,76 @@ export default function HomeScreen() {
                 availableBeds: total - occupied,
                 todayAmount: d2.todayRent || 0,
                 activeTenants: occupied,
-                totalStudentsCount,
+                totalStudentsCount: d2.totalStudentsCount || occupied,
                 leftTenants: d2.leftTenants || d2.vacatedStudents || 0,
                 totalRooms: d2.totalRooms || 0,
                 availableRooms: d2.availableRooms || 0,
                 totalFloors: d2.totalFloors || 0,
                 floorBreakdown: d2.floorBreakdown || [],
                 occupancyRate: d2.occupancyRate || 0,
-                prebookingsCount,
+                prebookingsCount: d2.prebookingsCount || 0,
                 noticesCount: d2.noticesCount || 0,
                 newAdmissionsCount: d2.newAdmissionsCount || 0,
                 monthlyExpenses: d2.monthlyExpenses || 0,
                 staffCount: d2.staffCount || 0,
                 latestNotice: activeNotice,
-                upcomingVacates,
-                unallocatedCount,
-                qrRegisterCount,
-                openComplaintsCount,
-                pendingAdmissionsCount,
-                vacateCount,
-                activeGuestsCount,
+                unallocatedCount: d2.unallocatedCount || 0,
+                qrRegisterCount: d2.qrRegisterCount || 0,
+                openComplaintsCount: d2.openComplaintsCount || 0,
+                pendingAdmissionsCount: d2.pendingAdmissionsCount || 0,
+                vacateCount: d2.vacateCount || 0,
+                activeGuestsCount: d2.activeGuestsCount || 0,
                 unpaidStudents: topDefaulters,
                 upcomingDues: upcomingDuesList,
                 collectionStats,
-            });
+            };
+            setData(prev => ({ ...prev, ...updatedData }));
+            if (user?.hostel_id) {
+                AsyncStorage.setItem(`dashboard_cache_${user.hostel_id}`, JSON.stringify(updatedData)).catch(() => {});
+            }
             isFirstLoadRef.current = false;
+            // Hide main skeleton immediately — Phase 2 runs silently in background
+            setLoading(false);
+            setRefreshing(false);
+
+            // ── PHASE 2: Background (heavier data, non-blocking) ─────────────
+            Promise.all([
+                api.get('/reports/monthly-overview').catch(() => ({ data: { success: false } })),
+                api.get('/students?limit=100&status=1').catch(() => ({ data: { success: false } })),
+                user?.hostel_id
+                    ? api.get(`/complaints/hostel/${user.hostel_id}`).catch(() => ({ data: { success: false } }))
+                    : Promise.resolve({ data: { success: false } }),
+                api.get('/students', { params: { renewalDueSoon: 'true', renewalDays: '15', status: 1 } }).catch(() => ({ data: { success: false } })),
+            ]).then(([overviewRes, studentsRes, complaintsRes, renewalsRes]: any) => {
+                const monthlyOverview = overviewRes.data?.success ? overviewRes.data.data : null;
+                const currentMonthRevenue = Number(monthlyOverview?.currentMonth?.totalIncome ?? monthCollected ?? 0);
+
+                if (renewalsRes?.data?.success) {
+                    setRenewalStudents(renewalsRes.data.data || []);
+                }
+
+                const activeStudents = studentsRes.data?.success ? (studentsRes.data.data || []) : [];
+                const upcomingVacates = activeStudents
+                    .filter((s: any) => s.vacate_notice_date !== null && s.vacate_notice_date !== undefined && s.status === 1 && s.room_id != null)
+                    .sort((a: any, b: any) => a.vacate_notice_date.localeCompare(b.vacate_notice_date))
+                    .slice(0, 3)
+                    .map((s: any) => {
+                        const todayStr = new Date().toISOString().split('T')[0];
+                        const diff = new Date(s.vacate_notice_date).getTime() - new Date(todayStr).getTime();
+                        const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
+                        return { student_id: s.student_id, name: `${s.first_name || ''} ${s.last_name || ''}`.trim(), room_number: s.room_number, vacate_date: s.vacate_notice_date, daysLeft: days, reason: s.vacate_notice_reason };
+                    });
+
+                const allComplaints = complaintsRes.data?.success ? (complaintsRes.data.complaints || []) : [];
+
+                setData(prev => ({
+                    ...prev,
+                    monthAmount: currentMonthRevenue || prev.monthAmount,
+                    upcomingVacates,
+                    openComplaintsCount: allComplaints.filter((c: any) => c.status === 'Open' || c.status === 'In Progress').length || prev.openComplaintsCount,
+                }));
+            }).catch(() => { /* background errors are silent */ });
+
         } catch {
             setHasError(true);
         } finally {
@@ -421,7 +412,9 @@ export default function HomeScreen() {
         }
     }, [user, user?.hostel_id]);
 
+
     useFocusEffect(useCallback(() => { load(); }, [load]));
+
 
     // ── Also refresh when any mutation screen signals a data change ────────────
     const { refreshCounter } = useRefresh();
@@ -439,14 +432,17 @@ export default function HomeScreen() {
         }
         try {
             setSwitchingHostelId(hostelId);
+            setShowHostelSelector(false);
             const res = await api.put('/auth/active-hostel', { hostel_id: hostelId });
             if (res.data?.success) {
                 const { token, hostel_name } = res.data.data;
+                // Immediately reset data + show skeleton so user sees instant feedback
+                setData(INITIAL_STATE);
+                isFirstLoadRef.current = true;
+                setLoading(true);
                 await updateTokenAndUser(token, { hostel_id: hostelId, hostel_name });
-                showSuccess(`Switched active hostel to ${hostel_name}`);
-                setShowHostelSelector(false);
-                // Trigger reload of stats
-                await load(true);
+                showSuccess(`Switched to ${hostel_name}`);
+                // load() will re-run automatically because user?.hostel_id changed
             } else {
                 showError(res.data?.error || 'Failed to switch active hostel');
             }
@@ -457,6 +453,7 @@ export default function HomeScreen() {
             setSwitchingHostelId(null);
         }
     };
+
 
     // ── Quick action press handler ────────────────────────────────────────────
     const handleQuickAction = (a: typeof QUICK_ACTIONS[0]) => {

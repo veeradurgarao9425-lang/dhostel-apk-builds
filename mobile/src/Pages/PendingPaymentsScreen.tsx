@@ -1052,7 +1052,14 @@ export default function PendingPaymentsScreen() {
         }
     }, []);
 
+    const lastDuesFocusRef = useRef<number>(0);
+
     useFocusEffect(useCallback(() => {
+        const now = Date.now();
+        if (now - lastDuesFocusRef.current < 15000 && !isFirstLoadRef.current) {
+            return;
+        }
+        lastDuesFocusRef.current = now;
         setPage(1);
         setHasMore(true);
         load(1, false);

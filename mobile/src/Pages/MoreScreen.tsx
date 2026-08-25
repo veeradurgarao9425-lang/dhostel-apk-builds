@@ -65,9 +65,15 @@ export default function MoreScreen({ hideHeader = false }: MoreScreenProps) {
     });
 
     const [stats, setStats] = useState<any>(null);
+    const lastStatsFetchRef = React.useRef<number>(0);
 
-    const fetchStats = async () => {
+    const fetchStats = async (force = false) => {
+        const now = Date.now();
+        if (!force && now - lastStatsFetchRef.current < 30000 && stats) {
+            return;
+        }
         try {
+            lastStatsFetchRef.current = now;
             const [ownerRes, reportRes] = await Promise.all([
                 api.get('/dashboard/owner-stats').catch(() => ({ data: { success: false } })),
                 api.get('/reports/dashboard-stats').catch(() => ({ data: { success: false } }))
@@ -84,17 +90,11 @@ export default function MoreScreen({ hideHeader = false }: MoreScreenProps) {
     useFocusEffect(React.useCallback(() => {
         if (user) {
             fetchStats();
-            loadHostels();
+            if (hostels.length === 0) {
+                loadHostels();
+            }
         }
-    }, [user, loadHostels]));
-
-    const hostelsAttemptedRef = React.useRef(false);
-    useEffect(() => {
-        if (!hostelsAttemptedRef.current && (user?.role === 'OWNER' || user?.role_id === 1 || user?.role_id === 2) && hostels.length === 0) {
-            hostelsAttemptedRef.current = true;
-            loadHostels();
-        }
-    }, [user?.role, user?.role_id, hostels.length, loadHostels]);
+    }, [user, hostels.length, loadHostels]));
     const { theme, isDark, fontSize } = useTheme();
     const { t } = useTranslation();
     const { showToast, showSuccess, showError, showApiError } = useToast();
@@ -251,6 +251,14 @@ export default function MoreScreen({ hideHeader = false }: MoreScreenProps) {
                     route: 'Expenses',
                 },
                 {
+                    label: 'Bill Reminders',
+                    subtitle: 'Track pending tenant rent & utility dues',
+                    icon: 'receipt-outline',
+                    iconColor: '#EA580C',
+                    iconBg: '#FFEDD5',
+                    route: 'BillReminders',
+                },
+                {
                     label: t('more.incomeReport'),
                     subtitle: t('more.incomeReportSub'),
                     icon: 'trending-up',
@@ -303,6 +311,14 @@ export default function MoreScreen({ hideHeader = false }: MoreScreenProps) {
         {
             groupTitle: 'Shortcuts & Info',
             items: [
+                {
+                    label: 'Reminders & Tasks',
+                    subtitle: 'Create hostel alerts & custom reminders',
+                    icon: 'alarm-outline',
+                    iconColor: '#0284C7',
+                    iconBg: '#E0F2FE',
+                    route: 'Reminders',
+                },
                 {
                     label: t('more.qrSignup', 'Tenant QR Register'),
                     subtitle: t('more.qrSignupSub', 'Invite tenants to self-register'),

@@ -20,6 +20,7 @@ import { SkeletonList } from '../components/ui/SkeletonCard';
 import { DangerModal } from '../components/ui/DangerModal';
 import { LoadMoreFooter } from '../components/ui/LoadMoreFooter';
 import { CustomMonthYearPicker } from '../components/ui/pickers/CustomMonthYearPicker';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../context/ToastContext';
 import api from '../services/api';
@@ -51,6 +52,7 @@ const CAT_COLORS: Record<string, string> = {
 const getCatColor = (name: string) => CAT_COLORS[name] || '#64748B';
 
 export const ExpenseScreen = ({ navigation }: any) => {
+    const insets = useSafeAreaInsets();
     const { user } = useAuth();
     const { theme, isDark } = useTheme();
     const { showApiError, showSuccess, showToast } = useToast();
@@ -461,11 +463,17 @@ export const ExpenseScreen = ({ navigation }: any) => {
 
             {/* Floating Action Button */}
             <TouchableOpacity
-                style={[styles.fab, { backgroundColor: theme.primary }]}
+                style={[
+                    styles.fab,
+                    {
+                        backgroundColor: theme.primary,
+                        bottom: Math.max(insets.bottom + 85, 100),
+                    },
+                ]}
                 onPress={() => navigation.navigate('AddExpense')}
-                activeOpacity={0.9}
+                activeOpacity={0.85}
             >
-                <Plus color="#FFFFFF" size={22} strokeWidth={3.2} />
+                <Plus color="#FFFFFF" size={26} strokeWidth={2.8} />
             </TouchableOpacity>
 
             <CustomMonthYearPicker
@@ -747,19 +755,18 @@ const styles = StyleSheet.create({
     },
     fab: {
         position: 'absolute',
-        bottom: 95,
+        bottom: 100,
         right: 20,
-        width: 52,
-        height: 52,
-        borderRadius: 26,
-        backgroundColor: '#FF6B6B',
-        alignItems: 'center',
+        width: 56,
+        height: 56,
+        borderRadius: 28,
         justifyContent: 'center',
-        elevation: 10,
-        shadowColor: '#FF6B6B',
-        shadowOffset: { width: 0, height: 4 },
+        alignItems: 'center',
+        elevation: 12,
+        shadowColor: '#4F46E5',
+        shadowOffset: { width: 0, height: 6 },
         shadowOpacity: 0.35,
-        shadowRadius: 6,
+        shadowRadius: 8,
         zIndex: 99999,
     },
     listContentContainer: {

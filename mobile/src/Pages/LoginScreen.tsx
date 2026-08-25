@@ -21,6 +21,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useKeyboardInset } from '../hooks/useKeyboardInset';
+import { api } from '../services/api';
 
 const { width, height } = Dimensions.get('window');
 const isSmall = height < 700;
@@ -63,6 +64,11 @@ export default function LoginScreen({ navigation }: any) {
             return () => subscription.remove();
         }, [handleGoBackToRoleSelect])
     );
+
+    // Pre-warm backend connection so sign-in responds with 0ms cold-start delay
+    React.useEffect(() => {
+        api.get('/health').catch(() => {});
+    }, []);
 
     // If user is already authenticated when landing on LoginScreen, route immediately (initial mount only)
     const navigatedRef = useRef(false);

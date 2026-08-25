@@ -620,6 +620,10 @@ export async function patchDatabaseSchema() {
           console.log('[schema-patch] adding id_proof_back_url to students...');
           await db.raw("ALTER TABLE students ADD COLUMN id_proof_back_url VARCHAR(500) NULL");
         }
+        if (!columnNames.includes('id_proof_document_url')) {
+          console.log('[schema-patch] adding id_proof_document_url to students...');
+          await db.raw("ALTER TABLE students ADD COLUMN id_proof_document_url VARCHAR(500) NULL");
+        }
         // ── Fee Plan columns (lump-sum billing cycle support) ──────────────────
         if (!columnNames.includes('fee_plan')) {
           console.log('[schema-patch] adding fee_plan to students...');
@@ -1071,10 +1075,48 @@ export async function patchDatabaseSchema() {
             monthly_salary: 30000.00
           });
         }
+      } else {
+        // Staff table already exists — patch missing columns for existing deployments
+        try {
+          console.log('[schema-patch] Checking staff columns...');
+          const [staffCols] = await db.raw("SHOW COLUMNS FROM staff");
+          const staffColNames = (staffCols as any[]).map((c: any) => (c.Field || c.field || '').toLowerCase());
+
+          const staffAlters: Array<[string, string]> = [
+            ['status',            "ALTER TABLE staff ADD COLUMN status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE'"],
+            ['photo',             "ALTER TABLE staff ADD COLUMN photo VARCHAR(500) NULL"],
+            ['aadhaar_front',     "ALTER TABLE staff ADD COLUMN aadhaar_front VARCHAR(500) NULL"],
+            ['aadhaar_back',      "ALTER TABLE staff ADD COLUMN aadhaar_back VARCHAR(500) NULL"],
+            ['aadhaar_number',    "ALTER TABLE staff ADD COLUMN aadhaar_number VARCHAR(20) NULL"],
+            ['email',             "ALTER TABLE staff ADD COLUMN email VARCHAR(255) NULL"],
+            ['notes',             "ALTER TABLE staff ADD COLUMN notes TEXT NULL"],
+            ['monthly_salary',    "ALTER TABLE staff ADD COLUMN monthly_salary DECIMAL(10,2) NULL"],
+            ['join_date',         "ALTER TABLE staff ADD COLUMN join_date DATE NULL"],
+            ['address',           "ALTER TABLE staff ADD COLUMN address TEXT NULL"],
+            ['emergency_contact', "ALTER TABLE staff ADD COLUMN emergency_contact VARCHAR(20) NULL"],
+            ['bank_account',      "ALTER TABLE staff ADD COLUMN bank_account VARCHAR(30) NULL"],
+            ['bank_ifsc',         "ALTER TABLE staff ADD COLUMN bank_ifsc VARCHAR(20) NULL"],
+            ['bank_name',         "ALTER TABLE staff ADD COLUMN bank_name VARCHAR(100) NULL"],
+            ['updated_at',        "ALTER TABLE staff ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"],
+          ];
+
+          for (const [col, sql] of staffAlters) {
+            if (!staffColNames.includes(col)) {
+              console.log(`[schema-patch] adding ${col} to staff...`);
+              try { await db.raw(sql); } catch (colErr: any) {
+                console.warn(`[schema-patch] staff.${col} alter warning:`, colErr.message);
+              }
+            }
+          }
+        } catch (staffPatchErr: any) {
+          console.warn('[schema-patch] Staff column patch warning:', staffPatchErr.message);
+        }
       }
     } catch (e: any) {
       console.error('[schema-patch] Error checking/creating staff table:', e.message);
     }
+
+
 
     // 6. Ensure reminders table exists
     try {

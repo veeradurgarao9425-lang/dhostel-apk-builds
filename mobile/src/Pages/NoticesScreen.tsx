@@ -25,8 +25,10 @@ import { useToast } from '../context/ToastContext';
 import { useConfirmation } from '../../contexts/ConfirmationContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { SkeletonCardList } from '../components/ui/SkeletonCard';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function NoticesScreen({ navigation }: any) {
+    const insets = useSafeAreaInsets();
     const { showError, showSuccess, showApiError } = useToast();
     const confirm = useConfirmation();
     const { theme, isDark } = useTheme();
@@ -335,8 +337,24 @@ export default function NoticesScreen({ navigation }: any) {
             )}
 
             {/* Floating Action Button */}
-            <TouchableOpacity style={[styles.fab, { backgroundColor: theme.primary }]} activeOpacity={0.85} onPress={() => { setSelectedStudent(null); setSearchQuery(''); setSelectedModalFloor('All'); setNoticeReason(''); setCreateModalVisible(true); }}>
-                <Plus size={26} color="#FFF" strokeWidth={3.5} />
+            <TouchableOpacity
+                style={[
+                    styles.fab,
+                    {
+                        backgroundColor: theme.primary,
+                        bottom: Math.max(insets.bottom + 85, 100),
+                    },
+                ]}
+                activeOpacity={0.85}
+                onPress={() => {
+                    setSelectedStudent(null);
+                    setSearchQuery('');
+                    setSelectedModalFloor('All');
+                    setNoticeReason('');
+                    setCreateModalVisible(true);
+                }}
+            >
+                <Plus size={26} color="#FFF" strokeWidth={2.8} />
             </TouchableOpacity>
 
             {/* Create Vacate Notice Modal */}
@@ -552,9 +570,20 @@ const styles = StyleSheet.create({
     viewDetailsText: { fontSize: 12, fontWeight: '700' },
 
     fab: {
-        position: 'absolute', bottom: 95, right: 20, width: 52, height: 52, borderRadius: 26,
-        justifyContent: 'center', alignItems: 'center', elevation: 10,
-        shadowColor: '#4F46E5', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.35, shadowRadius: 6, zIndex: 99999,
+        position: 'absolute',
+        bottom: 100,
+        right: 20,
+        width: 56,
+        height: 56,
+        borderRadius: 28,
+        justifyContent: 'center',
+        alignItems: 'center',
+        elevation: 12,
+        shadowColor: '#4F46E5',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.35,
+        shadowRadius: 8,
+        zIndex: 99999,
     },
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'flex-end' },
     modalContent: {

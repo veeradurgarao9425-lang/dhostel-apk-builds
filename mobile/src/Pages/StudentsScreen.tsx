@@ -21,6 +21,7 @@ import { Search, Users, Plus, Phone, MessageCircle, X, Calendar } from 'lucide-r
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePickerModal from "react-native-modal-datetime-picker";
 import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../services/api';
 import { getResolvedImageUrl } from '../utils/imageHelper';
@@ -359,6 +360,7 @@ const footerStyles = StyleSheet.create({
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function StudentsScreen({ navigation, route }: any) {
+    const insets = useSafeAreaInsets();
     const { user } = useAuth();
     const { theme, isDark } = useTheme();
     const { showApiError, showSuccess } = useToast();
@@ -433,8 +435,8 @@ export default function StudentsScreen({ navigation, route }: any) {
         try {
             if (pageNum === 1) {
                 if (!isSilent) {
-                    setInitialLoading(true);
-                    setAllStudents([]);
+                    if (allStudents.length === 0) setInitialLoading(true);
+                    else setBackgroundLoading(true);
                 } else if (allStudents.length > 0) {
                     setBackgroundLoading(true);
                 }
@@ -884,10 +886,17 @@ export default function StudentsScreen({ navigation, route }: any) {
 
             {/* FAB */}
             <TouchableOpacity
-                style={[styles.fab, { backgroundColor: COLORS.primary }]}
+                style={[
+                    styles.fab,
+                    {
+                        backgroundColor: COLORS.primary,
+                        bottom: Math.max(insets.bottom + 85, 100),
+                    },
+                ]}
                 onPress={() => navigation.navigate('AddStudent')}
+                activeOpacity={0.85}
             >
-                <Plus color="#FFF" size={24} strokeWidth={3.0} />
+                <Plus color="#FFF" size={26} strokeWidth={2.8} />
             </TouchableOpacity>
 
             {/* Confirm Dialog for status toggle */}
@@ -1214,10 +1223,19 @@ const styles = StyleSheet.create({
     allocateBannerText: { fontSize: 13, fontWeight: '800', color: '#DC2626', flexShrink: 1 },
     allocateBannerHint: { fontSize: 11, fontWeight: '700', color: '#B91C1C', marginLeft: 8 },
     fab: {
-        position: 'absolute', bottom: 95, right: 20,
-        width: 52, height: 52, borderRadius: 26,
-        justifyContent: 'center', alignItems: 'center', elevation: 10,
-        shadowColor: '#4F46E5', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.35, shadowRadius: 6,
+        position: 'absolute',
+        bottom: 100,
+        right: 20,
+        width: 56,
+        height: 56,
+        borderRadius: 28,
+        justifyContent: 'center',
+        alignItems: 'center',
+        elevation: 12,
+        shadowColor: '#4F46E5',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.35,
+        shadowRadius: 8,
         zIndex: 99999,
     },
     countRow: {

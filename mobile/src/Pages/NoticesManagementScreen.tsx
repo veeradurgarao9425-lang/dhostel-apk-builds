@@ -11,6 +11,7 @@ import { EmptyState } from '../components/ui/EmptyState';
 import { SkeletonList } from '../components/ui/SkeletonCard';
 import { DangerModal } from '../components/ui/DangerModal';
 import { useToast } from '../context/ToastContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useRefresh } from '../../contexts/RefreshContext';
@@ -28,6 +29,7 @@ const DEFAULT_CATEGORIES = [
 ];
 
 export default function NoticesManagementScreen({ navigation }: any) {
+    const insets = useSafeAreaInsets();
     const { user } = useAuth();
     const { theme, isDark } = useTheme();
     const refreshData = (useRefresh as any)();
@@ -278,11 +280,17 @@ export default function NoticesManagementScreen({ navigation }: any) {
             )}
 
             <TouchableOpacity
-                style={[styles.fab, { backgroundColor: theme.primary }]}
+                style={[
+                    styles.fab,
+                    {
+                        backgroundColor: theme.primary,
+                        bottom: Math.max(insets.bottom + 85, 100),
+                    },
+                ]}
                 onPress={() => navigation.navigate('AddNotice')}
-                activeOpacity={0.9}
+                activeOpacity={0.85}
             >
-                <Plus color="#FFFFFF" size={22} strokeWidth={3.2} />
+                <Plus color="#FFFFFF" size={26} strokeWidth={2.8} />
             </TouchableOpacity>
 
             <DangerModal
@@ -465,18 +473,18 @@ const styles = StyleSheet.create({
     },
     fab: {
         position: 'absolute',
-        bottom: 95,
+        bottom: 100,
         right: 20,
-        width: 52,
-        height: 52,
-        borderRadius: 26,
+        width: 56,
+        height: 56,
+        borderRadius: 28,
         alignItems: 'center',
         justifyContent: 'center',
-        elevation: 10,
+        elevation: 12,
         shadowColor: '#4F46E5',
-        shadowOffset: { width: 0, height: 4 },
+        shadowOffset: { width: 0, height: 6 },
         shadowOpacity: 0.35,
-        shadowRadius: 6,
+        shadowRadius: 8,
         zIndex: 99999,
     },
 });

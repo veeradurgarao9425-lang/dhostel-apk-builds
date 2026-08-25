@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { Wallet, Receipt, X, Check, Plus, ArrowDownLeft, ArrowUpRight, UserPlus } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppHeader, SkeletonExpenseCard, EmptyState } from '../../components/tenant/ui';
 import { BaseBottomSheet, ConfirmationDialog } from '../../components/tenant/UIComponents';
@@ -21,6 +21,7 @@ import { formatCurrency, relativeDay } from '../../utils/format';
 import { useSplits, YOU_ID } from '../../hooks/useSplits';
 
 export default function SplitsScreen() {
+  const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const {
     loaded,
@@ -236,11 +237,16 @@ export default function SplitsScreen() {
 
       {/* Floating Action Button for Add Expense */}
       <TouchableOpacity 
-        style={styles.fab}
+        style={[
+          styles.fab,
+          {
+            bottom: Math.max(insets.bottom + 85, 100),
+          },
+        ]}
         onPress={() => setActiveDrawer('expense')}
-        activeOpacity={0.9}
+        activeOpacity={0.85}
       >
-        <Plus size={28} color="#FFF" strokeWidth={3} />
+        <Plus size={26} color="#FFF" strokeWidth={2.8} />
       </TouchableOpacity>
 
       {/* Bottom Drawer for Add Expense */}
@@ -422,7 +428,7 @@ const styles = StyleSheet.create({
   pillBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(41, 82, 243, 0.1)', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20 },
   pillBtnTxt: { fontSize: 13, fontWeight: '700', color: '#2952F3', marginLeft: 6 },
   
-  fab: { position: 'absolute', bottom: 84, right: 24, width: 64, height: 64, borderRadius: 32, backgroundColor: '#2952F3', justifyContent: 'center', alignItems: 'center', shadowColor: '#2952F3', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.4, shadowRadius: 16, elevation: 12 },
+  fab: { position: 'absolute', bottom: 100, right: 20, width: 56, height: 56, borderRadius: 28, backgroundColor: '#2952F3', justifyContent: 'center', alignItems: 'center', shadowColor: '#2952F3', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.35, shadowRadius: 8, elevation: 12, zIndex: 99999 },
 
   // Bottom Sheet Modal
   modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(15, 23, 42, 0.4)' },

@@ -31,14 +31,14 @@ export const db = knex({
     }
   },
   pool: {
-    min: parseInt(process.env.DB_POOL_MIN || '2', 10),
-    max: parseInt(process.env.DB_POOL_MAX || '10', 10),
+    min: parseInt(process.env.DB_POOL_MIN || '4', 10),
+    max: parseInt(process.env.DB_POOL_MAX || '25', 10),
     createTimeoutMillis: 5000,
-    acquireTimeoutMillis: 30000,
+    acquireTimeoutMillis: 15000,
     idleTimeoutMillis: 30000,
     reapIntervalMillis: 1000,
   },
-  acquireConnectionTimeout: 30000,
+  acquireConnectionTimeout: 15000,
 });
 
 export { patchDatabaseSchema } from './schemaPatcher.js';

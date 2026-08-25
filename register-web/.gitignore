@@ -8,7 +8,8 @@ pnpm-debug.log*
 lerna-debug.log*
 
 node_modules
-dist
+# dist is included so the backend can serve the prebuilt React QR signup form immediately without needing a separate frontend build step on the server
+# dist
 dist-ssr
 *.local
 

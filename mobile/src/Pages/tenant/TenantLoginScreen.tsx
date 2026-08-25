@@ -209,6 +209,11 @@ export function TenantLoginScreen({ navigation }: any) {
       setOtpError(false);
       if (res.isNewUser) {
         navigation.navigate('TenantRegister', { identifier: res.data?.identifier, hostel_id: res.data?.hostel_id });
+      } else {
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'Main' }],
+        });
       }
     }
   };

@@ -434,6 +434,10 @@ export default function RegistrationScreen({ route, navigation }: any) {
       if (response.data?.success) {
         const { token, tenant } = response.data.data;
         await completeTenantRegistration(token, tenant);
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'Main' }],
+        });
       } else {
         showError(response.data?.error || 'Registration failed.');
       }
@@ -679,7 +683,7 @@ export default function RegistrationScreen({ route, navigation }: any) {
                     <InputRow
                       icon={CreditCard}
                       placeholder={
-                        idProofType === 'Aadhaar' ? 'Ex: 204095027990' : 
+                        idProofType?.toLowerCase().includes('aadhaar') ? 'Ex: 204095027990' : 
                         idProofType === 'PAN' ? 'Ex: ABCDE1234F' : 
                         idProofType === 'Driving License' ? 'Ex: DL-1420110012345' :
                         idProofType === 'Voter ID' ? 'Ex: ABC1234567' :
@@ -689,7 +693,8 @@ export default function RegistrationScreen({ route, navigation }: any) {
                       value={idProofNumber}
                       onChangeText={(t: string) => { 
                         let clean = t;
-                        if (idProofType === 'Aadhaar') {
+                        const isAadhaar = idProofType?.toLowerCase().includes('aadhaar');
+                        if (isAadhaar) {
                           clean = t.replace(/\D/g, '').slice(0, 12);
                           setIdProofNumber(clean);
                           if (clean.length > 0 && (clean.startsWith('0') || clean.startsWith('1'))) {
@@ -713,10 +718,11 @@ export default function RegistrationScreen({ route, navigation }: any) {
                         }
                       }}
                       onBlur={() => {
+                        const isAadhaar = idProofType?.toLowerCase().includes('aadhaar');
                         if (!idProofNumber.trim()) {
                           setErrors(p => ({...p, idProofNumber: `${idProofType} number is required.`}));
                         } else {
-                          if (idProofType === 'Aadhaar') {
+                          if (isAadhaar) {
                             if (idProofNumber.length !== 12) setErrors(p => ({...p, idProofNumber: 'Aadhaar must be exactly 12 digits.'}));
                           } else if (idProofType === 'PAN') {
                             if (idProofNumber.length !== 10) setErrors(p => ({...p, idProofNumber: 'PAN must be exactly 10 characters.'}));
@@ -730,8 +736,8 @@ export default function RegistrationScreen({ route, navigation }: any) {
                           }
                         }
                       }}
-                      keyboardType={idProofType === 'Aadhaar' ? 'number-pad' : 'default'}
-                      maxLength={idProofType === 'Aadhaar' ? 12 : idProofType === 'PAN' ? 10 : idProofType === 'Driving License' ? 16 : idProofType === 'Voter ID' ? 10 : idProofType === 'Passport' ? 8 : 30}
+                      keyboardType={idProofType?.toLowerCase().includes('aadhaar') ? 'number-pad' : 'default'}
+                      maxLength={idProofType?.toLowerCase().includes('aadhaar') ? 12 : idProofType === 'PAN' ? 10 : idProofType === 'Driving License' ? 16 : idProofType === 'Voter ID' ? 10 : idProofType === 'Passport' ? 8 : 30}
                       autoCapitalize={idProofType === 'PAN' || idProofType === 'Driving License' || idProofType === 'Voter ID' || idProofType === 'Passport' ? 'characters' : 'none'}
                       error={!!errors.idProofNumber}
                     />

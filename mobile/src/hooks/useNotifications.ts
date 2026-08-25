@@ -12,15 +12,37 @@ export type Notification = {
     date: string; // original date for sorting
 };
 
+let globalNotifsCache: Notification[] = [];
+let globalUnreadCount = 0;
+let lastNotifsFetchTime = 0;
+let inflightNotifsPromise: Promise<any> | null = null;
+
 export const useNotifications = () => {
-    const [notifications, setNotifications] = useState<Notification[]>([]);
-    const [unreadCount, setUnreadCount] = useState(0);
+    const [notifications, setNotifications] = useState<Notification[]>(globalNotifsCache);
+    const [unreadCount, setUnreadCount] = useState(globalUnreadCount);
     const [loading, setLoading] = useState(false);
 
-    const fetchNotifications = useCallback(async () => {
+    const fetchNotifications = useCallback(async (force = false) => {
+        const now = Date.now();
+        if (!force && now - lastNotifsFetchTime < 20000 && globalNotifsCache.length > 0) {
+            setNotifications(globalNotifsCache);
+            setUnreadCount(globalUnreadCount);
+            return;
+        }
+
+        if (inflightNotifsPromise) {
+            try {
+                await inflightNotifsPromise;
+                setNotifications(globalNotifsCache);
+                setUnreadCount(globalUnreadCount);
+                return;
+            } catch {}
+        }
+
         try {
             setLoading(true);
-            const response = await api.get('/notifications?limit=30');
+            inflightNotifsPromise = api.get('/notifications?limit=30');
+            const response = await inflightNotifsPromise;
 
             if (response.data.success) {
                 const dbNotifs = response.data.data;
@@ -75,18 +97,20 @@ export const useNotifications = () => {
                             studentName: item.student_name || (extraData as any)?.student_name || (extraData as any)?.studentName || (parsedParams as any)?.studentName
                         }
                     };
-
                 });
 
-                setNotifications(formattedNotifications);
-                
-                // Count unread
+                globalNotifsCache = formattedNotifications;
                 const unread = formattedNotifications.filter(n => !n.read).length;
+                globalUnreadCount = unread;
+                lastNotifsFetchTime = Date.now();
+
+                setNotifications(formattedNotifications);
                 setUnreadCount(unread);
             }
         } catch (error) {
             console.error('Error fetching notifications from API:', error);
         } finally {
+            inflightNotifsPromise = null;
             setLoading(false);
         }
     }, []);
@@ -121,8 +145,12 @@ export const useNotifications = () => {
     const markAsRead = async (id: string | number) => {
         try {
             // Optimistic UI update
-            setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
-            setUnreadCount(prev => Math.max(0, prev - 1));
+            const updated = globalNotifsCache.map(n => n.id === id ? { ...n, read: true } : n);
+            globalNotifsCache = updated;
+            const unread = Math.max(0, globalUnreadCount - 1);
+            globalUnreadCount = unread;
+            setNotifications(updated);
+            setUnreadCount(unread);
 
             // Sync with backend
             await api.put(`/notifications/${id}/read`);
@@ -130,14 +158,17 @@ export const useNotifications = () => {
         } catch (error) {
             console.error(`Error marking notification ${id} as read:`, error);
             // Revert changes on error by refetching
-            fetchNotifications();
+            fetchNotifications(true);
         }
     };
 
     const markAllAsRead = async () => {
       try {
           // Optimistic UI update
-          setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+          const updated = globalNotifsCache.map(n => ({ ...n, read: true }));
+          globalNotifsCache = updated;
+          globalUnreadCount = 0;
+          setNotifications(updated);
           setUnreadCount(0);
 
           // Sync with backend
@@ -145,7 +176,7 @@ export const useNotifications = () => {
           require('react-native').DeviceEventEmitter.emit('REFRESH_NOTIFICATIONS');
       } catch (error) {
           console.error('Error marking all notifications as read:', error);
-          fetchNotifications();
+          fetchNotifications(true);
       }
     };
 

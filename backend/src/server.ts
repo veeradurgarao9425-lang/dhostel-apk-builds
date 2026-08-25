@@ -510,7 +510,7 @@ app.use('/api/public/guest-signup', (err: any, req: express.Request, res: expres
 });
 
 // Health check
-app.get('/health', (req, res) => {
+app.get(['/health', '/api/health'], (req, res) => {
   res.json({
     success: true,
     message: 'Server is running',

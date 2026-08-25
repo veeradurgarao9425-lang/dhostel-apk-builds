@@ -820,11 +820,17 @@ export default function ExpensesScreen({ navigation }: any) {
 
       {tab !== 'Analytics' && (
         <TouchableOpacity
-          style={[s.fab, { right: 24, bottom: 190 }]}
+          style={[
+            s.fab,
+            {
+              backgroundColor: BLUE,
+              bottom: Math.max(insets.bottom + 85, 100),
+            },
+          ]}
           onPress={() => navigation.navigate('AddExpense')}
           activeOpacity={0.85}
         >
-          <Plus size={26} color={WHITE} strokeWidth={3} />
+          <Plus size={26} color={WHITE} strokeWidth={2.8} />
         </TouchableOpacity>
       )}
 
@@ -1715,7 +1721,7 @@ const s = StyleSheet.create({
   momDelta: { fontSize: 13, fontWeight: '800' },
 
   // FAB
-  fab: { position: 'absolute', bottom: 130, right: 20, width: 58, height: 58, borderRadius: 29, backgroundColor: BLUE, alignItems: 'center', justifyContent: 'center', shadowColor: BLUE_DARK, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.4, shadowRadius: 14, elevation: 10 },
+  fab: { position: 'absolute', bottom: 100, right: 20, width: 56, height: 56, borderRadius: 28, backgroundColor: BLUE, alignItems: 'center', justifyContent: 'center', shadowColor: BLUE_DARK, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.35, shadowRadius: 8, elevation: 12, zIndex: 99999 },
 
   // Overview Card style
   overviewCard: { backgroundColor: WHITE, borderRadius: 20, padding: 20, flexDirection: 'row', alignItems: 'center', marginBottom: 16, borderWidth: 1, borderColor: BORDER },
