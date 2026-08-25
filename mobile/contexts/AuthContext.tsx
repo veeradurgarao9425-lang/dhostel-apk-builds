@@ -131,44 +131,54 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           const parsedUser = JSON.parse(storedUser);
           api.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
           setUser(parsedUser);
-
-          // Background enrichment for Owner or Tenant
-          if (parsedUser.role === 'DEVELOPER' || (parsedUser as any).is_developer) {
-            // Developer user does not require owner/tenant hostel enrichment
-          } else if (parsedUser.role === 'TENANT' || parsedUser.tenant_id) {
-            try {
-              const res = await api.get('/auth/tenant/me');
-              if (res.data?.data) {
-                const fresh = res.data.data;
-                const merged = { ...parsedUser, ...fresh, role: 'TENANT' };
-                setUser(merged);
-                await AsyncStorage.setItem('user', JSON.stringify(merged));
-              }
-            } catch (e) {
-              if (__DEV__) console.warn('Background tenant refresh failed:', e);
-            }
-          } else {
-            await enrichUserInBackground(parsedUser);
-          }
-
-          // Register & sync device push token with backend on session restore
-          try {
-            const pushToken = await notificationService.registerForPushNotificationsAsync();
-            if (pushToken) {
-              await notificationService.sendTokenToBackend(pushToken, true);
-            }
-          } catch (pushErr) {
-            if (__DEV__) console.warn('Push notification token sync notice:', pushErr);
-          }
         }
       } catch (error) {
         if (__DEV__) console.error('Failed to load user from storage', error);
       } finally {
+        // Unblock navigation immediately — enrichment runs in the background below.
         setLoading(false);
       }
     };
 
+    const enrichInBackground = async () => {
+      try {
+        const [[, storedUser], [, storedToken]] = await AsyncStorage.multiGet(['user', 'token']);
+        if (!storedUser || !storedToken) return;
+        const parsedUser = JSON.parse(storedUser);
+
+        if (parsedUser.role === 'DEVELOPER' || (parsedUser as any).is_developer) {
+          // Developer users do not need owner/tenant enrichment.
+        } else if (parsedUser.role === 'TENANT' || parsedUser.tenant_id) {
+          try {
+            const res = await api.get('/auth/tenant/me');
+            if (res.data?.data) {
+              const merged = { ...parsedUser, ...res.data.data, role: 'TENANT' };
+              setUser(merged);
+              AsyncStorage.setItem('user', JSON.stringify(merged)).catch(() => {});
+            }
+          } catch (e) {
+            if (__DEV__) console.warn('Background tenant refresh failed:', e);
+          }
+        } else {
+          enrichUserInBackground(parsedUser).catch(() => {});
+        }
+
+        // Register & sync device push token with backend on session restore.
+        notificationService.registerForPushNotificationsAsync()
+          .then(pushToken => {
+            if (pushToken) notificationService.sendTokenToBackend(pushToken, true).catch(() => {});
+          })
+          .catch(pushErr => {
+            if (__DEV__) console.warn('Push notification token sync notice:', pushErr);
+          });
+      } catch (e) {
+        if (__DEV__) console.warn('Background enrichment failed:', e);
+      }
+    };
+
+    // Run both concurrently: loadUser unblocks navigation, enrichInBackground updates silently.
     loadUser();
+    enrichInBackground();
   }, []);
 
   const enrichUserInBackground = async (parsedUser: User) => {

@@ -46,7 +46,9 @@ api.interceptors.request.use(
     } catch {
       // Token read failed — proceed without token
     }
-    console.log(`[API Request] ${config.method?.toUpperCase()} ${config.baseURL}${config.url}`);
+    if (__DEV__) {
+      console.log(`[API Request] ${config.method?.toUpperCase()} ${config.baseURL}${config.url}`);
+    }
     return config;
   },
   (error) => Promise.reject(error),
@@ -57,7 +59,9 @@ let isHandling401 = false;
 
 api.interceptors.response.use(
   (response) => {
-    console.log(`[API Response ${response.status}] ${response.config.url}:`, response.data);
+    if (__DEV__) {
+      console.log(`[API Response ${response.status}] ${response.config.url}:`, response.data);
+    }
     return response;
   },
   async (error) => {
@@ -67,7 +71,9 @@ api.interceptors.response.use(
     }
 
     const status = error?.response?.status;
-    console.error(`[API Error] ${error.config?.url} | Status: ${status || 'No Response'} | Message: ${error.message}`, error.response?.data || '');
+    if (__DEV__) {
+      console.error(`[API Error] ${error.config?.url} | Status: ${status || 'No Response'} | Message: ${error.message}`, error.response?.data || '');
+    }
 
     // 401 → clear session + redirect (deduplicated, ignore on login attempts)
     const isLoginEndpoint = error.config?.url?.includes('/auth/login') || error.config?.url?.includes('/developer/auth/login');

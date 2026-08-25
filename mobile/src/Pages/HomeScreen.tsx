@@ -161,6 +161,7 @@ export default function HomeScreen() {
     }, [SCREEN_WIDTH]);
 
     const isFirstLoadRef = React.useRef(true);
+    const lastDashboardLoadRef = React.useRef<number>(0);
 
     const pulseValue = useRef(new Animated.Value(1)).current;
 
@@ -230,6 +231,8 @@ export default function HomeScreen() {
     // This gets visible numbers on screen fast and avoids 15-20s blank waits.
     const load = useCallback(async (isRefresh = false) => {
         if (!user?.hostel_id) return;
+        // Stamp the load time immediately so the TTL check in useFocusEffect is accurate.
+        lastDashboardLoadRef.current = Date.now();
         try {
             // Show skeleton on first load; background spinner on refocus;
             // full skeleton again when hostel switches (isRefresh=false after hostel change)
@@ -413,7 +416,15 @@ export default function HomeScreen() {
     }, [user, user?.hostel_id]);
 
 
-    useFocusEffect(useCallback(() => { load(); }, [load]));
+    useFocusEffect(useCallback(() => {
+        const now = Date.now();
+        // Skip reload if data is already populated and was loaded within the last 30 seconds.
+        // Pull-to-refresh and post-mutation refreshCounter bypass this check.
+        if (!isFirstLoadRef.current && now - lastDashboardLoadRef.current < 30000) {
+            return;
+        }
+        load();
+    }, [load]));
 
 
     // ── Also refresh when any mutation screen signals a data change ────────────
