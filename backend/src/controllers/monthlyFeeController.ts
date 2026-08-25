@@ -255,21 +255,8 @@ export const getMonthlyFeesSummary = async (req: AuthRequest, res: Response) => 
     const lastDayOfMonth = new Date(cmYear, cmMonth, 0).getDate();
     const monthEndDate = `${cmYear}-${String(cmMonth).padStart(2, '0')}-${String(lastDayOfMonth).padStart(2, '0')}`;
 
-    // Check if monthly_fees table exists
-    let monthlyFeesTableExists = false;
-    try {
-      const [tableCheck] = await db.raw(`
-        SELECT COUNT(*) as count 
-        FROM information_schema.tables 
-        WHERE table_schema = DATABASE() 
-        AND table_name = 'monthly_fees'
-      `);
-      monthlyFeesTableExists = tableCheck[0]?.count > 0;
-      console.log('[getMonthlyFeesSummary] monthly_fees table exists:', monthlyFeesTableExists);
-    } catch (error) {
-      console.warn('[getMonthlyFeesSummary] Could not check if monthly_fees table exists:', error);
-      monthlyFeesTableExists = false;
-    }
+    // monthly_fees is a core permanent table created and verified at startup
+    const monthlyFeesTableExists = true;
 
     // Start query from students table to show ALL active students
     let query = db('students as s')

@@ -4,7 +4,9 @@ import db from '../config/database.js';
 import { AuthRequest } from '../middleware/auth.js';
 import { resolveScopedHostelId, resolveOwnerHostelId } from '../utils/scope.js';
 
+const checkedTables = new Set<string>();
 const tableExists = async (tableName: string): Promise<boolean> => {
+  if (checkedTables.has(tableName)) return true;
   try {
     const [rows] = await db.raw(
       `
@@ -15,7 +17,9 @@ const tableExists = async (tableName: string): Promise<boolean> => {
       `,
       [tableName]
     );
-    return Number(rows?.[0]?.count || 0) > 0;
+    const exists = Number(rows?.[0]?.count || 0) > 0;
+    if (exists) checkedTables.add(tableName);
+    return exists;
   } catch (error) {
     console.warn(`[reports] Could not check table "${tableName}":`, error);
     return false;
