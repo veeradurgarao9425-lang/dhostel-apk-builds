@@ -11,6 +11,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../services/api';
+import { DashboardCache } from '../services/dashboardCache';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useToast } from '../context/ToastContext';
@@ -261,6 +262,8 @@ export default function HomeScreen() {
             }
 
             const d2 = statsRes.data.data || {};
+            // Populate shared cache so MoreScreen can skip a duplicate fetch.
+            if (statsRes.data?.success) DashboardCache.setStats(d2);
             const monthCollected = (d2.monthlyRentCollected ?? d2.feeCollection ?? 0) as number;
             const monthPending = (d2.monthlyRentPending ?? d2.pendingDuesAmount ?? 0) as number;
             const monthDue = (d2.monthlyRentDue ?? (monthCollected + monthPending)) as number;
@@ -381,7 +384,10 @@ export default function HomeScreen() {
                 const currentMonthRevenue = Number(monthlyOverview?.currentMonth?.totalIncome ?? monthCollected ?? 0);
 
                 if (renewalsRes?.data?.success) {
-                    setRenewalStudents(renewalsRes.data.data || []);
+                    const renewals = renewalsRes.data.data || [];
+                    // Populate shared cache so PendingPaymentsScreen can skip a duplicate fetch.
+                    DashboardCache.setRenewals(renewals);
+                    setRenewalStudents(renewals);
                 }
 
                 const activeStudents = studentsRes.data?.success ? (studentsRes.data.data || []) : [];

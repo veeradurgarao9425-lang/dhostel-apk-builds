@@ -406,10 +406,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setUser(finalUser);
         await AsyncStorage.setItem('user', JSON.stringify(finalUser));
 
-        try {
-          const pushToken = await notificationService.registerForPushNotificationsAsync();
-          if (pushToken) await notificationService.sendTokenToBackend(pushToken, true);
-        } catch {}
+        // Push token registration is non-blocking — navigate immediately.
+        notificationService.registerForPushNotificationsAsync()
+          .then(pushToken => {
+            if (pushToken) notificationService.sendTokenToBackend(pushToken, true).catch(() => {});
+          })
+          .catch(() => {});
 
         return { error: null, user: finalUser };
       }

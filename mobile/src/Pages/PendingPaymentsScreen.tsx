@@ -11,6 +11,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import api from '../services/api';
+import { DashboardCache } from '../services/dashboardCache';
 import { HeaderNotification } from '../components/HeaderNotification';
 import { ProfileMenu } from '../components/ProfileMenu';
 import { PaymentDrawer } from '../components/PaymentDrawer';
@@ -1063,14 +1064,23 @@ export default function PendingPaymentsScreen() {
         setPage(1);
         setHasMore(true);
         load(1, false);
-        // Also load plan renewals
-        setRenewalsLoading(true);
-        api.get('/students', { params: { renewalDueSoon: 'true', renewalDays: '15', status: 1 } })
-            .then(res => {
-                if (res.data?.success) setRenewalStudents(res.data.data || []);
-            })
-            .catch(() => {})
-            .finally(() => setRenewalsLoading(false));
+        // Load renewal students — use shared cache if HomeScreen already fetched recently.
+        const cachedRenewals = DashboardCache.getRenewals();
+        if (cachedRenewals) {
+            setRenewalStudents(cachedRenewals);
+        } else {
+            setRenewalsLoading(true);
+            api.get('/students', { params: { renewalDueSoon: 'true', renewalDays: '15', status: 1 } })
+                .then(res => {
+                    if (res.data?.success) {
+                        const data = res.data.data || [];
+                        DashboardCache.setRenewals(data);
+                        setRenewalStudents(data);
+                    }
+                })
+                .catch(() => {})
+                .finally(() => setRenewalsLoading(false));
+        }
     }, [load]));
 
     // ── Handlers ─────────────────────────────────────────────────────────────

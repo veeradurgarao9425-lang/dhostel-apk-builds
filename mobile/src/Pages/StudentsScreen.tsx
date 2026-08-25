@@ -535,6 +535,8 @@ export default function StudentsScreen({ navigation, route }: any) {
     }, [refreshCounter, refreshPayload]);
 
     // ── Fetch Counts ──────────────────────────────────────────────────────
+    const lastCountsFetchRef = useRef<number>(0);
+
     const fetchCounts = async () => {
         try {
             // Check if /students/stats works (for when backend is deployed)
@@ -545,11 +547,14 @@ export default function StudentsScreen({ navigation, route }: any) {
             // Fallback removed because running 6 simultaneous DB queries 
             // crashes the Render free tier backend connection pool.
         } catch (e) {
-            console.log('Error fetching counts', e);
+            if (__DEV__) console.log('Error fetching counts', e);
         }
     };
 
     useFocusEffect(useCallback(() => {
+        const now = Date.now();
+        if (now - lastCountsFetchRef.current < 30000) return;
+        lastCountsFetchRef.current = now;
         fetchCounts();
     }, []));
 

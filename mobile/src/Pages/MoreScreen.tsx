@@ -11,6 +11,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import api from '../services/api';
+import { DashboardCache } from '../services/dashboardCache';
 import { useTranslation } from 'react-i18next';
 import { useConfirmation } from '../../contexts/ConfirmationContext';
 import { useToast } from '../context/ToastContext';
@@ -74,16 +75,25 @@ export default function MoreScreen({ hideHeader = false }: MoreScreenProps) {
         }
         try {
             lastStatsFetchRef.current = now;
+            // Reuse cached /reports/dashboard-stats if HomeScreen already fetched it.
+            const cachedStats = DashboardCache.getStats();
             const [ownerRes, reportRes] = await Promise.all([
                 api.get('/dashboard/owner-stats').catch(() => ({ data: { success: false } })),
-                api.get('/reports/dashboard-stats').catch(() => ({ data: { success: false } }))
+                cachedStats
+                    ? Promise.resolve({ data: { success: true, data: cachedStats } })
+                    : api.get('/reports/dashboard-stats').catch(() => ({ data: { success: false } })),
             ]);
             let combinedStats: any = {};
             if (ownerRes.data?.success) combinedStats = { ...combinedStats, ...ownerRes.data.data };
-            if (reportRes.data?.success) combinedStats = { ...combinedStats, ...reportRes.data.data };
+            if (reportRes.data?.success) {
+                const reportData = reportRes.data.data;
+                combinedStats = { ...combinedStats, ...reportData };
+                // Write back to cache only if we actually fetched (not from cache).
+                if (!cachedStats && reportData) DashboardCache.setStats(reportData);
+            }
             setStats(combinedStats);
         } catch (error) {
-            console.error('Failed to fetch stats for More screen', error);
+            if (__DEV__) console.error('Failed to fetch stats for More screen', error);
         }
     };
 
