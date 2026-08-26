@@ -39,6 +39,7 @@ import {
     Image as ImageIcon,
 } from 'lucide-react-native';
 import api from '../services/api';
+import { appendImageFileToFormData } from '../utils/imageHelper';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useRefresh } from '../../contexts/RefreshContext';
@@ -535,40 +536,37 @@ export const AddExpenseScreen = ({ route, navigation }: any) => {
                 desc = prefix + 'Expense record';
             }
 
+            const categoryIdStr = String(formData.category_id || '1');
+            const paymentModeIdStr = String(formData.payment_mode_id || '1');
+            const amountStr = String(formData.amount || '0');
+            const expenseDateStr = toDbDateStr(expenseDate);
+
             let response;
-            if (attachment) {
+            if (attachment && attachment.uri) {
                 const formDataObj = new FormData();
-                formDataObj.append('category_id', formData.category_id);
-                formDataObj.append('expense_date', toDbDateStr(expenseDate));
-                formDataObj.append('amount', formData.amount);
-                formDataObj.append('payment_mode_id', formData.payment_mode_id);
+                formDataObj.append('category_id', categoryIdStr);
+                formDataObj.append('expense_date', expenseDateStr);
+                formDataObj.append('amount', amountStr);
+                formDataObj.append('payment_mode_id', paymentModeIdStr);
                 formDataObj.append('vendor_name', formData.vendor_name.trim());
                 formDataObj.append('description', desc);
                 formDataObj.append('bill_number', formData.bill_number.trim());
-                if (user?.hostel_id) formDataObj.append('hostel_id', user.hostel_id.toString());
+                if (user?.hostel_id) formDataObj.append('hostel_id', String(user.hostel_id));
 
-                const filename = attachment.uri.split('/').pop() || 'receipt.jpg';
-                const match = /\.(\w+)$/.exec(filename);
-                const type = match ? `image/${match[1]}` : `image/jpeg`;
-                formDataObj.append('attachment', {
-                    uri: attachment.uri,
-                    name: filename,
-                    type,
-                } as any);
+                appendImageFileToFormData(formDataObj, 'attachment', attachment.uri, 'receipt.jpg');
 
-                const config = { headers: { 'Content-Type': 'multipart/form-data' } };
                 if (expense) {
-                    response = await api.put(`/expenses/${expense.expense_id}`, formDataObj, config);
+                    response = await api.put(`/expenses/${expense.expense_id}`, formDataObj);
                 } else {
-                    response = await api.post('/expenses', formDataObj, config);
+                    response = await api.post('/expenses', formDataObj);
                 }
             } else {
                 const payload = {
-                    hostel_id: user?.hostel_id,
-                    category_id: parseInt(formData.category_id),
-                    expense_date: toDbDateStr(expenseDate),
-                    amount: parseFloat(formData.amount),
-                    payment_mode_id: parseInt(formData.payment_mode_id),
+                    hostel_id: user?.hostel_id ? Number(user.hostel_id) : undefined,
+                    category_id: parseInt(categoryIdStr, 10),
+                    expense_date: expenseDateStr,
+                    amount: parseFloat(amountStr),
+                    payment_mode_id: parseInt(paymentModeIdStr, 10),
                     vendor_name: formData.vendor_name.trim(),
                     description: desc,
                     bill_number: formData.bill_number.trim(),
