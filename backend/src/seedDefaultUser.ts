@@ -50,6 +50,7 @@ async function seedDefaultUser() {
       if (!existingUser) {
         const hostel = await db('hostel_master').first();
         await db('users').insert({
+          username: 'demo',
           full_name: 'Hostix Owner',
           email: 'demo@test.com',
           phone: '9876543210',

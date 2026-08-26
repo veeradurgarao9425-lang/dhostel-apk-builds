@@ -454,6 +454,7 @@ export default function HomeScreen() {
             if (res.data?.success) {
                 const { token, hostel_name } = res.data.data;
                 // Immediately reset data + show skeleton so user sees instant feedback
+                DashboardCache.invalidate();
                 setData(INITIAL_STATE);
                 isFirstLoadRef.current = true;
                 setLoading(true);
