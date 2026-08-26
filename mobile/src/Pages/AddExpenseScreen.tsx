@@ -479,7 +479,8 @@ export const AddExpenseScreen = ({ route, navigation }: any) => {
             return;
         }
         const result = await ImagePicker.launchCameraAsync({
-            quality: 0.7,
+            quality: 0.5,
+            base64: true,
             allowsEditing: false,
         });
         if (!result.canceled && result.assets && result.assets.length > 0) {
@@ -495,7 +496,8 @@ export const AddExpenseScreen = ({ route, navigation }: any) => {
             return;
         }
         const result = await ImagePicker.launchImageLibraryAsync({
-            quality: 0.7,
+            quality: 0.5,
+            base64: true,
             allowsEditing: false,
             mediaTypes: ImagePicker.MediaTypeOptions.Images,
         });
@@ -556,43 +558,33 @@ export const AddExpenseScreen = ({ route, navigation }: any) => {
             const resolvedAmount = parseFloat(formData.amount) || 0;
             const expenseDateStr = toDbDateStr(expenseDate);
 
-            let response;
-            if (attachment && attachment.uri) {
-                const formDataObj = new FormData();
-                formDataObj.append('category_id', String(resolvedCategoryId));
-                formDataObj.append('expense_date', expenseDateStr);
-                formDataObj.append('amount', String(resolvedAmount));
-                formDataObj.append('payment_mode_id', String(resolvedPaymentModeId));
-                formDataObj.append('vendor_name', formData.vendor_name.trim());
-                formDataObj.append('description', desc);
-                formDataObj.append('bill_number', formData.bill_number.trim());
-                if (user?.hostel_id) formDataObj.append('hostel_id', String(user.hostel_id));
-
-                appendImageFileToFormData(formDataObj, 'attachment', attachment.uri, 'receipt.jpg');
-
-                if (expense) {
-                    response = await api.put(`/expenses/${expense.expense_id}`, formDataObj);
-                } else {
-                    response = await api.post('/expenses', formDataObj);
-                }
-            } else {
-                const payload = {
-                    hostel_id: user?.hostel_id ? Number(user.hostel_id) : undefined,
-                    category_id: resolvedCategoryId,
-                    expense_date: expenseDateStr,
-                    amount: resolvedAmount,
-                    payment_mode_id: resolvedPaymentModeId,
-                    vendor_name: formData.vendor_name.trim(),
-                    description: desc,
-                    bill_number: formData.bill_number.trim(),
-                };
-
-                if (expense) {
-                    response = await api.put(`/expenses/${expense.expense_id}`, payload);
-                } else {
-                    response = await api.post('/expenses', payload);
+            let attachmentUrlValue: string | null = null;
+            if (attachment) {
+                if (attachment.base64) {
+                    attachmentUrlValue = `data:image/jpeg;base64,${attachment.base64}`;
+                } else if (attachment.uri && (attachment.uri.startsWith('data:') || attachment.uri.startsWith('http'))) {
+                    attachmentUrlValue = attachment.uri;
                 }
             }
+
+            const payload: Record<string, any> = {
+                hostel_id: user?.hostel_id ? Number(user.hostel_id) : undefined,
+                category_id: resolvedCategoryId,
+                expense_date: expenseDateStr,
+                amount: resolvedAmount,
+                payment_mode_id: resolvedPaymentModeId,
+                vendor_name: formData.vendor_name.trim(),
+                description: desc,
+                bill_number: formData.bill_number.trim(),
+            };
+
+            if (attachmentUrlValue) {
+                payload.attachment_url = attachmentUrlValue;
+            }
+
+            const response = expense
+                ? await api.put(`/expenses/${expense.expense_id}`, payload)
+                : await api.post('/expenses', payload);
 
             if (response.data.success) {
                 Toast.show({
