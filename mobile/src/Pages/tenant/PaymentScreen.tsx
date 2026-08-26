@@ -28,6 +28,7 @@ import * as ImagePicker from 'expo-image-picker';
 
 import { useAuth } from '../../../contexts/AuthContext';
 import { useToast } from '../../../contexts/ToastContext';
+import { appendImageFileToFormData } from '../../utils/imageHelper';
 import api from '../../services/api';
 import { PaymentSkeleton } from '../../components/tenant/UIComponents';
 import { OfflineBanner } from '../../components/tenant/NetworkComponents';
@@ -126,17 +127,8 @@ export default function PaymentScreen({ navigation }: any) {
 
     try {
       const uri = proofImage.uri;
-      const filename = proofImage.fileName || uri.split('/').pop() || `proof_${Date.now()}.jpg`;
-      const match = /\.(\w+)$/.exec(filename);
-      const ext = match ? match[1].toLowerCase() : 'jpg';
-      const mimeType = proofImage.mimeType || (ext === 'png' ? 'image/png' : ext === 'pdf' ? 'application/pdf' : 'image/jpeg');
-
       const formData = new FormData();
-      formData.append('proof', {
-        uri: Platform.OS === 'android' ? uri : uri.replace('file://', ''),
-        name: filename,
-        type: mimeType,
-      } as any);
+      appendImageFileToFormData(formData, 'proof', uri, 'payment_proof.jpg');
       formData.append('amount_paid', String(amount));
       formData.append('payment_mode_id', String(selectedMode));
       if (reference && reference.trim()) {

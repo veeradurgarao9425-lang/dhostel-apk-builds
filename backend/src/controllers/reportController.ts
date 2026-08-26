@@ -206,7 +206,16 @@ export const getDashboardStats = async (req: AuthRequest, res: Response) => {
       // 18. Active guests
       withHostels(db('guests')).where(function() { this.where('status', 'Active').orWhere('status', 'Checked-In').orWhere('status', '1'); }).count('* as count').first().catch(() => ({ count: 0 })),
       // 19. Staff count
-      withHostels(db('staff')).where('status_id', 1).count('* as count').first().catch(() => ({ count: 0 })),
+      withHostels(db('staff')).where(function() {
+        this.where('status_id', 1)
+          .orWhere('status', 'ACTIVE')
+          .orWhere('status', 'Active')
+          .orWhere('status', 1)
+          .orWhere('status', '1')
+          .orWhere(function() {
+            this.whereNull('status_id').andWhereNot('status', 'INACTIVE').andWhereNot('status', 'Inactive').andWhereNot('status', 0);
+          });
+      }).count('* as count').first().catch(() => ({ count: 0 })),
       // 20. Today rent
       withHostels(db('fee_payments as fp'), 'fp.hostel_id')
         .join('students as s', 'fp.student_id', 's.student_id')

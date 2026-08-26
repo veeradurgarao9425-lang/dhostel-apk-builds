@@ -144,13 +144,18 @@ export const createStaff = async (req: AuthRequest, res: Response) => {
       });
     }
 
+    const isInactive = status === 0 || status === '0' || status === 'INACTIVE' || status === 'Inactive';
+    const finalStatusStr = isInactive ? 'INACTIVE' : 'ACTIVE';
+    const finalStatusId = isInactive ? 0 : 1;
+
     const staffInsertData: any = {
       hostel_id: hostelId,
       full_name,
       phone,
       email: email || null,
       role: role || 'Staff',
-      status: status !== undefined ? status : 'ACTIVE',
+      status: finalStatusStr,
+      status_id: finalStatusId,
       join_date: join_date || new Date(),
       monthly_salary: monthly_salary || 0,
       aadhaar_number: aadhaar_number || null,

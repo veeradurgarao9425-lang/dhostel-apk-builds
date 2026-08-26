@@ -35,6 +35,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { COLORS, FONT, SPACING } from '../theme/index';
 import { AppHeader } from '../components/AppHeader';
 import { FullScreenLoader } from '../components/FullScreenLoader';
+import { appendImageFileToFormData, isLocalDeviceUri } from '../utils/imageHelper';
 
 // ─── Image Source Picker Bottom Drawer ──────────────────────────────────────
 const ImageSourceDrawer = ({ visible, onClose, onSelectCamera, onSelectGallery, title }: any) => {
@@ -869,30 +870,7 @@ export default function PreBookingScreen({ navigation, route }: any) {
                 id_proof_status: 1,
             };
 
-            const isLocalUri = (uri: string | null | undefined): boolean => {
-                if (!uri || typeof uri !== 'string') return false;
-                const clean = uri.trim();
-                if (!clean) return false;
-                return !clean.startsWith('http://') && !clean.startsWith('https://') && !clean.startsWith('/uploads');
-            };
-
-            const appendImage = (formDataObj: FormData, fieldName: string, uri: string, fallbackFilename: string) => {
-                let filename = uri.split('/').pop() || fallbackFilename;
-                filename = filename.split('?')[0];
-                if (!/\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(filename)) {
-                    filename = `${filename}.jpg`;
-                }
-                const match = /\.(\w+)$/.exec(filename);
-                const ext = match ? match[1].toLowerCase() : 'jpg';
-                const type = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
-                formDataObj.append(fieldName, {
-                    uri: Platform.OS === 'android' ? uri : uri.replace('file://', ''),
-                    name: filename,
-                    type,
-                } as any);
-            };
-
-            const hasFiles = isLocalUri(idProofFront) || isLocalUri(idProofBack);
+            const hasFiles = isLocalDeviceUri(idProofFront) || isLocalDeviceUri(idProofBack);
             if (hasFiles) {
                 const bodyFormData = new FormData();
                 Object.keys(payload).forEach(key => {
@@ -901,11 +879,11 @@ export default function PreBookingScreen({ navigation, route }: any) {
                         bodyFormData.append(key, String(val));
                     }
                 });
-                if (isLocalUri(idProofFront) && idProofFront) {
-                    appendImage(bodyFormData, 'id_proof_front', idProofFront, 'id_proof_front.jpg');
+                if (isLocalDeviceUri(idProofFront) && idProofFront) {
+                    appendImageFileToFormData(bodyFormData, 'id_proof_front', idProofFront, 'id_proof_front.jpg');
                 }
-                if (isLocalUri(idProofBack) && idProofBack) {
-                    appendImage(bodyFormData, 'id_proof_back', idProofBack, 'id_proof_back.jpg');
+                if (isLocalDeviceUri(idProofBack) && idProofBack) {
+                    appendImageFileToFormData(bodyFormData, 'id_proof_back', idProofBack, 'id_proof_back.jpg');
                 }
                 await api.post('/students', bodyFormData);
             } else {

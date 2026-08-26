@@ -35,6 +35,7 @@ import { COLORS } from '../theme/index';
 import { AppHeader } from '../components/AppHeader';
 import { FullScreenLoader } from '../components/FullScreenLoader';
 import { toLocalDateStr } from '../utils/dateUtils';
+import { appendImageFileToFormData, isLocalDeviceUri } from '../utils/imageHelper';
 
 const todayStr = () => toLocalDateStr(new Date());
 
@@ -748,9 +749,9 @@ export default function AddGuestScreen({ navigation, route }: any) {
 
         setLoading(true);
         try {
-            const hasLocalProfilePhoto = isLocalUri(profilePhoto);
-            const hasLocalIdFront = isLocalUri(idProofFront);
-            const hasLocalIdBack = isLocalUri(idProofBack);
+            const hasLocalProfilePhoto = isLocalDeviceUri(profilePhoto);
+            const hasLocalIdFront = isLocalDeviceUri(idProofFront);
+            const hasLocalIdBack = isLocalDeviceUri(idProofBack);
             const hasFiles = hasLocalProfilePhoto || hasLocalIdFront || hasLocalIdBack;
 
             let res;
@@ -771,24 +772,15 @@ export default function AddGuestScreen({ navigation, route }: any) {
                 if (formData.remarks.trim()) bodyFormData.append('remarks', formData.remarks.trim());
 
                 if (hasLocalProfilePhoto && profilePhoto) {
-                    const filename = profilePhoto.split('/').pop() || 'profile.jpg';
-                    const match = /\.(\w+)$/.exec(filename);
-                    const type = match ? `image/${match[1]}` : 'image/jpeg';
-                    bodyFormData.append('profile_photo', { uri: Platform.OS === 'android' ? profilePhoto : profilePhoto.replace('file://', ''), name: filename, type } as any);
+                    appendImageFileToFormData(bodyFormData, 'profile_photo', profilePhoto, 'profile.jpg');
                 }
 
                 if (hasLocalIdFront && idProofFront) {
-                    const filename = idProofFront.split('/').pop() || 'id_front.jpg';
-                    const match = /\.(\w+)$/.exec(filename);
-                    const type = match ? `image/${match[1]}` : 'image/jpeg';
-                    bodyFormData.append('id_proof_front', { uri: Platform.OS === 'android' ? idProofFront : idProofFront.replace('file://', ''), name: filename, type } as any);
+                    appendImageFileToFormData(bodyFormData, 'id_proof_front', idProofFront, 'id_front.jpg');
                 }
 
                 if (hasLocalIdBack && idProofBack) {
-                    const filename = idProofBack.split('/').pop() || 'id_back.jpg';
-                    const match = /\.(\w+)$/.exec(filename);
-                    const type = match ? `image/${match[1]}` : 'image/jpeg';
-                    bodyFormData.append('id_proof_back', { uri: Platform.OS === 'android' ? idProofBack : idProofBack.replace('file://', ''), name: filename, type } as any);
+                    appendImageFileToFormData(bodyFormData, 'id_proof_back', idProofBack, 'id_back.jpg');
                 }
 
                 if (isCheckinPending) {

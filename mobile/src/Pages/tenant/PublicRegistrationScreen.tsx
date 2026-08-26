@@ -45,6 +45,7 @@ import {
 } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import api from '../../services/api';
+import { appendImageFileToFormData } from '../../utils/imageHelper';
 import { colors } from '../../theme/tenantTheme';
 
 const { width } = Dimensions.get('window');
@@ -399,45 +400,19 @@ export default function PublicRegistrationScreen({ route, navigation }: any) {
 
       // Append Profile Photo
       if (profilePhoto) {
-        const fn = profilePhoto.split('/').pop() || 'profile.jpg';
-        const match = /\.(\w+)$/.exec(fn);
-        const type = match ? `image/${match[1]}` : 'image/jpeg';
-        formData.append('profile_photo', {
-          uri: Platform.OS === 'android' ? profilePhoto : profilePhoto.replace('file://', ''),
-          name: fn,
-          type,
-        } as any);
+        appendImageFileToFormData(formData, 'profile_photo', profilePhoto, 'profile.jpg');
       }
 
       // Append ID Proof Photos
       if (idFrontUri) {
-        const fn = idFrontUri.split('/').pop() || 'id_front.jpg';
-        const match = /\.(\w+)$/.exec(fn);
-        const type = match ? `image/${match[1]}` : 'image/jpeg';
-        formData.append('id_proof_front', {
-          uri: Platform.OS === 'android' ? idFrontUri : idFrontUri.replace('file://', ''),
-          name: fn,
-          type,
-        } as any);
+        appendImageFileToFormData(formData, 'id_proof_front', idFrontUri, 'id_front.jpg');
       }
 
       if (idBackUri) {
-        const fn = idBackUri.split('/').pop() || 'id_back.jpg';
-        const match = /\.(\w+)$/.exec(fn);
-        const type = match ? `image/${match[1]}` : 'image/jpeg';
-        formData.append('id_proof_back', {
-          uri: Platform.OS === 'android' ? idBackUri : idBackUri.replace('file://', ''),
-          name: fn,
-          type,
-        } as any);
+        appendImageFileToFormData(formData, 'id_proof_back', idBackUri, 'id_back.jpg');
       }
 
-      const res = await api.post('/public/qr-signup', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-          'Accept': 'application/json',
-        },
-      });
+      const res = await api.post('/public/qr-signup', formData);
 
       if (res?.data?.success) {
         setSubmittedData(res.data.data || {

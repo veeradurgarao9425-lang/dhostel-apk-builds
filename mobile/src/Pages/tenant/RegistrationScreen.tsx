@@ -16,6 +16,7 @@ import {
 } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import api from '../../services/api';
+import { appendImageFileToFormData } from '../../utils/imageHelper';
 import { colors } from '../../theme/tenantTheme';
 
 const { width } = Dimensions.get('window');
@@ -412,22 +413,15 @@ export default function RegistrationScreen({ route, navigation }: any) {
       formData.append('id_proof_type', String(idProofType === 'Custom' ? customIdProofType : (idProofTypesList.find(t => t.name === idProofType)?.id || idProofType)));
       formData.append('id_proof_number', idProofNumber);
 
-      const appendImage = (field: string, uri: string | null) => {
-        if (!uri) return;
-        const filename = uri.split('/').pop() || `${field}.jpg`;
-        const match = /\.(\w+)$/.exec(filename);
-        const ext = match ? match[1].toLowerCase() : 'jpg';
-        const mimeType = ext === 'png' ? 'image/png' : ext === 'webp' ? 'image/webp' : 'image/jpeg';
-
-        formData.append(field, {
-          uri: Platform.OS === 'android' ? uri : uri.replace('file://', ''),
-          name: `${field}_${Date.now()}.${ext === 'jpg' ? 'jpeg' : ext}`,
-          type: mimeType,
-        } as any);
-      };
-      appendImage('profile_photo', profilePhoto);
-      appendImage('id_proof_front', aadhaarFront);
-      appendImage('id_proof_back', aadhaarBack);
+      if (profilePhoto) {
+        appendImageFileToFormData(formData, 'profile_photo', profilePhoto, 'profile.jpg');
+      }
+      if (aadhaarFront) {
+        appendImageFileToFormData(formData, 'id_proof_front', aadhaarFront, 'id_proof_front.jpg');
+      }
+      if (aadhaarBack) {
+        appendImageFileToFormData(formData, 'id_proof_back', aadhaarBack, 'id_proof_back.jpg');
+      }
 
       const response = await api.post('/auth/tenant/register', formData);
 

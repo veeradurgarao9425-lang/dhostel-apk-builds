@@ -11,7 +11,7 @@ import { useToast } from '../../../contexts/ToastContext';
 import api from '../../services/api';
 import { AppHeader, SkeletonListRow, EmptyState } from '../../components/tenant/ui';
 import { LinearGradient } from 'expo-linear-gradient';
-import { getResolvedImageUrl } from '../../utils/imageHelper';
+import { getResolvedImageUrl, appendImageFileToFormData } from '../../utils/imageHelper';
 
 const { width } = Dimensions.get('window');
 
@@ -324,12 +324,7 @@ function StepperForm({ visible, onClose, onSubmit, hostelId }: { visible: boolea
       formData.append('title', title);
       formData.append('description', desc);
       images.forEach((uri, i) => {
-        const ext = uri.split('.').pop() || 'jpg';
-        formData.append('images', {
-          uri: Platform.OS === 'android' ? uri : uri.replace('file://', ''),
-          name: `complaint-${i}.${ext}`,
-          type: `image/${ext === 'jpg' ? 'jpeg' : ext}`,
-        } as any);
+        appendImageFileToFormData(formData, 'images', uri, `complaint-${i}.jpg`);
       });
       await api.post('/complaints/tenant', formData);
       showSuccess('Complaint submitted successfully!');

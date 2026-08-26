@@ -196,13 +196,11 @@ const formatExpenseDate = (date: Date) => {
 };
 
 const toDbDateStr = (date: Date) => {
+    if (!date || isNaN(date.getTime())) date = new Date();
     const y = date.getFullYear();
     const m = String(date.getMonth() + 1).padStart(2, '0');
     const d = String(date.getDate()).padStart(2, '0');
-    const h = String(date.getHours()).padStart(2, '0');
-    const min = String(date.getMinutes()).padStart(2, '0');
-    const s = String(date.getSeconds()).padStart(2, '0');
-    return `${y}-${m}-${d} ${h}:${min}:${s}`;
+    return `${y}-${m}-${d}`;
 };
 
 // ─── Live Digital Receipt Mockup Component ─────────────────────────────────────
@@ -536,18 +534,35 @@ export const AddExpenseScreen = ({ route, navigation }: any) => {
                 desc = prefix + 'Expense record';
             }
 
-            const categoryIdStr = String(formData.category_id || '1');
-            const paymentModeIdStr = String(formData.payment_mode_id || '1');
-            const amountStr = String(formData.amount || '0');
+            const modeName = selectedExpenseMode?.toLowerCase() || '';
+            let resolvedPaymentModeId = 1;
+            if (modeName.includes('upi') || modeName.includes('online') || modeName.includes('gpay') || modeName.includes('phonepe') || modeName.includes('paytm')) {
+                resolvedPaymentModeId = 2;
+            } else if (modeName.includes('bank') || modeName.includes('transfer') || modeName.includes('neft') || modeName.includes('rtgs')) {
+                resolvedPaymentModeId = 3;
+            } else if (modeName.includes('card')) {
+                resolvedPaymentModeId = 4;
+            } else if (modeName.includes('cheque')) {
+                resolvedPaymentModeId = 5;
+            } else if (formData.payment_mode_id && !isNaN(parseInt(formData.payment_mode_id, 10))) {
+                resolvedPaymentModeId = parseInt(formData.payment_mode_id, 10);
+            }
+
+            const rawCatId = parseInt(formData.category_id, 10);
+            const resolvedCategoryId = (!isNaN(rawCatId) && rawCatId > 0)
+                ? rawCatId
+                : (categories.length > 0 ? (Number(categories[0].category_id || categories[0].id) || 1) : 1);
+
+            const resolvedAmount = parseFloat(formData.amount) || 0;
             const expenseDateStr = toDbDateStr(expenseDate);
 
             let response;
             if (attachment && attachment.uri) {
                 const formDataObj = new FormData();
-                formDataObj.append('category_id', categoryIdStr);
+                formDataObj.append('category_id', String(resolvedCategoryId));
                 formDataObj.append('expense_date', expenseDateStr);
-                formDataObj.append('amount', amountStr);
-                formDataObj.append('payment_mode_id', paymentModeIdStr);
+                formDataObj.append('amount', String(resolvedAmount));
+                formDataObj.append('payment_mode_id', String(resolvedPaymentModeId));
                 formDataObj.append('vendor_name', formData.vendor_name.trim());
                 formDataObj.append('description', desc);
                 formDataObj.append('bill_number', formData.bill_number.trim());
@@ -563,10 +578,10 @@ export const AddExpenseScreen = ({ route, navigation }: any) => {
             } else {
                 const payload = {
                     hostel_id: user?.hostel_id ? Number(user.hostel_id) : undefined,
-                    category_id: parseInt(categoryIdStr, 10),
+                    category_id: resolvedCategoryId,
                     expense_date: expenseDateStr,
-                    amount: parseFloat(amountStr),
-                    payment_mode_id: parseInt(paymentModeIdStr, 10),
+                    amount: resolvedAmount,
+                    payment_mode_id: resolvedPaymentModeId,
                     vendor_name: formData.vendor_name.trim(),
                     description: desc,
                     bill_number: formData.bill_number.trim(),
