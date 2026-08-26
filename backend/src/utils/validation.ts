@@ -32,60 +32,61 @@ export const checkHostelUniqueIdentifiers = async (
   exclude?: ExcludeEntity
 ): Promise<ValidationResult> => {
   const { phone, email, id_number } = identifiers;
-  
-  // 1. Check Phone
+  const checks: Promise<{ isUnique: boolean; conflictField?: string; conflictEntity?: string } | null>[] = [];
+
+  // 1. Phone checks (Parallel)
   if (phone) {
-    // Check students
-    let qStudent = db('students').where({ hostel_id, phone });
+    let qStudent = db('students').where({ hostel_id, phone }).first('student_id');
     if (exclude?.entityType === 'student') qStudent = qStudent.whereNot('student_id', exclude.entityId);
-    if (await qStudent.first()) return { isUnique: false, conflictField: 'phone', conflictEntity: 'student' };
-    
-    // Check staff
-    let qStaff = db('staff').where({ hostel_id, phone });
+    checks.push(qStudent.then(res => res ? { isUnique: false, conflictField: 'phone', conflictEntity: 'student' } : null));
+
+    let qStaff = db('staff').where({ hostel_id, phone }).first('staff_id');
     if (exclude?.entityType === 'staff') qStaff = qStaff.whereNot('staff_id', exclude.entityId);
-    if (await qStaff.first()) return { isUnique: false, conflictField: 'phone', conflictEntity: 'staff' };
-    
-    // Check guest
-    let qGuest = db('guests').where({ hostel_id, phone });
+    checks.push(qStaff.then(res => res ? { isUnique: false, conflictField: 'phone', conflictEntity: 'staff' } : null));
+
+    let qGuest = db('guests').where({ hostel_id, phone }).first('guest_id');
     if (exclude?.entityType === 'guest') qGuest = qGuest.whereNot('guest_id', exclude.entityId);
-    if (await qGuest.first()) return { isUnique: false, conflictField: 'phone', conflictEntity: 'guest' };
+    checks.push(qGuest.then(res => res ? { isUnique: false, conflictField: 'phone', conflictEntity: 'guest' } : null));
   }
-  
-  // 2. Check Email
+
+  // 2. Email checks (Parallel)
   if (email) {
-    // Check students
-    let qStudent = db('students').where({ hostel_id, email });
+    let qStudent = db('students').where({ hostel_id, email }).first('student_id');
     if (exclude?.entityType === 'student') qStudent = qStudent.whereNot('student_id', exclude.entityId);
-    if (await qStudent.first()) return { isUnique: false, conflictField: 'email', conflictEntity: 'student' };
-    
-    // Check staff
-    let qStaff = db('staff').where({ hostel_id, email });
-    if (exclude?.entityType === 'staff') qStaff = qStaff.whereNot('staff_id', exclude.entityId);
-    if (await qStaff.first()) return { isUnique: false, conflictField: 'email', conflictEntity: 'staff' };
+    checks.push(qStudent.then(res => res ? { isUnique: false, conflictField: 'email', conflictEntity: 'student' } : null));
 
-    // Check guest
-    let qGuest = db('guests').where({ hostel_id, email });
+    let qStaff = db('staff').where({ hostel_id, email }).first('staff_id');
+    if (exclude?.entityType === 'staff') qStaff = qStaff.whereNot('staff_id', exclude.entityId);
+    checks.push(qStaff.then(res => res ? { isUnique: false, conflictField: 'email', conflictEntity: 'staff' } : null));
+
+    let qGuest = db('guests').where({ hostel_id, email }).first('guest_id');
     if (exclude?.entityType === 'guest') qGuest = qGuest.whereNot('guest_id', exclude.entityId);
-    if (await qGuest.first()) return { isUnique: false, conflictField: 'email', conflictEntity: 'guest' };
+    checks.push(qGuest.then(res => res ? { isUnique: false, conflictField: 'email', conflictEntity: 'guest' } : null));
   }
-  
-  // 3. Check ID Number (Aadhaar, PAN, etc.)
+
+  // 3. ID Number checks (Parallel)
   if (id_number) {
-    // Check students (id_proof_number)
-    let qStudent = db('students').where({ hostel_id, id_proof_number: id_number });
+    let qStudent = db('students').where({ hostel_id, id_proof_number: id_number }).first('student_id');
     if (exclude?.entityType === 'student') qStudent = qStudent.whereNot('student_id', exclude.entityId);
-    if (await qStudent.first()) return { isUnique: false, conflictField: 'ID proof number', conflictEntity: 'student' };
-    
-    // Check staff (aadhaar_number)
-    let qStaff = db('staff').where({ hostel_id, aadhaar_number: id_number });
-    if (exclude?.entityType === 'staff') qStaff = qStaff.whereNot('staff_id', exclude.entityId);
-    if (await qStaff.first()) return { isUnique: false, conflictField: 'Aadhaar number', conflictEntity: 'staff' };
+    checks.push(qStudent.then(res => res ? { isUnique: false, conflictField: 'ID proof number', conflictEntity: 'student' } : null));
 
-    // Check guest (id_proof_number)
-    let qGuest = db('guests').where({ hostel_id, id_proof_number: id_number });
+    let qStaff = db('staff').where({ hostel_id, aadhaar_number: id_number }).first('staff_id');
+    if (exclude?.entityType === 'staff') qStaff = qStaff.whereNot('staff_id', exclude.entityId);
+    checks.push(qStaff.then(res => res ? { isUnique: false, conflictField: 'Aadhaar number', conflictEntity: 'staff' } : null));
+
+    let qGuest = db('guests').where({ hostel_id, id_proof_number: id_number }).first('guest_id');
     if (exclude?.entityType === 'guest') qGuest = qGuest.whereNot('guest_id', exclude.entityId);
-    if (await qGuest.first()) return { isUnique: false, conflictField: 'ID proof number', conflictEntity: 'guest' };
+    checks.push(qGuest.then(res => res ? { isUnique: false, conflictField: 'ID proof number', conflictEntity: 'guest' } : null));
   }
-  
+
+  if (checks.length === 0) return { isUnique: true };
+
+  const results = await Promise.all(checks);
+  for (const r of results) {
+    if (r && !r.isUnique) {
+      return r;
+    }
+  }
+
   return { isUnique: true };
 };

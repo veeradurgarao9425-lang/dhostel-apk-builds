@@ -472,20 +472,23 @@ export const createStudent = async (req: AuthRequest, res: Response) => {
     let id_proof_front_url: string | null = req.body.id_proof_front_url || null;
     let id_proof_back_url: string | null = req.body.id_proof_back_url || null;
 
-    if (files?.profile_photo?.[0]) {
-      profile_photo_url = await processFileUpload(files.profile_photo[0], 'avatars');
-    } else if (singleFile) {
-      profile_photo_url = await processFileUpload(singleFile, 'avatars');
-    }
+    const photoFile = files?.profile_photo?.[0] || singleFile;
+    const frontFile = files?.id_proof_front?.[0];
+    const backFile = files?.id_proof_back?.[0];
 
-    if (files?.id_proof_front?.[0]) {
-      id_proof_front_url = await processFileUpload(files.id_proof_front[0], 'id_proofs');
-      id_proof_document_url = id_proof_front_url;
-    }
+    // Upload files concurrently in parallel
+    const [uploadedPhotoUrl, uploadedFrontUrl, uploadedBackUrl] = await Promise.all([
+      photoFile ? processFileUpload(photoFile, 'avatars') : Promise.resolve(null),
+      frontFile ? processFileUpload(frontFile, 'id_proofs') : Promise.resolve(null),
+      backFile ? processFileUpload(backFile, 'id_proofs') : Promise.resolve(null),
+    ]);
 
-    if (files?.id_proof_back?.[0]) {
-      id_proof_back_url = await processFileUpload(files.id_proof_back[0], 'id_proofs');
+    if (uploadedPhotoUrl) profile_photo_url = uploadedPhotoUrl;
+    if (uploadedFrontUrl) {
+      id_proof_front_url = uploadedFrontUrl;
+      id_proof_document_url = uploadedFrontUrl;
     }
+    if (uploadedBackUrl) id_proof_back_url = uploadedBackUrl;
 
     const isOldStudentVal = (is_old_student === 1 || is_old_student === '1' || is_old_student === true || is_old_student === 'true') ? 1 : 0;
     const finalAdmissionStatus = (isOldStudentVal || admission_status === 1 || admission_status === '1' || admission_status === 'Paid') ? 1 : 0;
@@ -528,17 +531,6 @@ export const createStudent = async (req: AuthRequest, res: Response) => {
       plan_amount: resolvedPlanAmount,
       created_at: new Date()
     };
-
-    // Filter to only columns that actually exist in the table as a resilient fallback
-    try {
-      const colInfo = await db('students').columnInfo();
-      const validCols = Object.keys(colInfo);
-      for (const key of Object.keys(studentInsertData)) {
-        if (!validCols.includes(key)) {
-          delete studentInsertData[key];
-        }
-      }
-    } catch (_) {}
 
     const [student_id] = await db('students').insert(studentInsertData);
 

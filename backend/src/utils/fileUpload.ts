@@ -24,8 +24,13 @@ export async function processFileUpload(
     const contentType = file.mimetype || 'image/jpeg';
     const originalName = file.originalname || file.filename || 'image.jpg';
 
-    // Upload directly to Cloudflare R2 bucket
-    const r2Url = await uploadToR2(buffer, originalName, contentType, folder);
+    // Upload directly to Cloudflare R2 bucket with 3.5s timeout fallback
+    const uploadPromise = uploadToR2(buffer, originalName, contentType, folder);
+    const timeoutPromise = new Promise<string>((_, reject) =>
+      setTimeout(() => reject(new Error('R2 upload timed out (3.5s limit)')), 3500)
+    );
+
+    const r2Url = await Promise.race([uploadPromise, timeoutPromise]);
 
     // Clean up local temp file asynchronously if created by Multer diskStorage
     if (file.path && fs.existsSync(file.path)) {
@@ -34,7 +39,7 @@ export async function processFileUpload(
 
     return r2Url;
   } catch (error: any) {
-    console.error('[processFileUpload] Cloudflare R2 upload fallback to local:', error.message);
+    console.warn('[processFileUpload] Cloudflare R2 fallback to local upload:', error.message);
     return `/uploads/${file.filename || 'image.jpg'}`;
   }
 }
