@@ -690,6 +690,8 @@ export const AddExpenseScreen = ({ route, navigation }: any) => {
             <StatusBar barStyle="dark-content" />
             <AppHeader 
                 alignLeft={true} 
+                showBack={true}
+                onBack={() => navigation?.goBack()}
                 title={expense ? "Edit Expense" : "Add Expense"} 
                 subtitle="Record hostel bills and maintenance costs" 
             />

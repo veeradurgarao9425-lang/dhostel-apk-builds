@@ -333,14 +333,24 @@ export async function patchDatabaseSchema() {
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
           ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         `);
-        await db.raw(`
-          INSERT IGNORE INTO id_proof_types (id, code, name, regex_pattern, min_length, max_length, display_order, is_active) VALUES
-          (1, 'AADHAAR', 'Aadhaar Card', '^[0-9]{12}$', 12, 12, 1, 1),
-          (2, 'PAN', 'PAN Card', '^[A-Z]{5}[0-9]{4}[A-Z]{1}$', 10, 10, 2, 1),
-          (3, 'DRIVING_LICENSE', 'Driving License', '^[A-Z]{2}[0-9]{13}$', 10, 15, 3, 1),
-          (4, 'VOTER_ID', 'Voter ID', '^[A-Z]{3}[0-9]{7}$', 10, 10, 4, 1),
-          (5, 'PASSPORT', 'Passport', '^[A-Z]{1}[0-9]{7}$', 8, 8, 5, 1)
-        `);
+      }
+
+      // Ensure all standard ID proof types are present
+      const standardIdProofs = [
+        { code: 'AADHAAR', name: 'Aadhaar Card', regex_pattern: '^[0-9]{12}$', min_length: 12, max_length: 12, display_order: 1, is_active: 1 },
+        { code: 'PAN', name: 'PAN Card', regex_pattern: '^[A-Z]{5}[0-9]{4}[A-Z]{1}$', min_length: 10, max_length: 10, display_order: 2, is_active: 1 },
+        { code: 'PASSPORT', name: 'Passport', regex_pattern: '^[A-Z0-9]{8,9}$', min_length: 8, max_length: 9, display_order: 3, is_active: 1 },
+        { code: 'DRIVING_LICENCE', name: 'Driving Licence', regex_pattern: '^[A-Z0-9 -]{10,20}$', min_length: 10, max_length: 20, display_order: 4, is_active: 1 },
+        { code: 'VOTER_ID', name: 'Voter ID', regex_pattern: '^[A-Z0-9]{10}$', min_length: 10, max_length: 10, display_order: 5, is_active: 1 },
+        { code: 'COLLEGE_EMPLOYEE_ID', name: 'College / Employee ID', regex_pattern: '', min_length: 1, max_length: 50, display_order: 6, is_active: 1 },
+        { code: 'OTHER', name: 'Other ID Card', regex_pattern: '', min_length: 1, max_length: 50, display_order: 7, is_active: 1 }
+      ];
+
+      for (const proof of standardIdProofs) {
+        const exists = await db('id_proof_types').where('code', proof.code).first();
+        if (!exists) {
+          await db('id_proof_types').insert(proof);
+        }
       }
     } catch (e: any) {
       console.error('[schema-patch] Error creating id_proof_types table:', e.message);

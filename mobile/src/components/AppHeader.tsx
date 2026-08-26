@@ -37,27 +37,28 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
 
     return (
         <LinearGradient colors={[COLORS.gradientStart, COLORS.gradientEnd]} style={[styles.header, style]}>
-            <View style={styles.headerTop}>
-                {showBack ? (
+            <View style={[styles.headerTop, alignLeft && { justifyContent: 'flex-start' }]}>
+                {showBack && (
                     <TouchableOpacity onPress={handleBack} style={styles.backBtn} activeOpacity={0.7}>
                         <Ionicons name="chevron-back" size={24} color="#FFF" />
                     </TouchableOpacity>
-                ) : (
-                    !alignLeft && <View style={styles.placeholder} />
                 )}
                 
-                <View style={[styles.titleContainer, alignLeft && { alignItems: 'flex-start', paddingHorizontal: 0, marginLeft: showBack ? 18 : 0 }]}>
-                    <Text style={styles.headerTitle}>{title}</Text>
-                    {subtitle && <Text style={styles.headerSubtitle}>{subtitle}</Text>}
+                <View style={[
+                    styles.titleContainer, 
+                    alignLeft ? { alignItems: 'flex-start', paddingHorizontal: 0, marginLeft: showBack ? 12 : 0 } : { alignItems: 'center' }
+                ]}>
+                    <Text style={styles.headerTitle} numberOfLines={1}>{title}</Text>
+                    {subtitle ? <Text style={styles.headerSubtitle} numberOfLines={1}>{subtitle}</Text> : null}
                 </View>
 
                 {rightComponent ? (
                     rightComponent
                 ) : (
-                    !alignLeft && <View style={styles.placeholder} />
+                    !alignLeft && showBack && <View style={styles.placeholder} />
                 )}
             </View>
-            {children && <View style={{ marginTop: 16 }}>{children}</View>}
+            {children && <View style={{ marginTop: 14 }}>{children}</View>}
         </LinearGradient>
     );
 };

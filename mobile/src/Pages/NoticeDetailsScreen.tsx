@@ -32,7 +32,8 @@ export default function NoticeDetailsScreen({ route, navigation }: any) {
     };
 
     const dateTime = formatDate(notice.created_at);
-    const imageUrl = getResolvedImageUrl(notice.image_url);
+    const rawImage = notice?.image_url || notice?.image || notice?.attachment_url || notice?.attachment || notice?.photo || notice?.file_url;
+    const imageUrl = getResolvedImageUrl(rawImage);
 
     // Convert hex color to rgba for soft backgrounds
     const hexToRgba = (hex: string, alpha: number) => {

@@ -633,19 +633,18 @@ export default function AddGuestScreen({ navigation, route }: any) {
                 err = 'Full Name is required';
             } else if (value.trim().length < 2) {
                 err = 'Name must be at least 2 characters';
-            } else if (!/^[a-zA-Z\s.]+$/.test(value)) {
-                err = 'Name should only contain letters and spaces';
             }
         } else if (name === 'phone') {
-            if (!value) {
+            const cleanPhone = String(value || '').replace(/\D/g, '');
+            if (!cleanPhone) {
                 err = 'Mobile number is required';
-            } else if (!/^[6-9]/.test(value)) {
+            } else if (!/^[6-9]/.test(cleanPhone)) {
                 err = 'Mobile number must start with 6, 7, 8, or 9';
-            } else if (value.length !== 10) {
+            } else if (cleanPhone.length !== 10) {
                 err = 'Mobile number must be exactly 10 digits';
             }
         } else if (name === 'email') {
-            if (value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+            if (value && value.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())) {
                 err = 'Invalid email format';
             }
         } else if (name === 'id_proof_type') {
@@ -656,19 +655,13 @@ export default function AddGuestScreen({ navigation, route }: any) {
             if (!value || !value.trim()) {
                 err = 'ID proof number is required';
             } else {
-                const proofType = formData.id_proof_type;
-                if (proofType === 'aadhaar') {
-                    if (value.length !== 12) err = 'Aadhaar must be exactly 12 digits';
-                    else if (!/^\d{12}$/.test(value)) err = 'Aadhaar must be numeric';
-                } else if (proofType === 'pan') {
-                    if (value.length !== 10) err = 'PAN must be exactly 10 characters';
-                    else if (!/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/i.test(value)) err = 'Invalid PAN format (e.g. ABCDE1234F)';
-                } else if (proofType === 'driving_license') {
-                    if (value.length < 10 || value.length > 16) err = 'Invalid Driving License length';
-                } else if (proofType === 'voter_id') {
-                    if (value.length !== 10) err = 'Voter ID must be 10 characters (e.g. ABC1234567)';
-                } else if (proofType === 'passport') {
-                    if (value.length !== 8) err = 'Passport must be 8 characters (e.g. A1234567)';
+                const proofType = String(formData.id_proof_type || '').toLowerCase();
+                const cleanVal = value.trim().replace(/\s+/g, '');
+                if (proofType.includes('aadhaar')) {
+                    if (cleanVal.length !== 12) err = 'Aadhaar must be exactly 12 digits';
+                    else if (!/^\d{12}$/.test(cleanVal)) err = 'Aadhaar must be numeric';
+                } else if (proofType.includes('pan')) {
+                    if (cleanVal.length !== 10) err = 'PAN must be exactly 10 characters';
                 }
             }
         }
@@ -690,7 +683,7 @@ export default function AddGuestScreen({ navigation, route }: any) {
         const phoneErr = validateField('phone', formData.phone);
         if (phoneErr) e.phone = phoneErr;
 
-        if (formData.email) {
+        if (formData.email && formData.email.trim()) {
             const emailErr = validateField('email', formData.email);
             if (emailErr) e.email = emailErr;
         }
@@ -733,16 +726,16 @@ export default function AddGuestScreen({ navigation, route }: any) {
         setTouched({});
     };
 
-    const isLocalUri = (uri: string | null | undefined): boolean => {
-        if (!uri || typeof uri !== 'string') return false;
-        const clean = uri.trim();
-        if (!clean) return false;
-        return !clean.startsWith('http://') && !clean.startsWith('https://') && !clean.startsWith('/uploads');
-    };
-
     const handleSave = async () => {
         const validationErrors = validateAll();
         if (Object.keys(validationErrors).length > 0) {
+            setTouched({
+                full_name: true,
+                phone: true,
+                email: true,
+                id_proof_type: true,
+                id_proof_number: true,
+            });
             showError('Please check and fill all mandatory fields (Full Name, Phone, ID Proof)');
             return;
         }
