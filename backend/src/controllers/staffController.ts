@@ -355,6 +355,9 @@ export const addStaffPayment = async (req: AuthRequest, res: Response) => {
     // Derive for_month from payment_date if not provided
     const resolvedMonth = for_month || payment_date.substring(0, 7); // YYYY-MM
 
+    const resolvedTypeStr = payment_type || 'Advance';
+    const resolvedTypeId = resolvedTypeStr.toLowerCase() === 'advance' ? 1 : 2;
+
     let payment_id: any;
     try {
       const result = await db('staff_payments').insert({
@@ -363,7 +366,8 @@ export const addStaffPayment = async (req: AuthRequest, res: Response) => {
         amount: Number(amount),
         payment_date,
         days_worked: days_worked ? Number(days_worked) : null,
-        payment_type: payment_type || 'Advance',
+        payment_type: resolvedTypeStr,
+        payment_type_id: resolvedTypeId,
         note: note || null,
         for_month: resolvedMonth,
         mode: mode || 'Cash',
@@ -374,7 +378,7 @@ export const addStaffPayment = async (req: AuthRequest, res: Response) => {
       });
       payment_id = Array.isArray(result) ? result[0] : result;
     } catch (insertErr: any) {
-      console.warn('Full staff_payment insert failed, attempting minimal insert fallback:', insertErr?.message);
+      console.warn('Full staff_payment insert failed, attempting fallback insert:', insertErr?.message);
       // Fallback for minimal legacy schema
       const result = await db('staff_payments').insert({
         hostel_id: staff.hostel_id,
@@ -382,7 +386,7 @@ export const addStaffPayment = async (req: AuthRequest, res: Response) => {
         amount: Number(amount),
         payment_date,
         days_worked: days_worked ? Number(days_worked) : null,
-        payment_type: payment_type || 'Advance',
+        payment_type: resolvedTypeStr,
         note: [note, mode ? `Mode: ${mode}` : '', transaction_id ? `Txn: ${transaction_id}` : ''].filter(Boolean).join(' | ') || null,
         created_by: req.user?.user_id || null,
         created_at: new Date(),

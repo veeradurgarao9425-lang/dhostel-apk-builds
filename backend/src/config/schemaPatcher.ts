@@ -1278,6 +1278,9 @@ export async function patchDatabaseSchema() {
         if (!spColNames.includes('for_month')) {
           await db.raw("ALTER TABLE staff_payments ADD COLUMN for_month VARCHAR(7) NULL");
         }
+        if (!spColNames.includes('payment_type')) {
+          await db.raw("ALTER TABLE staff_payments ADD COLUMN payment_type VARCHAR(50) DEFAULT 'Advance'");
+        }
         if (!spColNames.includes('mode')) {
           await db.raw("ALTER TABLE staff_payments ADD COLUMN mode VARCHAR(50) DEFAULT 'Cash'");
         }
