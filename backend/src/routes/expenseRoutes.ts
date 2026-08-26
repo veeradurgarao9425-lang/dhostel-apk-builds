@@ -13,8 +13,19 @@ import {
   getExpenseSummary
 } from '../controllers/expenseController.js';
 
+import fs from 'fs';
+
+if (!fs.existsSync('uploads')) {
+  fs.mkdirSync('uploads', { recursive: true });
+}
+
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, 'uploads/'),
+  destination: (req, file, cb) => {
+    if (!fs.existsSync('uploads')) {
+      fs.mkdirSync('uploads', { recursive: true });
+    }
+    cb(null, 'uploads/');
+  },
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
     cb(null, 'expense-' + uniqueSuffix + '-' + (file.originalname || 'receipt.jpg').replace(/\s+/g, '_'));

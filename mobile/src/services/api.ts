@@ -35,15 +35,13 @@ api.interceptors.request.use(
 
       if (isFormData) {
         if (config.headers) {
+          delete config.headers['Content-Type'];
+          delete config.headers['content-type'];
           if (typeof (config.headers as any).delete === 'function') {
             (config.headers as any).delete('Content-Type');
             (config.headers as any).delete('content-type');
-          } else {
-            delete config.headers['Content-Type'];
-            delete config.headers['content-type'];
           }
         }
-        config.transformRequest = [(data) => data];
         config.timeout = 120000; // 2 min timeout for file uploads
       }
     } catch {
