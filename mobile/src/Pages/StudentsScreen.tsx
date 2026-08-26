@@ -1229,7 +1229,7 @@ const styles = StyleSheet.create({
     allocateBannerHint: { fontSize: 11, fontWeight: '700', color: '#B91C1C', marginLeft: 8 },
     fab: {
         position: 'absolute',
-        bottom: 100,
+        bottom: 78,
         right: 20,
         width: 56,
         height: 56,

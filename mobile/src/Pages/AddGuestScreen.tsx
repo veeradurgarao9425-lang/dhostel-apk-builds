@@ -845,7 +845,7 @@ export default function AddGuestScreen({ navigation, route }: any) {
             <ScrollView
                 style={styles.content}
                 showsVerticalScrollIndicator={false}
-                contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 120 }]}
+                contentContainerStyle={[styles.scrollContent, { paddingBottom: Math.max(insets.bottom, 24) + 160 }]}
                 keyboardShouldPersistTaps="handled"
             >
                 {/* ── Profile Photo ── */}

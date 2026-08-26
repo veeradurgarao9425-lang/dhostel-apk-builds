@@ -150,12 +150,24 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(sanitizeInputMiddleware);
 
-// Request Logger
-app.use((req, _res, next) => {
+// ─── Response-Time Middleware ─────────────────────────────────────────────────
+// Logs: [ISO] METHOD /path → STATUS in XXXms
+// Slow threshold: warns anything ≥ 1000ms (helps spot DB latency issues fast)
+app.use((req, res, next) => {
+  const start = Date.now();
   const ts = new Date().toISOString();
-  console.log(`[${ts}] ${req.method} ${req.url}`);
+  res.on('finish', () => {
+    const ms = Date.now() - start;
+    const level = ms >= 1000 ? '🐢 SLOW' : ms >= 400 ? '⚡' : '✅';
+    const skipPaths = ['/uploads/', '/register', '/api/media/'];
+    const shouldSkip = skipPaths.some(p => req.url.startsWith(p));
+    if (!shouldSkip) {
+      console.log(`[${ts}] ${level} ${req.method} ${req.url} → ${res.statusCode} in ${ms}ms`);
+    }
+  });
   next();
 });
+
 
 // ─── Serve the built register-web React app (public registration form) ───────
 // __dirname equivalent for ESM

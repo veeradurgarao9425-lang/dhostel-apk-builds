@@ -242,6 +242,35 @@ export const sendNotificationToUser = async (options: SendNotificationOptions): 
         console.error('[Notification] Direct Firebase FCM delivery error:', fcmErr?.message || fcmErr);
       }
     }
+
+    // 5. Dispatch via Expo Push Service (for Expo tokens)
+    if (expoTokens.length > 0) {
+      try {
+        const messages = expoTokens.map((to: string) => ({
+          to,
+          sound: 'default',
+          title: formattedTitle,
+          body: message,
+          data: stringifiedData,
+          channelId: 'default',
+          priority: 'high',
+          color: color || '#6D4AFF',
+        }));
+
+        await fetch('https://exp.host/--/api/v2/push/send', {
+          method: 'POST',
+          headers: {
+            'Accept': 'application/json',
+            'Accept-encoding': 'gzip, deflate',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(messages),
+        });
+        console.log(`[Notification] Expo Push dispatched to ${expoTokens.length} device(s).`);
+      } catch (expoErr: any) {
+        console.error('[Notification] Expo push delivery error:', expoErr?.message || expoErr);
+      }
+    }
   } catch (error) {
     console.error('[Notification] Error in sendNotificationToUser:', error);
   }

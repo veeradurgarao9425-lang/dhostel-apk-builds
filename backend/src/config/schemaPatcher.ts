@@ -1,7 +1,15 @@
 import { db } from './database.js';
 import { seedBulkGrowthStories } from '../seedBulkStories.js';
 
+// Guard: only run schema patch once per process lifetime
+let _patchRan = false;
+
 export async function patchDatabaseSchema() {
+  if (_patchRan) {
+    console.log('[schema-patch] Already patched this process — skipping.');
+    return;
+  }
+  _patchRan = true;
   try {
     console.log('[schema-patch] Checking database tables...');
     const [tables] = await db.raw("SHOW TABLES");

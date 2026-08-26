@@ -172,7 +172,12 @@ export default function OverviewScreen() {
         }
     }, [getQueryDates, data]);
 
-    useFocusEffect(useCallback(() => { fetchData(true); }, [fetchData]));
+    useFocusEffect(useCallback(() => {
+        const now = Date.now();
+        // Skip refetch if data is fresh (loaded within last 30s) — avoids hitting API on every tab switch
+        if (data !== null && now - lastOverviewFetchRef.current < 30_000) return;
+        fetchData(true);
+    }, [fetchData, data]));
 
     useEffect(() => {
         fetchData(false, true);

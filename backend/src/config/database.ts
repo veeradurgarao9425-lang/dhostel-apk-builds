@@ -31,14 +31,14 @@ export const db = knex({
     }
   },
   pool: {
-    min: parseInt(process.env.DB_POOL_MIN || '4', 10),
-    max: parseInt(process.env.DB_POOL_MAX || '25', 10),
-    createTimeoutMillis: 5000,
-    acquireTimeoutMillis: 15000,
-    idleTimeoutMillis: 30000,
-    reapIntervalMillis: 1000,
+    min: parseInt(process.env.DB_POOL_MIN || '2', 10),   // lower min: local connections are instant
+    max: parseInt(process.env.DB_POOL_MAX || '10', 10),  // lower max: local DB needs less concurrency
+    createTimeoutMillis: 3000,
+    acquireTimeoutMillis: 8000,
+    idleTimeoutMillis: 60000,  // keep connections alive longer on local
+    reapIntervalMillis: 5000,
   },
-  acquireConnectionTimeout: 15000,
+  acquireConnectionTimeout: 8000,
 });
 
 export { patchDatabaseSchema } from './schemaPatcher.js';

@@ -22,13 +22,15 @@ try {
   console.log('Notification handler initialized with fallback.');
 }
 
+import { getSecureItem } from './secureStore';
+
 export const notificationService = {
   _lastRegisteredToken: null as string | null,
   _handledNotificationIds: new Set<string>(),
   _appLaunchTime: Date.now(),
 
   async registerForPushNotificationsAsync() {
-    let token = null;
+    let token: string | null = null;
 
     if (Platform.OS === 'android') {
       try {
@@ -46,7 +48,7 @@ export const notificationService = {
       }
     }
 
-    if (Device.isDevice) {
+    try {
       const { status: existingStatus } = await Notifications.getPermissionsAsync();
       let finalStatus = existingStatus;
       if (existingStatus !== 'granted') {
@@ -57,20 +59,30 @@ export const notificationService = {
         console.log('Failed to get push token for push notification (permission not granted)!');
         return null;
       }
-      
-      // Fetch native FCM Device Token (for direct Google Firebase Cloud Messaging)
+
+      // 1. Fetch native FCM Device Token (for direct Google Firebase Cloud Messaging)
       try {
         const deviceTokenResponse = await Notifications.getDevicePushTokenAsync();
         if (deviceTokenResponse?.data) {
-          token = deviceTokenResponse.data;
-          console.log('Native FCM Device Token retrieved:', token);
+          token = String(deviceTokenResponse.data);
           await this.sendTokenToBackend(token);
         }
       } catch (fcmTokenErr: any) {
-        console.log('Device push token note:', fcmTokenErr?.message || fcmTokenErr);
+        console.log('FCM token retrieval note:', fcmTokenErr?.message || fcmTokenErr);
       }
-    } else {
-      console.log('Push notifications require a physical device or development build');
+
+      // 2. Fetch Expo Push Token as universal fallback
+      try {
+        const expoTokenResponse = await Notifications.getExpoPushTokenAsync().catch(() => null);
+        if (expoTokenResponse?.data && expoTokenResponse.data !== token) {
+          await this.sendTokenToBackend(expoTokenResponse.data);
+          if (!token) token = expoTokenResponse.data;
+        }
+      } catch (expoTokenErr: any) {
+        console.log('Expo token retrieval note:', expoTokenErr?.message || expoTokenErr);
+      }
+    } catch (err: any) {
+      console.log('Error initializing push notifications:', err?.message || err);
     }
 
     return token;
@@ -81,22 +93,13 @@ export const notificationService = {
     if (!force && this._lastRegisteredToken === token) {
       return;
     }
-    
-    // Ensure Authorization header is present, fallback to AsyncStorage if needed
-    if (!api.defaults.headers.common['Authorization']) {
-      try {
-        const storedToken = await AsyncStorage.getItem('token');
-        if (storedToken) {
-          api.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
-        } else {
-          return;
-        }
-      } catch {
-        return;
-      }
-    }
 
     try {
+      const storedToken = (await getSecureItem('token')) || (await AsyncStorage.getItem('token'));
+      if (!storedToken) {
+        return;
+      }
+
       const response = await api.post('/notifications/register-token', {
         push_token: token,
         device_name: Device.modelName || 'Unknown Device',
