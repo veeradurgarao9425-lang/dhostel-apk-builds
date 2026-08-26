@@ -11,9 +11,6 @@ const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://api.143-244-131-69.
 export const api = axios.create({
   baseURL: BASE_URL,
   timeout: 45000, // 45s timeout for multi-image uploads & cold-starts
-  headers: {
-    'Content-Type': 'application/json',
-  },
 });
 
 // ─── Request Interceptor — attach token & log ───────────────────────────────────────
@@ -35,14 +32,16 @@ api.interceptors.request.use(
 
       if (isFormData) {
         if (config.headers) {
-          delete config.headers['Content-Type'];
-          delete config.headers['content-type'];
-          if (typeof (config.headers as any).delete === 'function') {
-            (config.headers as any).delete('Content-Type');
-            (config.headers as any).delete('content-type');
+          (config.headers as any)['Content-Type'] = 'multipart/form-data';
+          if (typeof (config.headers as any).set === 'function') {
+            (config.headers as any).set('Content-Type', 'multipart/form-data');
           }
         }
         config.timeout = 120000; // 2 min timeout for file uploads
+      } else {
+        if (config.headers && !config.headers['Content-Type'] && !config.headers['content-type']) {
+          (config.headers as any)['Content-Type'] = 'application/json';
+        }
       }
     } catch {
       // Token read failed — proceed without token
