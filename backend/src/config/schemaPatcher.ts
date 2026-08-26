@@ -218,20 +218,30 @@ export async function patchDatabaseSchema() {
       console.error('[schema-patch] Error creating core parent tables:', e.message);
     }
 
-    // Ensure 'Deposit Refunds' category exists in expense_categories
+    // Ensure single canonical 'Deposit Refund' category exists in expense_categories
     try {
       if (tableNamesLower.includes('expense_categories')) {
-        const cat = await db('expense_categories').where({ category_name: 'Deposit Refunds' }).first();
-        if (!cat) {
-          await db('expense_categories').insert({
-            category_name: 'Deposit Refunds',
-            description: 'Refund of security deposits upon vacate'
+        // Clean up duplicate plural 'Deposit Refunds' if present
+        const pluralCat = await db('expense_categories').where({ category_name: 'Deposit Refunds' }).first();
+        const singularCat = await db('expense_categories').where({ category_name: 'Deposit Refund' }).first();
+        
+        if (pluralCat && singularCat) {
+          await db('expenses').where('category_id', pluralCat.category_id).update({ category_id: singularCat.category_id });
+          await db('expense_categories').where('category_id', pluralCat.category_id).delete();
+        } else if (pluralCat && !singularCat) {
+          await db('expense_categories').where('category_id', pluralCat.category_id).update({
+            category_name: 'Deposit Refund',
+            description: 'Tenant security deposit refunds'
           });
-          console.log('[schema-patch] Seeded Deposit Refunds into expense_categories');
+        } else if (!singularCat) {
+          await db('expense_categories').insert({
+            category_name: 'Deposit Refund',
+            description: 'Tenant security deposit refunds'
+          });
         }
       }
     } catch (e: any) {
-      console.warn('[schema-patch] Could not seed Deposit Refunds:', e.message);
+      console.warn('[schema-patch] Could not verify Deposit Refund category:', e.message);
     }
 
     // 1. Ensure fee_history exists

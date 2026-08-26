@@ -43,6 +43,7 @@ api.interceptors.request.use(
             delete config.headers['content-type'];
           }
         }
+        config.transformRequest = [(data) => data];
         config.timeout = 120000; // 2 min timeout for file uploads
       }
     } catch {
