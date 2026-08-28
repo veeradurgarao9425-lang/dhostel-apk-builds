@@ -126,17 +126,16 @@ export const getAuthenticatedStudent = async (
 ): Promise<any | null> => {
   if (!user || !user.user_id) return null;
 
-  let student = await db('students')
-    .where('user_id', user.user_id)
-    .first();
-
-  if (!student) {
-    student = await db('students')
+  try {
+    const student = await db('students')
       .where('student_id', user.user_id)
       .first();
-  }
 
-  return student || null;
+    return student || null;
+  } catch (err: any) {
+    console.error('getAuthenticatedStudent error:', err.message);
+    return null;
+  }
 };
 
 /**
@@ -145,6 +144,11 @@ export const getAuthenticatedStudent = async (
 export const getAuthenticatedStudentId = async (
   user?: TokenPayload
 ): Promise<number | null> => {
+  if (!user || !user.user_id) return null;
+  // For tenant tokens (role_id 3), user.user_id is already the student_id
+  if (user.role_id === 3) {
+    return Number(user.user_id);
+  }
   const student = await getAuthenticatedStudent(user);
   return student?.student_id ? Number(student.student_id) : null;
 };

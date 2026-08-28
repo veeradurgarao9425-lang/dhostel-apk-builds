@@ -139,7 +139,19 @@ export const authController = {
         hostel_id: activeHostelId, // Include hostel_id in JWT token
       });
 
-      // Return response immediately without sending emails on standard login
+      // Dispatch Welcome / Login notification to Owner
+      sendNotificationToUser({
+        userId: user.user_id,
+        hostelId: activeHostelId || user.hostel_id,
+        type: 'General',
+        title: 'Welcome to Hostix! 🚀',
+        message: `Hi ${user.full_name || 'Owner'}, welcome back to your Hostix property portal.`,
+        priority: 'Low',
+        screen: 'Home',
+        deduplicateKey: `welcome_owner_login_${user.user_id}_${new Date().toISOString().split('T')[0]}`,
+      }).catch((err) => console.error('[OwnerLogin] Notification error:', err));
+
+      // Return response immediately
       return res.json({
         success: true,
         data: {
@@ -1294,17 +1306,17 @@ export const authController = {
         hostel_id: tenant.hostel_id,
       });
 
-      // In-app only (no push) — just gives the notification list a "you logged in" entry.
-      db('notifications').insert({
-        student_id: tenant.student_id,
-        hostel_id: tenant.hostel_id,
-        notification_type: 'General',
-        title: 'Welcome Back!',
-        message: `Hi ${tenant.first_name}, you've logged in successfully.`,
+      // Send Welcome / Login notification with real-time push and in-app sync
+      sendNotificationToUser({
+        studentId: tenant.student_id,
+        hostelId: tenant.hostel_id,
+        type: 'General',
+        title: 'Welcome to Hostix! 🏠',
+        message: `Hi ${tenant.first_name}, welcome back to your Hostix resident portal.`,
         priority: 'Low',
-        is_read: 0,
-        created_at: new Date()
-      }).catch((err: any) => console.error('Failed to save login notification:', err));
+        screen: 'TenantHome',
+        deduplicateKey: `welcome_student_login_${tenant.student_id}_${new Date().toISOString().split('T')[0]}`,
+      }).catch((err: any) => console.error('Failed to send login notification:', err));
 
       return res.json({
         success: true,
@@ -1333,15 +1345,6 @@ export const authController = {
     try {
       const { identifier, hostel_id, first_name, last_name, phone, email, gender, date_of_birth, guardian_name, guardian_phone, guardian_relation, current_address, permanent_address, id_proof_type, id_proof_number } = req.body;
 
-      const files = req.files as { [field: string]: Express.Multer.File[] } | undefined;
-      
-      // Parallelize image uploads to Cloudflare R2 / disk for maximum speed
-      const [profilePhotoUrl, idProofFrontUrl, idProofBackUrl] = await Promise.all([
-        files?.profile_photo?.[0] ? processFileUpload(files.profile_photo[0], 'avatars').catch(() => null) : Promise.resolve(null),
-        files?.id_proof_front?.[0] ? processFileUpload(files.id_proof_front[0], 'id_proofs').catch(() => null) : Promise.resolve(null),
-        files?.id_proof_back?.[0] ? processFileUpload(files.id_proof_back[0], 'id_proofs').catch(() => null) : Promise.resolve(null),
-      ]);
-
       if (!identifier || !hostel_id || !first_name || !gender) {
         return res.status(400).json({ success: false, error: 'Missing required fields' });
       }
@@ -1368,6 +1371,15 @@ export const authController = {
         return res.status(400).json({ success: false, error: `This ${uniqueness.conflictField} is already registered to another ${uniqueness.conflictEntity} in this hostel.` });
       }
       // ──────────────────────────────────────────────────────────────────────
+
+      const files = req.files as { [field: string]: Express.Multer.File[] } | undefined;
+      
+      // Upload images to Cloudflare R2 / disk only after all validations & database uniqueness pass
+      const [profilePhotoUrl, idProofFrontUrl, idProofBackUrl] = await Promise.all([
+        files?.profile_photo?.[0] ? processFileUpload(files.profile_photo[0], 'avatars').catch(() => null) : Promise.resolve(null),
+        files?.id_proof_front?.[0] ? processFileUpload(files.id_proof_front[0], 'id_proofs').catch(() => null) : Promise.resolve(null),
+        files?.id_proof_back?.[0] ? processFileUpload(files.id_proof_back[0], 'id_proofs').catch(() => null) : Promise.resolve(null),
+      ]);
 
       // Format current date for admission_date
       const today = new Date();

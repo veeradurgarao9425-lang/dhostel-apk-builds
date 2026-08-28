@@ -2,9 +2,9 @@ import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   ActivityIndicator, ScrollView, KeyboardAvoidingView, Platform,
-  Image, Alert, StatusBar, Dimensions, Keyboard, Modal,
+  Image, Alert, StatusBar, Dimensions, Keyboard, Modal, Pressable,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import { useAuth } from '../../../contexts/AuthContext';
@@ -129,10 +129,12 @@ const SelectRow = ({ icon: Icon, value, placeholder, onPress }: any) => (
 
 // ─── Reusable Image Source Modal (Camera / Gallery) ───────────────────────────
 const ImageSourceModal = ({ visible, onClose, onSelectCamera, onSelectGallery, title = 'Choose Image Source' }: any) => {
+  const insets = useSafeAreaInsets();
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <TouchableOpacity style={st.modalOverlay} onPress={onClose} activeOpacity={1}>
-        <TouchableOpacity style={st.sourceModalContent} activeOpacity={1} onPress={(e) => e.stopPropagation()}>
+    <Modal visible={visible} transparent animationType="fade" statusBarTranslucent onRequestClose={onClose}>
+      <View style={st.modalOverlay}>
+        <Pressable style={StyleSheet.absoluteFillObject} onPress={onClose} />
+        <View style={[st.sourceModalContent, { paddingBottom: Math.max(insets.bottom + 16, 28) }]}>
           <View style={st.sourceModalHeader}>
             <Text style={st.sourceModalTitle}>{title}</Text>
             <TouchableOpacity onPress={onClose} style={st.closeBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
@@ -164,8 +166,8 @@ const ImageSourceModal = ({ visible, onClose, onSelectCamera, onSelectGallery, t
               <Text style={st.sourceOptionSub}>Pick from Photos</Text>
             </TouchableOpacity>
           </View>
-        </TouchableOpacity>
-      </TouchableOpacity>
+        </View>
+      </View>
     </Modal>
   );
 };
@@ -560,15 +562,9 @@ export default function RegistrationScreen({ route, navigation }: any) {
       {/* ── Stepper ── */}
       <Stepper step={step} />
 
-      {/* ── Content ── */}
-      {(loading || stepLoading) && (
-        <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(255,255,255,0.8)', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }]}>
-          <View style={{ backgroundColor: WHITE, padding: 24, borderRadius: 16, alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 10, elevation: 5 }}>
-            <ActivityIndicator size="large" color={BLUE} />
-            <Text style={{ marginTop: 12, fontWeight: '600', color: TEXT_DARK }}>
-              {loading ? 'Creating account...' : 'Please wait...'}
-            </Text>
-          </View>
+      {stepLoading && (
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(255,255,255,0.7)', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }]}>
+          <ActivityIndicator size="large" color={BLUE} />
         </View>
       )}
       
@@ -1166,7 +1162,7 @@ const st = StyleSheet.create({
   // Source Modal (Camera / Gallery Bottom Sheet)
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.55)',
+    backgroundColor: 'rgba(15, 23, 42, 0.90)',
     justifyContent: 'flex-end',
   },
   sourceModalContent: {

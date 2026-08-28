@@ -1790,7 +1790,7 @@ export async function patchDatabaseSchema() {
       console.error('[schema-patch] Error checking/adding columns to tenant_saving_goals:', e.message);
     }
 
-    // 24. Ensure image_urls column exists in complaints
+    // 24. Ensure image_urls, category, and status columns exist in complaints
     try {
       if (tableNamesLower.includes('complaints')) {
         const columns = await db.raw("SHOW COLUMNS FROM complaints");
@@ -1799,9 +1799,17 @@ export async function patchDatabaseSchema() {
           console.log('[schema-patch] Adding image_urls column to complaints...');
           await db.raw("ALTER TABLE complaints ADD COLUMN image_urls TEXT NULL AFTER description");
         }
+        if (!columnNames.includes('category')) {
+          console.log('[schema-patch] Adding category column to complaints...');
+          await db.raw("ALTER TABLE complaints ADD COLUMN category VARCHAR(100) DEFAULT 'General' AFTER student_id");
+        }
+        if (!columnNames.includes('status')) {
+          console.log('[schema-patch] Adding status column to complaints...');
+          await db.raw("ALTER TABLE complaints ADD COLUMN status VARCHAR(50) DEFAULT 'Open'");
+        }
       }
     } catch (e: any) {
-      console.error('[schema-patch] Error checking/adding image_urls column to complaints:', e.message);
+      console.error('[schema-patch] Error checking/adding columns to complaints:', e.message);
     }
 
     // 25. Ensure due/overdue reminder tracking columns exist on monthly_fees

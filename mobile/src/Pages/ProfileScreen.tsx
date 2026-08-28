@@ -85,7 +85,6 @@ const ProfileScreen = ({ navigation }: any) => {
             variant: 'danger',
             onConfirm: async () => {
                 await signOut();
-                navigation.replace('Login');
             }
         });
     };
