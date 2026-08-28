@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { AppHeader } from '../components/AppHeader';
-import { Calendar, Tag, FileText, Hash, Receipt, Trash2, Edit3, Image as ImageIcon, Eye, X, Download } from 'lucide-react-native';
+import { Calendar, Tag, FileText, Hash, Receipt, Trash2, Edit3, Image as ImageIcon, Eye, X, Download, User, Briefcase, Phone } from 'lucide-react-native';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useRefresh } from '../../contexts/RefreshContext';
 import { DangerModal } from '../components/ui/DangerModal';
@@ -159,14 +159,16 @@ export const ExpenseDetailsScreen = ({ route }: any) => {
 
             {/* ── Compact Header ── */}
             <AppHeader
-                title="Expense Details"
+                title={expense.is_wage ? "Staff Wage Details" : "Expense Details"}
                 rightComponent={
-                    <TouchableOpacity 
-                        onPress={() => navigation.navigate('AddExpense', { expense })} 
-                        style={styles.editBtn}
-                    >
-                        <Edit3 color="#FFF" size={20} />
-                    </TouchableOpacity>
+                    !expense.is_wage ? (
+                        <TouchableOpacity 
+                            onPress={() => navigation.navigate('AddExpense', { expense })} 
+                            style={styles.editBtn}
+                        >
+                            <Edit3 color="#FFF" size={20} />
+                        </TouchableOpacity>
+                    ) : undefined
                 }
             />
 
@@ -177,14 +179,18 @@ export const ExpenseDetailsScreen = ({ route }: any) => {
             >
                 {/* ── Compact Summary Card ── */}
                 <View style={[styles.summaryCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#E2E8F0' }]}>
-                    <Text style={[styles.summaryLabel, { color: theme.textSecondary }]}>Amount Spent</Text>
+                    <Text style={[styles.summaryLabel, { color: theme.textSecondary }]}>Amount Paid</Text>
                     <Text style={styles.summaryAmount}>
                         -₹{amount.toLocaleString('en-IN')}
                     </Text>
                     
-                    <View style={[styles.categoryBadge, { backgroundColor: catColor + '15', borderColor: catColor + '30' }]}>
-                        <Tag size={12} color={catColor} style={{ marginRight: 6 }} />
-                        <Text style={[styles.categoryBadgeText, { color: catColor }]}>
+                    <View style={[styles.categoryBadge, { backgroundColor: (expense.is_wage ? '#7C3AED' : catColor) + '15', borderColor: (expense.is_wage ? '#7C3AED' : catColor) + '30' }]}>
+                        {expense.is_wage ? (
+                            <User size={12} color="#7C3AED" style={{ marginRight: 6 }} />
+                        ) : (
+                            <Tag size={12} color={catColor} style={{ marginRight: 6 }} />
+                        )}
+                        <Text style={[styles.categoryBadgeText, { color: expense.is_wage ? '#7C3AED' : catColor }]}>
                             {expense.category_name}
                         </Text>
                     </View>
@@ -206,25 +212,59 @@ export const ExpenseDetailsScreen = ({ route }: any) => {
                         isDark={isDark}
                         theme={theme}
                     />
-                    <DetailRow
-                        icon={<FileText size={16} color={isDark ? '#94A3B8' : '#64748B'} />}
-                        label="Vendor"
-                        value={expense.vendor_name || '—'}
-                        isDark={isDark}
-                        theme={theme}
-                    />
-                    <DetailRow
-                        icon={<Hash size={16} color={isDark ? '#94A3B8' : '#64748B'} />}
-                        label="Bill Number"
-                        value={expense.bill_number || '—'}
-                        isDark={isDark}
-                        theme={theme}
-                    />
+
+                    {expense.is_wage ? (
+                        <>
+                            <DetailRow
+                                icon={<User size={16} color="#7C3AED" />}
+                                label="Paid To (Staff)"
+                                value={expense.staff_name || expense.vendor_name || 'Staff Member'}
+                                accent="#7C3AED"
+                                isDark={isDark}
+                                theme={theme}
+                            />
+                            {expense.staff_role ? (
+                                <DetailRow
+                                    icon={<Briefcase size={16} color={isDark ? '#94A3B8' : '#64748B'} />}
+                                    label="Staff Role"
+                                    value={expense.staff_role}
+                                    isDark={isDark}
+                                    theme={theme}
+                                />
+                            ) : null}
+                            {expense.staff_phone ? (
+                                <DetailRow
+                                    icon={<Phone size={16} color={isDark ? '#94A3B8' : '#64748B'} />}
+                                    label="Phone Number"
+                                    value={expense.staff_phone}
+                                    isDark={isDark}
+                                    theme={theme}
+                                />
+                            ) : null}
+                        </>
+                    ) : (
+                        <>
+                            <DetailRow
+                                icon={<FileText size={16} color={isDark ? '#94A3B8' : '#64748B'} />}
+                                label="Paid To / Vendor"
+                                value={expense.vendor_name || '—'}
+                                isDark={isDark}
+                                theme={theme}
+                            />
+                            <DetailRow
+                                icon={<Hash size={16} color={isDark ? '#94A3B8' : '#64748B'} />}
+                                label="Bill Number"
+                                value={expense.bill_number || '—'}
+                                isDark={isDark}
+                                theme={theme}
+                            />
+                        </>
+                    )}
                 </View>
 
                 {/* ── Description Card ── */}
                 <View style={[styles.detailsCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#E2E8F0', marginTop: 12 }]}>
-                    <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>Description</Text>
+                    <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>Notes & Details</Text>
                     <Text style={[styles.descriptionText, { color: theme.textSecondary }]}>
                         {expense.description || 'No additional details provided.'}
                     </Text>
@@ -251,20 +291,22 @@ export const ExpenseDetailsScreen = ({ route }: any) => {
                 )}
 
                 {/* ── Delete Button ── */}
-                <TouchableOpacity
-                    style={[styles.deleteButton, deleteLoading && styles.disabledButton]}
-                    onPress={() => setDangerModalVisible(true)}
-                    disabled={deleteLoading}
-                >
-                    {deleteLoading ? (
-                        <ActivityIndicator color="#EF4444" size="small" />
-                    ) : (
-                        <>
-                            <Trash2 size={16} color="#EF4444" style={{ marginRight: 8 }} />
-                            <Text style={styles.deleteButtonText}>Delete Expense</Text>
-                        </>
-                    )}
-                </TouchableOpacity>
+                {!expense.is_wage && (
+                    <TouchableOpacity
+                        style={[styles.deleteButton, deleteLoading && styles.disabledButton]}
+                        onPress={() => setDangerModalVisible(true)}
+                        disabled={deleteLoading}
+                    >
+                        {deleteLoading ? (
+                            <ActivityIndicator color="#EF4444" size="small" />
+                        ) : (
+                            <>
+                                <Trash2 size={16} color="#EF4444" style={{ marginRight: 8 }} />
+                                <Text style={styles.deleteButtonText}>Delete Expense</Text>
+                            </>
+                        )}
+                    </TouchableOpacity>
+                )}
             </ScrollView>
 
             {/* ── Fullscreen Receipt Viewer Modal ── */}

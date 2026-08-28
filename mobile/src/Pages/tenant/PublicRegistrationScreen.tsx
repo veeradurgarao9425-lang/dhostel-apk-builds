@@ -269,8 +269,7 @@ export default function PublicRegistrationScreen({ route, navigation }: any) {
             const res = await ImagePicker.launchCameraAsync({
               mediaTypes: ['images'],
               quality: 0.8,
-              allowsEditing: target === 'profile',
-              aspect: target === 'profile' ? [1, 1] : undefined,
+              allowsEditing: false,
             });
             if (!res.canceled && res.assets[0]?.uri) {
               const uri = res.assets[0].uri;
@@ -291,8 +290,7 @@ export default function PublicRegistrationScreen({ route, navigation }: any) {
             const res = await ImagePicker.launchImageLibraryAsync({
               mediaTypes: ['images'],
               quality: 0.8,
-              allowsEditing: target === 'profile',
-              aspect: target === 'profile' ? [1, 1] : undefined,
+              allowsEditing: false,
             });
             if (!res.canceled && res.assets[0]?.uri) {
               const uri = res.assets[0].uri;

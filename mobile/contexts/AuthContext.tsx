@@ -1,8 +1,10 @@
 import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
+import { DeviceEventEmitter } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import api from '../src/services/api';
+import api, { setCachedToken } from '../src/services/api';
 import { getSecureItem, setSecureItem, removeSecureItem } from '../src/services/secureStore';
 import { notificationService } from '../src/services/notificationService';
+import { navigationRef } from '../src/navigation/navigationRef';
 
 export type User = {
   user_id?: string | number;
@@ -129,6 +131,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
         if (storedUser && storedToken) {
           const parsedUser = JSON.parse(storedUser);
+          setCachedToken(storedToken);
           api.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
           setUser(parsedUser);
         }
@@ -166,7 +169,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         // Register & sync device push token with backend on session restore.
         notificationService.registerForPushNotificationsAsync()
           .then(pushToken => {
-            if (pushToken) notificationService.sendTokenToBackend(pushToken, true).catch(() => {});
+            if (pushToken) notificationService.sendTokenToBackend(pushToken, false).catch(() => {});
           })
           .catch(pushErr => {
             if (__DEV__) console.warn('Push notification token sync notice:', pushErr);
@@ -179,6 +182,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     // Run both concurrently: loadUser unblocks navigation, enrichInBackground updates silently.
     loadUser();
     enrichInBackground();
+
+    const authSub = DeviceEventEmitter.addListener('UNAUTHORIZED_SESSION', () => {
+      delete api.defaults.headers.common['Authorization'];
+      setUser(null);
+      setHostels([]);
+    });
+
+    return () => {
+      authSub.remove();
+    };
   }, []);
 
   const enrichUserInBackground = async (parsedUser: User) => {
@@ -223,9 +236,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       let userData = body?.user || body?.data?.user || body?.profile;
 
       if (response.status === 200 && token) {
-        api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-
         const isDeveloper = body?.is_developer || userData?.is_developer || userData?.role === 'DEVELOPER';
+        setCachedToken(token, isDeveloper);
+        api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
         let finalUser: User = {
           ...(userData || { email: identifier, user_id: 'unknown' }),
           role: isDeveloper ? 'DEVELOPER' : (userData?.role || 'OWNER'),
@@ -255,7 +268,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
         notificationService.registerForPushNotificationsAsync()
           .then(pushToken => {
-            if (pushToken) notificationService.sendTokenToBackend(pushToken, true).catch(() => {});
+            if (pushToken) notificationService.sendTokenToBackend(pushToken, false).catch(() => {});
           })
           .catch(() => {});
 
@@ -313,7 +326,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
         notificationService.registerForPushNotificationsAsync()
           .then(pushToken => {
-            if (pushToken) notificationService.sendTokenToBackend(pushToken, true).catch(() => {});
+            if (pushToken) notificationService.sendTokenToBackend(pushToken, false).catch(() => {});
           })
           .catch(() => {});
 
@@ -409,7 +422,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         // Push token registration is non-blocking — navigate immediately.
         notificationService.registerForPushNotificationsAsync()
           .then(pushToken => {
-            if (pushToken) notificationService.sendTokenToBackend(pushToken, true).catch(() => {});
+            if (pushToken) notificationService.sendTokenToBackend(pushToken, false).catch(() => {});
           })
           .catch(() => {});
 
@@ -428,19 +441,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   // was no prior logged-in user, which previously left `user` stuck at null
   // with no forward navigation and no visible error after "Create Account".
   const completeTenantRegistration = async (token: string, tenantData: Partial<User>) => {
-    const finalUser: User = { ...tenantData, role: 'TENANT' } as User;
+    const finalUser: User = {
+      ...tenantData,
+      user_id: tenantData.user_id || (tenantData as any).id || (tenantData as any).student_id,
+      role: 'TENANT',
+    } as User;
     api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
     setUser(finalUser);
     await setSecureItem('token', token);
     await AsyncStorage.setItem('token', token);
     await AsyncStorage.setItem('user', JSON.stringify(finalUser));
 
-    try {
-      const pushToken = await notificationService.registerForPushNotificationsAsync();
-      if (pushToken) await notificationService.sendTokenToBackend(pushToken, true);
-    } catch (e) {
-      if (__DEV__) console.error('Notification setup failed:', e);
-    }
+    // Push token registration is non-blocking — navigate immediately without hanging
+    notificationService.registerForPushNotificationsAsync()
+      .then(pushToken => {
+        if (pushToken) notificationService.sendTokenToBackend(pushToken, false).catch(() => {});
+      })
+      .catch(() => {});
   };
 
   const disconnectHostel = async () => {
@@ -472,11 +489,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setLogoutLoading(true);
     try {
       delete api.defaults.headers.common['Authorization'];
+      setCachedToken(null, false);
+      setCachedToken(null, true);
       notificationService._lastRegisteredToken = null;
       setUser(null);
       setHostels([]);
+      setConnectedHostel(null);
       await removeSecureItem('token');
-      await AsyncStorage.multiRemove(['token', 'user']);
+      await removeSecureItem('developer_token');
+      await AsyncStorage.multiRemove(['token', 'user', 'developer_token', 'connected_hostel']);
+
+      // Force-reset navigation to RoleSelect so the user cleanly exits back to the entry screen
+      if (navigationRef.isReady()) {
+        (navigationRef as any).reset({
+          index: 0,
+          routes: [{ name: 'RoleSelect' }],
+        });
+      }
     } catch (e) {
       console.error('Error signing out', e);
     } finally {

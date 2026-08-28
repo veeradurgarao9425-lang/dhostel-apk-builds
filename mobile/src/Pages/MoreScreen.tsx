@@ -288,7 +288,7 @@ export default function MoreScreen({ hideHeader = false }: MoreScreenProps) {
             ],
         },
         {
-            groupTitle: 'Property & Mess',
+            groupTitle: 'Property & Hostels',
             items: [
                 {
                     label: t('more.rooms'),
@@ -307,14 +307,6 @@ export default function MoreScreen({ hideHeader = false }: MoreScreenProps) {
                     iconBg: '#DCFCE7',
                     route: 'Hostels',
                     badgeCount: stats?.hostelsCount || 0,
-                },
-                {
-                    label: 'Mess Menu',
-                    subtitle: 'Manage weekly food schedule',
-                    icon: 'restaurant-outline',
-                    iconColor: '#059669',
-                    iconBg: '#D1FAE5',
-                    route: 'MessMenuManagement',
                 },
             ],
         },
@@ -647,6 +639,42 @@ export default function MoreScreen({ hideHeader = false }: MoreScreenProps) {
                         </View>
                     </View>
                 ))}
+
+                {/* App Feedback & Support Banner */}
+                <TouchableOpacity
+                    style={{
+                        marginVertical: 14,
+                        borderRadius: 18,
+                        overflow: 'hidden',
+                        shadowColor: '#7C3AED',
+                        shadowOffset: { width: 0, height: 4 },
+                        shadowOpacity: 0.2,
+                        shadowRadius: 8,
+                        elevation: 4,
+                    }}
+                    onPress={() => navigation.navigate('Feedback')}
+                    activeOpacity={0.85}
+                >
+                    <LinearGradient
+                        colors={['#7C3AED', '#5F2EEA']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={{ padding: 16, flexDirection: 'row', alignItems: 'center', gap: 12 }}
+                    >
+                        <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' }}>
+                            <Ionicons name="chatbox-ellipses" size={22} color="#FFFFFF" />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                            <Text style={{ fontSize: 15, fontWeight: '800', color: '#FFFFFF' }}>
+                                App Feedback & Support
+                            </Text>
+                            <Text style={{ fontSize: 12, color: 'rgba(255,255,255,0.88)', marginTop: 2 }}>
+                                Tell us what we need to improve or report an issue.
+                            </Text>
+                        </View>
+                        <Ionicons name="chevron-forward" size={18} color="#FFFFFF" />
+                    </LinearGradient>
+                </TouchableOpacity>
 
                 {/* Logout Button */}
                 <TouchableOpacity

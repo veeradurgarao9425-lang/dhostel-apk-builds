@@ -223,12 +223,24 @@ export const getExpenses = async (req: AuthRequest, res: Response) => {
       try {
         let wq = db('staff_payments as sp')
           .leftJoin('staff as st', 'sp.staff_id', 'st.staff_id')
-          .select('sp.payment_id', 'sp.hostel_id', 'sp.amount', 'sp.payment_date', 'sp.note', 'st.full_name');
+          .select(
+            'sp.payment_id',
+            'sp.staff_id',
+            'sp.hostel_id',
+            'sp.amount',
+            'sp.payment_date',
+            'sp.note',
+            'sp.mode',
+            'sp.payment_type',
+            'sp.for_month',
+            'st.full_name',
+            'st.role'
+          );
         if (resolvedHostelId) wq = wq.where('sp.hostel_id', resolvedHostelId);
         if (startDate && endDate) wq = wq.whereBetween('sp.payment_date', [startDate, endDate]);
         if (search) {
           const term = `%${search}%`;
-          wq = wq.where(function () { this.where('st.full_name', 'like', term).orWhere('sp.note', 'like', term); });
+          wq = wq.where(function () { this.where('st.full_name', 'like', term).orWhere('sp.note', 'like', term).orWhere('st.role', 'like', term); });
         }
         const wages = await wq.orderBy('sp.payment_date', 'desc');
         wageRows = wages.map((w: any) => ({
@@ -237,9 +249,12 @@ export const getExpenses = async (req: AuthRequest, res: Response) => {
           category_name: 'Staff Wages',
           expense_date: w.payment_date,
           amount: w.amount,
-          payment_mode: 'Cash',
-          vendor_name: w.full_name || 'Staff',
-          description: w.note || 'Wage payment',
+          payment_mode: w.mode || 'Cash',
+          vendor_name: w.full_name ? `${w.full_name}${w.role ? ` (${w.role})` : ''}` : 'Staff Member',
+          staff_name: w.full_name || 'Staff Member',
+          staff_role: w.role || 'Staff',
+          staff_id: w.staff_id,
+          description: w.note || `${w.payment_type || 'Salary payment'}${w.for_month ? ` for ${w.for_month}` : ''} to ${w.full_name || 'staff'}`,
           is_wage: true,
         }));
         totalCount += wageRows.length;
@@ -282,11 +297,17 @@ export const getExpenseById = async (req: AuthRequest, res: Response) => {
         .leftJoin('hostel_master as h', 'sp.hostel_id', 'h.hostel_id')
         .select(
           'sp.payment_id',
+          'sp.staff_id',
           'sp.hostel_id',
           'sp.amount',
           'sp.payment_date as expense_date',
           'sp.note as description',
-          'st.full_name as vendor_name',
+          'sp.mode as payment_mode',
+          'sp.payment_type',
+          'sp.for_month',
+          'st.full_name',
+          'st.role as staff_role',
+          'st.phone as staff_phone',
           'h.hostel_name'
         )
         .where('sp.payment_id', paymentId)
@@ -311,9 +332,13 @@ export const getExpenseById = async (req: AuthRequest, res: Response) => {
           category_name: 'Staff Wages',
           expense_date: wage.expense_date,
           amount: wage.amount,
-          payment_mode: 'Cash',
-          vendor_name: wage.vendor_name || 'Staff',
-          description: wage.description || 'Wage payment',
+          payment_mode: wage.payment_mode || 'Cash',
+          vendor_name: wage.full_name ? `${wage.full_name}${wage.staff_role ? ` (${wage.staff_role})` : ''}` : 'Staff Member',
+          staff_name: wage.full_name || 'Staff Member',
+          staff_role: wage.staff_role || 'Staff',
+          staff_phone: wage.staff_phone || null,
+          staff_id: wage.staff_id,
+          description: wage.description || `${wage.payment_type || 'Salary payment'}${wage.for_month ? ` for ${wage.for_month}` : ''} to ${wage.full_name || 'staff'}`,
           is_wage: true,
           hostel_name: wage.hostel_name
         }
@@ -372,17 +397,15 @@ export const createExpense = async (req: AuthRequest, res: Response) => {
     } = req.body;
 
     let parsedCategoryId = category_id ? parseInt(category_id, 10) : null;
-    if (!parsedCategoryId || isNaN(parsedCategoryId)) {
-      // Fallback: lookup default category
-      const defCat = await db('expense_categories').first();
+    if (parsedCategoryId) {
+      const cat = await db('expense_categories').where({ category_id: parsedCategoryId }).first().catch(() => null);
+      if (!cat) {
+        const defCat = await db('expense_categories').first().catch(() => null);
+        parsedCategoryId = defCat ? defCat.category_id : null;
+      }
+    } else {
+      const defCat = await db('expense_categories').first().catch(() => null);
       parsedCategoryId = defCat ? defCat.category_id : null;
-    }
-
-    if (!parsedCategoryId) {
-      return res.status(400).json({
-        success: false,
-        error: 'Please select a valid expense category'
-      });
     }
 
     if (!expense_date) {
@@ -400,15 +423,20 @@ export const createExpense = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    const parsedPaymentModeId = payment_mode_id ? parseInt(payment_mode_id, 10) || 1 : 1;
+    let parsedPaymentModeId = payment_mode_id ? parseInt(payment_mode_id, 10) : 1;
+    try {
+      const mode = await db('payment_modes').where({ payment_mode_id: parsedPaymentModeId }).first().catch(() => null);
+      if (!mode) {
+        const defMode = await db('payment_modes').first().catch(() => null);
+        parsedPaymentModeId = defMode ? defMode.payment_mode_id : 1;
+      }
+    } catch (_) {
+      parsedPaymentModeId = 1;
+    }
 
-    // Determine hostel_id based on user role. Owner always uses their own
-    // hostel; Admin/Super Admin must specify hostel_id explicitly (never
-    // silently defaults to the admin's own possibly-stale hostel_id).
+    // Determine hostel_id based on user role.
     let hostel_id: number;
-
     if (user?.role_id === 2) {
-      // Hostel owner - use hostel from JWT
       if (!user.hostel_id) {
         return res.status(403).json({
           success: false,
@@ -417,7 +445,6 @@ export const createExpense = async (req: AuthRequest, res: Response) => {
       }
       hostel_id = user.hostel_id;
     } else {
-      // Admin - require hostel_id in request
       hostel_id = parseInt(req.body.hostel_id);
       if (!hostel_id) {
         return res.status(400).json({
@@ -428,8 +455,11 @@ export const createExpense = async (req: AuthRequest, res: Response) => {
     }
 
     let attachment_url = req.body.attachment_url || null;
+    if (attachment_url && attachment_url.length > 500 && !attachment_url.startsWith('http')) {
+      attachment_url = null;
+    }
     if (req.file) {
-      attachment_url = await processFileUpload(req.file, 'expenses');
+      attachment_url = await processFileUpload(req.file, 'expenses').catch(() => null);
     }
 
     const expenseInsertData: any = {
@@ -438,11 +468,11 @@ export const createExpense = async (req: AuthRequest, res: Response) => {
       expense_date,
       amount: parsedAmount,
       payment_mode_id: parsedPaymentModeId,
-      vendor_name,
-      description,
-      bill_number,
+      vendor_name: vendor_name || null,
+      description: description || null,
+      bill_number: bill_number || null,
       attachment_url,
-      created_by: req.user?.user_id,
+      created_by: req.user?.user_id || null,
       created_at: new Date()
     };
 
@@ -463,11 +493,15 @@ export const createExpense = async (req: AuthRequest, res: Response) => {
       message: 'Expense recorded successfully',
       data: { expense_id, attachment_url }
     });
-  } catch (error) {
-    console.error('Create expense error:', error);
+  } catch (error: any) {
+    console.error('Create expense error:', {
+      message: error?.message,
+      sqlMessage: error?.sqlMessage,
+      code: error?.code,
+    });
     res.status(500).json({
       success: false,
-      error: 'Failed to record expense'
+      error: error?.sqlMessage || error?.message || 'Failed to record expense'
     });
   }
 };

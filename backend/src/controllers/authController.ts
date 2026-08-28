@@ -139,31 +139,7 @@ export const authController = {
         hostel_id: activeHostelId, // Include hostel_id in JWT token
       });
 
-      // Send login intimation email to user (non-blocking)
-      const ipAddress = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.socket?.remoteAddress || '';
-      sendLoginAlertEmail({
-        recipientEmail: user.email,
-        recipientName: user.full_name,
-        userType: user.role_name || (user.role_id === 2 ? 'Hostel Owner' : 'Student/Tenant'),
-        hostelName: user.hostel_name,
-        ipAddress: ipAddress.replace('::ffff:', ''),
-      }).catch((e: any) => console.warn('Login alert email dispatch warning:', e));
-
-      // Dispatch admin sign-in notification (non-blocking)
-      try {
-        notifyUserSignIn({
-          userId: user.user_id,
-          fullName: user.full_name,
-          email: user.email,
-          role: user.role_name || (user.role_id === 2 ? 'Hostel Owner' : 'Student/Tenant'),
-          hostelName: user.hostel_name,
-          ipAddress: ipAddress.replace('::ffff:', ''),
-        });
-      } catch (notifErr) {
-        console.warn('Sign-in notification warning:', notifErr);
-      }
-
-      // Return response immediately
+      // Return response immediately without sending emails on standard login
       return res.json({
         success: true,
         data: {
@@ -1397,6 +1373,32 @@ export const authController = {
       const today = new Date();
       const admission_date = today.toISOString().split('T')[0];
 
+      // Resolve id_proof_type (foreign key to id_proof_types)
+      let resolvedIdProofTypeId: number | null = null;
+      if (id_proof_type) {
+        if (!isNaN(Number(id_proof_type))) {
+          resolvedIdProofTypeId = Number(id_proof_type);
+        } else {
+          const typeStr = String(id_proof_type).toLowerCase().trim();
+          const match = await db('id_proof_types')
+            .whereRaw('LOWER(name) = ? OR LOWER(code) = ?', [typeStr, typeStr])
+            .first();
+          if (match) {
+            resolvedIdProofTypeId = match.id;
+          } else if (typeStr.includes('aadhar') || typeStr.includes('aadhaar')) {
+            const aadhar = await db('id_proof_types').whereRaw('LOWER(name) LIKE ?', ['%aadhar%']).first();
+            if (aadhar) resolvedIdProofTypeId = aadhar.id;
+          } else if (typeStr.includes('pan')) {
+            const pan = await db('id_proof_types').whereRaw('LOWER(name) LIKE ?', ['%pan%']).first();
+            if (pan) resolvedIdProofTypeId = pan.id;
+          }
+        }
+      }
+      if (!resolvedIdProofTypeId) {
+        const defaultAadhar = await db('id_proof_types').whereRaw('LOWER(name) LIKE ?', ['%aadhar%']).first();
+        if (defaultAadhar) resolvedIdProofTypeId = defaultAadhar.id;
+      }
+
       // Insert into students with status = 3 (QR Register / Pending)
       const [student_id] = await db('students').insert({
         hostel_id,
@@ -1408,11 +1410,15 @@ export const authController = {
         guardian_name: guardian_name || null,
         guardian_phone: guardian_phone || null,
         guardian_relation: guardian_relation || null,
-        current_address: current_address || null,
+        present_working_address: req.body.present_working_address || current_address || null,
+        current_address: current_address || req.body.present_working_address || null,
         permanent_address: permanent_address || null,
+        id_proof_type: resolvedIdProofTypeId,
         id_proof_number: id_proof_number || null,
+        id_proof_document_url: idProofFrontUrl,
         id_proof_front_url: idProofFrontUrl,
         id_proof_back_url: idProofBackUrl,
+        id_proof_status: (idProofFrontUrl ? 1 : 0),
         profile_photo_url: profilePhotoUrl,
         date_of_birth: date_of_birth || null,
         admission_date,

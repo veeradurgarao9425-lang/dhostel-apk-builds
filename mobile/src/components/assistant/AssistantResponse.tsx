@@ -1655,10 +1655,10 @@ const AppInfoCardBlock = ({ topic }: { topic: 'owner' | 'goal' | 'usage' }) => {
 
           <TouchableOpacity
             style={[st.actionBtn, { backgroundColor: '#F0FDF4', borderColor: '#BBF7D0', borderWidth: 1, justifyContent: 'center' }]}
-            onPress={() => Linking.openURL('mailto:veeradurgarao840@gmail.com')}
+            onPress={() => Linking.openURL('mailto:hostixhelp@gmail.com')}
           >
             <Ionicons name="mail-outline" size={14} color="#16A34A" style={{ marginRight: 6 }} />
-            <Text style={[st.actionBtnText, { color: '#15803D' }]}>Email: veeradurgarao840@gmail.com</Text>
+            <Text style={[st.actionBtnText, { color: '#15803D' }]}>Email: hostixhelp@gmail.com</Text>
           </TouchableOpacity>
         </View>
       </View>

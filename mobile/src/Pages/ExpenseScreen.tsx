@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { Plus, Search, Calendar, ChevronDown, Tag, X, Edit3, Trash2 } from 'lucide-react-native';
+import { Plus, Search, Calendar, ChevronDown, Tag, X, Edit3, Trash2, User } from 'lucide-react-native';
 import { AppHeader } from '../components/AppHeader';
 import { EmptyState } from '../components/ui/EmptyState';
 import { ErrorState } from '../components/ui/ErrorState';
@@ -348,25 +348,38 @@ export const ExpenseScreen = ({ navigation }: any) => {
                                 key={`exp-${expense.expense_id}`}
                                 style={[styles.premiumCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : 'transparent', borderWidth: isDark ? 1 : 0 }]}
                                 onPress={() => {
-                                    if (expense.is_wage) {
-                                        showToast({ type: 'info', message: 'Manage this from Staff → Payments.' });
-                                        return;
-                                    }
                                     navigation.navigate('ExpenseDetails', { expense });
                                 }}
                                 activeOpacity={0.9}
                             >
-                                <View style={[styles.cardAccentLine, { backgroundColor: color }]} />
+                                <View style={[styles.cardAccentLine, { backgroundColor: expense.is_wage ? '#7C3AED' : color }]} />
                                 <View style={styles.cardInner}>
                                     <View style={styles.cardHeaderRow}>
-                                        <View style={[styles.cardAvatarBg, { backgroundColor: isDark ? color + '25' : color + '15' }]}>
-                                            <Tag size={18} color={color} />
+                                        <View style={[styles.cardAvatarBg, { backgroundColor: expense.is_wage ? (isDark ? '#312E81' : '#EDE9FE') : (isDark ? color + '25' : color + '15') }]}>
+                                            {expense.is_wage ? (
+                                                <User size={18} color="#7C3AED" />
+                                            ) : (
+                                                <Tag size={18} color={color} />
+                                            )}
                                         </View>
                                         <View style={styles.cardNameBlock}>
-                                            <Text style={[styles.cardNameText, { color: theme.textPrimary }]} numberOfLines={1}>{expense.category_name}</Text>
-                                            {expense.vendor_name && (
-                                                <View style={[styles.roomBadge, { backgroundColor: isDark ? color + '25' : color + '15' }]}>
-                                                    <Text style={[styles.roomBadgeText, { color }]}>{expense.vendor_name}</Text>
+                                            <Text style={[styles.cardNameText, { color: theme.textPrimary }]} numberOfLines={1}>
+                                                {expense.category_name}
+                                            </Text>
+                                            {(expense.vendor_name || expense.staff_name) && (
+                                                <View style={[
+                                                    styles.roomBadge, 
+                                                    { 
+                                                        backgroundColor: expense.is_wage ? (isDark ? '#312E81' : '#EDE9FE') : (isDark ? color + '25' : color + '15'),
+                                                        flexDirection: 'row',
+                                                        alignItems: 'center',
+                                                        gap: 4
+                                                    }
+                                                ]}>
+                                                    <User size={10} color={expense.is_wage ? '#7C3AED' : color} />
+                                                    <Text style={[styles.roomBadgeText, { color: expense.is_wage ? '#7C3AED' : color }]}>
+                                                        {expense.is_wage ? `Staff: ${expense.staff_name || expense.vendor_name}` : `Paid to: ${expense.vendor_name}`}
+                                                    </Text>
                                                 </View>
                                             )}
                                         </View>
@@ -396,9 +409,11 @@ export const ExpenseScreen = ({ navigation }: any) => {
                                             </View>
                                         </View>
                                         {expense.is_wage ? (
-                                            <Text style={{ fontSize: 10, fontWeight: '700', color: '#7C3AED' }}>
-                                                Staff Wage · manage in Staff
-                                            </Text>
+                                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                                                <Text style={{ fontSize: 11, fontWeight: '700', color: '#7C3AED' }}>
+                                                    View Details →
+                                                </Text>
+                                            </View>
                                         ) : (
                                             <View style={styles.cardActions}>
                                                 <TouchableOpacity
@@ -467,7 +482,7 @@ export const ExpenseScreen = ({ navigation }: any) => {
                     styles.fab,
                     {
                         backgroundColor: theme.primary,
-                        bottom: Math.max(insets.bottom + 85, 100),
+                        bottom: 78,
                     },
                 ]}
                 onPress={() => navigation.navigate('AddExpense')}

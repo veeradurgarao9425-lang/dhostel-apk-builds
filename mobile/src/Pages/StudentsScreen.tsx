@@ -544,8 +544,7 @@ export default function StudentsScreen({ navigation, route }: any) {
             if (res?.data?.success && res.data.data) {
                 setCounts(res.data.data);
             }
-            // Fallback removed because running 6 simultaneous DB queries 
-            // crashes the Render free tier backend connection pool.
+            // Optimizing database connection pool efficiency
         } catch (e) {
             if (__DEV__) console.log('Error fetching counts', e);
         }

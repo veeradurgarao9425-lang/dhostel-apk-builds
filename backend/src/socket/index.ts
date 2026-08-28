@@ -33,7 +33,7 @@ export const setupSocket = (httpServer: HttpServer) => {
           user_id: 9999,
           role_id: 3,
           room_id: 1, // Mock room ID
-          email: 'veeradurgarao840@gmail.com'
+          email: 'hostixhelp@gmail.com'
         };
         return next();
       }

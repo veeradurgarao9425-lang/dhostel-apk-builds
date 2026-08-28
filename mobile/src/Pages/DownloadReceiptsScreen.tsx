@@ -144,7 +144,7 @@ export default function DownloadReceiptsScreen() {
                 return;
             }
 
-            const baseURL = (api.defaults.baseURL || 'https://api.143-244-131-69.sslip.io/api').replace(/\/$/, '');
+            const baseURL = (api.defaults.baseURL || 'https://dark-dew-bf62.veeradurgarao840.workers.dev/api').replace(/\/$/, '');
             const exportUrl = `${baseURL}/income/export?startDate=${startStr}&endDate=${endStr}&token=${encodeURIComponent(token)}&all=true`;
 
             const filename = `receipts_report_${startStr}_to_${endStr}.xlsx`;
@@ -427,7 +427,7 @@ export default function DownloadReceiptsScreen() {
                             <ActivityIndicator color="#FFF" size="small" />
                         ) : (
                             <>
-                                <Text style={s.exportConfirmText}>Download Excel (All Data)</Text>
+                                <Text style={s.exportConfirmText}>Export Master Receipts Sheet (.xlsx)</Text>
                                 <Download size={18} color="#FFF" />
                             </>
                         )}

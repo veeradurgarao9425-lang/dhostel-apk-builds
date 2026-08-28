@@ -8,6 +8,7 @@ import {
   StatusBar,
   Dimensions,
   RefreshControl,
+  Image,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import {
@@ -110,6 +111,11 @@ export default function PendingApprovalScreen({ navigation }: any) {
               {isRejected ? 'Application Not Approved' : 'Application Under Review'}
             </Text>
           </View>
+          <Image
+            source={require('../../../assets/house_hourglass_3d.png')}
+            style={styles.buildingImage}
+            resizeMode="contain"
+          />
         </View>
 
         {/* Title & subtitle */}
@@ -287,6 +293,12 @@ const styles = StyleSheet.create({
   illustrationCard: {
     alignItems: "center",
     paddingVertical: 20,
+  },
+  buildingImage: {
+    width: 170,
+    height: 145,
+    marginTop: 20,
+    marginBottom: 6,
   },
 
   sheet: { flex: 1 },

@@ -346,7 +346,7 @@ export default function ReportsScreen() {
             const token = (await getSecureItem('token')) || (await AsyncStorage.getItem('token'));
             if (!token) { showError('Authentication token not found. Please log in again.'); return; }
 
-            const base = (api.defaults.baseURL || 'https://api.143-244-131-69.sslip.io/api').replace(/\/$/, '');
+            const base = (api.defaults.baseURL || 'https://dark-dew-bf62.veeradurgarao840.workers.dev/api').replace(/\/$/, '');
             let startStr = '';
             let endStr = '';
 
@@ -606,11 +606,65 @@ export default function ReportsScreen() {
                             {/* ── TAB CONTENT: All Reports ── */}
                             {activeTab === 'reports' && (
                                 <View style={{ gap: 14 }}>
-                                    {/* Download Full Report Button */}
-                                    <TouchableOpacity style={R.mainDlBtn} onPress={() => setDownloadSelectModal(true)} activeOpacity={0.8}>
-                                        <Ionicons name="download-outline" size={20} color="#4F46E5" />
-                                        <Text style={R.mainDlBtnTxt}>Download Full Report (Excel)</Text>
-                                    </TouchableOpacity>
+                                    {/* Premium Export Master Statement Card */}
+                                    <View style={{
+                                        backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                                        borderRadius: 20,
+                                        padding: 16,
+                                        borderWidth: 1.5,
+                                        borderColor: isDark ? '#334155' : '#E2E8F0',
+                                        shadowColor: '#000',
+                                        shadowOffset: { width: 0, height: 4 },
+                                        shadowOpacity: 0.05,
+                                        shadowRadius: 10,
+                                        elevation: 3,
+                                    }}>
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+                                            <View style={{
+                                                width: 44,
+                                                height: 44,
+                                                borderRadius: 14,
+                                                backgroundColor: isDark ? '#312E81' : '#EDE9FE',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                            }}>
+                                                <Ionicons name="document-text-outline" size={22} color="#7C3AED" />
+                                            </View>
+                                            <View style={{ flex: 1 }}>
+                                                <Text style={{ fontSize: 15.5, fontWeight: '800', color: isDark ? '#F1F5F9' : '#0F172A' }}>
+                                                    Master Audit Statement
+                                                </Text>
+                                                <Text style={{ fontSize: 12, color: isDark ? '#94A3B8' : '#64748B', marginTop: 2 }}>
+                                                    Complete compiled financial ledger & room breakdown
+                                                </Text>
+                                            </View>
+                                        </View>
+
+                                        <TouchableOpacity
+                                            style={{
+                                                backgroundColor: '#7C3AED',
+                                                paddingVertical: 12,
+                                                paddingHorizontal: 16,
+                                                borderRadius: 14,
+                                                flexDirection: 'row',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                gap: 8,
+                                                shadowColor: '#7C3AED',
+                                                shadowOffset: { width: 0, height: 4 },
+                                                shadowOpacity: 0.25,
+                                                shadowRadius: 8,
+                                                elevation: 4,
+                                            }}
+                                            onPress={() => setDownloadSelectModal(true)}
+                                            activeOpacity={0.85}
+                                        >
+                                            <Ionicons name="cloud-download-outline" size={18} color="#FFFFFF" />
+                                            <Text style={{ color: '#FFFFFF', fontSize: 14, fontWeight: '800' }}>
+                                                Export Master Statement (.xlsx)
+                                            </Text>
+                                        </TouchableOpacity>
+                                    </View>
 
                                     <View style={R.secRow}>
                                         <Text style={[R.secTitle, { color: isDark ? '#F1F5F9' : '#0F172A' }]}>Available Sheets</Text>

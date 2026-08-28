@@ -104,7 +104,31 @@ export const AssistantGate: React.FC = () => {
     return null;
   }
 
-  // Hide only on forms, detail/receipt views, and auth screens
+  // ── Bulletproof Check: Hide on ALL screens with a Plus (+) Action button ──
+  const hasPlusButton = (routeName: string | null): boolean => {
+    if (!routeName) return false;
+    const lower = routeName.toLowerCase();
+    return (
+      lower.includes('student') ||
+      lower.includes('room') ||
+      lower.includes('expense') ||
+      lower.includes('staff') ||
+      lower.includes('guest') ||
+      lower.includes('notice') ||
+      lower.includes('mess') ||
+      lower.includes('prebooking') ||
+      lower.includes('reminder') ||
+      lower.includes('bulk') ||
+      lower.includes('add') ||
+      lower.includes('edit')
+    );
+  };
+
+  if (hasPlusButton(currentRoute)) {
+    return null;
+  }
+
+  // Hide on forms, detail/receipt views, and auth screens
   const isFormOrDetail = (
     EXPLICITLY_HIDDEN_ROUTES.includes(currentRoute) ||
     currentRoute.startsWith('Add') ||
@@ -118,7 +142,7 @@ export const AssistantGate: React.FC = () => {
     return null;
   }
 
-  // Render on all list & dashboard screens for owners
+  // Render ONLY on pages that do NOT have a Plus button (Home, Finance/Overview, Dues, More, Reports, etc.)
   return <OwnerAssistant currentRoute={currentRoute} />;
 };
 

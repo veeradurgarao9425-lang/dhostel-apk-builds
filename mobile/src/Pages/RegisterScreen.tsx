@@ -605,7 +605,7 @@ export default function RegisterScreen({ navigation }: any) {
                 </Field>
 
                 {/* Joining Fee */}
-                <Field label="Joining Fee" error={getFieldError('admissionFee', admissionFee)}>
+                <Field label="Joining Fee (Optional)" optional error={getFieldError('admissionFee', admissionFee)}>
                     <Ionicons name="card-outline" size={18} color="#7C3AED" style={styles.icon} />
                     <TextInput
                         style={styles.input}
@@ -619,7 +619,7 @@ export default function RegisterScreen({ navigation }: any) {
                 </Field>
 
                 {/* Refundable Deposit */}
-                <Field label="Refundable Deposit (Refunded after deducting maintenance charges)" error={getFieldError('defaultDeposit', defaultDeposit)}>
+                <Field label="Refundable Deposit (Optional)" optional error={getFieldError('defaultDeposit', defaultDeposit)}>
                     <Ionicons name="cash-outline" size={18} color="#7C3AED" style={styles.icon} />
                     <TextInput
                         style={styles.input}
@@ -710,10 +710,12 @@ export default function RegisterScreen({ navigation }: any) {
 }
 
 // Small labelled input wrapper to keep the form consistent
-const Field = ({ label, error, rightAction, containerStyle, children }: { label: string; error?: string; rightAction?: React.ReactNode; containerStyle?: any; children: React.ReactNode }) => (
+const Field = ({ label, error, rightAction, containerStyle, optional, children }: { label: string; error?: string; rightAction?: React.ReactNode; containerStyle?: any; optional?: boolean; children: React.ReactNode }) => (
     <View style={styles.inputGroup}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 8 }}>
-            <Text style={[styles.label, { marginBottom: 0 }]}>{label} <Text style={{ color: '#EF4444' }}>*</Text></Text>
+            <Text style={[styles.label, { marginBottom: 0 }]}>
+                {label} {!optional && <Text style={{ color: '#EF4444' }}>*</Text>}
+            </Text>
             {rightAction}
         </View>
         <View style={[styles.inputContainer, error ? { borderColor: '#EF4444' } : null, containerStyle]}>

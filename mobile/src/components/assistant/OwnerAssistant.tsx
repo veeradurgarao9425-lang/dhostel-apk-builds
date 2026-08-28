@@ -2175,7 +2175,7 @@ const s = StyleSheet.create({
   /* FAB */
   fab: {
     position: 'absolute',
-    bottom: 188,
+    bottom: 78,
     right: 20,
     width: 56, height: 56, borderRadius: 28,
     overflow: 'hidden',

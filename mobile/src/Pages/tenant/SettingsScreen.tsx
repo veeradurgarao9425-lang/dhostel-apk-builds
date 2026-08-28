@@ -132,10 +132,16 @@ export default function SettingsScreen({ navigation }: any) {
           />
         </View>
 
+        {/* ── Support & Feedback ────────────────────────────────────────── */}
+        <SectionLabel label="Support & Feedback" />
+        <View style={styles.card}>
+          <ChevronRow label="Send App Feedback & Report Issue" onPress={() => navigation.navigate('Feedback')} isLast />
+        </View>
+
         {/* ── About ────────────────────────────────────────────────────────── */}
         <SectionLabel label="About" />
         <View style={styles.card}>
-          <ChevronRow label="App Version" value="1.0.0" isLast />
+          <ChevronRow label="App Version" value="1.0.4" isLast />
         </View>
       </ScrollView>
     </SafeAreaView>

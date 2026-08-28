@@ -798,7 +798,9 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
 
     useEffect(() => {
         if (isEdit && student) {
-            setFormData({
+            const rawIdProof = student.id_proof_type_id || student.id_proof_type || student.id_proof_type_name || '';
+            setFormData(prev => ({
+                ...prev,
                 first_name: student.first_name || '',
                 last_name: student.last_name || '',
                 gender: student.gender || 'Male',
@@ -806,15 +808,15 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
                 email: student.email || '',
                 date_of_birth: student.date_of_birth ? new Date(student.date_of_birth).toISOString().split('T')[0] : '',
                 id_proof_number: student.id_proof_number || '',
-                id_proof_type_id: student.id_proof_type ? student.id_proof_type.toString() : '',
+                id_proof_type_id: rawIdProof ? rawIdProof.toString() : prev.id_proof_type_id,
                 guardian_name: student.guardian_name || '',
                 guardian_phone: student.guardian_phone && student.guardian_phone !== '0000000000' ? student.guardian_phone.replace(/\D/g, '').slice(0, 10) : '',
                 guardian_relation_id: student.guardian_relation ? student.guardian_relation.toString() : '',
-                admission_date: student.admission_date ? new Date(student.admission_date).toISOString().split('T')[0] : '',
+                admission_date: student.admission_date ? new Date(student.admission_date).toISOString().split('T')[0] : prev.admission_date,
                 admission_fee: (student.admission_fee > 0 || student.admission_status === 1) ? student.admission_fee.toString() : '',
                 admission_status: student.admission_status === 1 ? 'Paid' : 'Unpaid',
-                permanent_address: student.permanent_address || '',
-                present_working_address: student.present_working_address || '',
+                permanent_address: student.permanent_address || student.permanentAddress || '',
+                present_working_address: student.present_working_address || student.current_address || student.presentAddress || student.currentAddress || student.permanent_address || '',
                 room_id: student.room_id ? student.room_id.toString() : '',
                 bed_id: student.bed_id ? student.bed_id.toString() : '',
                 floor_number: student.floor_number ? student.floor_number.toString() : '',
@@ -823,16 +825,16 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
                 is_old_student: student.is_old_student === 1,
                 fee_plan: student.fee_plan ? student.fee_plan.toString() : '1',
                 plan_amount: student.plan_amount ? student.plan_amount.toString() : '',
-            });
-            if (student.photo || student.profile_photo_url || student.profile_photo) {
-                setProfilePhoto(student.photo || student.profile_photo_url || student.profile_photo);
-            }
-            if (student.id_proof_front_url || student.id_proof_document_url || student.id_proof_front) {
-                setAadhaarFront(student.id_proof_front_url || student.id_proof_document_url || student.id_proof_front);
-            }
-            if (student.id_proof_back_url || student.id_proof_back) {
-                setAadhaarBack(student.id_proof_back_url || student.id_proof_back);
-            }
+            }));
+
+            const photo = student.photo || student.profile_photo_url || student.profile_photo || student.avatar;
+            if (photo) setProfilePhoto(photo);
+
+            const front = student.id_proof_front_url || student.id_proof_document_url || student.id_proof_front || student.aadhaar_front || student.aadhaar_front_url;
+            if (front) setAadhaarFront(front);
+
+            const back = student.id_proof_back_url || student.id_proof_back || student.aadhaar_back || student.aadhaar_back_url;
+            if (back) setAadhaarBack(back);
         }
     }, [isEdit, student]);
 
@@ -844,7 +846,37 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
                 api.get(`/rooms?hostelId=${user?.hostel_id}&limit=200`),
                 user?.hostel_id ? api.get(`/hostels/${user.hostel_id}`) : Promise.resolve(null),
             ]);
-            if (proofRes.data.success) setIdProofTypes(proofRes.data.data);
+
+            let fetchedProofs: any[] = [];
+            if (proofRes.data.success) {
+                fetchedProofs = proofRes.data.data;
+                setIdProofTypes(fetchedProofs);
+
+                // If editing a student, ensure ID Proof Type is matched to master types
+                if (isEdit && student) {
+                    const currentProofVal = student.id_proof_type_id || student.id_proof_type || student.id_proof_type_name;
+                    let matchedId = '';
+                    if (currentProofVal) {
+                        const byId = fetchedProofs.find((p: any) => p.id?.toString() === currentProofVal.toString());
+                        if (byId) {
+                            matchedId = byId.id.toString();
+                        } else {
+                            const byName = fetchedProofs.find((p: any) => p.name?.toLowerCase() === currentProofVal.toString().toLowerCase() || p.code?.toLowerCase() === currentProofVal.toString().toLowerCase());
+                            if (byName) matchedId = byName.id.toString();
+                        }
+                    }
+                    if (!matchedId) {
+                        // Default to Aadhaar Card if ID proof number exists or front document exists
+                        const aadharProof = fetchedProofs.find((p: any) => p.name?.toLowerCase().includes('aadhar') || p.name?.toLowerCase().includes('aadhaar'));
+                        if (aadharProof && (student.id_proof_number || student.id_proof_front_url || student.id_proof_document_url)) {
+                            matchedId = aadharProof.id.toString();
+                        }
+                    }
+                    if (matchedId) {
+                        setFormData(prev => ({ ...prev, id_proof_type_id: matchedId }));
+                    }
+                }
+            }
             if (relRes.data.success) setRelations(relRes.data.data);
             if (roomsRes.data.success) {
                 const roomsData = roomsRes.data.data;

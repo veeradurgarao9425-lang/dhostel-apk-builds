@@ -25,8 +25,8 @@ const STEPS = [
     {
         key: 'room',
         title: 'Add Rooms & Floors',
-        subtitle: 'Set up room numbers, floor capacity, and sharing types',
-        route: 'AddRoom',
+        subtitle: 'Set up room numbers, floors, and single or bulk rooms',
+        route: 'BulkRoomSetup',
     },
     {
         key: 'tenant',

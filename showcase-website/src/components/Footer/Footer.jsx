@@ -26,7 +26,7 @@ const SECTIONS = [
       { href: '#developer', label: 'About Me' },
       { href: 'https://github.com/Durgarao9425', label: 'GitHub ↗', external: true },
       { href: 'https://www.linkedin.com/in/veeradurgarao-goriparthi-379974237', label: 'LinkedIn ↗', external: true },
-      { href: 'mailto:veeradurgarao840@gmail.com', label: 'Email ↗', external: true },
+      { href: 'mailto:hostixhelp@gmail.com', label: 'Email ↗', external: true },
     ],
   },
 ]

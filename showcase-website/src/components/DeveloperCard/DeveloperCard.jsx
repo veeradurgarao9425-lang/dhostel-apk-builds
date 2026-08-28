@@ -29,9 +29,9 @@ export default function DeveloperCard() {
                   <div className={styles.iconBox}>📞</div>
                   <span>+91 6303359425</span>
                 </a>
-                <a href="mailto:veeradurgarao840@gmail.com" className={styles.contactItem} style={{ '--item-color': 'var(--hostix-orange)' }}>
+                <a href="mailto:hostixhelp@gmail.com" className={styles.contactItem} style={{ '--item-color': 'var(--hostix-orange)' }}>
                   <div className={styles.iconBox}>✉️</div>
-                  <span>veeradurgarao840@gmail.com</span>
+                  <span>hostixhelp@gmail.com</span>
                 </a>
                 <a href="https://github.com/Durgarao9425" target="_blank" rel="noopener noreferrer" className={styles.contactItem} style={{ '--item-color': 'var(--ink)' }}>
                   <div className={styles.iconBox}>💻</div>

@@ -422,8 +422,8 @@ export default function RoomsScreen({ navigation, route }: any) {
                             ? t('rooms.noResultsSubtitle', { search })
                             : t('rooms.noRoomsSubtitle')
                     }
-                    actionLabel={search ? undefined : t('rooms.addRoom')}
-                    onAction={search ? undefined : () => navigation.navigate('AddRoom')}
+                    actionLabel={search ? undefined : 'Set Up Rooms & Floors'}
+                    onAction={search ? undefined : () => navigation.navigate('BulkRoomSetup')}
                 />
 
             ) : (
@@ -459,12 +459,38 @@ export default function RoomsScreen({ navigation, route }: any) {
                     )}
                 />
             )}
+
+            {/* Plus FAB */}
+            <TouchableOpacity
+                style={styles.fab}
+                onPress={() => navigation.navigate('BulkRoomSetup')}
+                activeOpacity={0.85}
+            >
+                <Ionicons name="add" size={28} color="#FFF" />
+            </TouchableOpacity>
         </View>
     );
 }
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#F8FAFC' },
+    fab: {
+        position: 'absolute',
+        bottom: 78,
+        right: 20,
+        width: 56,
+        height: 56,
+        borderRadius: 28,
+        backgroundColor: COLORS.primary,
+        justifyContent: 'center',
+        alignItems: 'center',
+        elevation: 12,
+        shadowColor: COLORS.primary,
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.35,
+        shadowRadius: 8,
+        zIndex: 99999,
+    },
     headerActions: { flexDirection: 'row', gap: SPACING.md },
     searchContainer: {
         backgroundColor: 'rgba(255,255,255,0.18)',

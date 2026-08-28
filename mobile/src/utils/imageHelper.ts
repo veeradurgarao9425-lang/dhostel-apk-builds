@@ -1,6 +1,6 @@
 import { Platform } from 'react-native';
 
-const API_FALLBACK_URL = (process.env.EXPO_PUBLIC_API_URL || 'https://api.143-244-131-69.sslip.io/api').replace(/\/api\/?$/, '');
+const API_FALLBACK_URL = (process.env.EXPO_PUBLIC_API_URL || 'https://dark-dew-bf62.veeradurgarao840.workers.dev/api').replace(/\/api\/?$/, '');
 
 /**
  * Resolves any raw photo/document URL to a fully-qualified, renderable URL.

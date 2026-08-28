@@ -538,16 +538,12 @@ export const AddExpenseScreen = ({ route, navigation }: any) => {
 
             const modeName = selectedExpenseMode?.toLowerCase() || '';
             let resolvedPaymentModeId = 1;
-            if (modeName.includes('upi') || modeName.includes('online') || modeName.includes('gpay') || modeName.includes('phonepe') || modeName.includes('paytm')) {
+            if (formData.payment_mode_id && !isNaN(parseInt(formData.payment_mode_id, 10)) && parseInt(formData.payment_mode_id, 10) > 0) {
+                resolvedPaymentModeId = parseInt(formData.payment_mode_id, 10);
+            } else if (modeName.includes('upi') || modeName.includes('online') || modeName.includes('gpay') || modeName.includes('phonepe') || modeName.includes('paytm')) {
                 resolvedPaymentModeId = 2;
             } else if (modeName.includes('bank') || modeName.includes('transfer') || modeName.includes('neft') || modeName.includes('rtgs')) {
                 resolvedPaymentModeId = 3;
-            } else if (modeName.includes('card')) {
-                resolvedPaymentModeId = 4;
-            } else if (modeName.includes('cheque')) {
-                resolvedPaymentModeId = 5;
-            } else if (formData.payment_mode_id && !isNaN(parseInt(formData.payment_mode_id, 10))) {
-                resolvedPaymentModeId = parseInt(formData.payment_mode_id, 10);
             }
 
             const rawCatId = parseInt(formData.category_id, 10);
@@ -558,33 +554,42 @@ export const AddExpenseScreen = ({ route, navigation }: any) => {
             const resolvedAmount = parseFloat(formData.amount) || 0;
             const expenseDateStr = toDbDateStr(expenseDate);
 
-            let attachmentUrlValue: string | null = null;
-            if (attachment) {
-                if (attachment.base64) {
-                    attachmentUrlValue = `data:image/jpeg;base64,${attachment.base64}`;
-                } else if (attachment.uri && (attachment.uri.startsWith('data:') || attachment.uri.startsWith('http'))) {
-                    attachmentUrlValue = attachment.uri;
+            let response;
+            if (attachment?.uri && (attachment.uri.startsWith('file://') || attachment.uri.startsWith('content://'))) {
+                const fd = new FormData();
+                if (user?.hostel_id) fd.append('hostel_id', String(user.hostel_id));
+                fd.append('category_id', String(resolvedCategoryId));
+                fd.append('expense_date', expenseDateStr);
+                fd.append('amount', String(resolvedAmount));
+                fd.append('payment_mode_id', String(resolvedPaymentModeId));
+                fd.append('vendor_name', formData.vendor_name.trim());
+                fd.append('description', desc);
+                fd.append('bill_number', formData.bill_number.trim());
+                appendImageFileToFormData(fd, 'attachment', attachment.uri, 'receipt.jpg');
+
+                response = expense
+                    ? await api.put(`/expenses/${expense.expense_id}`, fd)
+                    : await api.post('/expenses', fd);
+            } else {
+                const payload: Record<string, any> = {
+                    hostel_id: user?.hostel_id ? Number(user.hostel_id) : undefined,
+                    category_id: resolvedCategoryId,
+                    expense_date: expenseDateStr,
+                    amount: resolvedAmount,
+                    payment_mode_id: resolvedPaymentModeId,
+                    vendor_name: formData.vendor_name.trim(),
+                    description: desc,
+                    bill_number: formData.bill_number.trim(),
+                };
+
+                if (attachment?.uri && (attachment.uri.startsWith('http') || attachment.uri.startsWith('data:'))) {
+                    payload.attachment_url = attachment.uri;
                 }
+
+                response = expense
+                    ? await api.put(`/expenses/${expense.expense_id}`, payload)
+                    : await api.post('/expenses', payload);
             }
-
-            const payload: Record<string, any> = {
-                hostel_id: user?.hostel_id ? Number(user.hostel_id) : undefined,
-                category_id: resolvedCategoryId,
-                expense_date: expenseDateStr,
-                amount: resolvedAmount,
-                payment_mode_id: resolvedPaymentModeId,
-                vendor_name: formData.vendor_name.trim(),
-                description: desc,
-                bill_number: formData.bill_number.trim(),
-            };
-
-            if (attachmentUrlValue) {
-                payload.attachment_url = attachmentUrlValue;
-            }
-
-            const response = expense
-                ? await api.put(`/expenses/${expense.expense_id}`, payload)
-                : await api.post('/expenses', payload);
 
             if (response.data.success) {
                 Toast.show({
@@ -632,57 +637,12 @@ export const AddExpenseScreen = ({ route, navigation }: any) => {
     };
 
     const paymentModesList = [
-        { name: 'Cash', icon: 'cash-outline', color: '#10B981', bg: '#DCFCE7', customIcon: <CashIcon /> },
-        { 
-            name: 'GPay', 
-            icon: 'logo-google', 
-            color: '#4285F4', 
-            bg: '#E8F0FE',
-            customIcon: <GPayIcon />
-        },
-        { 
-            name: 'PhonePe', 
-            icon: 'wallet-outline', 
-            color: '#5F259F', 
-            bg: '#F3E8FF',
-            customIcon: <PhonePeIcon />
-        },
-        { 
-            name: 'Paytm', 
-            icon: 'phone-portrait-outline', 
-            color: '#00B9F5', 
-            bg: '#E0F7FA',
-            customIcon: <PaytmIcon />
-        },
-        { 
-            name: 'UPI', 
-            icon: 'swap-horizontal-outline', 
-            color: '#0ea5e9', 
-            bg: '#e0f2fe',
-            customIcon: <UpiIcon />
-        },
-        { 
-            name: 'Bank', 
-            icon: 'business-outline', 
-            color: '#1E3A8A', 
-            bg: '#DBEAFE', 
-            customIcon: <BankIcon />
-        },
-        { 
-            name: 'Card', 
-            icon: 'card-outline', 
-            color: '#D97706', 
-            bg: '#FEF3C7', 
-            customIcon: <CardIcon />
-        },
-        { 
-            name: 'Cheque', 
-            icon: 'document-attach-outline', 
-            color: '#0D9488', 
-            bg: '#CCFBF1', 
-            customIcon: <ChequeIcon />
-        },
-        { name: 'Others', icon: 'ellipsis-horizontal-outline', color: '#64748B', bg: '#F1F5F9', customIcon: <OthersIcon /> },
+        { id: 'Cash', name: 'Cash', icon: 'cash-outline' },
+        { id: 'UPI', name: 'UPI / Online', icon: 'qr-code-outline' },
+        { id: 'Bank', name: 'Bank Transfer', icon: 'business-outline' },
+        { id: 'Card', name: 'Debit / Credit Card', icon: 'card-outline' },
+        { id: 'Cheque', name: 'Cheque', icon: 'document-text-outline' },
+        { id: 'Others', name: 'Other', icon: 'ellipsis-horizontal-outline' },
     ];
 
     return (
@@ -868,36 +828,51 @@ export const AddExpenseScreen = ({ route, navigation }: any) => {
 
                 {/* ── Card 4: Expense Mode Selection ── */}
                 <View style={[styles.formCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#E2E8F0', borderWidth: 1 }]}>
-                    <Text style={[styles.sectionTitle, { fontSize: fontSize + 1, color: theme.textPrimary, borderBottomColor: isDark ? '#334155' : '#F1F5F9' }]}>💳 Expense Payment Mode</Text>
-                    <ScrollView 
-                        horizontal 
-                        showsHorizontalScrollIndicator={false} 
-                        contentContainerStyle={styles.modeScrollContent}
+                    <Text style={[styles.sectionTitle, { fontSize: fontSize + 1, color: theme.textPrimary, borderBottomColor: isDark ? '#334155' : '#F1F5F9' }]}>
+                        💳 Expense Payment Mode
+                    </Text>
+
+                    <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={styles.paymentChipsScroll}
                     >
                         {paymentModesList.map((mode) => {
-                            const isSelected = selectedExpenseMode === mode.name;
+                            const isSelected = selectedExpenseMode === mode.id || (mode.id === 'UPI' && ['GPay', 'PhonePe', 'Paytm', 'UPI'].includes(selectedExpenseMode));
                             return (
                                 <TouchableOpacity
-                                    key={mode.name}
+                                    key={mode.id}
                                     style={[
-                                        styles.modeScrollChip,
-                                        { width: modeChipWidth }
+                                        styles.paymentModeChip,
+                                        {
+                                            backgroundColor: isSelected
+                                                ? (isDark ? '#312E81' : '#EDE9FE')
+                                                : (isDark ? '#1E293B' : '#F8FAFC'),
+                                            borderColor: isSelected
+                                                ? '#7C3AED'
+                                                : (isDark ? '#334155' : '#E2E8F0'),
+                                            borderWidth: isSelected ? 1.5 : 1,
+                                        }
                                     ]}
-                                    onPress={() => setSelectedExpenseMode(mode.name)}
+                                    onPress={() => setSelectedExpenseMode(mode.id)}
                                     activeOpacity={0.7}
                                 >
-                                    <View style={[
-                                        styles.modeIconCircle, 
-                                        { backgroundColor: isDark ? '#1E293B' : '#FFFFFF' },
-                                        isSelected && { borderColor: mode.color, borderWidth: 2 }
-                                    ]}>
-                                        {mode.customIcon}
-                                    </View>
-                                    <Text style={[
-                                        styles.modeScrollText, 
-                                        { fontSize: fontSize - 3, color: isDark ? '#94A3B8' : '#475569' }, 
-                                        isSelected && { color: mode.color, fontWeight: '800' }
-                                    ]} numberOfLines={1}>
+                                    <Ionicons
+                                        name={mode.icon as any}
+                                        size={18}
+                                        color={isSelected ? '#7C3AED' : (isDark ? '#94A3B8' : '#64748B')}
+                                    />
+                                    <Text
+                                        style={[
+                                            styles.paymentChipText,
+                                            {
+                                                color: isSelected
+                                                    ? '#7C3AED'
+                                                    : (isDark ? '#F1F5F9' : '#334155'),
+                                                fontWeight: isSelected ? '700' : '600',
+                                            }
+                                        ]}
+                                    >
                                         {mode.name}
                                     </Text>
                                 </TouchableOpacity>
@@ -1354,38 +1329,22 @@ const styles = StyleSheet.create({
     readOnlyText: {
         fontWeight: '600',
     },
-    modeGrid: {
+    paymentChipsScroll: {
         flexDirection: 'row',
-        flexWrap: 'wrap',
         gap: 10,
-        marginTop: 4,
+        paddingVertical: 6,
+        paddingHorizontal: 2,
     },
-    modeScrollContent: {
-        paddingVertical: 8,
-        paddingHorizontal: 4,
+    paymentModeChip: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        borderRadius: 22,
         gap: 8,
     },
-    modeScrollChip: {
-        alignItems: 'center',
-        paddingVertical: 4,
-    },
-    modeIconCircle: {
-        width: 44,
-        height: 44,
-        borderRadius: 12,
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderWidth: 1,
-        borderColor: '#E2E8F0',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 2,
-        elevation: 1.5,
-        marginBottom: 6,
-    },
-    modeScrollText: {
-        fontWeight: '700',
+    paymentChipText: {
+        fontSize: 13.5,
     },
     uploadCard: {
         borderWidth: 2,

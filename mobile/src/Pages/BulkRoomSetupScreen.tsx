@@ -508,14 +508,53 @@ export const BulkRoomSetupScreen = ({ navigation }: any) => {
     const renderOverview = () => (
         <>
             {justLocked && (
-                <View style={[styles.doneBanner, { backgroundColor: isDark ? '#052E1A' : '#ECFDF5', borderColor: '#10B981' }]}>
-                    <CheckCircle2 size={18} color="#10B981" />
-                    <Text style={[styles.doneBannerText, { color: isDark ? '#A7F3D0' : '#065F46' }]}>
-                        Floor {justLocked.floor} locked — {justLocked.count} rooms created. Set up another floor below.
-                    </Text>
-                    <TouchableOpacity onPress={() => setJustLocked(null)} hitSlop={8}>
-                        <X size={16} color={isDark ? '#A7F3D0' : '#065F46'} />
-                    </TouchableOpacity>
+                <View style={[styles.doneBanner, { backgroundColor: isDark ? '#052E1A' : '#ECFDF5', borderColor: '#10B981', flexDirection: 'column', alignItems: 'stretch' }]}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
+                            <CheckCircle2 size={20} color="#10B981" />
+                            <Text style={[styles.doneBannerText, { color: isDark ? '#A7F3D0' : '#065F46', flex: 1, fontWeight: '700' }]}>
+                                Floor {justLocked.floor} saved! ({justLocked.count} rooms created)
+                            </Text>
+                        </View>
+                        <TouchableOpacity onPress={() => setJustLocked(null)} hitSlop={8} style={{ padding: 4 }}>
+                            <X size={16} color={isDark ? '#A7F3D0' : '#065F46'} />
+                        </TouchableOpacity>
+                    </View>
+                    <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
+                        <TouchableOpacity
+                            style={{
+                                flex: 1,
+                                backgroundColor: '#10B981',
+                                paddingVertical: 9,
+                                borderRadius: 10,
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                            }}
+                            onPress={() => navigation.navigate('Rooms')}
+                            activeOpacity={0.8}
+                        >
+                            <Text style={{ color: '#FFFFFF', fontWeight: '800', fontSize: 13 }}>
+                                View Rooms List ➔
+                            </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={{
+                                paddingHorizontal: 14,
+                                paddingVertical: 9,
+                                borderRadius: 10,
+                                borderWidth: 1,
+                                borderColor: '#10B981',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                            }}
+                            onPress={() => navigation.navigate('Main')}
+                            activeOpacity={0.8}
+                        >
+                            <Text style={{ color: isDark ? '#A7F3D0' : '#065F46', fontWeight: '700', fontSize: 13 }}>
+                                Dashboard
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
                 </View>
             )}
 
@@ -593,6 +632,50 @@ export const BulkRoomSetupScreen = ({ navigation }: any) => {
                     </View>
                 </View>
             )}
+
+            {/* Bottom Actions: Easy exit to Rooms List or Dashboard */}
+            <View style={{ marginTop: 18, marginBottom: 24, gap: 10 }}>
+                <TouchableOpacity
+                    style={{
+                        backgroundColor: '#7C3AED',
+                        paddingVertical: 14,
+                        borderRadius: 14,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexDirection: 'row',
+                        gap: 8,
+                        shadowColor: '#7C3AED',
+                        shadowOffset: { width: 0, height: 4 },
+                        shadowOpacity: 0.25,
+                        shadowRadius: 8,
+                        elevation: 4,
+                    }}
+                    onPress={() => navigation.navigate('Rooms')}
+                    activeOpacity={0.85}
+                >
+                    <Text style={{ color: '#FFFFFF', fontWeight: '800', fontSize: 15 }}>
+                        Done For Now ➔ Go to Rooms List
+                    </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                    style={{
+                        backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                        borderWidth: 1.5,
+                        borderColor: isDark ? '#334155' : '#E2E8F0',
+                        paddingVertical: 12,
+                        borderRadius: 14,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                    }}
+                    onPress={() => navigation.navigate('Main')}
+                    activeOpacity={0.85}
+                >
+                    <Text style={{ color: isDark ? '#CBD5E1' : '#475569', fontWeight: '700', fontSize: 14 }}>
+                        Back to Dashboard
+                    </Text>
+                </TouchableOpacity>
+            </View>
         </>
     );
 

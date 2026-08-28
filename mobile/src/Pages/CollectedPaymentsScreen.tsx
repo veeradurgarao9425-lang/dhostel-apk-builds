@@ -205,7 +205,7 @@ export default function CollectedPaymentsScreen() {
                 return;
             }
 
-            const baseURL = (api.defaults.baseURL || 'https://api.143-244-131-69.sslip.io/api').replace(/\/$/, '');
+            const baseURL = (api.defaults.baseURL || 'https://dark-dew-bf62.veeradurgarao840.workers.dev/api').replace(/\/$/, '');
             const exportUrl = `${baseURL}/reports/download/excel?startDate=${startStr}&endDate=${endStr}&reportType=collection&token=${encodeURIComponent(token)}`;
 
             const filename = `Collected_Rent_Report_${startStr}_to_${endStr}.xlsx`;
@@ -552,7 +552,7 @@ export default function CollectedPaymentsScreen() {
                             <ActivityIndicator color="#FFF" size="small" />
                         ) : (
                             <>
-                                <Text style={s.exportConfirmText}>Download Excel (All Data)</Text>
+                                <Text style={s.exportConfirmText}>Export Collections Statement (.xlsx)</Text>
                                 <Download size={18} color="#FFF" />
                             </>
                         )}

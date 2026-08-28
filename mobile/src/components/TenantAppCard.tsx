@@ -21,7 +21,7 @@ export const TenantAppCard: React.FC<TenantAppCardProps> = ({ theme, isDark, hos
     const [isCopied, setIsCopied] = useState(false);
 
     const hostelId = user?.hostel_id || '1';
-    const apiBase = api.defaults.baseURL || 'https://api.143-244-131-69.sslip.io/api';
+    const apiBase = api.defaults.baseURL || 'https://dark-dew-bf62.veeradurgarao840.workers.dev/api';
     const baseUrl = apiBase.replace(/\/api$/, '');
     const studentUrl = `${baseUrl}/register?hostelId=${hostelId}`;
 

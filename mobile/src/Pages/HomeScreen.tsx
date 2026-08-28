@@ -419,7 +419,7 @@ export default function HomeScreen() {
             setRefreshing(false);
             setBackgroundLoading(false);
         }
-    }, [user, user?.hostel_id]);
+    }, [user?.hostel_id, user?.user_id]);
 
 
     useFocusEffect(useCallback(() => {
@@ -765,13 +765,6 @@ export default function HomeScreen() {
 
                     {/* RIGHT: actions */}
                     <View style={s.headerActions}>
-                        <TouchableOpacity
-                            style={s.headerIconBtn}
-                            onPress={() => navigation.navigate('QRSignup')}
-                            activeOpacity={0.8}
-                        >
-                            <Ionicons name="qr-code-outline" size={18} color="#FFF" />
-                        </TouchableOpacity>
                         <TouchableOpacity
                             style={s.headerIconBtn}
                             onPress={() => scrollToPage(activePageIndex === 0 ? 1 : 0)}

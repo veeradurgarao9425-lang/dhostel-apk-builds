@@ -18,6 +18,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import api from '../../services/api';
 import { appendImageFileToFormData } from '../../utils/imageHelper';
 import { colors } from '../../theme/tenantTheme';
+import { FullScreenLoader } from '../../components/FullScreenLoader';
 
 const { width } = Dimensions.get('window');
 
@@ -126,72 +127,139 @@ const SelectRow = ({ icon: Icon, value, placeholder, onPress }: any) => (
   </TouchableOpacity>
 );
 
-// ─── Photo Upload Widget ───────────────────────────────────────────────────────
-const PhotoUpload = ({ uri, onCapture, onRemove, label = 'Add Photo' }: any) => {
-  const pick = () => {
-    Alert.alert('Upload Photo', 'Choose an option', [
-      { text: 'Camera', onPress: async () => {
-        const perm = await ImagePicker.requestCameraPermissionsAsync();
-        if (!perm.granted) { Alert.alert('Permission needed', 'Allow camera access.'); return; }
-        const res = await ImagePicker.launchCameraAsync({ quality: 0.8, aspect: [1, 1] });
-        if (!res.canceled && res.assets && res.assets.length > 0) onCapture(res.assets[0].uri);
-      }},
-      { text: 'Gallery', onPress: async () => {
-        const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-        if (!perm.granted) { Alert.alert('Permission needed', 'Allow media access.'); return; }
-        const res = await ImagePicker.launchImageLibraryAsync({ quality: 0.8, aspect: [1, 1] });
-        if (!res.canceled && res.assets && res.assets.length > 0) onCapture(res.assets[0].uri);
-      }},
-      { text: 'Cancel', style: 'cancel' }
-    ]);
-  };
+// ─── Reusable Image Source Modal (Camera / Gallery) ───────────────────────────
+const ImageSourceModal = ({ visible, onClose, onSelectCamera, onSelectGallery, title = 'Choose Image Source' }: any) => {
   return (
-    <TouchableOpacity onPress={pick} activeOpacity={0.8} style={st.photoWrap}>
-      <View style={[st.photoCircle, uri && { borderColor: BLUE }]}>
-        {uri
-          ? <Image source={{ uri }} style={st.photoImg} />
-          : <Camera size={28} color={BLUE} />}
-        {uri ? (
-          <TouchableOpacity
-            style={[st.photoBadge, { backgroundColor: DANGER }]}
-            onPress={(e) => { e.stopPropagation?.(); onRemove?.(); }}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <Text style={{ color: WHITE, fontSize: 10, fontWeight: '900' }}>✕</Text>
-          </TouchableOpacity>
-        ) : (
-          <View style={st.photoBadge}>
-            <Camera size={12} color={WHITE} />
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <TouchableOpacity style={st.modalOverlay} onPress={onClose} activeOpacity={1}>
+        <TouchableOpacity style={st.sourceModalContent} activeOpacity={1} onPress={(e) => e.stopPropagation()}>
+          <View style={st.sourceModalHeader}>
+            <Text style={st.sourceModalTitle}>{title}</Text>
+            <TouchableOpacity onPress={onClose} style={st.closeBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Text style={{ fontSize: 18, color: TEXT_MID, fontWeight: '700' }}>✕</Text>
+            </TouchableOpacity>
           </View>
-        )}
-      </View>
-      <Text style={st.photoLabel}>{label}</Text>
-    </TouchableOpacity>
+          <View style={st.sourceOptionsRow}>
+            <TouchableOpacity
+              style={st.sourceOptionBtn}
+              onPress={() => { onClose(); onSelectCamera(); }}
+              activeOpacity={0.8}
+            >
+              <View style={[st.sourceIconBg, { backgroundColor: '#EDE9FE' }]}>
+                <Camera size={26} color={PURPLE} />
+              </View>
+              <Text style={st.sourceOptionText}>Take Photo</Text>
+              <Text style={st.sourceOptionSub}>Use Camera</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={st.sourceOptionBtn}
+              onPress={() => { onClose(); onSelectGallery(); }}
+              activeOpacity={0.8}
+            >
+              <View style={[st.sourceIconBg, { backgroundColor: '#E0F2FE' }]}>
+                <Upload size={26} color="#0284C7" />
+              </View>
+              <Text style={st.sourceOptionText}>Choose Gallery</Text>
+              <Text style={st.sourceOptionSub}>Pick from Photos</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </TouchableOpacity>
+    </Modal>
+  );
+};
+
+// ─── Photo Upload Widget ───────────────────────────────────────────────────────
+const PhotoUpload = ({ uri, onCapture, onRemove, label = 'Add Photo', error }: any) => {
+  const [modalVisible, setModalVisible] = useState(false);
+
+  const onSelectCamera = async () => {
+    try {
+      const perm = await ImagePicker.requestCameraPermissionsAsync();
+      if (!perm.granted) { Alert.alert('Permission needed', 'Allow camera access in your device settings.'); return; }
+      const res = await ImagePicker.launchCameraAsync({ quality: 0.8, allowsEditing: false });
+      if (!res.canceled && res.assets && res.assets.length > 0) onCapture(res.assets[0].uri);
+    } catch (e) {
+      console.error('Camera error:', e);
+    }
+  };
+
+  const onSelectGallery = async () => {
+    try {
+      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!perm.granted) { Alert.alert('Permission needed', 'Allow media access in your device settings.'); return; }
+      const res = await ImagePicker.launchImageLibraryAsync({ quality: 0.8, allowsEditing: false });
+      if (!res.canceled && res.assets && res.assets.length > 0) onCapture(res.assets[0].uri);
+    } catch (e) {
+      console.error('Gallery error:', e);
+    }
+  };
+
+  return (
+    <>
+      <TouchableOpacity onPress={() => setModalVisible(true)} activeOpacity={0.8} style={st.photoWrap}>
+        <View style={[st.photoCircle, uri ? { borderColor: BLUE } : (error ? { borderColor: DANGER, borderWidth: 2 } : null)]}>
+          {uri
+            ? <Image source={{ uri }} style={st.photoImg} />
+            : <Camera size={28} color={error ? DANGER : BLUE} />}
+          {uri ? (
+            <TouchableOpacity
+              style={[st.photoBadge, { backgroundColor: DANGER }]}
+              onPress={(e) => { e.stopPropagation?.(); onRemove?.(); }}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Text style={{ color: WHITE, fontSize: 10, fontWeight: '900' }}>✕</Text>
+            </TouchableOpacity>
+          ) : (
+            <View style={[st.photoBadge, error && { backgroundColor: DANGER }]}>
+              <Camera size={12} color={WHITE} />
+            </View>
+          )}
+        </View>
+        <Text style={[st.photoLabel, error && { color: DANGER, fontWeight: '700' }]}>{label}</Text>
+      </TouchableOpacity>
+
+      <ImageSourceModal
+        visible={modalVisible}
+        title="Select Profile Photo"
+        onClose={() => setModalVisible(false)}
+        onSelectCamera={onSelectCamera}
+        onSelectGallery={onSelectGallery}
+      />
+    </>
   );
 };
 
 // ─── ID Document Upload Box ────────────────────────────────────────────────────
 const DocBox = ({ label, uri, onCapture, onRemove, error }: any) => {
-  const pick = () => {
-    Alert.alert('Upload Document', 'Choose an option', [
-      { text: 'Camera', onPress: async () => {
-        const perm = await ImagePicker.requestCameraPermissionsAsync();
-        if (!perm.granted) { Alert.alert('Permission needed', 'Allow camera access.'); return; }
-        const res = await ImagePicker.launchCameraAsync({ quality: 0.7 });
-        if (!res.canceled && res.assets && res.assets.length > 0) onCapture(res.assets[0].uri);
-      }},
-      { text: 'Gallery', onPress: async () => {
-        const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-        if (!perm.granted) { Alert.alert('Permission needed', 'Allow media access.'); return; }
-        const res = await ImagePicker.launchImageLibraryAsync({ quality: 0.7 });
-        if (!res.canceled && res.assets && res.assets.length > 0) onCapture(res.assets[0].uri);
-      }},
-      { text: 'Cancel', style: 'cancel' }
-    ]);
+  const [modalVisible, setModalVisible] = useState(false);
+
+  const onSelectCamera = async () => {
+    try {
+      const perm = await ImagePicker.requestCameraPermissionsAsync();
+      if (!perm.granted) { Alert.alert('Permission needed', 'Allow camera access in your device settings.'); return; }
+      const res = await ImagePicker.launchCameraAsync({ quality: 0.75 });
+      if (!res.canceled && res.assets && res.assets.length > 0) onCapture(res.assets[0].uri);
+    } catch (e) {
+      console.error('Camera error:', e);
+    }
   };
+
+  const onSelectGallery = async () => {
+    try {
+      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!perm.granted) { Alert.alert('Permission needed', 'Allow media access in your device settings.'); return; }
+      const res = await ImagePicker.launchImageLibraryAsync({ quality: 0.75 });
+      if (!res.canceled && res.assets && res.assets.length > 0) onCapture(res.assets[0].uri);
+    } catch (e) {
+      console.error('Gallery error:', e);
+    }
+  };
+
   return (
     <View style={{ flex: 1 }}>
-      <TouchableOpacity style={[st.docBox, error && { borderColor: DANGER, backgroundColor: '#FEE2E2' }]} onPress={pick} activeOpacity={0.8}>
+      <TouchableOpacity style={[st.docBox, error && { borderColor: DANGER, backgroundColor: '#FEE2E2' }]} onPress={() => setModalVisible(true)} activeOpacity={0.8}>
         {uri ? (
           <View style={StyleSheet.absoluteFill}>
             <Image source={{ uri }} style={st.docImg} resizeMode="cover" />
@@ -205,6 +273,14 @@ const DocBox = ({ label, uri, onCapture, onRemove, error }: any) => {
           </>
         )}
       </TouchableOpacity>
+
+      <ImageSourceModal
+        visible={modalVisible}
+        title={`Upload ${label}`}
+        onClose={() => setModalVisible(false)}
+        onSelectCamera={onSelectCamera}
+        onSelectGallery={onSelectGallery}
+      />
     </View>
   );
 };
@@ -212,12 +288,17 @@ const DocBox = ({ label, uri, onCapture, onRemove, error }: any) => {
 // ─── Modal Options Drawer ───────────────────────────────────────────────────────
 const OptionsDrawer = ({ visible, title, data, selectedItem, onSelect, onClose }: any) => {
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'transparent' }}>
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(15, 23, 42, 0.65)' }}>
         <TouchableOpacity style={StyleSheet.absoluteFill} onPress={onClose} activeOpacity={1} />
-        <View style={{ backgroundColor: WHITE, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40, maxHeight: '80%' }}>
+        <View style={{ backgroundColor: WHITE, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: Platform.OS === 'ios' ? 40 : 28, maxHeight: '80%', shadowColor: '#000', shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.15, shadowRadius: 12, elevation: 20 }}>
           <View style={{ width: 40, height: 4, backgroundColor: BORDER, borderRadius: 2, alignSelf: 'center', marginBottom: 16 }} />
-          <Text style={{ fontSize: 18, fontWeight: '800', color: TEXT_DARK, marginBottom: 16 }}>{title}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+            <Text style={{ fontSize: 18, fontWeight: '800', color: TEXT_DARK }}>{title}</Text>
+            <TouchableOpacity onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Text style={{ fontSize: 18, color: TEXT_MID, fontWeight: '700' }}>✕</Text>
+            </TouchableOpacity>
+          </View>
           <ScrollView showsVerticalScrollIndicator={false}>
             {data.map((item: string) => (
               <TouchableOpacity
@@ -303,6 +384,7 @@ export default function RegistrationScreen({ route, navigation }: any) {
   const validateStep = (s: number): string | null => {
     const newErrors: Record<string, string> = {};
     if (s === 1) {
+      if (!profilePhoto) newErrors.profilePhoto = 'Profile photo is required. Please upload your photo.';
       if (!firstName.trim() || firstName.trim().length < 3) newErrors.firstName = 'First name must be at least 3 characters.';
       
       if (!emailAddress.trim()) newErrors.emailAddress = 'Email is required.';
@@ -315,9 +397,14 @@ export default function RegistrationScreen({ route, navigation }: any) {
     if (s === 2) {
       if (!gender) newErrors.gender = 'Please select your gender.';
       if (!dateOfBirth) newErrors.dateOfBirth = 'Date of birth is required.';
-      if (guardianPhone.trim()) {
-        if (!/^[6-9]/.test(guardianPhone)) newErrors.guardianPhone = 'Must start with 6, 7, 8, or 9.';
-        else if (guardianPhone.trim().length !== 10) newErrors.guardianPhone = 'Must be exactly 10 digits.';
+      if (!guardianPhone.trim()) {
+        newErrors.guardianPhone = 'Guardian mobile number is required.';
+      } else if (!/^[6-9]/.test(guardianPhone)) {
+        newErrors.guardianPhone = 'Guardian number must start with 6, 7, 8, or 9.';
+      } else if (guardianPhone.trim().length !== 10) {
+        newErrors.guardianPhone = 'Guardian number must be exactly 10 digits.';
+      } else if (guardianPhone.trim() === phone.trim()) {
+        newErrors.guardianPhone = 'Guardian number cannot be the same as tenant number.';
       }
     }
     if (s === 3) {
@@ -347,10 +434,8 @@ export default function RegistrationScreen({ route, navigation }: any) {
         }
       }
       
-      if (idProofType) {
-        if (!aadhaarFront) newErrors.docFront = 'Front side of ID document is required.';
-        if (!aadhaarBack) newErrors.docBack = 'Back side of ID document is required.';
-      }
+      if (!aadhaarFront) newErrors.docFront = 'Front side of ID document is required.';
+      if (!aadhaarBack) newErrors.docBack = 'Back side of ID document is required.';
     }
     setErrors(newErrors);
     
@@ -388,11 +473,13 @@ export default function RegistrationScreen({ route, navigation }: any) {
   };
 
   const handleRegister = async () => {
-    const msg = validateStep(3);
-    if (msg) {
-      showError(msg);
-      return;
-    }
+    const msg1 = validateStep(1);
+    if (msg1) { setStep(1); showError(msg1); return; }
+    const msg2 = validateStep(2);
+    if (msg2) { setStep(2); showError(msg2); return; }
+    const msg3 = validateStep(3);
+    if (msg3) { setStep(3); showError(msg3); return; }
+
     setLoading(true);
     setErrors({});
 
@@ -409,6 +496,7 @@ export default function RegistrationScreen({ route, navigation }: any) {
       if (guardianName) formData.append('guardian_name', guardianName);
       if (guardianPhone) formData.append('guardian_phone', guardianPhone);
       formData.append('current_address', currentAddress);
+      formData.append('present_working_address', currentAddress);
       formData.append('permanent_address', permanentAddress);
       formData.append('id_proof_type', String(idProofType === 'Custom' ? customIdProofType : (idProofTypesList.find(t => t.name === idProofType)?.id || idProofType)));
       formData.append('id_proof_number', idProofNumber);
@@ -428,10 +516,15 @@ export default function RegistrationScreen({ route, navigation }: any) {
       if (response.data?.success) {
         const { token, tenant } = response.data.data;
         await completeTenantRegistration(token, tenant);
-        navigation.reset({
-          index: 0,
-          routes: [{ name: 'Main' }],
-        });
+        showSuccess('Registration submitted! Awaiting owner approval.');
+        try {
+          navigation.reset({
+            index: 0,
+            routes: [{ name: 'Main' }],
+          });
+        } catch {
+          navigation.replace('PendingApproval');
+        }
       } else {
         showError(response.data?.error || 'Registration failed.');
       }
@@ -498,13 +591,17 @@ export default function RegistrationScreen({ route, navigation }: any) {
               </View>
 
               <View style={st.photoCenterWrap}>
+                <Text style={[st.fieldLabel, { textAlign: 'center', marginBottom: 8 }]}>
+                  Profile Photo <Text style={{ color: DANGER }}>*</Text>
+                </Text>
                 <PhotoUpload
                   uri={profilePhoto}
                   onCapture={(uri: string) => { setProfilePhoto(uri); setErrors(p => ({...p, profilePhoto: ''})); }}
                   onRemove={() => setProfilePhoto(null)}
-                  label="Add Profile Photo"
+                  label={profilePhoto ? "Change Photo" : "Add Profile Photo"}
+                  error={errors.profilePhoto}
                 />
-                {errors.profilePhoto ? <Text style={st.fieldErr}>{errors.profilePhoto}</Text> : null}
+                {errors.profilePhoto ? <Text style={[st.fieldErr, { textAlign: 'center' }]}>{errors.profilePhoto}</Text> : null}
               </View>
 
               <Field label="First Name" required error={errors.firstName}>
@@ -614,7 +711,7 @@ export default function RegistrationScreen({ route, navigation }: any) {
               <Field label="Guardian Name">
                 <InputRow icon={User} placeholder="Ex: Krishnaiah Goriparthi" value={guardianName} onChangeText={(t: string) => setGuardianName(t.replace(/[^a-zA-Z\s]/g, ''))} />
               </Field>
-              <Field label="Guardian Mobile Number" error={errors.guardianPhone}>
+              <Field label="Guardian Mobile Number" required error={errors.guardianPhone}>
                 <InputRow
                   icon={Phone}
                   placeholder="Ex: 9908631206"
@@ -628,6 +725,17 @@ export default function RegistrationScreen({ route, navigation }: any) {
                       setErrors(p => ({...p, guardianPhone: 'Guardian number cannot be same as tenant number.'}));
                     } else {
                       setErrors(p => ({...p, guardianPhone: ''}));
+                    }
+                  }}
+                  onBlur={() => {
+                    if (!guardianPhone.trim()) {
+                      setErrors(p => ({...p, guardianPhone: 'Guardian mobile number is required.'}));
+                    } else if (!/^[6-9]/.test(guardianPhone)) {
+                      setErrors(p => ({...p, guardianPhone: 'Mobile number must start with 6, 7, 8, or 9.'}));
+                    } else if (guardianPhone.length !== 10) {
+                      setErrors(p => ({...p, guardianPhone: 'Guardian mobile number must be exactly 10 digits.'}));
+                    } else if (guardianPhone === phone) {
+                      setErrors(p => ({...p, guardianPhone: 'Guardian number cannot be same as tenant number.'}));
                     }
                   }}
                   keyboardType="phone-pad"
@@ -853,6 +961,8 @@ export default function RegistrationScreen({ route, navigation }: any) {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <FullScreenLoader visible={loading} message="Creating account & uploading documents..." />
     </SafeAreaView>
   );
 }
@@ -1052,4 +1162,64 @@ const st = StyleSheet.create({
     backgroundColor: BLUE_SOFT, padding: 10, borderRadius: 10,
   },
   secureText: { fontSize: 12, color: BLUE, fontWeight: '600' },
+
+  // Source Modal (Camera / Gallery Bottom Sheet)
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    justifyContent: 'flex-end',
+  },
+  sourceModalContent: {
+    backgroundColor: WHITE,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    paddingBottom: Platform.OS === 'ios' ? 38 : 28,
+  },
+  sourceModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+  },
+  sourceModalTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: TEXT_DARK,
+  },
+  closeBtn: {
+    padding: 4,
+  },
+  sourceOptionsRow: {
+    flexDirection: 'row',
+    gap: 14,
+  },
+  sourceOptionBtn: {
+    flex: 1,
+    backgroundColor: BG,
+    borderWidth: 1.5,
+    borderColor: BORDER,
+    borderRadius: 16,
+    padding: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  sourceIconBg: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 2,
+  },
+  sourceOptionText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: TEXT_DARK,
+  },
+  sourceOptionSub: {
+    fontSize: 11,
+    color: TEXT_HINT,
+  },
 });

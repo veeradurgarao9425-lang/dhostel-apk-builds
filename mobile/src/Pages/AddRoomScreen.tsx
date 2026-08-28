@@ -569,31 +569,45 @@ export const AddRoomScreen = ({ navigation, route }: any) => {
                                 <TouchableOpacity
                                     key={index}
                                     style={[
-                                        styles.amenityItem,
+                                        styles.amenityChip,
                                         {
-                                            backgroundColor: isDark ? '#1E293B' : '#F8FAFC',
-                                            borderColor: isActive ? '#7C3AED' : (isDark ? '#334155' : '#E8EAF6'),
+                                            backgroundColor: isActive 
+                                                ? (isDark ? '#312E81' : '#EDE9FE') 
+                                                : (isDark ? '#1E293B' : '#F8FAFC'),
+                                            borderColor: isActive 
+                                                ? '#7C3AED' 
+                                                : (isDark ? '#334155' : '#E2E8F0'),
                                             borderWidth: isActive ? 1.5 : 1,
                                         }
                                     ]}
                                     onPress={() => toggleAmenity(amenity.amenity_name)}
                                     activeOpacity={0.7}
                                 >
-                                    <Icon size={15} color={isActive ? '#7C3AED' : (isDark ? '#64748B' : '#94A3B8')} />
+                                    <Icon size={16} color={isActive ? '#7C3AED' : (isDark ? '#94A3B8' : '#64748B')} />
                                     <Text
-                                        style={[styles.amenityName, { color: isActive ? '#7C3AED' : theme.textSecondary }]}
-                                        numberOfLines={1}
+                                        style={[
+                                            styles.amenityName,
+                                            { 
+                                                color: isActive 
+                                                    ? '#7C3AED' 
+                                                    : (isDark ? '#F1F5F9' : '#334155'),
+                                                fontWeight: isActive ? '700' : '600'
+                                            }
+                                        ]}
                                     >
                                         {amenity.amenity_name}
                                     </Text>
                                     <View style={[
-                                        styles.checkbox,
+                                        styles.chipIconWrap,
                                         {
-                                            backgroundColor: isActive ? '#7C3AED' : 'transparent',
-                                            borderColor: isActive ? '#7C3AED' : (isDark ? '#475569' : '#CBD5E1'),
+                                            backgroundColor: isActive ? '#7C3AED' : (isDark ? '#334155' : '#E2E8F0'),
                                         }
                                     ]}>
-                                        {isActive && <Check size={10} color="#FFF" strokeWidth={3} />}
+                                        {isActive ? (
+                                            <Check size={11} color="#FFF" strokeWidth={3} />
+                                        ) : (
+                                            <Plus size={11} color={isDark ? '#94A3B8' : '#64748B'} strokeWidth={2.5} />
+                                        )}
                                     </View>
                                 </TouchableOpacity>
                             );
@@ -602,11 +616,17 @@ export const AddRoomScreen = ({ navigation, route }: any) => {
                         {/* Add Custom button */}
                         {!showCustomInput && (
                             <TouchableOpacity
-                                style={[styles.addCustomBtn, { borderColor: '#7C3AED' }]}
+                                style={[
+                                    styles.addCustomChip,
+                                    {
+                                        borderColor: '#7C3AED',
+                                        backgroundColor: isDark ? 'rgba(124,58,237,0.1)' : '#F5F3FF',
+                                    }
+                                ]}
                                 onPress={() => setShowCustomInput(true)}
                                 activeOpacity={0.7}
                             >
-                                <Plus size={14} color="#7C3AED" />
+                                <Plus size={15} color="#7C3AED" strokeWidth={2.5} />
                                 <Text style={styles.addCustomText}>Add Custom</Text>
                             </TouchableOpacity>
                         )}
@@ -921,40 +941,35 @@ const styles = StyleSheet.create({
     selectLeft: { flexDirection: 'row', alignItems: 'center', flex: 1 },
 
     // Amenities
-    amenitiesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-    amenityItem: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 10,
-        paddingVertical: 9,
-        borderRadius: 10,
-        gap: 6,
-        minWidth: '30%',
-        flex: 1,
-    },
-    amenityName: { flex: 1, fontSize: 12, fontWeight: '600' },
-    checkbox: {
-        width: 18,
-        height: 18,
-        borderRadius: 4,
-        borderWidth: 1.5,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    addCustomBtn: {
+    amenitiesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, alignItems: 'center' },
+    amenityChip: {
         flexDirection: 'row',
         alignItems: 'center',
         paddingHorizontal: 12,
-        paddingVertical: 9,
-        borderRadius: 10,
+        paddingVertical: 8,
+        borderRadius: 20,
+        gap: 7,
+    },
+    amenityName: { fontSize: 13 },
+    chipIconWrap: {
+        width: 18,
+        height: 18,
+        borderRadius: 9,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginLeft: 2,
+    },
+    addCustomChip: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 14,
+        paddingVertical: 8,
+        borderRadius: 20,
         borderWidth: 1.5,
         borderStyle: 'dashed',
         gap: 6,
-        minWidth: '30%',
-        flex: 1,
-        justifyContent: 'center',
     },
-    addCustomText: { color: '#7C3AED', fontSize: 12, fontWeight: '700' },
+    addCustomText: { color: '#7C3AED', fontSize: 13, fontWeight: '700' },
     customInputRow: {
         flexDirection: 'row',
         alignItems: 'center',

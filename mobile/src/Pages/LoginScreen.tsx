@@ -70,19 +70,6 @@ export default function LoginScreen({ navigation }: any) {
         api.get('/health').catch(() => {});
     }, []);
 
-    // If user is already authenticated when landing on LoginScreen, route immediately (initial mount only)
-    const navigatedRef = useRef(false);
-    React.useEffect(() => {
-        if (user && !isLoading && !navigatedRef.current) {
-            navigatedRef.current = true;
-            if (user.role === 'DEVELOPER' || (user as any).is_developer) {
-                navigation.reset({ index: 0, routes: [{ name: 'DeveloperMain' }] });
-            } else {
-                navigation.reset({ index: 0, routes: [{ name: 'Main' }] });
-            }
-        }
-    }, [user, isLoading, navigation]);
-
     // Keyboard handling. Replaces KeyboardAvoidingView(behavior="height"), whose
     // stale container height was leaving a grey band along the bottom of this
     // screen after you typed into a field. See useKeyboardInset for the details.
@@ -139,7 +126,10 @@ export default function LoginScreen({ navigation }: any) {
                         routes: [{ name: 'DeveloperMain' }],
                     });
                 } else {
-                    navigation.navigate('Main');
+                    navigation.reset({
+                        index: 0,
+                        routes: [{ name: 'Main' }],
+                    });
                 }
             } else {
                 const errMsg = typeof error === 'string' ? error : JSON.stringify(error) || 'Invalid credentials';

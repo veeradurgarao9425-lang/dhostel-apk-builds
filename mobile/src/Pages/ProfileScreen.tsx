@@ -441,8 +441,7 @@ const ProfileScreen = ({ navigation }: any) => {
                         { icon: 'swap-horizontal', label: t('profile.switchHostel', 'Switch Hostel'), color: '#10B981', bg: '#DCFCE7', onPress: openHostelSelector },
                         { icon: 'business', label: t('profile.manageHostels', 'Hostels'), color: '#7C3AED', bg: '#EDE9FE', onPress: () => navigation.navigate('Hostels') },
                         { icon: 'bar-chart', label: t('profile.reports', 'Reports'), color: '#0284C7', bg: '#E0F2FE', onPress: () => navigation.navigate('Reports') },
-                        // { icon: 'medal', label: t('profile.subscription', 'Subscription'), color: '#D97706', bg: '#FEF3C7', onPress: () => navigation.navigate('ComingSoon') },
-                        { icon: 'headset', label: t('profile.support', 'Support'), color: '#EF4444', bg: '#FEE2E2', onPress: () => setSupportModalVisible(true) },
+                        { icon: 'chatbubble-ellipses', label: 'Feedback & Help', color: '#EF4444', bg: '#FEE2E2', onPress: () => navigation.navigate('Feedback') },
                     ].map((item, i) => (
                         <TouchableOpacity key={i} style={styles.manageItem} onPress={item.onPress} activeOpacity={0.7}>
                             <View style={[styles.manageIconBox, { backgroundColor: item.bg }]}>

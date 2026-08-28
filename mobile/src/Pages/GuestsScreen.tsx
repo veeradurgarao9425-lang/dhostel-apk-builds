@@ -456,7 +456,7 @@ export default function GuestsScreen() {
                     s.fab,
                     {
                         backgroundColor: theme.primary,
-                        bottom: Math.max(insets.bottom + 85, 100),
+                        bottom: Math.max(insets.bottom + 20, 24),
                     },
                 ]}
                 onPress={() => navigation.navigate('AddGuest')}

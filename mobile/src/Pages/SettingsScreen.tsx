@@ -496,6 +496,12 @@ export const SettingsScreen = ({ navigation }: any) => {
 
                 <Card style={[styles.card, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : 'transparent', borderWidth: isDark ? 1 : 0 }]}>
                     <SettingRow
+                        icon={<MessageSquare size={20} color={theme.primary} />}
+                        label="Send Feedback & Support"
+                        onPress={() => navigation.navigate('Feedback')}
+                    />
+                    <View style={[styles.divider, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]} />
+                    <SettingRow
                         icon={<Shield size={20} color={theme.primary} />}
                         label={t('settings.privacyPolicy', 'Privacy Policy')}
                         onPress={() => navigation.navigate('PrivacyPolicy')}
@@ -506,7 +512,7 @@ export const SettingsScreen = ({ navigation }: any) => {
                             <Bell size={20} color={theme.primary} />
                         </View>
                         <Text style={[styles.label, { fontSize: fontSize, color: theme.textPrimary }]}>{t('settings.checkUpdates', 'Check for Updates')}</Text>
-                        <Text style={[styles.version, { color: theme.textSecondary }]}>v1.0.0</Text>
+                        <Text style={[styles.version, { color: theme.textSecondary }]}>v1.0.4</Text>
                     </TouchableOpacity>
                 </Card>
 

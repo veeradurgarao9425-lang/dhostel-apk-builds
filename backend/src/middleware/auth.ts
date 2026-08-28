@@ -38,6 +38,37 @@ export const authMiddleware = (
   }
 };
 
+export const optionalAuthMiddleware = (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return next();
+    }
+
+    const token = authHeader.substring(7);
+    if (!token) {
+      return next();
+    }
+
+    const payload = verifyToken(token);
+
+    if (payload && payload.role_id) {
+      payload.role_id = Number(payload.role_id);
+    }
+
+    req.user = payload;
+    next();
+  } catch (error) {
+    // Optional auth does not block requests with invalid/expired tokens
+    next();
+  }
+};
+
 export const isAdmin = (
   req: AuthRequest,
   res: Response,
@@ -47,6 +78,39 @@ export const isAdmin = (
     return res.status(403).json({
       success: false,
       error: 'Admin access required',
+    });
+  }
+  next();
+};
+
+export const isMasterAdmin = (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  if (!req.user) {
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      try {
+        const token = authHeader.substring(7);
+        const payload = verifyToken(token);
+        if (payload && payload.role_id) {
+          payload.role_id = Number(payload.role_id);
+        }
+        req.user = payload;
+      } catch (err) {
+        return res.status(401).json({
+          success: false,
+          error: 'Invalid or expired token',
+        });
+      }
+    }
+  }
+
+  if (req.user?.role_id !== 1) {
+    return res.status(403).json({
+      success: false,
+      error: 'Master admin access required',
     });
   }
   next();

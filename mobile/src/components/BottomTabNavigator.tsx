@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { COLORS, FONT, SHADOW } from '../theme/index';
 import { useTranslation } from 'react-i18next';
 import api from '../services/api';
+import { useAuth } from '../../contexts/AuthContext';
 
 // ─── Tab Config ───────────────────────────────────────────────────────────────
 const TABS = [
@@ -40,17 +41,20 @@ const TAB_BAR_HEIGHT = 60;
 const BottomTabNavigator = ({ state, descriptors, navigation }: any) => {
     const insets = useSafeAreaInsets();
     const { t } = useTranslation();
+    const { user } = useAuth();
     const [duesBadge, setDuesBadge] = useState(0);
 
     useEffect(() => {
-        // Fetch pending dues count for the Dues tab badge
-        api.get('/monthly-fees/summary', { params: { onlyPending: 'true', page: 1, limit: 1 } })
-            .then(res => {
-                const counts = res.data?.data?.tab_counts;
-                if (counts) setDuesBadge(counts.overdue || 0);
-            })
-            .catch(() => {});
-    }, []);
+        // Fetch pending dues count for the Dues tab badge (only for owners/staff)
+        if (user && user.role !== 'TENANT') {
+            api.get('/monthly-fees/summary', { params: { onlyPending: 'true', page: 1, limit: 1 } })
+                .then(res => {
+                    const counts = res.data?.data?.tab_counts;
+                    if (counts) setDuesBadge(counts.overdue || 0);
+                })
+                .catch(() => {});
+        }
+    }, [user?.role]);
 
     return (
         <View style={[

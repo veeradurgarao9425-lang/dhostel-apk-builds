@@ -345,3 +345,31 @@ export const sendNotificationToAllHostelStudents = async (
     console.error(`[Notification] Error sending to all hostel students:`, err);
   }
 };
+
+/**
+ * Sends a Feedback Request notification prompting the user to share what needs improvement.
+ */
+export const sendFeedbackRequestNotification = async (options: {
+  userId?: number;
+  studentId?: number;
+  hostelId?: number;
+}): Promise<void> => {
+  try {
+    const { userId, studentId, hostelId } = options;
+    await sendNotificationToUser({
+      userId,
+      studentId,
+      hostelId,
+      type: 'FEEDBACK_REQUEST',
+      title: "We'd love your feedback! 💬",
+      message: "Please share what we need to improve or which issue you faced. Tap to send feedback.",
+      priority: 'Medium',
+      screen: 'Feedback',
+      data: {
+        action: 'OPEN_FEEDBACK'
+      }
+    });
+  } catch (err) {
+    console.error('[Notification] Error sending feedback request notification:', err);
+  }
+};

@@ -1251,7 +1251,7 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                                             </View>
                                             <View style={styles.infoRowText}>
                                                 <Text style={styles.infoRowLabel}>Present / Working Address</Text>
-                                                <Text style={[styles.infoRowValue, { color: theme.textPrimary }]}>{student.present_working_address || 'N/A'}</Text>
+                                                <Text style={[styles.infoRowValue, { color: theme.textPrimary }]}>{student.present_working_address || student.current_address || 'N/A'}</Text>
                                             </View>
                                         </View>
                                     </View>

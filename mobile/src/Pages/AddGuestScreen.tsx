@@ -845,7 +845,7 @@ export default function AddGuestScreen({ navigation, route }: any) {
             <ScrollView
                 style={styles.content}
                 showsVerticalScrollIndicator={false}
-                contentContainerStyle={[styles.scrollContent, { paddingBottom: Math.max(insets.bottom, 24) + 160 }]}
+                contentContainerStyle={[styles.scrollContent, { paddingBottom: Math.max(insets.bottom, 24) + 260 }]}
                 keyboardShouldPersistTaps="handled"
             >
                 {/* ── Profile Photo ── */}
@@ -1114,6 +1114,9 @@ export default function AddGuestScreen({ navigation, route }: any) {
                         onChangeText={(t: string) => up('remarks', t)}
                     />
                 </View>
+
+                {/* Extra bottom scroll clearance so last inputs and keyboard never obscure content */}
+                <View style={{ height: 120 }} />
             </ScrollView>
 
             {/* ── Sticky Bottom Footer (Exact Student Screen Pattern) ── */}

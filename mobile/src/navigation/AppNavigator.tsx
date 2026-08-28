@@ -122,6 +122,7 @@ import PendingPaymentsScreen from '../Pages/PendingPaymentsScreen';
 import DownloadReceiptsScreen from '../Pages/DownloadReceiptsScreen';
 import PremiumSubscriptionScreen from '../Pages/PremiumSubscriptionScreen';
 import { SubscriptionExpiredScreen } from '../Pages/SubscriptionExpiredScreen';
+import FeedbackScreen from '../Pages/FeedbackScreen';
 // ── Ecosystem screens ────────────────────────────────────────────────────────
 import ComplaintsManagementScreen from '../Pages/ComplaintsManagementScreen';
 import RequestsManagementScreen from '../Pages/RequestsManagementScreen';
@@ -212,7 +213,7 @@ interface AppNavigatorProps {
 // ── Root Stack Navigator ──────────────────────────────────────────────────────
 const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
     const { user, logoutLoading } = useAuth();
-    const navigationKey = `${user?.user_id || 'guest'}_${user?.hostel_id || 'none'}`;
+    const navigationKey = `${user?.user_id || (user as any)?.id || 'guest'}_${user?.role || 'none'}_${user?.is_allocated ? 'alloc' : 'pending'}_${user?.hostel_id || 'none'}`;
 
     useEffect(() => {
         if (user) {
@@ -276,6 +277,7 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
                     <Stack.Screen name="TenantLogin" component={TenantLoginScreen} />
                     <Stack.Screen name="TenantRegister" component={RegistrationScreen} />
                     <Stack.Screen name="PublicRegistration" component={PublicRegistrationScreen} />
+                    <Stack.Screen name="PendingApproval" component={PendingApprovalScreen} />
 
 
 
@@ -376,6 +378,7 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
                         'Profile' etc. gets their own screen instead of the owner's. */}
                     <Stack.Screen name="Profile" component={user?.role === 'TENANT' ? TenantProfileScreen : ProfileScreen} />
                     <Stack.Screen name="Settings" component={user?.role === 'TENANT' ? TenantSettingsScreen : SettingsScreen} />
+                    <Stack.Screen name="Feedback" component={FeedbackScreen} />
                     <Stack.Screen name="SubscriptionExpired" component={user?.role === 'TENANT' ? TenantSubscriptionExpiredScreen : SubscriptionExpiredScreen} options={{ headerShown: false, gestureEnabled: false }} />
                     <Stack.Screen name="PrivacyPolicy" component={user?.role === 'TENANT' ? TenantPrivacyPolicyScreen : PrivacyPolicyScreen} />
                     <Stack.Screen

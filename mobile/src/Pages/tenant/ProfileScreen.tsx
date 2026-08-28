@@ -284,6 +284,23 @@ export default function ProfileScreen({ navigation }: any) {
             </View>
             <Ionicons name="chevron-forward" size={18} color={TEXT_MUTED} />
           </TouchableOpacity>
+
+          <View style={styles.menuDivider} />
+
+          <TouchableOpacity
+            style={styles.menuItem}
+            activeOpacity={0.7}
+            onPress={() => navigation.navigate('Feedback')}
+          >
+            <View style={[styles.menuIcon, { backgroundColor: '#EDE9FE' }]}>
+              <Ionicons name="chatbubble-ellipses" size={18} color="#7C3AED" />
+            </View>
+            <View style={styles.menuContent}>
+              <Text style={styles.menuTitle}>Send App Feedback</Text>
+              <Text style={styles.menuSub}>Report app bugs & suggest features</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={TEXT_MUTED} />
+          </TouchableOpacity>
         </View>
 
         {/* ── SECTION 3: App & Notifications ── */}
@@ -349,7 +366,17 @@ export default function ProfileScreen({ navigation }: any) {
         type="warning"
         title="Log Out"
         description="Are you sure you want to log out from your account?"
-        primaryAction={{ label: 'Log Out', onPress: signOut }}
+        primaryAction={{
+          label: 'Log Out',
+          onPress: async () => {
+            setShowLogout(false);
+            await signOut();
+          },
+        }}
+        secondaryAction={{
+          label: 'Cancel',
+          onPress: () => setShowLogout(false),
+        }}
       />
 
       {/* ── Edit Profile Modal ── */}

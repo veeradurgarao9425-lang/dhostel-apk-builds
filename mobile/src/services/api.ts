@@ -1,11 +1,11 @@
 import axios from 'axios';
+import { DeviceEventEmitter } from 'react-native';
 import { getSecureItem, multiRemoveSecureItems } from './secureStore';
 import { navigate } from '../navigation/navigationRef';
 
 // ─── Base URL ─────────────────────────────────────────────────────────────────
-// Priority: EXPO_PUBLIC_API_URL env var → production fallback
-// For local dev: set EXPO_PUBLIC_API_URL in .env file
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://api.143-244-131-69.sslip.io/api';
+// Fast Cloudflare Edge Worker connected to DigitalOcean
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://dark-dew-bf62.veeradurgarao840.workers.dev/api';
 
 // ─── Axios Instance ───────────────────────────────────────────────────────────
 export const api = axios.create({
@@ -13,15 +13,32 @@ export const api = axios.create({
   timeout: 45000, // 45s timeout for multi-image uploads & cold-starts
 });
 
+// ─── Fast Memory Token Cache ──────────────────────────────────────────────────
+let cachedUserToken: string | null = null;
+let cachedDevToken: string | null = null;
+
+export const setCachedToken = (token: string | null, isDev = false) => {
+  if (isDev) cachedDevToken = token;
+  else cachedUserToken = token;
+};
+
 // ─── Request Interceptor — attach token & log ───────────────────────────────────────
 api.interceptors.request.use(
   async (config) => {
     try {
       if (!config.headers['Authorization']) {
         const isDevEndpoint = config.url?.startsWith('/developer');
-        const devToken = await getSecureItem('developer_token');
-        const userToken = await getSecureItem('token');
-        const tokenToUse = isDevEndpoint ? (devToken || userToken) : (userToken || devToken);
+        let tokenToUse = isDevEndpoint ? (cachedDevToken || cachedUserToken) : (cachedUserToken || cachedDevToken);
+
+        // Fast-path: Use memory cache if available (0ms)
+        if (!tokenToUse) {
+          const devToken = await getSecureItem('developer_token');
+          const userToken = await getSecureItem('token');
+          cachedDevToken = devToken || null;
+          cachedUserToken = userToken || null;
+          tokenToUse = isDevEndpoint ? (devToken || userToken) : (userToken || devToken);
+        }
+
         if (tokenToUse) {
           config.headers['Authorization'] = `Bearer ${tokenToUse}`;
         }
@@ -45,9 +62,6 @@ api.interceptors.request.use(
       }
     } catch {
       // Token read failed — proceed without token
-    }
-    if (__DEV__) {
-      console.log(`[API Request] ${config.method?.toUpperCase()} ${config.baseURL}${config.url}`);
     }
     return config;
   },
@@ -81,10 +95,13 @@ api.interceptors.response.use(
       isHandling401 = true;
       try {
         const isDevEndpoint = error.config?.url?.startsWith('/developer');
+        DeviceEventEmitter.emit('UNAUTHORIZED_SESSION');
         if (isDevEndpoint) {
+          setCachedToken(null, true);
           await multiRemoveSecureItems(['developer_token']);
           navigate('RoleSelect');
         } else {
+          setCachedToken(null);
           await multiRemoveSecureItems(['token', 'user']);
           delete api.defaults.headers.common['Authorization'];
           navigate('Login');

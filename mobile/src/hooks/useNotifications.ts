@@ -108,7 +108,10 @@ export const useNotifications = () => {
                 setUnreadCount(unread);
             }
         } catch (error) {
-            console.error('Error fetching notifications from API:', error);
+            lastNotifsFetchTime = Date.now();
+            if (__DEV__) {
+                console.log('Notice fetching notifications (offline or pending deploy):', (error as any)?.message);
+            }
         } finally {
             inflightNotifsPromise = null;
             setLoading(false);
@@ -118,26 +121,12 @@ export const useNotifications = () => {
     useEffect(() => {
         fetchNotifications();
 
-        // Listen for foreground notifications to auto-refresh the count and list
-        let subscription: any;
-        try {
-            const Notifications = require('expo-notifications');
-            if (Notifications && Notifications.addNotificationReceivedListener) {
-                subscription = Notifications.addNotificationReceivedListener(() => {
-                    fetchNotifications();
-                });
-            }
-        } catch (e) {
-            // Non-fatal fallback for Expo Go
-        }
-
         // Listen for internal events to sync across components
         const eventSubscription = require('react-native').DeviceEventEmitter.addListener('REFRESH_NOTIFICATIONS', () => {
             fetchNotifications();
         });
 
         return () => {
-            subscription?.remove?.();
             eventSubscription.remove();
         };
     }, [fetchNotifications]);

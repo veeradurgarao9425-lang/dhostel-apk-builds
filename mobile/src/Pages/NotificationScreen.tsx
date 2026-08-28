@@ -121,6 +121,7 @@ export const NotificationScreen = () => {
         const data = notif.data || {};
         const title = (notif.title || '').toLowerCase();
         const type = notif.type;
+        const notifType = (data.type || data.notification_type || '').toString().toUpperCase();
         const isTenant = user?.role_id === 3 || user?.role === 'TENANT';
 
         try {
@@ -144,6 +145,8 @@ export const NotificationScreen = () => {
                     navigation.navigate('Complaints');
                 } else if (title.includes('notice')) {
                     navigation.navigate('Notices');
+                } else if (title.includes('feedback') || notifType === 'FEEDBACK_REQUEST' || data.action === 'OPEN_FEEDBACK') {
+                    navigation.navigate('Feedback');
                 } else if (title.includes('room') || title.includes('bed') || title.includes('allocat')) {
                     navigation.navigate('RoomInfo');
                 } else {
@@ -261,6 +264,8 @@ export const NotificationScreen = () => {
                 navigation.navigate('Reports');
             } else if (title.includes('maintenance') || title.includes('complaint')) {
                 navigation.navigate('ComplaintsManagement');
+            } else if (title.includes('feedback') || notifType === 'FEEDBACK_REQUEST' || data.action === 'OPEN_FEEDBACK') {
+                navigation.navigate('Feedback');
             } else if (type === 'warning' && title.includes('expense')) {
                 navigation.navigate('Expenses');
             } else {

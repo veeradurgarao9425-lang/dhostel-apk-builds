@@ -5,8 +5,8 @@ import { DeviceEventEmitter, AppState, AppStateStatus } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
 
 const envUrl = process.env.EXPO_PUBLIC_API_URL as string | undefined;
-const BASE_URL = (envUrl && !envUrl.includes('192.168.')) ? envUrl : 'https://api.143-244-131-69.sslip.io/api';
-const SOCKET_URL = BASE_URL.replace('/api', '');
+const BASE_URL = (envUrl && !envUrl.includes('192.168.')) ? envUrl : 'https://dark-dew-bf62.veeradurgarao840.workers.dev/api';
+const SOCKET_URL = (envUrl && !envUrl.includes('192.168.')) ? envUrl.replace('/api', '') : 'https://api.143-244-131-69.sslip.io';
 
 /**
  * The owner app never opened a socket connection before — new_payment,

@@ -68,8 +68,17 @@ export default function App() {
     Inter_900Black,
   });
 
+  const [forceReady, setForceReady] = React.useState(false);
+
   React.useEffect(() => {
+    // Safety fallback: Unfreeze and show UI within 1200ms max even if font network stalls
+    const timeout = setTimeout(() => {
+      setForceReady(true);
+      SplashScreen.hideAsync().catch(() => {});
+    }, 1200);
+
     if (fontsLoaded) {
+      clearTimeout(timeout);
       SplashScreen.hideAsync().catch(() => {});
       
       // Global font override
@@ -93,12 +102,14 @@ export default function App() {
         console.warn('Failed to override TextInput.defaultProps:', e);
       }
     }
+
+    return () => clearTimeout(timeout);
   }, [fontsLoaded]);
 
   // Which routes show the assistant now lives in <AssistantGate />, so a screen
   // change no longer re-renders this root component (and with it every provider).
 
-  if (!fontsLoaded) {
+  if (!fontsLoaded && !forceReady) {
     return null;
   }
 
