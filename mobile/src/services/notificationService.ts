@@ -105,7 +105,7 @@ export const notificationService = {
     const subResponse = Notifications.addNotificationResponseReceivedListener(response => {
       const data = response.notification.request.content.data;
       if (navigate && data?.screen) {
-        navigate(data.screen, data.params || {});
+        navigate(String(data.screen), data.params || {});
       }
     });
 
