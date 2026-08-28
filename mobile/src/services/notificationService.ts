@@ -48,16 +48,29 @@ export const notificationService = {
         return null;
       }
 
-      const projectId =
-        Constants?.expoConfig?.extra?.eas?.projectId ??
-        Constants?.easConfig?.projectId ??
-        '7303856b-fde0-4922-baf9-c6487aa06e02';
+      let token: string | null = null;
+      try {
+        // Prioritize native Firebase Cloud Messaging (FCM) device token via google-services.json
+        const deviceTokenData = await Notifications.getDevicePushTokenAsync();
+        if (deviceTokenData?.data) {
+          token = String(deviceTokenData.data);
+          console.log('[NotificationService] Obtained native Firebase FCM token.');
+        }
+      } catch (fcmErr) {
+        console.log('[NotificationService] getDevicePushTokenAsync notice, trying Expo token:', fcmErr);
+      }
 
-      const tokenData = await Notifications.getExpoPushTokenAsync(
-        projectId ? { projectId } : undefined
-      );
+      if (!token) {
+        const projectId =
+          Constants?.expoConfig?.extra?.eas?.projectId ??
+          Constants?.easConfig?.projectId ??
+          '7303856b-fde0-4922-baf9-c6487aa06e02';
 
-      const token = tokenData.data;
+        const tokenData = await Notifications.getExpoPushTokenAsync(
+          projectId ? { projectId } : undefined
+        );
+        token = tokenData?.data || null;
+      }
       if (token) {
         this._lastRegisteredToken = token;
         await this.sendTokenToBackend(token);
