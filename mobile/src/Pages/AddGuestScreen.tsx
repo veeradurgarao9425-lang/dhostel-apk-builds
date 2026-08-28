@@ -644,7 +644,9 @@ export default function AddGuestScreen({ navigation, route }: any) {
                 err = 'Mobile number must be exactly 10 digits';
             }
         } else if (name === 'email') {
-            if (value && value.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())) {
+            if (!value || !value.trim()) {
+                err = 'Email address is required';
+            } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())) {
                 err = 'Invalid email format';
             }
         } else if (name === 'id_proof_type') {
@@ -683,10 +685,8 @@ export default function AddGuestScreen({ navigation, route }: any) {
         const phoneErr = validateField('phone', formData.phone);
         if (phoneErr) e.phone = phoneErr;
 
-        if (formData.email && formData.email.trim()) {
-            const emailErr = validateField('email', formData.email);
-            if (emailErr) e.email = emailErr;
-        }
+        const emailErr = validateField('email', formData.email);
+        if (emailErr) e.email = emailErr;
 
         if (!formData.id_proof_type) {
             e.id_proof_type = 'Please select an ID proof type';
@@ -891,7 +891,7 @@ export default function AddGuestScreen({ navigation, route }: any) {
                     />
 
                     <FormInput
-                        label="Email (Optional)"
+                        label="Email *"
                         icon={Mail}
                         placeholder="durgarao@example.com"
                         keyboardType="email-address"

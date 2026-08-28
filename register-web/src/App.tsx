@@ -170,7 +170,8 @@ export default function App() {
     if (!phone) errs.phone = 'Mobile number is required';
     else if (phone.length !== 10) errs.phone = 'Enter valid 10-digit mobile number';
     else if (parseInt(phone[0]) < 6) errs.phone = 'Must start with 6, 7, 8 or 9';
-    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) errs.email = 'Enter a valid email address';
+    if (!email.trim()) errs.email = 'Email address is required';
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) errs.email = 'Enter a valid email address';
     setErrors(errs);
     return Object.keys(errs).length === 0;
   }, [firstName, phone, email]);
@@ -269,6 +270,8 @@ export default function App() {
     const errs: Record<string, string> = {};
     if (!fullName.trim()) errs.fullName = 'Full name is required';
     if (!phone || phone.length !== 10) errs.phone = '10-digit mobile number required';
+    if (!email.trim()) errs.email = 'Email address is required';
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) errs.email = 'Enter a valid email address';
     if (!idNumber.trim()) errs.idNumber = 'ID proof number is required';
     if (!checkInDate) errs.checkInDate = 'Check-in date is required';
     if (Object.keys(errs).length > 0) {
@@ -542,14 +545,21 @@ export default function App() {
 
           {/* Email */}
           <div className="form-group">
-            <label className="form-label">Email Address (Optional)</label>
+            <label className="form-label">
+              Email Address <span className="req-star">*</span>
+            </label>
             <input
               type="email"
-              className="form-input"
+              required
+              className={`form-input ${errors.email ? 'has-error' : ''}`}
               placeholder="guest@example.com"
               value={email}
-              onChange={e => setEmail(e.target.value)}
+              onChange={e => {
+                setEmail(e.target.value);
+                setErrors(p => { const n = { ...p }; delete n.email; return n; });
+              }}
             />
+            {errors.email && <div className="field-error-text">{errors.email}</div>}
           </div>
 
           {/* Section 2: Stay Details */}
@@ -722,12 +732,56 @@ export default function App() {
               type="submit"
               disabled={submitting}
               className="btn-primary-action"
-              style={{ background: 'linear-gradient(135deg, #7C3AED 0%, #6D28D9 100%)' }}
+              style={{
+                background: 'linear-gradient(135deg, #7C3AED 0%, #6D28D9 100%)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+              }}
             >
-              {submitting ? 'Submitting Check-In...' : 'Complete Self Check-In'}
+              {submitting ? (
+                <>
+                  <div style={{ width: '16px', height: '16px', border: '2px solid rgba(255,255,255,0.4)', borderTopColor: '#FFFFFF', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+                  <span>Submitting Check-In...</span>
+                </>
+              ) : (
+                <span>Complete Self Check-In</span>
+              )}
             </button>
           </div>
         </form>
+
+        {/* Fullscreen Submitting Overlay for Guest */}
+        {submitting && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(15, 23, 42, 0.75)',
+            backdropFilter: 'blur(4px)',
+            zIndex: 9999,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#FFFFFF',
+            gap: '14px',
+          }}>
+            <div style={{
+              width: '48px',
+              height: '48px',
+              border: '4px solid rgba(255, 255, 255, 0.25)',
+              borderTopColor: '#7C3AED',
+              borderRadius: '50%',
+              animation: 'spin 0.8s linear infinite',
+            }} />
+            <div style={{ fontSize: '16px', fontWeight: 800 }}>Submitting Check-In...</div>
+            <div style={{ fontSize: '13px', color: '#94A3B8' }}>Please wait while your details are recorded</div>
+          </div>
+        )}
 
         {/* Floating Toast */}
         <div id="toast-el" className="floating-toast">
@@ -812,33 +866,33 @@ export default function App() {
               </button>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-              <div className="form-group">
-                <label className="form-label">First Name <span className="req-star">*</span></label>
-                <input
-                  type="text"
-                  required
-                  className={`form-input ${errors.firstName ? 'has-error' : ''}`}
-                  placeholder="First name"
-                  value={firstName}
-                  onChange={e => setFirstName(e.target.value)}
-                />
-                {errors.firstName && <div className="field-error-text">{errors.firstName}</div>}
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Last Name</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  placeholder="Last name"
-                  value={lastName}
-                  onChange={e => setLastName(e.target.value)}
-                />
-              </div>
+            {/* First Name (Full Width) */}
+            <div className="form-group">
+              <label className="form-label">First Name <span className="req-star">*</span></label>
+              <input
+                type="text"
+                required
+                className={`form-input ${errors.firstName ? 'has-error' : ''}`}
+                placeholder="First name"
+                value={firstName}
+                onChange={e => setFirstName(e.target.value)}
+              />
+              {errors.firstName && <div className="field-error-text">{errors.firstName}</div>}
             </div>
 
-            {/* Mobile Number */}
+            {/* Last Name (Full Width) */}
+            <div className="form-group">
+              <label className="form-label">Last Name</label>
+              <input
+                type="text"
+                className="form-input"
+                placeholder="Last name"
+                value={lastName}
+                onChange={e => setLastName(e.target.value)}
+              />
+            </div>
+
+            {/* Mobile Number (Full Width) */}
             <div className="form-group">
               <label className="form-label">Mobile Number <span className="req-star">*</span></label>
               <div className={`phone-input-wrap ${errors.phone ? 'has-error' : ''}`}>
@@ -855,7 +909,7 @@ export default function App() {
               {errors.phone && <div className="field-error-text">{errors.phone}</div>}
             </div>
 
-            {/* Gender */}
+            {/* Gender (Full Width) */}
             <div className="form-group">
               <label className="form-label">Gender</label>
               <div className="gender-selector">
@@ -872,29 +926,29 @@ export default function App() {
               </div>
             </div>
 
-            {/* Email & DOB */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-              <div className="form-group">
-                <label className="form-label">Email</label>
-                <input
-                  type="email"
-                  className={`form-input ${errors.email ? 'has-error' : ''}`}
-                  placeholder="student@example.com"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                />
-                {errors.email && <div className="field-error-text">{errors.email}</div>}
-              </div>
+            {/* Email (Full Width - Mandatory) */}
+            <div className="form-group">
+              <label className="form-label">Email Address <span className="req-star">*</span></label>
+              <input
+                type="email"
+                required
+                className={`form-input ${errors.email ? 'has-error' : ''}`}
+                placeholder="student@example.com"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+              />
+              {errors.email && <div className="field-error-text">{errors.email}</div>}
+            </div>
 
-              <div className="form-group">
-                <label className="form-label">Date of Birth</label>
-                <input
-                  type="date"
-                  className="form-input"
-                  value={dob}
-                  onChange={e => setDob(e.target.value)}
-                />
-              </div>
+            {/* Date of Birth (Full Width) */}
+            <div className="form-group">
+              <label className="form-label">Date of Birth</label>
+              <input
+                type="date"
+                className="form-input"
+                value={dob}
+                onChange={e => setDob(e.target.value)}
+              />
             </div>
 
             <div className="action-btn-row">
@@ -919,7 +973,6 @@ export default function App() {
                 className="form-input"
                 value={idTypeId}
                 onChange={e => { setIdTypeId(Number(e.target.value)); setIdNumber(''); }}
-                style={{ cursor: 'pointer' }}
               >
                 {ID_TYPES.map(t => (
                   <option key={t.id} value={t.id}>{t.label}</option>
@@ -928,55 +981,73 @@ export default function App() {
             </div>
 
             <div className="form-group">
-              <label className="form-label">Document Number <span className="req-star">*</span></label>
+              <label className="form-label">
+                {ID_TYPES.find(t => t.id === idTypeId)?.label || 'ID'} Number <span className="req-star">*</span>
+              </label>
               <input
                 type="text"
                 required
                 className={`form-input ${errors.idNumber ? 'has-error' : ''}`}
-                placeholder={ID_TYPES.find(t => t.id === idTypeId)?.hint || 'Enter document number'}
+                placeholder={ID_TYPES.find(t => t.id === idTypeId)?.hint || 'Enter ID number'}
                 value={idNumber}
                 onChange={e => handleIdNumber(e.target.value)}
               />
               {errors.idNumber && <div className="field-error-text">{errors.idNumber}</div>}
             </div>
 
-            {/* Photos */}
+            {/* ID Uploads */}
             <input ref={frontInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={onFrontChange} />
-            <input ref={backInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={onBackChange} />
+            <input ref={backInputRef}  type="file" accept="image/*" style={{ display: 'none' }} onChange={onBackChange}  />
 
             <div className="form-group">
-              <label className="form-label">ID Document Photos <span className="req-star">*</span></label>
+              <label className="form-label">ID Document Photos (Front & Back) <span className="req-star">*</span></label>
               <div className="doc-upload-grid">
+                {/* Front Side */}
                 <div
-                  className={`doc-upload-card ${frontUri ? 'has-file' : ''}`}
+                  className={`doc-upload-box ${frontUri ? 'has-file' : ''} ${errors.front ? 'has-error' : ''}`}
                   onClick={() => frontInputRef.current?.click()}
                 >
                   {frontUri ? (
                     <>
-                      <img src={frontUri} alt="Front" className="doc-img-preview" />
-                      <span className="doc-card-title" style={{ color: '#065F46' }}>Front Uploaded</span>
+                      <img src={frontUri} alt="ID Front" />
+                      <button
+                        type="button"
+                        className="doc-remove-btn"
+                        onClick={e => { e.stopPropagation(); setFrontFile(null); setFrontUri(null); }}
+                      >
+                        ✕
+                      </button>
                     </>
                   ) : (
                     <>
-                      <Upload size={18} color="#94A3B8" />
-                      <span className="doc-card-title">Front Photo *</span>
+                      <div className="doc-icon-wrap"><Upload size={18} /></div>
+                      <span className="doc-box-title">Front Side</span>
+                      <span className="doc-box-sub">Tap to upload</span>
                     </>
                   )}
                 </div>
 
+                {/* Back Side */}
                 <div
-                  className={`doc-upload-card ${backUri ? 'has-file' : ''}`}
+                  className={`doc-upload-box ${backUri ? 'has-file' : ''} ${errors.back ? 'has-error' : ''}`}
                   onClick={() => backInputRef.current?.click()}
                 >
                   {backUri ? (
                     <>
-                      <img src={backUri} alt="Back" className="doc-img-preview" />
-                      <span className="doc-card-title" style={{ color: '#065F46' }}>Back Uploaded</span>
+                      <img src={backUri} alt="ID Back" />
+                      <button
+                        type="button"
+                        className="doc-remove-btn"
+                        onClick={e => { e.stopPropagation(); setBackFile(null); setBackUri(null); }}
+                      >
+                        ✕
+                      </button>
                     </>
                   ) : (
                     <>
-                      <Upload size={18} color="#94A3B8" />
-                      <span className="doc-card-title">Back Photo *</span>
+                      <div className="doc-icon-wrap"><Upload size={18} /></div>
+                      <span className="doc-box-title">Back Side</span>
+                      <span className="doc-box-sub">Tap to upload</span>
                     </>
                   )}
                 </div>
@@ -1010,37 +1081,38 @@ export default function App() {
         {/* Step 3: Address & Guardian */}
         {step === 3 && (
           <div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-              <div className="form-group">
-                <label className="form-label">Guardian Name <span className="req-star">*</span></label>
-                <input
-                  type="text"
-                  required
-                  className={`form-input ${errors.guardianName ? 'has-error' : ''}`}
-                  placeholder="Guardian / Parent"
-                  value={guardianName}
-                  onChange={e => setGuardianName(e.target.value)}
-                />
-                {errors.guardianName && <div className="field-error-text">{errors.guardianName}</div>}
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Guardian Mobile <span className="req-star">*</span></label>
-                <div className={`phone-input-wrap ${errors.guardianPhone ? 'has-error' : ''}`}>
-                  <span className="phone-prefix-tag">+91</span>
-                  <input
-                    type="tel"
-                    required
-                    className="phone-field-input"
-                    placeholder="10-digit mobile"
-                    value={guardianPhone}
-                    onChange={e => handleGuardianPhone(e.target.value)}
-                  />
-                </div>
-                {errors.guardianPhone && <div className="field-error-text">{errors.guardianPhone}</div>}
-              </div>
+            {/* Guardian Name (Full Width) */}
+            <div className="form-group">
+              <label className="form-label">Guardian Name <span className="req-star">*</span></label>
+              <input
+                type="text"
+                required
+                className={`form-input ${errors.guardianName ? 'has-error' : ''}`}
+                placeholder="Guardian / Parent"
+                value={guardianName}
+                onChange={e => setGuardianName(e.target.value)}
+              />
+              {errors.guardianName && <div className="field-error-text">{errors.guardianName}</div>}
             </div>
 
+            {/* Guardian Mobile (Full Width) */}
+            <div className="form-group">
+              <label className="form-label">Guardian Mobile <span className="req-star">*</span></label>
+              <div className={`phone-input-wrap ${errors.guardianPhone ? 'has-error' : ''}`}>
+                <span className="phone-prefix-tag">+91</span>
+                <input
+                  type="tel"
+                  required
+                  className="phone-field-input"
+                  placeholder="10-digit mobile"
+                  value={guardianPhone}
+                  onChange={e => handleGuardianPhone(e.target.value)}
+                />
+              </div>
+              {errors.guardianPhone && <div className="field-error-text">{errors.guardianPhone}</div>}
+            </div>
+
+            {/* Permanent Address */}
             <div className="form-group">
               <label className="form-label">Permanent Address <span className="req-star">*</span></label>
               <textarea
@@ -1093,15 +1165,59 @@ export default function App() {
                 type="button"
                 disabled={submitting}
                 className="btn-primary-action"
-                style={{ background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)' }}
+                style={{
+                  background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px'
+                }}
                 onClick={handleSubmitStudent}
               >
-                {submitting ? 'Submitting...' : 'Submit Application'}
+                {submitting ? (
+                  <>
+                    <div style={{ width: '16px', height: '16px', border: '2px solid rgba(255,255,255,0.4)', borderTopColor: '#FFFFFF', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+                    <span>Submitting Application...</span>
+                  </>
+                ) : (
+                  <span>Submit Application</span>
+                )}
               </button>
             </div>
           </div>
         )}
       </div>
+
+      {/* Fullscreen Submitting Overlay */}
+      {submitting && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(15, 23, 42, 0.75)',
+          backdropFilter: 'blur(4px)',
+          zIndex: 9999,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: '#FFFFFF',
+          gap: '14px',
+        }}>
+          <div style={{
+            width: '48px',
+            height: '48px',
+            border: '4px solid rgba(255, 255, 255, 0.25)',
+            borderTopColor: '#10B981',
+            borderRadius: '50%',
+            animation: 'spin 0.8s linear infinite',
+          }} />
+          <div style={{ fontSize: '16px', fontWeight: 800 }}>Submitting Registration...</div>
+          <div style={{ fontSize: '13px', color: '#94A3B8' }}>Please wait while your files upload</div>
+        </div>
+      )}
 
       {/* Floating Toast */}
       <div id="toast-el" className="floating-toast">

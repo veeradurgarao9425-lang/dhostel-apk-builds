@@ -528,6 +528,21 @@ export default function PublicRegistrationScreen({ route, navigation }: any) {
         </LinearGradient>
       </View>
 
+      {/* ── Submission Loading Overlay ── */}
+      {submitting && (
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(15, 23, 42, 0.75)', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }]}>
+          <View style={{ backgroundColor: '#FFFFFF', padding: 24, borderRadius: 20, alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 12, elevation: 8, minWidth: 220 }}>
+            <ActivityIndicator size="large" color={PRIMARY} />
+            <Text style={{ marginTop: 14, fontWeight: '700', color: '#0F172A', fontSize: 16 }}>
+              Submitting Application...
+            </Text>
+            <Text style={{ marginTop: 4, color: '#64748B', fontSize: 12 }}>
+              Please wait while we upload your details
+            </Text>
+          </View>
+        </View>
+      )}
+
       {/* ── Main Form Scroll Area ────────────────────────────────────────────── */}
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -584,40 +599,36 @@ export default function PublicRegistrationScreen({ route, navigation }: any) {
                 </View>
               </View>
 
-              {/* Name Fields (First & Last) */}
-              <View style={styles.rowTwoCols}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.label}>
-                    First Name <Text style={styles.reqStar}>*</Text>
-                  </Text>
-                  <View style={[styles.inputBox, errors.firstName && styles.inputBoxError]}>
-                    <User size={18} color={TEXT_MUTED} style={styles.fieldIcon} />
-                    <TextInput
-                      style={styles.textInput}
-                      placeholder="e.g. Rahul"
-                      placeholderTextColor={TEXT_HINT}
-                      value={firstName}
-                      onChangeText={(t) => {
-                        setFirstName(t);
-                        if (errors.firstName) setErrors((p) => { const n = { ...p }; delete n.firstName; return n; });
-                      }}
-                    />
-                  </View>
-                  {errors.firstName ? <Text style={styles.errorText}>{errors.firstName}</Text> : null}
-                </View>
+              {/* First Name (Full Width) */}
+              <Text style={styles.label}>
+                First Name <Text style={styles.reqStar}>*</Text>
+              </Text>
+              <View style={[styles.inputBox, errors.firstName && styles.inputBoxError]}>
+                <User size={18} color={TEXT_MUTED} style={styles.fieldIcon} />
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="e.g. Rahul"
+                  placeholderTextColor={TEXT_HINT}
+                  value={firstName}
+                  onChangeText={(t) => {
+                    setFirstName(t);
+                    if (errors.firstName) setErrors((p) => { const n = { ...p }; delete n.firstName; return n; });
+                  }}
+                />
+              </View>
+              {errors.firstName ? <Text style={styles.errorText}>{errors.firstName}</Text> : null}
 
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.label}>Last Name</Text>
-                  <View style={styles.inputBox}>
-                    <TextInput
-                      style={styles.textInput}
-                      placeholder="e.g. Sharma"
-                      placeholderTextColor={TEXT_HINT}
-                      value={lastName}
-                      onChangeText={setLastName}
-                    />
-                  </View>
-                </View>
+              {/* Last Name (Full Width) */}
+              <Text style={[styles.label, { marginTop: 12 }]}>Last Name</Text>
+              <View style={styles.inputBox}>
+                <User size={18} color={TEXT_MUTED} style={styles.fieldIcon} />
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="e.g. Sharma"
+                  placeholderTextColor={TEXT_HINT}
+                  value={lastName}
+                  onChangeText={setLastName}
+                />
               </View>
 
               {/* Gender Selector */}

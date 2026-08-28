@@ -452,7 +452,9 @@ export default function AddStaffScreen() {
         } else if (isNaN(Number(monthlySalary)) || Number(monthlySalary) < 0) {
             errs.monthlySalary = 'Salary must be a valid amount';
         }
-        if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+        if (!email.trim()) {
+            errs.email = 'Email Address is required';
+        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
             errs.email = 'Invalid email address';
         }
         
@@ -700,7 +702,7 @@ export default function AddStaffScreen() {
                     </View>
 
                     <View style={styles.inputGroup}>
-                        <Text style={styles.inputLabel}>Email Address</Text>
+                        <Text style={styles.inputLabel}>Email Address <Text style={{ color: '#EF4444' }}>*</Text></Text>
                         <View style={[styles.inputContainer, errors.email && styles.inputError]}>
                             <Ionicons name="mail-outline" size={18} color={errors.email ? '#EF4444' : theme.primary} style={styles.inputIcon} />
                             <TextInput

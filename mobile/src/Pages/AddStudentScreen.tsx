@@ -658,7 +658,8 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
             else if (!/^[6-9]/.test(value)) err = 'Must start with 6, 7, 8, or 9';
             else if (value.length !== 10) err = 'Must be exactly 10 digits';
         } else if (name === 'email') {
-            if (value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) err = 'Invalid email format';
+            if (!value || !value.trim()) err = 'Email address is required';
+            else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) err = 'Invalid email format';
         } else if (name === 'id_proof_type_id') {
             if (!value) err = 'ID Proof type is required';
         } else if (name === 'id_proof_number') {
@@ -978,7 +979,9 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
             if (!/^[6-9]/.test(formData.phone)) e.phone = 'Must start with 6, 7, 8, or 9';
             else if (formData.phone.length !== 10) e.phone = 'Must be exactly 10 digits';
         }
-        if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+        if (!formData.email || !formData.email.trim()) {
+            e.email = 'Email address is required';
+        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
             e.email = 'Invalid email format';
         }
         if (!formData.id_proof_type_id) {
@@ -1320,7 +1323,7 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
                         }}
                     />
                     <FormInput
-                        label="Email"
+                        label="Email *"
                         icon={Mail}
                         placeholder="Ex: durgarao@email.com"
                         keyboardType="email-address"

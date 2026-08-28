@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
@@ -16,14 +16,10 @@ interface FloorInfo {
 
 interface OccupancyCardProps {
     data: {
-        totalBeds: number;
-        occupiedBeds: number;
-        availableBeds: number;
-        totalRooms: number;
-        availableRooms: number;
         totalFloors?: number;
         floorBreakdown?: FloorInfo[];
-        occupancyRate: number;
+        totalRooms?: number;
+        availableRooms?: number;
     };
 }
 
@@ -31,46 +27,10 @@ export const OccupancyCard = ({ data }: OccupancyCardProps) => {
     const navigation = useNavigation<any>();
     const { theme, isDark, fontSize } = useTheme();
 
-    const { totalBeds, occupiedBeds, availableBeds, totalRooms, availableRooms, totalFloors = 0, floorBreakdown = [] } = data;
+    const { floorBreakdown = [] } = data;
 
-    if (totalBeds === 0 && totalRooms === 0) return null;
-
-    const fillPct = totalBeds > 0 ? Math.round((occupiedBeds / totalBeds) * 100) : 0;
-    const availPct = Math.max(0, 100 - fillPct);
-
-    // Dynamic color theme based on occupancy level
-    const statusConfig = (() => {
-        if (fillPct >= 90) {
-            return {
-                label: 'Almost Full',
-                color: '#EF4444',
-                bgColor: isDark ? 'rgba(239, 68, 68, 0.16)' : '#FEE2E2',
-                icon: 'flame',
-            };
-        }
-        if (fillPct >= 70) {
-            return {
-                label: 'High Occupancy',
-                color: '#F59E0B',
-                bgColor: isDark ? 'rgba(245, 158, 11, 0.16)' : '#FEF3C7',
-                icon: 'trending-up',
-            };
-        }
-        if (fillPct >= 40) {
-            return {
-                label: 'Good Vacancy',
-                color: '#10B981',
-                bgColor: isDark ? 'rgba(16, 185, 129, 0.16)' : '#D1FAE5',
-                icon: 'checkmark-circle',
-            };
-        }
-        return {
-            label: 'High Vacancy',
-            color: '#3B82F6',
-            bgColor: isDark ? 'rgba(59, 130, 246, 0.16)' : '#DBEAFE',
-            icon: 'bed-outline',
-        };
-    })();
+    // If there is no floor data at all, do not render
+    if (!floorBreakdown || floorBreakdown.length === 0) return null;
 
     const formatFloorName = (fn: number) => {
         if (fn === 0) return 'Ground Floor';
@@ -80,209 +40,174 @@ export const OccupancyCard = ({ data }: OccupancyCardProps) => {
         return `${fn}th Floor`;
     };
 
+    const getFloorTag = (fn: number) => {
+        if (fn === 0) return 'G';
+        return `${fn}F`;
+    };
+
+    // Calculate total vacant beds across all floors
+    const totalVacantBeds = floorBreakdown.reduce((acc, f) => acc + (f.available_beds || 0), 0);
+
     return (
-        <View style={s.sectionBlock}>
-            {/* Header with Title & View Rooms Link */}
-            <View style={s.sectionHeaderRow}>
-                <View style={s.sectionTitleRow}>
-                    <View style={[s.titleIconBadge, { backgroundColor: isDark ? 'rgba(99, 102, 241, 0.2)' : '#EEF2FF' }]}>
-                        <Ionicons name="bed" size={13} color="#6366F1" />
+        <View style={s.container}>
+            {/* Section Header */}
+            <View style={s.sectionHeader}>
+                <View style={s.headerTitleGroup}>
+                    <View style={[s.headerIconBadge, { backgroundColor: isDark ? 'rgba(99, 102, 241, 0.18)' : '#EEF2FF' }]}>
+                        <Ionicons name="business" size={13} color="#6366F1" />
                     </View>
                     <Text style={[s.sectionTitle, { fontSize: fontSize - 2, color: theme.textSecondary }]}>
-                        Occupancy Overview
+                        Floor Vacancy Map
                     </Text>
                 </View>
+
+                {/* Header Right Action: View All Rooms */}
                 <TouchableOpacity
                     onPress={() => navigation.navigate('Rooms')}
                     activeOpacity={0.7}
-                    style={s.viewRoomsBtn}
+                    style={s.headerLinkBtn}
                 >
-                    <Text style={[s.viewAll, { color: theme.primary, fontSize: fontSize - 2 }]}>View Rooms</Text>
-                    <Ionicons name="chevron-forward" size={13} color={theme.primary} />
+                    <Text style={[s.headerLinkText, { color: theme.primary, fontSize: fontSize - 2 }]}>
+                        Manage Rooms
+                    </Text>
+                    <Ionicons name="chevron-forward" size={12} color={theme.primary} />
                 </TouchableOpacity>
             </View>
 
-            {/* High-Level Premium Occupancy Dashboard Card */}
-            <TouchableOpacity
+            {/* Main Interactive Floor Carousel / Stack */}
+            <View
                 style={[
-                    s.card,
+                    s.mainCard,
                     {
                         backgroundColor: theme.cardBg,
                         borderColor: isDark ? '#334155' : '#E2E8F0',
                     }
                 ]}
-                onPress={() => navigation.navigate('Rooms')}
-                activeOpacity={0.92}
             >
-                {/* Top Summary Banner: Big Percentage + Dynamic Status Badge */}
-                <View style={s.topBannerRow}>
-                    <View style={s.mainMetricWrap}>
-                        <View style={s.percentRow}>
-                            <Text style={[s.bigPercentText, { color: theme.textPrimary }]}>
-                                {fillPct}%
-                            </Text>
-                            <Text style={[s.percentLabel, { color: theme.textSecondary }]}>
-                                Occupied
-                            </Text>
-                        </View>
-                        <Text style={[s.subSummaryText, { color: theme.textSecondary }]}>
-                            {occupiedBeds} of {totalBeds} beds · {totalRooms} rooms {totalFloors > 0 ? `across ${totalFloors} floors` : ''}
-                        </Text>
-                    </View>
-
-                    {/* Status Pill Badge */}
-                    <View style={[s.statusPill, { backgroundColor: statusConfig.bgColor }]}>
-                        <Ionicons name={statusConfig.icon as any} size={13} color={statusConfig.color} />
-                        <Text style={[s.statusPillText, { color: statusConfig.color }]}>
-                            {statusConfig.label}
+                {/* Card Sub-Header: Total Floors & Vacant Beds summary */}
+                <View style={s.subHeaderRow}>
+                    <Text style={[s.subHeaderLeft, { color: theme.textPrimary }]}>
+                        Live Building Availability
+                    </Text>
+                    <View style={[s.vacantBadge, { backgroundColor: totalVacantBeds > 0 ? (isDark ? 'rgba(16, 185, 129, 0.15)' : '#DCFCE7') : (isDark ? 'rgba(239, 68, 68, 0.15)' : '#FEE2E2') }]}>
+                        <View style={[s.statusDot, { backgroundColor: totalVacantBeds > 0 ? '#10B981' : '#EF4444' }]} />
+                        <Text style={[s.vacantBadgeText, { color: totalVacantBeds > 0 ? '#10B981' : '#EF4444' }]}>
+                            {totalVacantBeds > 0 ? `${totalVacantBeds} Beds Vacant` : 'Fully Occupied'}
                         </Text>
                     </View>
                 </View>
 
-                {/* Visual Segmented Progress Bar */}
-                <View style={s.progressSection}>
-                    <View style={[s.progressBarBg, { backgroundColor: isDark ? '#1E293B' : '#F1F5F9' }]}>
-                        <LinearGradient
-                            colors={['#6366F1', '#8B5CF6']}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 0 }}
-                            style={[s.progressBarFill, { width: `${fillPct}%` }]}
-                        />
-                    </View>
-                    <View style={s.progressLabelsRow}>
-                        <View style={s.progressLegend}>
-                            <View style={[s.legendDot, { backgroundColor: '#8B5CF6' }]} />
-                            <Text style={[s.legendText, { color: theme.textSecondary }]}>
-                                Occupied ({fillPct}%)
-                            </Text>
-                        </View>
-                        <View style={s.progressLegend}>
-                            <View style={[s.legendDot, { backgroundColor: '#10B981' }]} />
-                            <Text style={[s.legendText, { color: theme.textSecondary }]}>
-                                Available ({availPct}%)
-                            </Text>
-                        </View>
-                    </View>
-                </View>
+                {/* Horizontal Scroll of Floor Cards (Or Stack if <= 2 floors) */}
+                <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    nestedScrollEnabled={true}
+                    keyboardShouldPersistTaps="handled"
+                    contentContainerStyle={s.scrollContent}
+                >
+                    {floorBreakdown.map((floor, idx) => {
+                        const isFull = floor.available_beds === 0;
+                        const isLow = floor.available_beds <= 2 && floor.available_beds > 0;
+                        const accentColor = isFull ? '#EF4444' : isLow ? '#F59E0B' : '#10B981';
+                        const accentBg = isFull
+                            ? (isDark ? 'rgba(239, 68, 68, 0.12)' : '#FEF2F2')
+                            : isLow
+                                ? (isDark ? 'rgba(245, 158, 11, 0.12)' : '#FFFBEB')
+                                : (isDark ? 'rgba(16, 185, 129, 0.12)' : '#F0FDF4');
 
-                {/* 4 Metric Cards Grid */}
-                <View style={s.metricGrid}>
-                    {/* Total Rooms */}
-                    <View style={[s.metricCard, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0' }]}>
-                        <View style={s.metricIconRow}>
-                            <View style={[s.miniIconCircle, { backgroundColor: 'rgba(79, 70, 229, 0.12)' }]}>
-                                <Ionicons name="business" size={13} color="#4F46E5" />
-                            </View>
-                            <Text style={[s.metricValue, { color: theme.textPrimary }]}>{totalRooms}</Text>
-                        </View>
-                        <Text style={[s.metricTitle, { color: theme.textSecondary }]}>Total Rooms</Text>
-                    </View>
+                        return (
+                            <TouchableOpacity
+                                key={`floor-map-card-${floor.floor_number}-${idx}`}
+                                style={[
+                                    s.floorTile,
+                                    {
+                                        backgroundColor: isDark ? '#1E293B' : '#F8FAFC',
+                                        borderColor: isDark ? '#334155' : '#E2E8F0',
+                                    }
+                                ]}
+                                onPress={() => navigation.navigate('Rooms')}
+                                activeOpacity={0.75}
+                            >
+                                {/* Top: Floor Badge + Vacancy Pill */}
+                                <View style={s.tileTopRow}>
+                                    <LinearGradient
+                                        colors={isFull ? ['#64748B', '#475569'] : ['#6366F1', '#4F46E5']}
+                                        start={{ x: 0, y: 0 }}
+                                        end={{ x: 1, y: 1 }}
+                                        style={s.floorBadge}
+                                    >
+                                        <Text style={s.floorBadgeText}>{getFloorTag(floor.floor_number)}</Text>
+                                    </LinearGradient>
 
-                    {/* Occupied Beds */}
-                    <View style={[s.metricCard, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0' }]}>
-                        <View style={s.metricIconRow}>
-                            <View style={[s.miniIconCircle, { backgroundColor: 'rgba(99, 102, 241, 0.12)' }]}>
-                                <Ionicons name="people" size={13} color="#6366F1" />
-                            </View>
-                            <Text style={[s.metricValue, { color: theme.textPrimary }]}>{occupiedBeds}</Text>
-                        </View>
-                        <Text style={[s.metricTitle, { color: theme.textSecondary }]}>Occupied</Text>
-                    </View>
+                                    <View style={[s.pillBadge, { backgroundColor: accentBg }]}>
+                                        <View style={[s.statusDot, { backgroundColor: accentColor }]} />
+                                        <Text style={[s.pillText, { color: accentColor }]}>
+                                            {isFull ? 'Full' : `${floor.available_beds} vacant`}
+                                        </Text>
+                                    </View>
+                                </View>
 
-                    {/* Available Beds */}
-                    <View style={[s.metricCard, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0' }]}>
-                        <View style={s.metricIconRow}>
-                            <View style={[s.miniIconCircle, { backgroundColor: 'rgba(16, 185, 129, 0.12)' }]}>
-                                <Ionicons name="bed" size={13} color="#10B981" />
-                            </View>
-                            <Text style={[s.metricValue, { color: '#10B981' }]}>{availableBeds}</Text>
-                        </View>
-                        <Text style={[s.metricTitle, { color: theme.textSecondary }]}>Available</Text>
-                    </View>
-
-                    {/* Total Floors / Capacity */}
-                    <View style={[s.metricCard, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC', borderColor: isDark ? '#334155' : '#E2E8F0' }]}>
-                        <View style={s.metricIconRow}>
-                            <View style={[s.miniIconCircle, { backgroundColor: 'rgba(14, 165, 233, 0.12)' }]}>
-                                <Ionicons name="layers-outline" size={13} color="#0EA5E9" />
-                            </View>
-                            <Text style={[s.metricValue, { color: theme.textPrimary }]}>{totalFloors > 0 ? totalFloors : totalBeds}</Text>
-                        </View>
-                        <Text style={[s.metricTitle, { color: theme.textSecondary }]}>{totalFloors > 0 ? 'Floors' : 'Total Beds'}</Text>
-                    </View>
-                </View>
-
-                {/* Floor-by-Floor Filling Breakdown */}
-                {floorBreakdown && floorBreakdown.length > 0 && (
-                    <View style={[s.floorBreakdownContainer, { borderTopColor: isDark ? '#334155' : '#F1F5F9' }]}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                            <Text style={[s.floorSectionTitle, { color: theme.textPrimary }]}>
-                                🏢 Floor-by-Floor Filling
-                            </Text>
-                            <Text style={{ fontSize: 11, fontWeight: '600', color: theme.textSecondary }}>
-                                {floorBreakdown.length} floor{floorBreakdown.length === 1 ? '' : 's'}
-                            </Text>
-                        </View>
-
-                        {floorBreakdown.map((floor, idx) => (
-                            <View key={`floor-${floor.floor_number}-${idx}`} style={s.floorRow}>
-                                <View style={s.floorHeader}>
-                                    <Text style={[s.floorName, { color: theme.textPrimary }]}>
+                                {/* Middle: Floor Name & Room Count */}
+                                <View style={s.tileMiddle}>
+                                    <Text style={[s.floorTitle, { color: theme.textPrimary }]} numberOfLines={1}>
                                         {formatFloorName(floor.floor_number)}
                                     </Text>
-                                    <Text style={[s.floorStats, { color: theme.textSecondary }]}>
-                                        {floor.total_rooms} rooms · {floor.occupied_beds}/{floor.total_beds} beds ({floor.fill_percentage}%)
+                                    <Text style={[s.floorSub, { color: theme.textSecondary }]}>
+                                        {floor.total_rooms} {floor.total_rooms === 1 ? 'room' : 'rooms'} · {floor.occupied_beds}/{floor.total_beds} beds
                                     </Text>
                                 </View>
-                                <View style={[s.floorBarBg, { backgroundColor: isDark ? '#1E293B' : '#F1F5F9' }]}>
-                                    <View
-                                        style={[
-                                            s.floorBarFill,
-                                            {
-                                                width: `${floor.fill_percentage}%`,
-                                                backgroundColor: floor.fill_percentage >= 90 ? '#EF4444' : floor.fill_percentage >= 60 ? '#8B5CF6' : '#10B981'
-                                            }
-                                        ]}
-                                    />
-                                </View>
-                            </View>
-                        ))}
-                    </View>
-                )}
 
-                {/* Footer Insight Note */}
-                {totalRooms > 0 && (
-                    <View style={[s.cardFooter, { borderTopColor: isDark ? '#334155' : '#F1F5F9' }]}>
-                        <Ionicons name="sparkles" size={13} color="#F59E0B" />
-                        <Text style={[s.footerText, { color: isDark ? '#94A3B8' : '#64748B' }]}>
-                            {availableRooms > 0
-                                ? `${availableRooms} of ${totalRooms} rooms have vacant beds available to assign.`
-                                : `All ${totalRooms} rooms across your PG are currently at full capacity.`}
-                        </Text>
-                    </View>
-                )}
-            </TouchableOpacity>
+                                {/* Bottom: Mini Visual Progress Bar */}
+                                <View style={s.tileBottom}>
+                                    <View style={[s.barTrack, { backgroundColor: isDark ? '#0F172A' : '#E2E8F0' }]}>
+                                        <View
+                                            style={[
+                                                s.barFill,
+                                                {
+                                                    width: `${Math.min(100, Math.max(0, floor.fill_percentage))}%`,
+                                                    backgroundColor: accentColor,
+                                                }
+                                            ]}
+                                        />
+                                    </View>
+                                    <Text style={[s.percentText, { color: theme.textSecondary }]}>
+                                        {floor.fill_percentage}%
+                                    </Text>
+                                </View>
+                            </TouchableOpacity>
+                        );
+                    })}
+                </ScrollView>
+
+                {/* Tap Tip */}
+                <View style={[s.footerHint, { borderTopColor: isDark ? '#334155' : '#F1F5F9' }]}>
+                    <Ionicons name="hand-left-outline" size={11} color={theme.textSecondary} />
+                    <Text style={[s.footerHintText, { color: theme.textSecondary }]}>
+                        Tap any floor above to view its rooms and allocate beds
+                    </Text>
+                </View>
+            </View>
         </View>
     );
 };
 
 const s = StyleSheet.create({
-    sectionBlock: {
+    container: {
         marginVertical: 4,
     },
-    sectionHeaderRow: {
+    sectionHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
         paddingHorizontal: 2,
         marginBottom: 8,
     },
-    sectionTitleRow: {
+    headerTitleGroup: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 6,
     },
-    titleIconBadge: {
+    headerIconBadge: {
         width: 22,
         height: 22,
         borderRadius: 6,
@@ -294,182 +219,134 @@ const s = StyleSheet.create({
         textTransform: 'uppercase',
         letterSpacing: 0.5,
     },
-    viewRoomsBtn: {
+    headerLinkBtn: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 2,
     },
-    viewAll: {
+    headerLinkText: {
         fontWeight: '700',
     },
-    card: {
-        borderRadius: 20,
+    mainCard: {
+        borderRadius: 18,
         borderWidth: 1,
-        padding: 16,
-        elevation: 3,
+        padding: 12,
+        elevation: 2,
         shadowColor: '#000',
-        shadowOpacity: 0.05,
-        shadowRadius: 10,
-        shadowOffset: { width: 0, height: 4 },
-    },
-    topBannerRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'flex-start',
-        marginBottom: 14,
-        gap: 8,
-    },
-    mainMetricWrap: {
-        flex: 1,
-        minWidth: 0,
-        gap: 2,
-    },
-    percentRow: {
-        flexDirection: 'row',
-        alignItems: 'baseline',
-        gap: 6,
-    },
-    bigPercentText: {
-        fontSize: 26,
-        fontWeight: '900',
-        letterSpacing: -0.5,
-    },
-    percentLabel: {
-        fontSize: 12,
-        fontWeight: '700',
-        textTransform: 'uppercase',
-    },
-    subSummaryText: {
-        fontSize: 11.5,
-        fontWeight: '500',
-        lineHeight: 16,
-    },
-    statusPill: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        flexShrink: 0,
-        gap: 4,
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 12,
-    },
-    statusPillText: {
-        fontSize: 10.5,
-        fontWeight: '700',
-    },
-    progressSection: {
-        gap: 6,
-        marginBottom: 14,
-    },
-    progressBarBg: {
-        height: 8,
-        borderRadius: 4,
-        overflow: 'hidden',
-        width: '100%',
-    },
-    progressBarFill: {
-        height: '100%',
-        borderRadius: 4,
-    },
-    progressLabelsRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-    },
-    progressLegend: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 5,
-    },
-    legendDot: {
-        width: 6,
-        height: 6,
-        borderRadius: 3,
-    },
-    legendText: {
-        fontSize: 11,
-        fontWeight: '600',
-    },
-    metricGrid: {
-        flexDirection: 'row',
-        gap: 8,
-    },
-    metricCard: {
-        flex: 1,
-        borderRadius: 14,
-        borderWidth: 1,
-        padding: 10,
-        gap: 4,
-    },
-    metricIconRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-    },
-    miniIconCircle: {
-        width: 24,
-        height: 24,
-        borderRadius: 12,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    metricValue: {
-        fontSize: 16,
-        fontWeight: '900',
-    },
-    metricTitle: {
-        fontSize: 10.5,
-        fontWeight: '600',
-    },
-    cardFooter: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 6,
-        borderTopWidth: 1,
-        paddingTop: 10,
-        marginTop: 12,
-    },
-    footerText: {
-        fontSize: 11,
-        fontWeight: '500',
-        flex: 1,
-        lineHeight: 15,
-    },
-    floorBreakdownContainer: {
-        marginTop: 14,
-        paddingTop: 12,
-        borderTopWidth: 1,
+        shadowOpacity: 0.04,
+        shadowRadius: 8,
+        shadowOffset: { width: 0, height: 2 },
         gap: 10,
     },
-    floorSectionTitle: {
+    subHeaderRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingHorizontal: 2,
+    },
+    subHeaderLeft: {
         fontSize: 12.5,
         fontWeight: '700',
     },
-    floorRow: {
-        gap: 4,
+    vacantBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 5,
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        borderRadius: 12,
     },
-    floorHeader: {
+    statusDot: {
+        width: 5,
+        height: 5,
+        borderRadius: 2.5,
+    },
+    vacantBadgeText: {
+        fontSize: 10.5,
+        fontWeight: '700',
+    },
+    scrollContent: {
+        flexDirection: 'row',
+        gap: 8,
+        paddingVertical: 2,
+    },
+    floorTile: {
+        width: 142,
+        borderRadius: 14,
+        borderWidth: 1,
+        padding: 10,
+        gap: 8,
+    },
+    tileTopRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
     },
-    floorName: {
-        fontSize: 11.5,
+    floorBadge: {
+        width: 26,
+        height: 26,
+        borderRadius: 7,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    floorBadgeText: {
+        color: '#FFFFFF',
+        fontSize: 11,
+        fontWeight: '800',
+    },
+    pillBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 3,
+        paddingHorizontal: 6,
+        paddingVertical: 2.5,
+        borderRadius: 10,
+    },
+    pillText: {
+        fontSize: 9.5,
         fontWeight: '700',
     },
-    floorStats: {
-        fontSize: 11,
+    tileMiddle: {
+        gap: 2,
+    },
+    floorTitle: {
+        fontSize: 12,
+        fontWeight: '700',
+    },
+    floorSub: {
+        fontSize: 10,
         fontWeight: '500',
     },
-    floorBarBg: {
-        height: 6,
-        borderRadius: 3,
-        overflow: 'hidden',
-        width: '100%',
+    tileBottom: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
     },
-    floorBarFill: {
+    barTrack: {
+        flex: 1,
+        height: 4,
+        borderRadius: 2,
+        overflow: 'hidden',
+    },
+    barFill: {
         height: '100%',
-        borderRadius: 3,
+        borderRadius: 2,
+    },
+    percentText: {
+        fontSize: 9.5,
+        fontWeight: '700',
+    },
+    footerHint: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 5,
+        borderTopWidth: 1,
+        paddingTop: 8,
+        paddingHorizontal: 2,
+    },
+    footerHintText: {
+        fontSize: 10.5,
+        fontWeight: '500',
     },
 });
 
