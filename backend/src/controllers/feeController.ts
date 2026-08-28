@@ -282,6 +282,30 @@ export const recordPayment = async (req: AuthRequest, res: Response) => {
         receipt_number: receiptNumber
       }
     });
+
+    try {
+      if (io) {
+        io.to(`hostel_${hostel_id}`).emit('new_payment', { payment_id, amount: amount_paid });
+        io.to(`tenant_${student_id}`).emit('payment_recorded', { payment_id, amount: amount_paid });
+        io.to(`tenant_${student_id}`).emit('REFRESH_NOTIFICATIONS');
+      }
+      // Send push notification to student
+      sendNotificationToStudent(
+        Number(student_id),
+        'Payment',
+        'Payment Received ✅',
+        `Payment of ₹${amount_paid} has been recorded for your rent (Receipt: ${receiptNumber}).`,
+        'High',
+        { payment_id, receiptNumber, amount: amount_paid },
+        {
+          screen: 'Dues',
+          referenceType: 'payment',
+          referenceId: payment_id,
+        }
+      ).catch(err => console.error('Failed to send payment notification to student:', err));
+    } catch (notifErr) {
+      console.error('Notification dispatch error in recordFeePayment:', notifErr);
+    }
   } catch (error) {
     console.error('Record payment error:', error);
     res.status(500).json({
