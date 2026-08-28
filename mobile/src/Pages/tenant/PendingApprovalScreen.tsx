@@ -112,7 +112,7 @@ export default function PendingApprovalScreen({ navigation }: any) {
             </Text>
           </View>
           <Image
-            source={require('../../../assets/house_hourglass_3d.png')}
+            source={require('../../../assets/house_hourglass_3d.jpg')}
             style={styles.buildingImage}
             resizeMode="contain"
           />
