@@ -10,8 +10,11 @@ import {
   Platform,
   Image,
   ActivityIndicator,
+  Modal,
+  Pressable,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   Smartphone,
   Landmark,
@@ -23,17 +26,20 @@ import {
   UploadCloud,
   CheckCircle2,
   Image as ImageIcon,
+  Camera,
+  QrCode,
 } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
+import * as Haptics from 'expo-haptics';
 
 import { useAuth } from '../../../contexts/AuthContext';
-import { useToast } from '../../../contexts/ToastContext';
+import { useToast } from '../../context/ToastContext';
 import { appendImageFileToFormData } from '../../utils/imageHelper';
 import api from '../../services/api';
 import { PaymentSkeleton } from '../../components/tenant/UIComponents';
 import { OfflineBanner } from '../../components/tenant/NetworkComponents';
-import { UploadProgressBar } from '../../components/tenant/MediaComponents';
 import { AppHeader } from '../../components/tenant/ui';
+import { FullScreenLoader } from '../../components/FullScreenLoader';
 
 const BLUE = '#6D4AFF';
 const BLUE_SOFT = '#F5F3FF';
@@ -54,6 +60,7 @@ interface PaymentMode {
 type UploadStatus = 'idle' | 'uploading' | 'done' | 'error';
 
 export default function PaymentScreen({ navigation }: any) {
+  const insets = useSafeAreaInsets();
   const { user, refreshUser } = useAuth();
   const { showSuccess, showError, showWarning } = useToast();
 
@@ -65,6 +72,7 @@ export default function PaymentScreen({ navigation }: any) {
   const [proofImage, setProofImage] = useState<any>(null);
   const [uploadStatus, setUploadStatus] = useState<UploadStatus>('idle');
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [pickerModalVisible, setPickerModalVisible] = useState(false);
 
   const fetchModes = useCallback(async () => {
     try {
@@ -78,6 +86,7 @@ export default function PaymentScreen({ navigation }: any) {
           { payment_mode_id: 1, payment_mode_name: 'UPI / GPay' },
           { payment_mode_id: 2, payment_mode_name: 'Cash' },
           { payment_mode_id: 3, payment_mode_name: 'Bank Transfer' },
+          { payment_mode_id: 4, payment_mode_name: 'QR Scanner' },
         ]);
         setSelectedMode(1);
       }
@@ -86,6 +95,7 @@ export default function PaymentScreen({ navigation }: any) {
         { payment_mode_id: 1, payment_mode_name: 'UPI / GPay' },
         { payment_mode_id: 2, payment_mode_name: 'Cash' },
         { payment_mode_id: 3, payment_mode_name: 'Bank Transfer' },
+        { payment_mode_id: 4, payment_mode_name: 'QR Scanner' },
       ]);
       setSelectedMode(1);
     } finally {
@@ -95,16 +105,48 @@ export default function PaymentScreen({ navigation }: any) {
 
   useFocusEffect(useCallback(() => { fetchModes(); }, [fetchModes]));
 
-  const pickImage = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: false,
-      quality: 0.8,
-    });
-    if (!result.canceled && result.assets && result.assets.length > 0) {
-      setProofImage(result.assets[0]);
-      setUploadStatus('idle');
-      setUploadProgress(0);
+  const onSelectCamera = async () => {
+    try {
+      setPickerModalVisible(false);
+      const perm = await ImagePicker.requestCameraPermissionsAsync();
+      if (!perm.granted) {
+        showWarning('Camera permission is required to capture screenshots.');
+        return;
+      }
+      const res = await ImagePicker.launchCameraAsync({
+        quality: 0.8,
+        allowsEditing: false,
+      });
+      if (!res.canceled && res.assets && res.assets.length > 0) {
+        setProofImage(res.assets[0]);
+        setUploadStatus('idle');
+        setUploadProgress(0);
+      }
+    } catch (e) {
+      console.error('Camera error:', e);
+    }
+  };
+
+  const onSelectGallery = async () => {
+    try {
+      setPickerModalVisible(false);
+      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!perm.granted) {
+        showWarning('Photo library permission is required to select screenshots.');
+        return;
+      }
+      const res = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: false,
+        quality: 0.8,
+      });
+      if (!res.canceled && res.assets && res.assets.length > 0) {
+        setProofImage(res.assets[0]);
+        setUploadStatus('idle');
+        setUploadProgress(0);
+      }
+    } catch (e) {
+      console.error('Gallery error:', e);
     }
   };
 
@@ -122,8 +164,9 @@ export default function PaymentScreen({ navigation }: any) {
       return;
     }
 
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     setUploadStatus('uploading');
-    setUploadProgress(10);
+    setUploadProgress(15);
 
     try {
       const uri = proofImage.uri;
@@ -135,7 +178,7 @@ export default function PaymentScreen({ navigation }: any) {
         formData.append('transaction_reference', reference.trim());
       }
 
-      setUploadProgress(40);
+      setUploadProgress(45);
 
       const response = await api.post('/fees/upload-proof', formData, {
         onUploadProgress: (e: any) => {
@@ -175,17 +218,22 @@ export default function PaymentScreen({ navigation }: any) {
   const getModeIcon = (name: string, isSelected: boolean) => {
     const lower = name.toLowerCase();
     const color = isSelected ? '#FFFFFF' : '#64748B';
-    if (lower.includes('upi') || lower.includes('gpay') || lower.includes('phonepe') || lower.includes('qr')) {
-      return <Smartphone size={20} color={color} />;
+    if (lower.includes('qr')) {
+      return <QrCode size={18} color={color} />;
+    }
+    if (lower.includes('upi') || lower.includes('gpay') || lower.includes('phonepe')) {
+      return <Smartphone size={18} color={color} />;
     }
     if (lower.includes('cash')) {
-      return <Banknote size={20} color={color} />;
+      return <Banknote size={18} color={color} />;
     }
     if (lower.includes('card') || lower.includes('debit') || lower.includes('credit')) {
-      return <CreditCard size={20} color={color} />;
+      return <CreditCard size={18} color={color} />;
     }
-    return <Landmark size={20} color={color} />;
+    return <Landmark size={18} color={color} />;
   };
+
+  const outstanding = Number(user?.outstanding_due || 0);
 
   return (
     <View style={{ flex: 1, backgroundColor: BG }}>
@@ -200,7 +248,7 @@ export default function PaymentScreen({ navigation }: any) {
           <View style={s.outstandingCard}>
             <View>
               <Text style={s.outLbl}>TOTAL OUTSTANDING</Text>
-              <Text style={s.outVal}>₹{user?.outstanding_due || 0}</Text>
+              <Text style={s.outVal}>₹{outstanding.toLocaleString('en-IN')}</Text>
             </View>
             {user?.next_due_date ? (
               <View style={s.dueBadge}>
@@ -227,36 +275,85 @@ export default function PaymentScreen({ navigation }: any) {
                 placeholderTextColor="#CBD5E1"
               />
             </View>
+            {/* Quick Amount Suggestion Chips */}
+            {outstanding > 0 && (
+              <View style={s.quickAmountsRow}>
+                <TouchableOpacity
+                  style={[s.quickChip, Number(amount) === outstanding && s.quickChipActive]}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                    setAmount(String(outstanding));
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[s.quickChipText, Number(amount) === outstanding && s.quickChipTextActive]}>
+                    Full Due (₹{outstanding.toLocaleString('en-IN')})
+                  </Text>
+                </TouchableOpacity>
+                {outstanding > 2000 && (
+                  <TouchableOpacity
+                    style={[s.quickChip, Number(amount) === Math.round(outstanding / 2) && s.quickChipActive]}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                      setAmount(String(Math.round(outstanding / 2)));
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[s.quickChipText, Number(amount) === Math.round(outstanding / 2) && s.quickChipTextActive]}>
+                      50% (₹{Math.round(outstanding / 2).toLocaleString('en-IN')})
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
           </View>
 
-          {/* Payment Mode Selector */}
-          <Text style={s.sectionLabel}>
-            Payment Mode <Text style={s.requiredStar}>*</Text>
-          </Text>
-          <View style={s.modesGrid}>
-            {modes.map((m) => {
-              const isSelected = selectedMode === m.payment_mode_id;
-              return (
-                <TouchableOpacity
-                  key={m.payment_mode_id}
-                  style={[s.modeCard, isSelected && s.modeCardSelected]}
-                  onPress={() => setSelectedMode(m.payment_mode_id)}
-                  activeOpacity={0.75}
-                >
-                  <View style={[s.modeIconWrap, isSelected ? s.modeIconWrapSelected : s.modeIconWrapUnselected]}>
-                    {getModeIcon(m.payment_mode_name, isSelected)}
-                  </View>
-                  <Text style={[s.modeText, isSelected && s.modeTextSelected]} numberOfLines={1}>
-                    {m.payment_mode_name}
-                  </Text>
-                  {isSelected && (
-                    <View style={s.checkBadge}>
-                      <CheckCircle2 size={16} color={BLUE} />
+          {/* Payment Mode Selector - Scrollable Horizontal Cards */}
+          <View style={{ marginBottom: 20 }}>
+            <View style={s.sectionHeaderRow}>
+              <Text style={s.sectionLabel}>
+                Payment Mode <Text style={s.requiredStar}>*</Text>
+              </Text>
+              <Text style={s.sectionSubBadge}>{modes.length} options</Text>
+            </View>
+
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={s.modesScrollContainer}
+            >
+              {modes.map((m) => {
+                const isSelected = selectedMode === m.payment_mode_id;
+                return (
+                  <TouchableOpacity
+                    key={m.payment_mode_id}
+                    style={[s.modeCardHorizontal, isSelected && s.modeCardSelected]}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+                      setSelectedMode(m.payment_mode_id);
+                    }}
+                    activeOpacity={0.8}
+                  >
+                    <View style={[s.modeIconWrap, isSelected ? s.modeIconWrapSelected : s.modeIconWrapUnselected]}>
+                      {getModeIcon(m.payment_mode_name, isSelected)}
                     </View>
-                  )}
-                </TouchableOpacity>
-              );
-            })}
+                    <View style={{ flex: 1 }}>
+                      <Text style={[s.modeText, isSelected && s.modeTextSelected]} numberOfLines={1}>
+                        {m.payment_mode_name}
+                      </Text>
+                      <Text style={[s.modeSubText, isSelected && s.modeSubTextSelected]} numberOfLines={1}>
+                        {isSelected ? 'Selected' : 'Tap to select'}
+                      </Text>
+                    </View>
+                    {isSelected && (
+                      <View style={s.checkBadge}>
+                        <CheckCircle2 size={16} color={BLUE} />
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
           </View>
 
           {/* Reference ID */}
@@ -276,7 +373,11 @@ export default function PaymentScreen({ navigation }: any) {
             Payment Screenshot <Text style={s.requiredStar}>*</Text>
           </Text>
 
-          <TouchableOpacity style={[s.uploadBoxNew, proofImage && s.uploadBoxAttached]} onPress={pickImage} activeOpacity={0.7}>
+          <TouchableOpacity
+            style={[s.uploadBoxNew, proofImage && s.uploadBoxAttached]}
+            onPress={() => setPickerModalVisible(true)}
+            activeOpacity={0.75}
+          >
             {proofImage ? (
               <View style={s.previewRow}>
                 <View style={s.previewImgWrap}>
@@ -301,7 +402,7 @@ export default function PaymentScreen({ navigation }: any) {
                   <Text style={s.fileNameText} numberOfLines={1}>
                     {proofImage.fileName || 'payment_proof.jpg'}
                   </Text>
-                  <Text style={s.changeImageText}>Tap box to change screenshot</Text>
+                  <Text style={s.changeImageText}>Tap to choose another photo</Text>
                 </View>
               </View>
             ) : (
@@ -310,7 +411,7 @@ export default function PaymentScreen({ navigation }: any) {
                   <UploadCloud size={28} color={BLUE} />
                 </View>
                 <Text style={s.uploadTitle}>Tap to attach payment proof</Text>
-                <Text style={s.uploadSub}>Supports JPG, PNG, Screenshots up to 5MB</Text>
+                <Text style={s.uploadSub}>Supports Camera, Gallery, Screenshots up to 5MB</Text>
               </View>
             )}
           </TouchableOpacity>
@@ -341,20 +442,56 @@ export default function PaymentScreen({ navigation }: any) {
             activeOpacity={0.85}
           >
             {uploadStatus === 'uploading' ? (
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                 <ActivityIndicator size="small" color={WHITE} />
-                <Text style={s.saveBtnText}>Uploading… {uploadProgress}%</Text>
+                <Text style={s.saveBtnText}>Submitting Proof ({uploadProgress}%)</Text>
               </View>
             ) : (
-              <>
-                <Upload size={18} color={WHITE} strokeWidth={2.5} style={{ marginRight: 8 }} />
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Upload size={18} color={WHITE} strokeWidth={2.5} />
                 <Text style={s.saveBtnText}>Submit Payment Proof</Text>
-              </>
+              </View>
             )}
           </TouchableOpacity>
+
           <View style={{ height: 40 }} />
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Image Source Drawer Modal */}
+      <Modal visible={pickerModalVisible} transparent animationType="fade" statusBarTranslucent onRequestClose={() => setPickerModalVisible(false)}>
+        <View style={s.modalOverlay}>
+          <Pressable style={StyleSheet.absoluteFillObject} onPress={() => setPickerModalVisible(false)} />
+          <View style={[s.sourceModalContent, { paddingBottom: Math.max(insets.bottom + 16, 28) }]}>
+            <View style={s.sourceModalHeader}>
+              <Text style={s.sourceModalTitle}>Choose Screenshot Source</Text>
+              <TouchableOpacity onPress={() => setPickerModalVisible(false)} hitSlop={8}>
+                <Text style={{ fontSize: 18, color: TEXT_MID, fontWeight: '700' }}>✕</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={s.sourceOptionsRow}>
+              <TouchableOpacity style={s.sourceOptionBtn} onPress={onSelectCamera} activeOpacity={0.8}>
+                <View style={[s.sourceIconBg, { backgroundColor: '#EDE9FE' }]}>
+                  <Camera size={26} color={BLUE} />
+                </View>
+                <Text style={s.sourceOptionText}>Take Photo</Text>
+                <Text style={s.sourceOptionSub}>Use Camera</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={s.sourceOptionBtn} onPress={onSelectGallery} activeOpacity={0.8}>
+                <View style={[s.sourceIconBg, { backgroundColor: '#E0F2FE' }]}>
+                  <Upload size={26} color="#0284C7" />
+                </View>
+                <Text style={s.sourceOptionText}>Choose Gallery</Text>
+                <Text style={s.sourceOptionSub}>Pick Screenshot</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Full Screen Interactive Loader */}
+      <FullScreenLoader visible={uploadStatus === 'uploading'} message="Uploading payment screenshot & submitting proof..." />
     </View>
   );
 }
@@ -379,6 +516,12 @@ const s = StyleSheet.create({
   dueTxt: { fontSize: 11, fontWeight: '700', color: DANGER },
 
   amountContainer: { marginBottom: 20 },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
   sectionLabel: {
     fontSize: 13,
     fontWeight: '800',
@@ -386,6 +529,15 @@ const s = StyleSheet.create({
     marginBottom: 10,
     marginLeft: 2,
     letterSpacing: 0.3,
+  },
+  sectionSubBadge: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: BLUE,
+    backgroundColor: BLUE_SOFT,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
   },
   requiredStar: {
     color: DANGER,
@@ -403,16 +555,39 @@ const s = StyleSheet.create({
     borderColor: BORDER,
   },
   rupee: { fontSize: 28, fontWeight: '800', color: TEXT_DARK, marginRight: 10 },
-  amountInput: { fontSize: 32, fontWeight: '800', color: TEXT_DARK, flex: 1, padding: 0 },
-
-  // Modes
-  modesGrid: {
+  amountInput: { fontSize: 30, fontWeight: '800', color: TEXT_DARK, flex: 1, padding: 0 },
+  quickAmountsRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-    marginBottom: 20,
+    gap: 8,
+    marginTop: 10,
   },
-  modeCard: {
+  quickChip: {
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  quickChipActive: {
+    backgroundColor: BLUE_SOFT,
+    borderColor: BLUE,
+  },
+  quickChipText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: TEXT_MID,
+  },
+  quickChipTextActive: {
+    color: BLUE,
+  },
+
+  // Modes Scroll
+  modesScrollContainer: {
+    paddingRight: 10,
+    gap: 10,
+  },
+  modeCardHorizontal: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: WHITE,
@@ -421,8 +596,7 @@ const s = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1.5,
     borderColor: BORDER,
-    minWidth: '47%',
-    flex: 1,
+    width: 170,
     gap: 10,
   },
   modeCardSelected: {
@@ -445,14 +619,22 @@ const s = StyleSheet.create({
   modeText: {
     fontSize: 13,
     fontWeight: '700',
-    color: TEXT_MID,
-    flex: 1,
+    color: TEXT_DARK,
   },
   modeTextSelected: {
     color: BLUE,
   },
+  modeSubText: {
+    fontSize: 10,
+    color: TEXT_LIGHT,
+    marginTop: 1,
+  },
+  modeSubTextSelected: {
+    color: BLUE,
+    fontWeight: '600',
+  },
   checkBadge: {
-    marginLeft: 'auto',
+    marginLeft: 4,
   },
 
   inputWrapper: {
@@ -576,4 +758,65 @@ const s = StyleSheet.create({
   },
   saveBtnDisabled: { backgroundColor: '#94A3B8', shadowOpacity: 0, elevation: 0 },
   saveBtnText: { color: WHITE, fontSize: 15, fontWeight: '800' },
+
+  // Image Source Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.85)',
+    justifyContent: 'flex-end',
+  },
+  sourceModalContent: {
+    backgroundColor: WHITE,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 20,
+  },
+  sourceModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+  },
+  sourceModalTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: TEXT_DARK,
+  },
+  sourceOptionsRow: {
+    flexDirection: 'row',
+    gap: 14,
+  },
+  sourceOptionBtn: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1.5,
+    borderColor: BORDER,
+    borderRadius: 16,
+    padding: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  sourceIconBg: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 2,
+  },
+  sourceOptionText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: TEXT_DARK,
+  },
+  sourceOptionSub: {
+    fontSize: 11,
+    color: TEXT_MID,
+  },
 });
