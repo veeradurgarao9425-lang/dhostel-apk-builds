@@ -505,16 +505,32 @@ export const uploadPaymentProof = async (req: AuthRequest, res: Response) => {
         io.to(`hostel_${student.hostel_id}`).emit('payment_proof_uploaded', { payment_id, student_id });
       }
       const studentFullName = `${student.first_name} ${student.last_name || ''}`.trim();
+      // 1. Notify Owner
       await sendNotificationToHostelOwner(
         student.hostel_id,
         'Payment Proof',
-        'New Payment Proof',
+        'New Payment Proof 💳',
         `${studentFullName} uploaded a payment proof for ₹${amount_paid || 0}.`,
         'Medium',
         { payment_id, student_id, studentName: studentFullName, studentId: student_id },
         {
           screen: 'TenantTransactions',
           params: { studentId: student_id, studentName: studentFullName },
+          referenceType: 'payment_proof',
+          referenceId: payment_id,
+        }
+      );
+
+      // 2. Notify Student/Tenant (instant confirmation)
+      await sendNotificationToStudent(
+        student_id,
+        'Payment Proof',
+        'Payment Proof Submitted 💳',
+        `Your payment proof of ₹${amount_paid || 0} was submitted successfully and is awaiting owner verification.`,
+        'High',
+        { payment_id, student_id, amount_paid },
+        {
+          screen: 'Dues',
           referenceType: 'payment_proof',
           referenceId: payment_id,
         }
