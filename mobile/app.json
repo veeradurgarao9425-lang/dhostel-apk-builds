@@ -3,7 +3,7 @@
     "name": "Hostix",
     "slug": "stivo-mobile",
     "scheme": "hostix",
-    "version": "1.0.4",
+    "version": "1.0.5",
     "orientation": "portrait",
     "icon": "./assets/HostixNew.png",
     "userInterfaceStyle": "automatic",
@@ -21,7 +21,7 @@
       "supportsTablet": true
     },
     "android": {
-      "versionCode": 5,
+      "versionCode": 6,
       "adaptiveIcon": {
         "foregroundImage": "./assets/HostixNew.png",
         "backgroundColor": "#ffffff"

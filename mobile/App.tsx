@@ -15,6 +15,8 @@ import { useFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_7
 import * as SplashScreen from 'expo-splash-screen';
 import { Text, TextInput } from 'react-native';
 
+import { notificationService } from './src/services/notificationService';
+
 SplashScreen.preventAutoHideAsync();
 
 import './src/i18n';
@@ -71,6 +73,9 @@ export default function App() {
   const [forceReady, setForceReady] = React.useState(false);
 
   React.useEffect(() => {
+    // Register push notification token on app launch
+    notificationService.registerForPushNotificationsAsync().catch(() => {});
+
     // Safety fallback: Unfreeze and show UI within 1200ms max even if font network stalls
     const timeout = setTimeout(() => {
       setForceReady(true);
