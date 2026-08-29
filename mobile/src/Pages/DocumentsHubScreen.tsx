@@ -1,42 +1,39 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
     View,
     Text,
     StyleSheet,
     ScrollView,
     TouchableOpacity,
-    TextInput,
-    StatusBar,
     Image,
-    Modal,
+    TextInput,
     ActivityIndicator,
-    Linking,
+    Modal,
     Dimensions,
-    Platform,
-    RefreshControl,
+    Linking,
+    StatusBar,
+    Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import {
     Search,
-    X,
+    ShieldCheck,
     Phone,
     MessageCircle,
-    Eye,
     Download,
-    Share2,
-    Building2,
+    Eye,
     ChevronDown,
-    Filter,
-    FileText,
-    ShieldCheck,
+    Building2,
+    Users,
+    Briefcase,
+    Bed,
+    UserCheck,
     AlertTriangle,
-    Image as ImageIcon,
-    RefreshCw,
-    User,
+    X,
     CheckCircle2,
-    Layers,
+    Share2,
 } from 'lucide-react-native';
 import { AppHeader } from '../components/AppHeader';
 import { useAuth } from '../../contexts/AuthContext';
@@ -49,10 +46,13 @@ import * as FileSystem from 'expo-file-system/legacy';
 
 const { width, height } = Dimensions.get('window');
 
-interface TenantDocItem {
-    student_id: number | string;
+interface DocEntityItem {
+    id: number | string;
     full_name: string;
     phone: string;
+    category: 'TENANT' | 'GUEST' | 'STAFF';
+    category_label: string;
+    role_or_room: string;
     room_number?: string;
     bed_number?: string;
     floor_number?: string | number;
@@ -62,7 +62,6 @@ interface TenantDocItem {
     profile_photo?: string | null;
     aadhaar_front?: string | null;
     aadhaar_back?: string | null;
-    id_proof_document?: string | null;
     hostel_id?: number | string;
 }
 
@@ -74,9 +73,9 @@ export default function DocumentsHubScreen() {
 
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
-    const [tenants, setTenants] = useState<TenantDocItem[]>([]);
+    const [entities, setEntities] = useState<DocEntityItem[]>([]);
     const [search, setSearch] = useState('');
-    const [activeTab, setActiveTab] = useState<'all' | 'aadhaar' | 'id_proof' | 'photos' | 'missing'>('all');
+    const [activeTab, setActiveTab] = useState<'all' | 'tenants' | 'guests' | 'staff' | 'missing'>('all');
     const [selectedHostelId, setSelectedHostelId] = useState<any>(user?.hostel_id || null);
 
     // Image preview modal state
@@ -89,7 +88,7 @@ export default function DocumentsHubScreen() {
         }
     }, [user?.hostel_id]);
 
-    const fetchTenants = async (isRefresh = false) => {
+    const fetchAllDocuments = async (isRefresh = false) => {
         try {
             if (isRefresh) setRefreshing(true);
             else setLoading(true);
@@ -99,18 +98,28 @@ export default function DocumentsHubScreen() {
                 params.hostelId = selectedHostelId;
             }
 
-            const res = await api.get('/students', { params });
-            if (res.data?.success) {
-                const list: any[] = res.data.data || [];
-                const formatted: TenantDocItem[] = list.map(item => {
+            const [studentsRes, guestsRes, staffRes] = await Promise.allSettled([
+                api.get('/students', { params }),
+                api.get('/guests', { params }),
+                api.get('/staff', { params }),
+            ]);
+
+            const allList: DocEntityItem[] = [];
+
+            // 1. Map Students / Residents
+            if (studentsRes.status === 'fulfilled' && studentsRes.value.data?.success) {
+                const list: any[] = studentsRes.value.data.data || [];
+                list.forEach(item => {
                     const firstName = item.first_name || '';
                     const lastName = item.last_name || '';
                     const fullName = item.full_name || `${firstName} ${lastName}`.trim() || 'Resident';
-
-                    return {
-                        student_id: item.student_id || item.id,
+                    allList.push({
+                        id: `student_${item.student_id || item.id}`,
                         full_name: fullName,
                         phone: item.phone || '',
+                        category: 'TENANT',
+                        category_label: 'Resident',
+                        role_or_room: item.room_number ? `Room ${item.room_number}${item.bed_number ? ` • Bed ${item.bed_number}` : ''}` : 'Resident',
                         room_number: item.room_number || item.room?.room_number || '',
                         bed_number: item.bed_number || item.bed?.bed_number || '',
                         floor_number: item.floor_number || item.room?.floor || '',
@@ -118,14 +127,59 @@ export default function DocumentsHubScreen() {
                         id_proof_type: item.id_proof_type || 'Aadhaar Card',
                         id_proof_number: item.id_proof_number || '',
                         profile_photo: item.profile_photo_url || item.photo || null,
-                        aadhaar_front: item.id_proof_front_url || item.aadhaar_front || null,
+                        aadhaar_front: item.id_proof_front_url || item.aadhaar_front || item.id_proof_document_url || item.id_proof || null,
                         aadhaar_back: item.id_proof_back_url || item.aadhaar_back || null,
-                        id_proof_document: item.id_proof_document_url || item.id_proof || null,
                         hostel_id: item.hostel_id,
-                    };
+                    });
                 });
-                setTenants(formatted);
             }
+
+            // 2. Map Guests
+            if (guestsRes.status === 'fulfilled' && guestsRes.value.data?.success) {
+                const list: any[] = guestsRes.value.data.data || [];
+                list.forEach(item => {
+                    allList.push({
+                        id: `guest_${item.guest_id || item.id}`,
+                        full_name: item.full_name || 'Guest',
+                        phone: item.phone || '',
+                        category: 'GUEST',
+                        category_label: 'Daily Guest',
+                        role_or_room: item.room_number ? `Room ${item.room_number} (Guest)` : 'Short-Stay Guest',
+                        room_number: item.room_number || '',
+                        status: item.status || 'staying',
+                        id_proof_type: item.id_proof_type || 'ID Proof',
+                        id_proof_number: item.id_proof_number || '',
+                        profile_photo: item.profile_photo_url || null,
+                        aadhaar_front: item.id_proof_front_url || null,
+                        aadhaar_back: item.id_proof_back_url || null,
+                        hostel_id: item.hostel_id,
+                    });
+                });
+            }
+
+            // 3. Map Staff Members
+            if (staffRes.status === 'fulfilled' && staffRes.value.data?.success) {
+                const list: any[] = staffRes.value.data.data || [];
+                list.forEach(item => {
+                    allList.push({
+                        id: `staff_${item.staff_id || item.id}`,
+                        full_name: item.full_name || 'Staff Member',
+                        phone: item.phone || '',
+                        category: 'STAFF',
+                        category_label: 'Staff Member',
+                        role_or_room: item.role ? `${item.role}` : 'Staff',
+                        status: item.status === 1 || item.status === 'ACTIVE' ? 'ACTIVE' : 'INACTIVE',
+                        id_proof_type: 'Aadhaar Card',
+                        id_proof_number: item.aadhaar_number || '',
+                        profile_photo: item.photo || null,
+                        aadhaar_front: item.aadhaar_front || null,
+                        aadhaar_back: item.aadhaar_back || null,
+                        hostel_id: item.hostel_id,
+                    });
+                });
+            }
+
+            setEntities(allList);
         } catch (e: any) {
             showApiError(e, 'Failed to load documents');
         } finally {
@@ -135,48 +189,48 @@ export default function DocumentsHubScreen() {
     };
 
     useEffect(() => {
-        fetchTenants();
+        fetchAllDocuments();
     }, [selectedHostelId]);
 
     // ── Calculate Counts ──
     const counts = useMemo(() => {
-        const total = tenants.length;
-        const withAadhaar = tenants.filter(t => t.aadhaar_front || t.aadhaar_back).length;
-        const withIdProof = tenants.filter(t => t.id_proof_document).length;
-        const withPhotos = tenants.filter(t => t.profile_photo).length;
-        const missingKyc = tenants.filter(t => !t.aadhaar_front && !t.aadhaar_back && !t.id_proof_document).length;
-        const totalDocsCount = tenants.reduce((acc, t) => {
+        const total = entities.length;
+        const tenantsCount = entities.filter(t => t.category === 'TENANT').length;
+        const guestsCount = entities.filter(t => t.category === 'GUEST').length;
+        const staffCount = entities.filter(t => t.category === 'STAFF').length;
+        const missingKyc = entities.filter(t => !t.aadhaar_front && !t.aadhaar_back).length;
+        const totalDocsCount = entities.reduce((acc, t) => {
             let count = 0;
             if (t.profile_photo) count++;
             if (t.aadhaar_front) count++;
             if (t.aadhaar_back) count++;
-            if (t.id_proof_document) count++;
             return acc + count;
         }, 0);
 
-        return { total, withAadhaar, withIdProof, withPhotos, missingKyc, totalDocsCount };
-    }, [tenants]);
+        return { total, tenants: tenantsCount, guests: guestsCount, staff: staffCount, missingKyc, totalDocsCount };
+    }, [entities]);
 
     // ── Filtered List ──
-    const filteredTenants = useMemo(() => {
+    const filteredEntities = useMemo(() => {
         const q = search.toLowerCase().trim();
-        return tenants.filter(t => {
+        return entities.filter(t => {
             const matchSearch = !q ||
                 t.full_name.toLowerCase().includes(q) ||
                 t.phone.includes(q) ||
                 (t.room_number && t.room_number.toLowerCase().includes(q)) ||
+                (t.role_or_room && t.role_or_room.toLowerCase().includes(q)) ||
                 (t.floor_number !== undefined && String(t.floor_number).toLowerCase().includes(q));
 
             if (!matchSearch) return false;
 
-            if (activeTab === 'aadhaar') return Boolean(t.aadhaar_front || t.aadhaar_back);
-            if (activeTab === 'id_proof') return Boolean(t.id_proof_document);
-            if (activeTab === 'photos') return Boolean(t.profile_photo);
-            if (activeTab === 'missing') return !t.aadhaar_front && !t.aadhaar_back && !t.id_proof_document;
+            if (activeTab === 'tenants') return t.category === 'TENANT';
+            if (activeTab === 'guests') return t.category === 'GUEST';
+            if (activeTab === 'staff') return t.category === 'STAFF';
+            if (activeTab === 'missing') return !t.aadhaar_front && !t.aadhaar_back;
 
             return true;
         });
-    }, [tenants, search, activeTab]);
+    }, [entities, search, activeTab]);
 
     // ── Action Handlers ──
     const handlePreview = (rawUrl: string | null | undefined, title: string, subtitle: string) => {
@@ -189,45 +243,48 @@ export default function DocumentsHubScreen() {
         setPreviewModalVisible(true);
     };
 
-    const handleDownload = async (rawUrl: string | null | undefined, docLabel: string, tenantName: string) => {
+    const handleDownload = async (rawUrl: string | null | undefined, docLabel: string, personName: string) => {
         const resolved = getResolvedImageUrl(rawUrl);
         if (!resolved) {
             showError('Document URL is invalid.');
             return;
         }
-        const cleanName = tenantName.replace(/[^a-zA-Z0-9]/g, '_');
+        const cleanName = personName.replace(/[^a-zA-Z0-9]/g, '_');
         const filename = `${cleanName}_${docLabel.replace(/\s+/g, '_')}_${Date.now()}.jpg`;
         await downloadAndSaveFile(resolved, filename, 'image/jpeg');
     };
 
-    const handleShare = async (rawUrl: string | null | undefined, docLabel: string, tenantName: string) => {
-        const resolved = getResolvedImageUrl(rawUrl);
-        if (!resolved) {
-            showError('Document URL is invalid.');
-            return;
-        }
+    const handleShare = async (rawUrl: string | null | undefined, docLabel: string, personName: string) => {
         try {
+            const resolved = getResolvedImageUrl(rawUrl);
+            if (!resolved) {
+                showError('Document URL is not accessible.');
+                return;
+            }
             const canShare = await Sharing.isAvailableAsync();
             if (!canShare) {
                 showError('Sharing is not available on this device.');
                 return;
             }
 
-            const cleanName = tenantName.replace(/[^a-zA-Z0-9]/g, '_');
-            const filename = `${cleanName}_${docLabel.replace(/\s+/g, '_')}.jpg`;
-            const destUri = `${FileSystem.cacheDirectory}${filename}`;
+            const cleanPrefix = (personName || 'document').replace(/[^a-zA-Z0-9]/g, '_').slice(0, 20);
+            const safeDocLabel = (docLabel || 'KYC').replace(/[^a-zA-Z0-9]/g, '_').slice(0, 20);
+            const filename = `${cleanPrefix}_${safeDocLabel}_${Date.now()}.jpg`;
+            const dest = `${FileSystem.cacheDirectory}${filename}`;
+            const downloadRes = await FileSystem.downloadAsync(resolved, dest);
 
-            const downloadResult = await FileSystem.downloadAsync(resolved, destUri);
-            if (downloadResult.status === 200) {
-                await Sharing.shareAsync(downloadResult.uri, {
+            if (downloadRes.status === 200) {
+                await Sharing.shareAsync(downloadRes.uri, {
                     mimeType: 'image/jpeg',
-                    dialogTitle: `Share ${tenantName}'s ${docLabel}`,
+                    dialogTitle: `Share ${personName || ''} ${docLabel || 'Document'}`.trim(),
+                    UTI: 'public.jpeg',
                 });
             } else {
-                showError('Failed to prepare document for sharing.');
+                showError('Could not prepare file for sharing.');
             }
         } catch (e: any) {
-            showError('Error sharing document.');
+            console.error('Share error:', e);
+            showError('Unable to share: ' + (e?.message || 'Please try again.'));
         }
     };
 
@@ -236,12 +293,12 @@ export default function DocumentsHubScreen() {
         Linking.openURL(`tel:${phone}`).catch(() => showError('Unable to launch phone dialer.'));
     };
 
-    const handleWhatsApp = (phone: string, tenantName: string, missingType?: string) => {
+    const handleWhatsApp = (phone: string, personName: string, missingType?: string) => {
         if (!phone) return;
         const cleanPhone = phone.replace(/\D/g, '');
         const message = missingType
-            ? `Hello ${tenantName}, please upload your ${missingType} for your hostel KYC registration. Thank you!`
-            : `Hello ${tenantName}, reaching out regarding your hostel residency documents.`;
+            ? `Hello ${personName}, please upload your ${missingType} for your hostel registration. Thank you!`
+            : `Hello ${personName}, reaching out regarding your hostel records and documents.`;
         Linking.openURL(`https://wa.me/91${cleanPhone}?text=${encodeURIComponent(message)}`).catch(() => {
             showError('WhatsApp is not installed.');
         });
@@ -250,7 +307,7 @@ export default function DocumentsHubScreen() {
     const renderDocThumbnail = (
         url: string | null | undefined,
         label: string,
-        tenant: TenantDocItem,
+        entity: DocEntityItem,
         icon: string,
         badgeColor: string
     ) => {
@@ -266,7 +323,7 @@ export default function DocumentsHubScreen() {
                     <Text style={styles.missingDocSub}>Not Uploaded</Text>
                     <TouchableOpacity
                         style={styles.requestDocBtn}
-                        onPress={() => handleWhatsApp(tenant.phone, tenant.full_name, label)}
+                        onPress={() => handleWhatsApp(entity.phone, entity.full_name, label)}
                         activeOpacity={0.7}
                     >
                         <MessageCircle size={11} color="#0284C7" />
@@ -277,84 +334,66 @@ export default function DocumentsHubScreen() {
         }
 
         return (
-            <View style={styles.docThumbnailCard}>
-                <TouchableOpacity
-                    style={styles.thumbnailImgWrap}
-                    onPress={() => handlePreview(url, `${tenant.full_name}'s ${label}`, `Room ${tenant.room_number || 'N/A'}`)}
-                    activeOpacity={0.88}
-                >
+            <TouchableOpacity
+                style={styles.docThumbnailCard}
+                onPress={() => handlePreview(url, `${entity.full_name}'s ${label}`, entity.role_or_room)}
+                activeOpacity={0.85}
+            >
+                <View style={styles.thumbnailImgWrap}>
                     <Image source={{ uri: resolved }} style={styles.thumbnailImg} resizeMode="cover" />
                     <View style={[styles.docTypeBadge, { backgroundColor: badgeColor }]}>
                         <Text style={styles.docTypeBadgeText}>{label}</Text>
                     </View>
                     <View style={styles.viewZoomOverlay}>
-                        <Eye size={14} color="#FFFFFF" />
+                        <Eye size={13} color="#FFFFFF" />
                     </View>
-                </TouchableOpacity>
-
-                {/* Bottom Action Strip */}
-                <View style={styles.thumbnailActions}>
-                    <TouchableOpacity
-                        style={styles.actionIconBtn}
-                        onPress={() => handlePreview(url, `${tenant.full_name}'s ${label}`, `Room ${tenant.room_number || 'N/A'}`)}
-                        activeOpacity={0.7}
-                    >
-                        <Eye size={13} color="#4F46E5" />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={styles.actionIconBtn}
-                        onPress={() => handleDownload(url, label, tenant.full_name)}
-                        activeOpacity={0.7}
-                    >
-                        <Download size={13} color="#0284C7" />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={styles.actionIconBtn}
-                        onPress={() => handleShare(url, label, tenant.full_name)}
-                        activeOpacity={0.7}
-                    >
-                        <Share2 size={13} color="#059669" />
-                    </TouchableOpacity>
                 </View>
-            </View>
+
+                {/* Bottom Clean Tap Bar */}
+                <View style={styles.thumbnailActions}>
+                    <Eye size={12} color="#4F46E5" />
+                    <Text style={styles.actionIconBtnText} numberOfLines={1}>View Proof</Text>
+                </View>
+            </TouchableOpacity>
         );
     };
 
     return (
         <View style={styles.container}>
-            <StatusBar barStyle="light-content" />
+            <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
             {/* ── App Header ── */}
             <AppHeader
-                title="Documents & KYC Hub"
-                subtitle="All tenant ID proofs & photos in one place"
+                title="KYC & Documents Hub"
+                subtitle="Resident, Guest & Staff identification proofs"
                 showBack={true}
             />
 
-            {/* ── Search & Filter Tabs Section ── */}
-            <View style={styles.topControlPanel}>
-                {/* Search Bar */}
-                <View style={styles.searchBarWrap}>
+            {/* ── Search & Filter Bar ── */}
+            <View style={styles.filterSection}>
+                {/* Search Input */}
+                <View style={styles.searchBar}>
                     <Search size={16} color="#64748B" />
                     <TextInput
                         style={styles.searchInput}
-                        placeholder="Search by student, room, floor or phone..."
+                        placeholder="Search by name, room, role, or phone..."
                         placeholderTextColor="#94A3B8"
                         value={search}
                         onChangeText={setSearch}
+                        clearButtonMode="while-editing"
                     />
-                    {search.length > 0 && (
-                        <TouchableOpacity onPress={() => setSearch('')} style={styles.clearSearchBtn}>
-                            <X size={14} color="#64748B" />
+                    {search ? (
+                        <TouchableOpacity onPress={() => setSearch('')} activeOpacity={0.7}>
+                            <X size={16} color="#94A3B8" />
                         </TouchableOpacity>
-                    )}
+                    ) : null}
                 </View>
 
-                {/* Horizontal Filter Tabs */}
+                {/* Filter Pills */}
                 <ScrollView
                     horizontal
                     showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={styles.filterTabsScroll}
+                    contentContainerStyle={styles.filterPillsScroll}
                 >
                     <TouchableOpacity
                         style={[styles.filterPill, activeTab === 'all' && styles.filterPillActive]}
@@ -367,35 +406,35 @@ export default function DocumentsHubScreen() {
                     </TouchableOpacity>
 
                     <TouchableOpacity
-                        style={[styles.filterPill, activeTab === 'aadhaar' && styles.filterPillActive]}
-                        onPress={() => setActiveTab('aadhaar')}
+                        style={[styles.filterPill, activeTab === 'tenants' && styles.filterPillActive]}
+                        onPress={() => setActiveTab('tenants')}
                         activeOpacity={0.7}
                     >
-                        <ShieldCheck size={13} color={activeTab === 'aadhaar' ? '#FFFFFF' : '#4F46E5'} />
-                        <Text style={[styles.filterPillText, activeTab === 'aadhaar' && styles.filterPillTextActive]}>
-                            Aadhaar ({counts.withAadhaar})
+                        <Users size={13} color={activeTab === 'tenants' ? '#FFFFFF' : '#4F46E5'} />
+                        <Text style={[styles.filterPillText, activeTab === 'tenants' && styles.filterPillTextActive]}>
+                            Residents ({counts.tenants})
                         </Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
-                        style={[styles.filterPill, activeTab === 'id_proof' && styles.filterPillActive]}
-                        onPress={() => setActiveTab('id_proof')}
+                        style={[styles.filterPill, activeTab === 'guests' && styles.filterPillActive]}
+                        onPress={() => setActiveTab('guests')}
                         activeOpacity={0.7}
                     >
-                        <FileText size={13} color={activeTab === 'id_proof' ? '#FFFFFF' : '#0284C7'} />
-                        <Text style={[styles.filterPillText, activeTab === 'id_proof' && styles.filterPillTextActive]}>
-                            ID Proofs ({counts.withIdProof})
+                        <Bed size={13} color={activeTab === 'guests' ? '#FFFFFF' : '#D97706'} />
+                        <Text style={[styles.filterPillText, activeTab === 'guests' && styles.filterPillTextActive]}>
+                            Guests ({counts.guests})
                         </Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
-                        style={[styles.filterPill, activeTab === 'photos' && styles.filterPillActive]}
-                        onPress={() => setActiveTab('photos')}
+                        style={[styles.filterPill, activeTab === 'staff' && styles.filterPillActive]}
+                        onPress={() => setActiveTab('staff')}
                         activeOpacity={0.7}
                     >
-                        <ImageIcon size={13} color={activeTab === 'photos' ? '#FFFFFF' : '#059669'} />
-                        <Text style={[styles.filterPillText, activeTab === 'photos' && styles.filterPillTextActive]}>
-                            Photos ({counts.withPhotos})
+                        <Briefcase size={13} color={activeTab === 'staff' ? '#FFFFFF' : '#059669'} />
+                        <Text style={[styles.filterPillText, activeTab === 'staff' && styles.filterPillTextActive]}>
+                            Staff ({counts.staff})
                         </Text>
                     </TouchableOpacity>
 
@@ -426,7 +465,7 @@ export default function DocumentsHubScreen() {
             <View style={styles.statsRibbon}>
                 <View style={styles.statCol}>
                     <Text style={styles.statNum}>{counts.total}</Text>
-                    <Text style={styles.statLabel}>Tenants</Text>
+                    <Text style={styles.statLabel}>Total Profiles</Text>
                 </View>
                 <View style={styles.statDivider} />
                 <View style={styles.statCol}>
@@ -438,7 +477,7 @@ export default function DocumentsHubScreen() {
                     <Text style={[styles.statNum, { color: counts.missingKyc > 0 ? '#E11D48' : '#64748B' }]}>
                         {counts.missingKyc}
                     </Text>
-                    <Text style={styles.statLabel}>Incomplete</Text>
+                    <Text style={styles.statLabel}>Missing Proofs</Text>
                 </View>
             </View>
 
@@ -450,47 +489,44 @@ export default function DocumentsHubScreen() {
                 </View>
             ) : (
                 <ScrollView
-                    style={styles.mainScroll}
-                    contentContainerStyle={[
-                        styles.mainScrollContent,
-                        { paddingBottom: Math.max(insets.bottom + 24, 40) },
-                    ]}
+                    style={styles.scrollArea}
+                    contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 40 }]}
                     showsVerticalScrollIndicator={false}
-                    refreshControl={
-                        <RefreshControl refreshing={refreshing} onRefresh={() => fetchTenants(true)} colors={['#4F46E5']} />
-                    }
                 >
-                    {filteredTenants.length === 0 ? (
-                        <View style={styles.emptyStateContainer}>
-                            <View style={styles.emptyIconBox}>
-                                <FileText size={36} color="#94A3B8" />
+                    {filteredEntities.length === 0 ? (
+                        <View style={styles.emptyContainer}>
+                            <View style={styles.emptyIconCircle}>
+                                <Users size={32} color="#94A3B8" />
                             </View>
-                            <Text style={styles.emptyStateTitle}>No Documents Found</Text>
-                            <Text style={styles.emptyStateSubtitle}>
+                            <Text style={styles.emptyTitle}>No Profiles Found</Text>
+                            <Text style={styles.emptySubtitle}>
                                 {search.trim()
-                                    ? `No residents matching "${search.trim()}"`
+                                    ? `No profiles matching "${search.trim()}"`
                                     : activeTab === 'missing'
-                                    ? 'Great job! All residents have uploaded their KYC proofs.'
-                                    : 'No resident documents uploaded for this filter.'}
+                                    ? 'Great job! All profiles have uploaded their KYC proofs.'
+                                    : 'No documents uploaded for this category.'}
                             </Text>
                         </View>
                     ) : (
-                        filteredTenants.map(tenant => {
-                            const hasDocs = tenant.profile_photo || tenant.aadhaar_front || tenant.aadhaar_back || tenant.id_proof_document;
+                        filteredEntities.map(entity => {
+                            const hasDocs = entity.profile_photo || entity.aadhaar_front || entity.aadhaar_back;
+                            const isTenant = entity.category === 'TENANT';
+                            const isGuest = entity.category === 'GUEST';
+                            const isStaff = entity.category === 'STAFF';
 
                             return (
-                                <View key={tenant.student_id} style={styles.tenantCard}>
-                                    {/* Tenant Info Header */}
+                                <View key={entity.id} style={styles.tenantCard}>
+                                    {/* Info Header */}
                                     <View style={styles.tenantHeaderRow}>
                                         <View style={styles.tenantAvatarBox}>
-                                            {tenant.profile_photo ? (
+                                            {entity.profile_photo ? (
                                                 <Image
-                                                    source={{ uri: getResolvedImageUrl(tenant.profile_photo)! }}
+                                                    source={{ uri: getResolvedImageUrl(entity.profile_photo)! }}
                                                     style={styles.tenantAvatarImg}
                                                 />
                                             ) : (
                                                 <Text style={styles.avatarInitials}>
-                                                    {tenant.full_name ? tenant.full_name[0].toUpperCase() : 'R'}
+                                                    {entity.full_name ? entity.full_name[0].toUpperCase() : 'U'}
                                                 </Text>
                                             )}
                                         </View>
@@ -498,7 +534,7 @@ export default function DocumentsHubScreen() {
                                         <View style={{ flex: 1, marginLeft: 12 }}>
                                             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                                                 <Text style={styles.tenantName} numberOfLines={1}>
-                                                    {tenant.full_name}
+                                                    {entity.full_name}
                                                 </Text>
                                                 {hasDocs && (
                                                     <CheckCircle2 size={14} color="#059669" />
@@ -506,19 +542,29 @@ export default function DocumentsHubScreen() {
                                             </View>
 
                                             <View style={styles.badgesRow}>
-                                                {tenant.room_number ? (
-                                                    <View style={styles.roomPill}>
-                                                        <Text style={styles.roomPillText}>
-                                                            Room {tenant.room_number} {tenant.bed_number ? `• Bed ${tenant.bed_number}` : ''}
-                                                        </Text>
-                                                    </View>
-                                                ) : null}
+                                                {/* Role / Category Badge */}
+                                                <View style={[
+                                                    styles.categoryBadge,
+                                                    isTenant && { backgroundColor: '#EDE9FE' },
+                                                    isGuest && { backgroundColor: '#FEF3C7' },
+                                                    isStaff && { backgroundColor: '#E0F2FE' },
+                                                ]}>
+                                                    <Text style={[
+                                                        styles.categoryBadgeText,
+                                                        isTenant && { color: '#7C3AED' },
+                                                        isGuest && { color: '#D97706' },
+                                                        isStaff && { color: '#0284C7' },
+                                                    ]}>
+                                                        {entity.category_label}
+                                                    </Text>
+                                                </View>
 
-                                                {tenant.floor_number !== undefined && tenant.floor_number !== '' ? (
-                                                    <View style={styles.floorPill}>
-                                                        <Text style={styles.floorPillText}>Floor {tenant.floor_number}</Text>
-                                                    </View>
-                                                ) : null}
+                                                {/* Room / Role Sub-Pill */}
+                                                <View style={styles.roomPill}>
+                                                    <Text style={styles.roomPillText}>
+                                                        {entity.role_or_room}
+                                                    </Text>
+                                                </View>
                                             </View>
                                         </View>
 
@@ -526,14 +572,14 @@ export default function DocumentsHubScreen() {
                                         <View style={styles.quickContactRow}>
                                             <TouchableOpacity
                                                 style={[styles.contactBtn, { backgroundColor: '#EFF6FF', borderColor: '#BFDBFE' }]}
-                                                onPress={() => handleCall(tenant.phone)}
+                                                onPress={() => handleCall(entity.phone)}
                                                 activeOpacity={0.7}
                                             >
                                                 <Phone size={13} color="#2563EB" />
                                             </TouchableOpacity>
                                             <TouchableOpacity
                                                 style={[styles.contactBtn, { backgroundColor: '#ECFDF5', borderColor: '#A7F3D0' }]}
-                                                onPress={() => handleWhatsApp(tenant.phone, tenant.full_name)}
+                                                onPress={() => handleWhatsApp(entity.phone, entity.full_name)}
                                                 activeOpacity={0.7}
                                             >
                                                 <MessageCircle size={13} color="#059669" />
@@ -544,38 +590,26 @@ export default function DocumentsHubScreen() {
                                     {/* Document Cards Grid - Clean 3 Documents Layout */}
                                     <View style={styles.docsGridRow}>
                                         {renderDocThumbnail(
-                                            tenant.aadhaar_front,
+                                            entity.aadhaar_front,
                                             'ID Proof (Front)',
-                                            tenant,
+                                            entity,
                                             'shield-checkmark',
                                             '#4F46E5'
                                         )}
                                         {renderDocThumbnail(
-                                            tenant.aadhaar_back,
+                                            entity.aadhaar_back,
                                             'ID Proof (Back)',
-                                            tenant,
+                                            entity,
                                             'shield-checkmark',
                                             '#6366F1'
                                         )}
-                                    </View>
-
-                                    <View style={[styles.docsGridRow, { marginTop: 8 }]}>
                                         {renderDocThumbnail(
-                                            tenant.profile_photo,
-                                            'Resident Photo',
-                                            tenant,
+                                            entity.profile_photo,
+                                            'Photo',
+                                            entity,
                                             'image',
                                             '#059669'
                                         )}
-                                        {tenant.id_proof_document ? (
-                                            renderDocThumbnail(
-                                                tenant.id_proof_document,
-                                                'Other Document',
-                                                tenant,
-                                                'document-text',
-                                                '#0284C7'
-                                            )
-                                        ) : null}
                                     </View>
                                 </View>
                             );
@@ -616,47 +650,41 @@ export default function DocumentsHubScreen() {
                         {previewImage?.url ? (
                             <Image
                                 source={{ uri: previewImage.url }}
-                                style={styles.previewFullImg}
+                                style={styles.fullPreviewImage}
                                 resizeMode="contain"
                             />
-                        ) : (
-                            <ActivityIndicator color="#FFFFFF" size="large" />
-                        )}
+                        ) : null}
                     </View>
 
-                    {/* Bottom Action Bar */}
-                    <View style={[styles.previewBottomBar, { paddingBottom: Math.max(insets.bottom + 12, 20) }]}>
-                        <TouchableOpacity
-                            style={styles.previewActionBtn}
-                            onPress={() => {
-                                if (previewImage?.url) {
-                                    downloadAndSaveFile(previewImage.url, `${previewImage.title.replace(/\s+/g, '_')}.jpg`, 'image/jpeg');
-                                }
-                            }}
-                            activeOpacity={0.8}
-                        >
-                            <Download size={18} color="#FFFFFF" />
-                            <Text style={styles.previewActionBtnText}>Save to Device</Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                            style={[styles.previewActionBtn, { backgroundColor: '#059669' }]}
-                            onPress={async () => {
-                                if (previewImage?.url) {
-                                    try {
-                                        const destUri = `${FileSystem.cacheDirectory}shared_doc.jpg`;
-                                        await FileSystem.downloadAsync(previewImage.url, destUri);
-                                        await Sharing.shareAsync(destUri, { mimeType: 'image/jpeg' });
-                                    } catch (_) {
-                                        showError('Could not share document.');
+                    {/* Bottom Action Footer: Save and Share Buttons */}
+                    <View style={[styles.previewFooter, { paddingBottom: Math.max(insets.bottom + 10, 20) }]}>
+                        <View style={{ flexDirection: 'row', gap: 12, width: '100%' }}>
+                            <TouchableOpacity
+                                style={[styles.previewFooterBtn, { backgroundColor: '#4F46E5', flex: 1 }]}
+                                onPress={() => {
+                                    if (previewImage?.url) {
+                                        downloadAndSaveFile(previewImage.url, `${previewImage.title.replace(/\s+/g, '_')}.jpg`, 'image/jpeg');
                                     }
-                                }
-                            }}
-                            activeOpacity={0.8}
-                        >
-                            <Share2 size={18} color="#FFFFFF" />
-                            <Text style={styles.previewActionBtnText}>Share Document</Text>
-                        </TouchableOpacity>
+                                }}
+                                activeOpacity={0.75}
+                            >
+                                <Download size={17} color="#FFFFFF" />
+                                <Text style={styles.previewFooterBtnText}>Save</Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                style={[styles.previewFooterBtn, { backgroundColor: '#059669', flex: 1 }]}
+                                onPress={() => {
+                                    if (previewImage?.url) {
+                                        handleShare(previewImage.url, 'Document', previewImage.title);
+                                    }
+                                }}
+                                activeOpacity={0.75}
+                            >
+                                <Share2 size={17} color="#FFFFFF" />
+                                <Text style={styles.previewFooterBtnText}>Share</Text>
+                            </TouchableOpacity>
+                        </View>
                     </View>
                 </View>
             </Modal>
@@ -670,50 +698,46 @@ const styles = StyleSheet.create({
         backgroundColor: '#F8FAFC',
     },
 
-    // Top Controls
-    topControlPanel: {
+    // Search and Filters
+    filterSection: {
         backgroundColor: '#FFFFFF',
-        paddingHorizontal: 16,
+        paddingHorizontal: 14,
         paddingTop: 12,
         paddingBottom: 10,
         borderBottomWidth: 1,
         borderBottomColor: '#F1F5F9',
+        gap: 10,
     },
-    searchBarWrap: {
+    searchBar: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#F8FAFC',
+        backgroundColor: '#F1F5F9',
         borderRadius: 12,
-        borderWidth: 1.5,
-        borderColor: '#E2E8F0',
         paddingHorizontal: 12,
-        height: 42,
+        height: 40,
         gap: 8,
     },
     searchInput: {
         flex: 1,
-        fontSize: 13.5,
+        fontSize: 13,
         color: '#0F172A',
-        fontWeight: '500',
+        paddingVertical: 0,
     },
-    clearSearchBtn: {
-        padding: 4,
-    },
-    filterTabsScroll: {
+    filterPillsScroll: {
+        flexDirection: 'row',
         gap: 8,
-        paddingTop: 10,
-        paddingBottom: 2,
+        paddingVertical: 2,
     },
     filterPill: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 6,
-        backgroundColor: '#F1F5F9',
+        gap: 5,
         paddingHorizontal: 12,
         paddingVertical: 6,
         borderRadius: 20,
+        backgroundColor: '#F1F5F9',
         borderWidth: 1,
-        borderColor: '#E2E8F0',
+        borderColor: 'transparent',
     },
     filterPillActive: {
         backgroundColor: '#4F46E5',
@@ -722,7 +746,7 @@ const styles = StyleSheet.create({
     filterPillText: {
         fontSize: 12,
         fontWeight: '700',
-        color: '#64748B',
+        color: '#475569',
     },
     filterPillTextActive: {
         color: '#FFFFFF',
@@ -734,29 +758,29 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'space-around',
         backgroundColor: '#FFFFFF',
-        marginHorizontal: 16,
-        marginTop: 12,
-        marginBottom: 8,
+        marginHorizontal: 14,
+        marginTop: 10,
+        marginBottom: 6,
         paddingVertical: 10,
         borderRadius: 14,
         borderWidth: 1,
-        borderColor: '#E2E8F0',
-        shadowColor: '#0F172A',
-        shadowOffset: { width: 0, height: 1 },
+        borderColor: '#F1F5F9',
+        elevation: 1,
+        shadowColor: '#000',
         shadowOpacity: 0.03,
         shadowRadius: 4,
-        elevation: 1,
+        shadowOffset: { width: 0, height: 1 },
     },
     statCol: {
         alignItems: 'center',
     },
     statNum: {
-        fontSize: 16,
-        fontWeight: '900',
+        fontSize: 15,
+        fontWeight: '800',
         color: '#0F172A',
     },
     statLabel: {
-        fontSize: 11,
+        fontSize: 10,
         fontWeight: '600',
         color: '#64748B',
         marginTop: 1,
@@ -767,128 +791,90 @@ const styles = StyleSheet.create({
         backgroundColor: '#E2E8F0',
     },
 
-    // Main List
-    mainScroll: {
+    // Scroll Area
+    scrollArea: {
         flex: 1,
     },
-    mainScrollContent: {
-        paddingHorizontal: 16,
+    scrollContent: {
+        paddingHorizontal: 14,
         paddingTop: 8,
-    },
-    loadingContainer: {
-        flex: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingTop: 60,
-    },
-    loadingText: {
-        marginTop: 12,
-        fontSize: 13.5,
-        fontWeight: '600',
-        color: '#64748B',
-    },
-
-    // Empty State
-    emptyStateContainer: {
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingVertical: 60,
-        paddingHorizontal: 24,
-    },
-    emptyIconBox: {
-        width: 64,
-        height: 64,
-        borderRadius: 32,
-        backgroundColor: '#EEF2FF',
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: 12,
-    },
-    emptyStateTitle: {
-        fontSize: 16,
-        fontWeight: '800',
-        color: '#0F172A',
-        marginBottom: 4,
-    },
-    emptyStateSubtitle: {
-        fontSize: 13,
-        color: '#64748B',
-        textAlign: 'center',
-        lineHeight: 18,
+        gap: 12,
     },
 
     // Tenant Card
     tenantCard: {
         backgroundColor: '#FFFFFF',
-        borderRadius: 18,
+        borderRadius: 16,
         padding: 14,
-        marginBottom: 14,
-        borderWidth: 1.5,
-        borderColor: '#E2E8F0',
+        borderWidth: 1,
+        borderColor: '#F1F5F9',
+        elevation: 2,
         shadowColor: '#0F172A',
-        shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.04,
         shadowRadius: 6,
-        elevation: 2,
+        shadowOffset: { width: 0, height: 2 },
+        gap: 12,
     },
     tenantHeaderRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 12,
     },
     tenantAvatarBox: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
+        width: 40,
+        height: 40,
+        borderRadius: 20,
         backgroundColor: '#EEF2FF',
         alignItems: 'center',
         justifyContent: 'center',
         overflow: 'hidden',
+        borderWidth: 1.5,
+        borderColor: '#E0E7FF',
     },
     tenantAvatarImg: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
+        width: '100%',
+        height: '100%',
     },
     avatarInitials: {
-        fontSize: 17,
-        fontWeight: '900',
+        fontSize: 15,
+        fontWeight: '800',
         color: '#4F46E5',
     },
     tenantName: {
-        fontSize: 14.5,
+        fontSize: 14,
         fontWeight: '800',
         color: '#0F172A',
+        flexShrink: 1,
     },
     badgesRow: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 6,
         marginTop: 3,
+        flexWrap: 'wrap',
+    },
+    categoryBadge: {
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 6,
+    },
+    categoryBadgeText: {
+        fontSize: 10,
+        fontWeight: '800',
+        textTransform: 'uppercase',
+        letterSpacing: 0.3,
     },
     roomPill: {
-        backgroundColor: '#EFF6FF',
+        backgroundColor: '#F8FAFC',
         paddingHorizontal: 7,
         paddingVertical: 2,
         borderRadius: 6,
         borderWidth: 1,
-        borderColor: '#DBEAFE',
+        borderColor: '#E2E8F0',
     },
     roomPillText: {
         fontSize: 10.5,
         fontWeight: '700',
-        color: '#2563EB',
-    },
-    floorPill: {
-        backgroundColor: '#F1F5F9',
-        paddingHorizontal: 7,
-        paddingVertical: 2,
-        borderRadius: 6,
-    },
-    floorPillText: {
-        fontSize: 10.5,
-        fontWeight: '700',
-        color: '#475569',
+        color: '#334155',
     },
     quickContactRow: {
         flexDirection: 'row',
@@ -954,20 +940,23 @@ const styles = StyleSheet.create({
     thumbnailActions: {
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'space-around',
-        paddingVertical: 6,
+        justifyContent: 'center',
         backgroundColor: '#FFFFFF',
+        paddingVertical: 7,
+        gap: 4,
         borderTopWidth: 1,
         borderTopColor: '#F1F5F9',
     },
-    actionIconBtn: {
-        padding: 4,
+    actionIconBtnText: {
+        fontSize: 10.5,
+        fontWeight: '700',
+        color: '#4F46E5',
     },
 
-    // Missing Doc Box
+    // Missing Document Placeholder Box
     missingDocBox: {
         flex: 1,
-        height: 116,
+        height: 118,
         backgroundColor: '#FFFBEB',
         borderRadius: 12,
         borderWidth: 1,
@@ -975,27 +964,28 @@ const styles = StyleSheet.create({
         borderStyle: 'dashed',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: 8,
+        padding: 6,
+        gap: 2,
     },
     missingIconWrap: {
-        width: 26,
-        height: 26,
-        borderRadius: 13,
+        width: 28,
+        height: 28,
+        borderRadius: 14,
         backgroundColor: '#FEF3C7',
         alignItems: 'center',
         justifyContent: 'center',
-        marginBottom: 4,
+        marginBottom: 2,
     },
     missingDocTitle: {
-        fontSize: 11,
-        fontWeight: '700',
+        fontSize: 10,
+        fontWeight: '800',
         color: '#92400E',
         textAlign: 'center',
     },
     missingDocSub: {
-        fontSize: 9.5,
-        color: '#B45309',
-        marginBottom: 6,
+        fontSize: 9,
+        fontWeight: '600',
+        color: '#D97706',
     },
     requestDocBtn: {
         flexDirection: 'row',
@@ -1004,35 +994,72 @@ const styles = StyleSheet.create({
         backgroundColor: '#E0F2FE',
         paddingHorizontal: 8,
         paddingVertical: 3,
-        borderRadius: 6,
-        borderWidth: 1,
-        borderColor: '#BAE6FD',
+        borderRadius: 10,
+        marginTop: 4,
     },
     requestDocBtnText: {
-        fontSize: 10,
+        fontSize: 9.5,
         fontWeight: '800',
         color: '#0284C7',
     },
 
-    // High-Resolution Preview Modal
+    // Loading & Empty States
+    loadingContainer: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 60,
+        gap: 12,
+    },
+    loadingText: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#64748B',
+    },
+    emptyContainer: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 60,
+        gap: 10,
+    },
+    emptyIconCircle: {
+        width: 64,
+        height: 64,
+        borderRadius: 32,
+        backgroundColor: '#F1F5F9',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    emptyTitle: {
+        fontSize: 16,
+        fontWeight: '800',
+        color: '#0F172A',
+    },
+    emptySubtitle: {
+        fontSize: 12.5,
+        color: '#64748B',
+        textAlign: 'center',
+        paddingHorizontal: 30,
+        lineHeight: 18,
+    },
+
+    // Fullscreen Preview Modal
     previewModalOverlay: {
         flex: 1,
-        backgroundColor: '#0F172A',
+        backgroundColor: 'rgba(0, 0, 0, 0.95)',
+        justifyContent: 'space-between',
     },
     previewHeader: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingHorizontal: 20,
+        paddingHorizontal: 16,
         paddingBottom: 12,
-        backgroundColor: 'rgba(15, 23, 42, 0.95)',
-        borderBottomWidth: 1,
-        borderBottomColor: '#334155',
     },
     previewTitleText: {
         fontSize: 16,
         fontWeight: '800',
-        color: '#F8FAFC',
+        color: '#FFFFFF',
     },
     previewSubText: {
         fontSize: 12,
@@ -1043,7 +1070,7 @@ const styles = StyleSheet.create({
         width: 36,
         height: 36,
         borderRadius: 18,
-        backgroundColor: '#1E293B',
+        backgroundColor: 'rgba(255, 255, 255, 0.15)',
         alignItems: 'center',
         justifyContent: 'center',
     },
@@ -1051,32 +1078,27 @@ const styles = StyleSheet.create({
         flex: 1,
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: '#020617',
+        padding: 10,
     },
-    previewFullImg: {
+    fullPreviewImage: {
         width: width,
-        height: height * 0.72,
+        height: height * 0.7,
     },
-    previewBottomBar: {
-        flexDirection: 'row',
-        gap: 12,
+    previewFooter: {
         paddingHorizontal: 20,
-        paddingTop: 14,
-        backgroundColor: 'rgba(15, 23, 42, 0.95)',
-        borderTopWidth: 1,
-        borderTopColor: '#334155',
+        alignItems: 'center',
     },
-    previewActionBtn: {
-        flex: 1,
+    previewFooterBtn: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
         gap: 8,
         backgroundColor: '#4F46E5',
-        paddingVertical: 12,
-        borderRadius: 12,
+        width: '100%',
+        paddingVertical: 14,
+        borderRadius: 14,
     },
-    previewActionBtnText: {
+    previewFooterBtnText: {
         fontSize: 14,
         fontWeight: '800',
         color: '#FFFFFF',

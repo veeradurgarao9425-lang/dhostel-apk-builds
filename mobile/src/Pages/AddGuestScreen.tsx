@@ -644,19 +644,11 @@ export default function AddGuestScreen({ navigation, route }: any) {
                 err = 'Mobile number must be exactly 10 digits';
             }
         } else if (name === 'email') {
-            if (!value || !value.trim()) {
-                err = 'Email address is required';
-            } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())) {
+            if (value && value.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())) {
                 err = 'Invalid email format';
             }
-        } else if (name === 'id_proof_type') {
-            if (!value) {
-                err = 'Please select an ID proof type';
-            }
         } else if (name === 'id_proof_number') {
-            if (!value || !value.trim()) {
-                err = 'ID proof number is required';
-            } else {
+            if (value && value.trim()) {
                 const proofType = String(formData.id_proof_type || '').toLowerCase();
                 const cleanVal = value.trim().replace(/\s+/g, '');
                 if (proofType.includes('aadhaar')) {
@@ -685,16 +677,12 @@ export default function AddGuestScreen({ navigation, route }: any) {
         const phoneErr = validateField('phone', formData.phone);
         if (phoneErr) e.phone = phoneErr;
 
-        const emailErr = validateField('email', formData.email);
-        if (emailErr) e.email = emailErr;
-
-        if (!formData.id_proof_type) {
-            e.id_proof_type = 'Please select an ID proof type';
+        if (formData.email && formData.email.trim()) {
+            const emailErr = validateField('email', formData.email);
+            if (emailErr) e.email = emailErr;
         }
 
-        if (!formData.id_proof_number || !formData.id_proof_number.trim()) {
-            e.id_proof_number = 'ID proof number is required';
-        } else {
+        if (formData.id_proof_number && formData.id_proof_number.trim()) {
             const idErr = validateField('id_proof_number', formData.id_proof_number);
             if (idErr) e.id_proof_number = idErr;
         }
@@ -732,11 +720,8 @@ export default function AddGuestScreen({ navigation, route }: any) {
             setTouched({
                 full_name: true,
                 phone: true,
-                email: true,
-                id_proof_type: true,
-                id_proof_number: true,
             });
-            showError('Please check and fill all mandatory fields (Full Name, Phone, ID Proof)');
+            showError('Please check and fill mandatory fields: Full Name & Mobile Number');
             return;
         }
 
@@ -891,7 +876,7 @@ export default function AddGuestScreen({ navigation, route }: any) {
                     />
 
                     <FormInput
-                        label="Email *"
+                        label="Email (Optional)"
                         icon={Mail}
                         placeholder="durgarao@example.com"
                         keyboardType="email-address"
@@ -1044,10 +1029,10 @@ export default function AddGuestScreen({ navigation, route }: any) {
 
                 {/* ── 3. Identity Proof & Documents ── */}
                 <View style={[styles.formCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : 'transparent', borderWidth: isDark ? 1 : 0 }]}>
-                    <SectionHeader number={3} title="Identity Proof & Documents" />
+                    <SectionHeader number={3} title="Identity Proof & Documents (Optional)" />
 
                     <SelectField
-                        label="ID Proof Type *"
+                        label="ID Proof Type (Optional)"
                         value={selectedProofConfig?.name}
                         placeholder="Select ID Proof Type"
                         icon={Fingerprint}
@@ -1058,7 +1043,7 @@ export default function AddGuestScreen({ navigation, route }: any) {
                     {formData.id_proof_type && selectedProofConfig ? (
                         <>
                             <FormInput
-                                label={`${selectedProofConfig.name} Number *`}
+                                label={`${selectedProofConfig.name} Number (Optional)`}
                                 icon={CreditCard}
                                 placeholder={`Ex: ${selectedProofConfig.example}`}
                                 keyboardType={selectedProofConfig.keyboard}
@@ -1083,7 +1068,7 @@ export default function AddGuestScreen({ navigation, route }: any) {
                                 </Text>
                                 <View style={{ flexDirection: 'row', gap: 12 }}>
                                     <DocumentUploadBox
-                                        label="Front Side *"
+                                        label="Front Side (Optional)"
                                         uri={idProofFront}
                                         onCapture={(uri: string) => setIdProofFront(uri)}
                                         onRemove={() => setIdProofFront(null)}

@@ -748,10 +748,10 @@ export default function AddStaffScreen() {
         } else if (isNaN(Number(monthlySalary)) || Number(monthlySalary) < 0) {
             errs.monthlySalary = 'Salary must be a valid amount';
         }
-        if (!email.trim()) {
-            errs.email = 'Email Address is required';
-        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-            errs.email = 'Invalid email address';
+        if (email && email.trim()) {
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+                errs.email = 'Invalid email address';
+            }
         }
         
         if (!idProofTypeId) {
@@ -965,60 +965,6 @@ export default function AddStaffScreen() {
                     error={errors.selfie} 
                 />
 
-                {/* Assigned Hostel Selection Card */}
-                <View style={styles.formCard}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                            <Building size={20} color={theme.primary} />
-                            <Text style={styles.sectionTitle}>Assigned Hostel</Text>
-                        </View>
-                        <View style={[styles.hostelBadge, { backgroundColor: theme.primary + '18' }]}>
-                            <Shield size={12} color={theme.primary} />
-                            <Text style={[styles.hostelBadgeText, { color: theme.primary }]}>Strict Isolation</Text>
-                        </View>
-                    </View>
-
-                    <Text style={styles.fieldHint}>
-                        This staff member's credentials will be strictly locked to this property and cannot view or access your other hostels.
-                    </Text>
-
-                    {availableHostels.length > 1 ? (
-                        <TouchableOpacity
-                            style={[styles.hostelPickerBtn, { borderColor: theme.primary + '50' }]}
-                            onPress={() => setHostelModalVisible(true)}
-                            activeOpacity={0.8}
-                        >
-                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
-                                <View style={[styles.hostelIconBg, { backgroundColor: theme.primary + '15' }]}>
-                                    <Building size={18} color={theme.primary} />
-                                </View>
-                                <View style={{ flex: 1 }}>
-                                    <Text style={styles.hostelPickerTitle} numberOfLines={1}>
-                                        {availableHostels.find(h => h.hostel_id === selectedHostelId)?.hostel_name || 'Select Hostel'}
-                                    </Text>
-                                    <Text style={styles.hostelPickerSubtitle} numberOfLines={1}>
-                                        {availableHostels.find(h => h.hostel_id === selectedHostelId)?.city || 'Tap to switch assigned property'}
-                                    </Text>
-                                </View>
-                            </View>
-                            <ChevronDown size={18} color="#64748B" />
-                        </TouchableOpacity>
-                    ) : (
-                        <View style={[styles.singleHostelCard, { backgroundColor: '#F8FAFC' }]}>
-                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
-                                <Building size={18} color={theme.primary} />
-                                <Text style={styles.singleHostelName}>
-                                    {availableHostels[0]?.hostel_name || user?.hostel_name || 'Primary Hostel'}
-                                </Text>
-                            </View>
-                            <View style={styles.lockedBadge}>
-                                <Lock size={12} color="#10B981" />
-                                <Text style={styles.lockedBadgeText}>Locked</Text>
-                            </View>
-                        </View>
-                    )}
-                </View>
-
                 {/* Personal Information */}
                 <View style={styles.formCard}>
                     <Text style={styles.sectionTitle}>👤 Personal Details</Text>
@@ -1064,7 +1010,7 @@ export default function AddStaffScreen() {
                     </View>
 
                     <View style={styles.inputGroup}>
-                        <Text style={styles.inputLabel}>Email Address <Text style={{ color: '#EF4444' }}>*</Text></Text>
+                        <Text style={styles.inputLabel}>Email Address (Optional)</Text>
                         <View style={[styles.inputContainer, errors.email && styles.inputError]}>
                             <Ionicons name="mail-outline" size={18} color={errors.email ? '#EF4444' : theme.primary} style={styles.inputIcon} />
                             <TextInput
@@ -1516,19 +1462,6 @@ export default function AddStaffScreen() {
                     setIdProofNumber(''); 
                 }} 
                 onClose={() => setProofModalVisible(false)} 
-            />
-
-            <OptionsDrawer
-                visible={hostelModalVisible}
-                title="Select Assigned Hostel"
-                data={availableHostels}
-                selectedId={selectedHostelId?.toString() || ''}
-                keyExtractor={(i: any) => i.hostel_id.toString()}
-                labelExtractor={(i: any) => `${i.hostel_name}${i.city ? ` (${i.city})` : ''}`}
-                onSelect={(i: any) => {
-                    setSelectedHostelId(i.hostel_id);
-                }}
-                onClose={() => setHostelModalVisible(false)}
             />
         </KeyboardAvoidingView>
     );

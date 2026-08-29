@@ -29,7 +29,8 @@ export const downloadAndSaveFile = async (
         if (isLocalUri) {
             finalLocalUri = sourceUri;
         } else {
-            const destUri = `${FileSystem.documentDirectory}${filename}`;
+            const cleanName = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
+            const destUri = `${FileSystem.cacheDirectory || FileSystem.documentDirectory}${cleanName}`;
             const result = await FileSystem.downloadAsync(sourceUri, destUri);
             if (result.status === 200) {
                 finalLocalUri = result.uri;

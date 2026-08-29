@@ -79,13 +79,13 @@ export const ModalSheet = ({ visible, onClose, maxHeight = '85%', children }: an
         if (visible) {
             setShouldRender(true);
             Animated.parallel([
-                Animated.timing(opacity, { toValue: 1, duration: 200, useNativeDriver: true }),
-                Animated.spring(translateY, { toValue: 0, damping: 22, stiffness: 220, useNativeDriver: true }),
+                Animated.timing(opacity, { toValue: 1, duration: 220, useNativeDriver: true }),
+                Animated.spring(translateY, { toValue: 0, damping: 28, stiffness: 280, mass: 0.8, useNativeDriver: true }),
             ]).start();
         } else {
             Animated.parallel([
-                Animated.timing(opacity, { toValue: 0, duration: 180, useNativeDriver: true }),
-                Animated.timing(translateY, { toValue: 600, duration: 180, useNativeDriver: true }),
+                Animated.timing(opacity, { toValue: 0, duration: 160, useNativeDriver: true }),
+                Animated.timing(translateY, { toValue: 600, duration: 160, useNativeDriver: true }),
             ]).start(({ finished }) => {
                 if (finished) {
                     setShouldRender(false);
@@ -99,7 +99,7 @@ export const ModalSheet = ({ visible, onClose, maxHeight = '85%', children }: an
         <Modal transparent visible={visible || shouldRender} animationType="none" statusBarTranslucent onRequestClose={onClose}>
             <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
                 <View style={{ flex: 1, justifyContent: 'flex-end' }}>
-                    <Animated.View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(15, 23, 42, 0.6)', opacity }]}>
+                    <Animated.View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(15, 23, 42, 0.35)', opacity }]}>
                         <Pressable style={{ flex: 1 }} onPress={onClose} />
                     </Animated.View>
                     <Animated.View style={[

@@ -562,12 +562,17 @@ export const OwnerAssistant: React.FC<{ currentRoute?: string | null }> = ({ cur
 
   useEffect(() => {
     if (isOpen && user?.role !== 'TENANT') {
-      loadSnap();
-      if (messages.length === 0) {
-        setMessages(getInitialWelcomeMsgs(snap));
+      if (user?.role?.toUpperCase() === 'OWNER') {
+        loadSnap();
       }
+      setMessages(prev => {
+        if (prev.length === 0) {
+          return getInitialWelcomeMsgs();
+        }
+        return prev;
+      });
     }
-  }, [isOpen, messages.length, getInitialWelcomeMsgs, snap, user?.role]);
+  }, [isOpen]);
 
   const scrollToEnd = useCallback((animated = true) => {
     scrollRef.current?.scrollToEnd({ animated });
@@ -579,7 +584,7 @@ export const OwnerAssistant: React.FC<{ currentRoute?: string | null }> = ({ cur
     if (!messages.length) return;
     const t = setTimeout(() => scrollToEnd(true), 120);
     return () => clearTimeout(t);
-  }, [messages, isTyping, isKeyboardActive, scrollToEnd]);
+  }, [messages.length, isTyping, isKeyboardActive, scrollToEnd]);
 
   const loadSnap = async () => {
     if (!user || user?.role?.toUpperCase() !== 'OWNER') return;
@@ -587,12 +592,6 @@ export const OwnerAssistant: React.FC<{ currentRoute?: string | null }> = ({ cur
     try {
       const data = await fetchDashboardSnapshot();
       setSnap(data);
-      setMessages(prev => {
-        if (prev.length === 0 || (prev.length === 1 && prev[0].id.startsWith('welcome_card_1_'))) {
-          return getInitialWelcomeMsgs(data);
-        }
-        return prev;
-      });
     } catch { }
     finally { setSnapLoading(false); }
   };
