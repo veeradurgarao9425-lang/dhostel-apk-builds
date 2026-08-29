@@ -10,11 +10,10 @@ export const getNotices = async (req: AuthRequest, res: Response) => {
   try {
     const user = req.user;
 
-    if (!user || (user.role_id !== 1 && user.role_id !== 2 && user.role_id !== 3)) {
+    if (!user || (user.role_id !== 1 && user.role_id !== 2 && user.role_id !== 3 && user.role_id !== 4)) {
       return res.status(403).json({ success: false, error: 'Unauthorized access.' });
     }
-    // Owner (role 2): validate BOTH user_id AND hostel_id together in DB.
-    // Admin/Super Admin (role 1): scoped to ?hostelId if given, otherwise global.
+    // Owner (role 2) / Staff (role 4): validate user and hostel in DB
     const { hostelId: scopedHostelId, error: hostelError } = await resolveOwnerHostelId(user, req.query.hostelId as string);
     if (hostelError) {
       return res.status(403).json({ success: false, error: hostelError });
@@ -33,14 +32,14 @@ export const getNotices = async (req: AuthRequest, res: Response) => {
   }
 };
 
-// Create a new notice (owner only)
+// Create a new notice (owner or staff)
 export const createNotice = async (req: AuthRequest, res: Response) => {
   try {
     const user = req.user;
     const { title, content, notice_type } = req.body;
     const file = req.file;
 
-    if (!user || (user.role_id !== 1 && user.role_id !== 2)) {
+    if (!user || (user.role_id !== 1 && user.role_id !== 2 && user.role_id !== 4)) {
       return res.status(403).json({ success: false, error: 'Unauthorized access.' });
     }
 
@@ -107,7 +106,7 @@ export const updateNotice = async (req: AuthRequest, res: Response) => {
     const { title, content, notice_type } = req.body;
     const file = req.file;
 
-    if (!user || (user.role_id !== 1 && user.role_id !== 2)) {
+    if (!user || (user.role_id !== 1 && user.role_id !== 2 && user.role_id !== 4)) {
       return res.status(403).json({ success: false, error: 'Unauthorized access.' });
     }
 
@@ -147,7 +146,7 @@ export const deleteNotice = async (req: AuthRequest, res: Response) => {
     const user = req.user;
     const { noticeId } = req.params;
 
-    if (!user || (user.role_id !== 1 && user.role_id !== 2)) {
+    if (!user || (user.role_id !== 1 && user.role_id !== 2 && user.role_id !== 4)) {
       return res.status(403).json({ success: false, error: 'Unauthorized access.' });
     }
 
@@ -159,7 +158,7 @@ export const deleteNotice = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ success: false, error: 'Notice not found' });
     }
 
-    if (user.role_id === 2 && notice.hostel_id !== user.hostel_id) {
+    if ((user.role_id === 2 || user.role_id === 4) && notice.hostel_id !== user.hostel_id) {
       return res.status(403).json({ success: false, error: 'Access denied.' });
     }
 
@@ -179,7 +178,7 @@ export const getNoticeCategories = async (req: AuthRequest, res: Response) => {
       return res.status(403).json({ success: false, error: 'Unauthorized' });
     }
 
-    if (user.role_id === 2 && !user.hostel_id) {
+    if ((user.role_id === 2 || user.role_id === 4) && !user.hostel_id) {
       return res.status(403).json({ success: false, error: 'Your account is not linked to any hostel.' });
     }
 
@@ -211,12 +210,12 @@ export const createNoticeCategory = async (req: AuthRequest, res: Response) => {
     const user = req.user;
     const { category_name, color, emoji } = req.body;
 
-    if (!user || (user.role_id !== 1 && user.role_id !== 2)) {
+    if (!user || (user.role_id !== 1 && user.role_id !== 2 && user.role_id !== 4)) {
       return res.status(403).json({ success: false, error: 'Unauthorized' });
     }
 
     let hostel_id: number;
-    if (user.role_id === 2) {
+    if (user.role_id === 2 || user.role_id === 4) {
       if (!user.hostel_id) {
         return res.status(403).json({ success: false, error: 'Your account is not linked to any hostel.' });
       }
@@ -255,7 +254,7 @@ export const deleteNoticeCategory = async (req: AuthRequest, res: Response) => {
     const user = req.user;
     const { categoryName } = req.params;
 
-    if (!user || (user.role_id !== 1 && user.role_id !== 2)) {
+    if (!user || (user.role_id !== 1 && user.role_id !== 2 && user.role_id !== 4)) {
       return res.status(403).json({ success: false, error: 'Unauthorized' });
     }
 

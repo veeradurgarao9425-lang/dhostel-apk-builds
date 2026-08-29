@@ -119,8 +119,8 @@ export const isMasterAdmin = (
 import db from '../config/database.js';
 
 /**
- * Restricts access to Super Admin (role_id=1) and Hostel Owner (role_id=2).
- * Strictly blocks Tenants (3), Staff (4), and unauthenticated/unassigned roles.
+ * Restricts access to Super Admin (role_id=1), Hostel Owner (role_id=2), and Staff (role_id=4).
+ * Strictly blocks Tenants (3) and unauthenticated/unassigned roles.
  */
 export const isOwnerOrAdmin = (
   req: AuthRequest,
@@ -128,7 +128,8 @@ export const isOwnerOrAdmin = (
   next: NextFunction
 ) => {
   const roleId = req.user?.role_id;
-  if (roleId !== 1 && roleId !== 2) {
+  const role = req.user?.role;
+  if (roleId !== 1 && roleId !== 2 && roleId !== 4 && role !== 'STAFF' && role !== 'ADMIN' && role !== 'OWNER') {
     return res.status(403).json({
       success: false,
       error: 'Access denied. This endpoint is restricted to hostel owners and administrators.',
