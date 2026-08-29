@@ -215,22 +215,26 @@ export default function ProfileScreen({ navigation }: any) {
             <Ionicons name="chevron-forward" size={18} color={TEXT_MUTED} />
           </TouchableOpacity>
 
-          <View style={styles.menuDivider} />
+          {!!(user?.room_id || (user?.room_number && user.room_number !== 'Pending' && user.room_number !== 'N/A' && user.room_number !== 'Unallocated')) && (
+            <>
+              <View style={styles.menuDivider} />
 
-          <TouchableOpacity
-            style={styles.menuItem}
-            activeOpacity={0.7}
-            onPress={() => setShowVacateModal(true)}
-          >
-            <View style={[styles.menuIcon, { backgroundColor: '#FEE2E2' }]}>
-              <Ionicons name="exit-outline" size={18} color="#EF4444" />
-            </View>
-            <View style={styles.menuContent}>
-              <Text style={[styles.menuTitle, { color: '#EF4444' }]}>Vacate Room</Text>
-              <Text style={styles.menuSub}>Submit room vacation request</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={TEXT_MUTED} />
-          </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.menuItem}
+                activeOpacity={0.7}
+                onPress={() => setShowVacateModal(true)}
+              >
+                <View style={[styles.menuIcon, { backgroundColor: '#FEE2E2' }]}>
+                  <Ionicons name="exit-outline" size={18} color="#EF4444" />
+                </View>
+                <View style={styles.menuContent}>
+                  <Text style={[styles.menuTitle, { color: '#EF4444' }]}>Vacate Room</Text>
+                  <Text style={styles.menuSub}>Submit room vacation request</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={TEXT_MUTED} />
+              </TouchableOpacity>
+            </>
+          )}
         </View>
 
         {/* ── SECTION 2: Finance & Payments ── */}

@@ -797,21 +797,26 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
       const isActive = req.body.status === 1 || req.body.status === 'Active';
 
       if (isInactive) {
-        // When changing to Inactive, ALWAYS clear room assignment
-        // Inactive students should not have room assignments
+        // When changing to Inactive, ALWAYS clear room assignment and vacate notices
         if (oldRoomId) {
           updateData.room_id = null;
-          updateData.monthly_rent = null;
           updateData.bed_id = null;
+          updateData.bed_number = null;
         }
-        // Convert to 0
+        updateData.vacate_notice_date = null;
+        updateData.vacate_notice_reason = null;
+        updateData.vacate_reminder_sent = 0;
+        updateData.inactive_date = new Date();
         updateData.status = 0;
       } else if (isActive) {
-        // If student was previously inactive, update admission_date to current date (re-admission)
+        // When re-activating a student, clear past vacate notices so stale settlement states don't linger
+        updateData.vacate_notice_date = null;
+        updateData.vacate_notice_reason = null;
+        updateData.vacate_reminder_sent = 0;
+        updateData.inactive_date = null;
         if (oldStatus === 0 || oldStatus === 'Inactive') {
           updateData.admission_date = new Date();
         }
-        // Convert to 1
         updateData.status = 1;
       }
     }
@@ -1547,6 +1552,9 @@ export const vacateSettlement = async (req: AuthRequest, res: Response) => {
           room_id: null, // Remove from room
           bed_id: null,
           bed_number: null,
+          vacate_notice_date: null, // Clear old notice date so it doesn't linger
+          vacate_notice_reason: null,
+          vacate_reminder_sent: 0,
           refundable_deposit: 0, // Deposit is settled
           updated_at: new Date()
         });

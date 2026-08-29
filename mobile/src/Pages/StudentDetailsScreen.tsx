@@ -24,7 +24,7 @@ import { getResolvedImageUrl } from '../utils/imageHelper';
 import {
     Phone, Mail, MapPin, Calendar, CreditCard,
     ChevronRight, User, Circle, IndianRupee, Clock,
-    CheckCircle, X, Edit, Users, Receipt, MessageCircle, MessageSquare, Check
+    CheckCircle, X, Edit, Users, Receipt, MessageCircle, MessageSquare, Check, DoorOpen
 } from 'lucide-react-native';
 import DateTimePickerModal from "react-native-modal-datetime-picker";
 import { Ionicons } from '@expo/vector-icons';
@@ -490,7 +490,12 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                         status: nextStatus
                     });
                     if (res.data.success) {
-                        setStudent((prev: any) => ({ ...prev, status: nextStatus }));
+                        setStudent((prev: any) => ({
+                            ...prev,
+                            status: nextStatus,
+                            vacate_notice_date: nextStatus === 1 ? null : prev.vacate_notice_date,
+                            vacate_notice_reason: nextStatus === 1 ? null : prev.vacate_notice_reason,
+                        }));
                         showSuccess(`${student.first_name} is now ${nextStatus === 1 ? 'active' : 'inactive'}.`);
                         fetchStudentDetails(); // refresh details to sync billing fee histories
 
@@ -539,7 +544,16 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                         setDamageDeductions('');
                         setDeductionReason('');
                         setSettleDepositAmount('');
-                        setStudent((prev: any) => ({ ...prev, status: 0 }));
+                        setStudent((prev: any) => ({
+                            ...prev,
+                            status: 0,
+                            room_id: null,
+                            room_number: null,
+                            bed_id: null,
+                            bed_number: null,
+                            vacate_notice_date: null,
+                            vacate_notice_reason: null,
+                        }));
                         fetchStudentDetails();
                     }
                 } catch (e: any) {
@@ -1079,8 +1093,8 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                             </View>
                         </Card>
 
-                        {/* ── Vacancy Notice Card (Only for Active residents) ── */}
-                        {student.status === 1 && (
+                        {/* ── Vacancy Notice Card (Only for Active residents with assigned room) ── */}
+                        {student.status === 1 && (student.room_id || student.room_number) ? (
                             <Card style={[styles.actionCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}>
                                 <View style={styles.actionCardRow}>
                                     <View style={[styles.actionCardIconCircle, { backgroundColor: '#FFF3E0' }]}>
@@ -1127,7 +1141,34 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                                     </View>
                                 )}
                             </Card>
-                        )}
+                        ) : student.status === 1 && !student.room_id && !student.room_number ? (
+                            <Card style={[styles.actionCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}>
+                                <View style={styles.actionCardRow}>
+                                    <View style={[styles.actionCardIconCircle, { backgroundColor: '#FEE2E2' }]}>
+                                        <DoorOpen size={16} color="#DC2626" />
+                                    </View>
+                                    <View style={styles.actionCardContent}>
+                                        <Text style={[styles.actionCardTitle, { color: theme.textPrimary }]}>No Room Assigned</Text>
+                                        <Text style={[styles.actionCardSubtitle, { color: theme.textSecondary }]}>
+                                            Allocate room & bed to activate stay
+                                        </Text>
+                                    </View>
+                                    <TouchableOpacity
+                                        style={[
+                                            styles.actionCardButton,
+                                            {
+                                                backgroundColor: '#EFF6FF',
+                                                borderColor: '#BFDBFE',
+                                            }
+                                        ]}
+                                        onPress={goAllocateRoom}
+                                        activeOpacity={0.8}
+                                    >
+                                        <Text style={[styles.actionCardButtonText, { color: '#2563EB' }]}>Allocate</Text>
+                                    </TouchableOpacity>
+                                </View>
+                            </Card>
+                        ) : null}
 
                         {/* ── No Room Allocated Banner ── */}
                         {!student.room_id && (

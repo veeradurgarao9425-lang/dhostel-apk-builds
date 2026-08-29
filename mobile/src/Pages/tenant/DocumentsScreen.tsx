@@ -1,82 +1,103 @@
 import React, { useState, useCallback, useRef } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View, ScrollView, StatusBar } from 'react-native';
+import {
+  StyleSheet, Text, TouchableOpacity, View, ScrollView, StatusBar,
+  Image, Modal, ActivityIndicator, Dimensions,
+} from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
-import { FileText, FileCheck2, Receipt, IdCard, Download, File, ArrowLeft, Plus } from 'lucide-react-native';
+import {
+  FileCheck2, Receipt, IdCard, Download, ArrowLeft,
+  ShieldCheck, ShieldAlert, Eye, X, User,
+} from 'lucide-react-native';
 import * as Print from 'expo-print';
+import * as Sharing from 'expo-sharing';
 
 import { useToast } from '../../../contexts/ToastContext';
 import { Phase3ErrorState, DocumentsSkeleton } from '../../components/tenant/UIComponents';
-import { AppHeader, EmptyState } from '../../components/tenant/ui';
 import { OfflineBanner } from '../../components/tenant/NetworkComponents';
-import { DownloadProgressSheet, FileErrorState } from '../../components/tenant/MediaComponents';
-import { downloadAndSaveFile } from '../../utils/fileDownloader';
+import { DownloadProgressSheet } from '../../components/tenant/MediaComponents';
 import api from '../../services/api';
+import { getResolvedImageUrl } from '../../utils/imageHelper';
 
-const BLUE       = '#2245D4';
-const BLUE_SOFT  = '#EEF2FF';
-const WHITE      = '#FFFFFF';
-const TEXT_DARK  = '#1A1A1A';
-const TEXT_MID   = '#666666';
-const BG         = '#F8FAFD';
-const BORDER     = '#E2E8F0';
-const SUCCESS    = '#22C55E';
-const SUCCESS_SOFT = '#DCFCE7';
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-type DocType = 'Agreement' | 'Receipt' | 'KYC' | 'Other';
+const BLUE = '#6D4AFF';
+const BLUE_SOFT = '#F4F1FF';
+const WHITE = '#FFFFFF';
+const TEXT_DARK = '#0D1B3E';
+const TEXT_MID = '#4A5568';
+const TEXT_MUTED = '#94A3B8';
+const BG = '#F8FAFC';
+const BORDER = '#E2E8F0';
+const SUCCESS = '#10B981';
+const SUCCESS_SOFT = '#ECFDF5';
+const AMBER = '#F59E0B';
+const AMBER_SOFT = '#FFFBEB';
 
-const typeMeta: Record<DocType, { icon: any; tint: string; soft: string }> = {
-  Agreement: { icon: FileCheck2, tint: BLUE,    soft: BLUE_SOFT },
-  Receipt:   { icon: Receipt,    tint: SUCCESS,  soft: SUCCESS_SOFT },
-  KYC:       { icon: IdCard,     tint: '#D97706', soft: '#FEF3C7' },
-  Other:     { icon: File,       tint: TEXT_MID,  soft: '#F1F5F9' },
-};
-
-type DocFilter = 'All' | 'Agreement' | 'Receipt' | 'KYC' | 'Other';
-const DOC_FILTERS: DocFilter[] = ['All', 'Receipt', 'Agreement', 'KYC', 'Other'];
-
-type DlStatus = 'loading' | 'done' | 'error';
+type DocFilter = 'All' | 'KYC' | 'Receipt';
+const DOC_FILTERS: { key: DocFilter; label: string }[] = [
+  { key: 'All', label: 'All Documents' },
+  { key: 'KYC', label: 'KYC & ID Proofs' },
+  { key: 'Receipt', label: 'Rent Receipts' },
+];
 
 export default function DocumentsScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
-  const { showError } = useToast();
-  const [documents, setDocuments]       = useState<any[]>([]);
-  const [loading, setLoading]           = useState(true);
-  const [error, setError]               = useState<string | null>(null);
+  const { showError, showSuccess } = useToast();
+  
+  const [profile, setProfile] = useState<any>(null);
+  const [receipts, setReceipts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState<DocFilter>('All');
 
+  // Image Preview Modal
+  const [previewImage, setPreviewImage] = useState<{ uri: string; title: string } | null>(null);
+
   // Download progress state
-  const [dlVisible, setDlVisible]   = useState(false);
+  const [dlVisible, setDlVisible] = useState(false);
   const [dlFileName, setDlFileName] = useState('');
   const [dlProgress, setDlProgress] = useState(0);
-  const [dlStatus, setDlStatus]     = useState<DlStatus>('loading');
-  const [dlError, setDlError]       = useState<'offline' | 'not_found' | 'unsupported' | null>(null);
+  const [dlStatus, setDlStatus] = useState<'loading' | 'done' | 'error'>('loading');
   const progressTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fetchDocuments = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      const res = await api.get('/fees/my-fees');
-      const feeRecords: any[] = res.data?.data ?? res.data ?? [];
-      const docs: any[] = [];
+
+      // Fetch profile (KYC documents) and receipts in parallel
+      const [profileRes, feesRes] = await Promise.all([
+        api.get('/auth/tenant/me').catch(() => null),
+        api.get('/fees/my-fees').catch(() => null),
+      ]);
+
+      if (profileRes?.data?.data) {
+        setProfile(profileRes.data.data);
+      }
+
+      const feeRecords: any[] = feesRes?.data?.data ?? feesRes?.data ?? [];
+      const receiptDocs: any[] = [];
       for (const feeRecord of feeRecords) {
         for (const payment of (feeRecord.payments ?? [])) {
-          if (payment.verification_status === 'Verified') {
-            docs.push({
-              id: payment.payment_id.toString(),
-              paymentId: payment.payment_id,
-              name: `Receipt - ${feeRecord.fee_month}`,
-              type: 'Receipt' as DocType,
-              date: payment.payment_date,
+          if (payment.verification_status === 'Verified' || payment.is_verified) {
+            receiptDocs.push({
+              id: payment.payment_id?.toString() || payment.id?.toString(),
+              paymentId: payment.payment_id || payment.id,
+              name: `Rent Receipt - ${feeRecord.fee_month || 'Monthly Rent'}`,
+              type: 'Receipt',
+              date: payment.payment_date || feeRecord.created_at,
+              amount: payment.amount_paid || payment.amount || 0,
+              paymentMode: payment.payment_mode || 'Online',
+              receiptNo: payment.receipt_number || `REC-${payment.payment_id || payment.id}`,
             });
           }
         }
       }
-      setDocuments(docs);
-    } catch {
-      setError('Could not load documents.');
-      showError('Could not load documents. Please try again.');
+      setReceipts(receiptDocs);
+    } catch (e) {
+      setError('Could not load your documents.');
+      showError('Could not load documents. Please pull down to retry.');
     } finally {
       setLoading(false);
     }
@@ -84,19 +105,17 @@ export default function DocumentsScreen({ navigation }: any) {
 
   useFocusEffect(useCallback(() => { fetchDocuments(); }, []));
 
-  const handleDownload = async (paymentId: string | number, fileName: string) => {
+  const handleDownloadReceipt = async (paymentId: string | number, fileName: string) => {
     setDlFileName(fileName);
     setDlProgress(0);
     setDlStatus('loading');
-    setDlError(null);
     setDlVisible(true);
 
-    // Animate progress bar while API call is in flight
     let pct = 0;
     progressTimer.current = setInterval(() => {
-      pct = Math.min(pct + 12, 85);
+      pct = Math.min(pct + 15, 85);
       setDlProgress(pct);
-    }, 180);
+    }, 150);
 
     try {
       const res = await api.get(`/fees/receipts/${paymentId}`);
@@ -105,202 +124,608 @@ export default function DocumentsScreen({ navigation }: any) {
 
       const amount = Number(r.amount_paid || 0).toLocaleString('en-IN');
       const paidDate = r.payment_date ? new Date(r.payment_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' }) : '-';
-      const tenantName = `${r.first_name || ''} ${r.last_name || ''}`.trim();
+      const tenantName = `${r.first_name || ''} ${r.last_name || ''}`.trim() || 'Tenant';
+      const hostelName = r.hostel_name || 'Hostel';
 
       const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/>
         <style>
           *{box-sizing:border-box;margin:0;padding:0}
-          body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;padding:32px;color:#1A1A1A}
-          .hdr{border-bottom:2px solid #2245D4;padding-bottom:16px;margin-bottom:20px}
-          .hdr h1{font-size:20px;color:#2245D4}
-          .hdr p{font-size:13px;color:#666;margin-top:4px}
+          body{font-family:-apple-system,Helvetica,Arial,sans-serif;padding:32px;color:#1A1A1A;background:#FFF}
+          .hdr{border-bottom:2px solid #6D4AFF;padding-bottom:16px;margin-bottom:20px}
+          .hdr h1{font-size:20px;color:#6D4AFF;font-weight:800}
+          .hdr p{font-size:13px;color:#64748B;margin-top:4px}
           .row{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #E2E8F0;font-size:14px}
-          .row span:first-child{color:#666}
+          .row span:first-child{color:#64748B}
           .row span:last-child{font-weight:700}
-          .amount{font-size:28px;font-weight:800;color:#22C55E;margin:24px 0;text-align:center}
-        </style></head><body>
-        <div class="hdr"><h1>${r.hostel_name || 'Hostel'}</h1><p>${r.address || ''}${r.city ? ', ' + r.city : ''}</p></div>
-        <div class="amount">₹${amount}</div>
-        <div class="row"><span>Receipt No.</span><span>${r.receipt_number || '-'}</span></div>
-        <div class="row"><span>Tenant</span><span>${tenantName || '-'}</span></div>
-        <div class="row"><span>Room</span><span>${r.room_number || '-'}</span></div>
-        <div class="row"><span>For month</span><span>${r.payment_for_month || '-'}</span></div>
-        <div class="row"><span>Payment date</span><span>${paidDate}</span></div>
-        <div class="row"><span>Payment mode</span><span>${r.payment_mode || '-'}</span></div>
-        <div class="row"><span>Transaction ref.</span><span>${r.transaction_reference || '-'}</span></div>
-        </body></html>`;
+          .amount{font-size:28px;font-weight:800;color:#10B981;margin:24px 0;text-align:center}
+          .badge{display:inline-block;padding:4px 10px;background:#DCFCE7;color:#15803D;font-weight:700;font-size:12px;border-radius:6px}
+        </style>
+      </head>
+      <body>
+        <div class="hdr">
+          <h1>${hostelName}</h1>
+          <p>Payment Receipt &bull; ${r.fee_month || 'Rent Payment'}</p>
+        </div>
+        <div class="amount">&#8377;${amount}</div>
+        <div class="row"><span>Receipt No</span><span>${r.receipt_number || `REC-${paymentId}`}</span></div>
+        <div class="row"><span>Tenant</span><span>${tenantName}</span></div>
+        <div class="row"><span>Room / Bed</span><span>Room ${r.room_number || '-'} (Bed ${r.bed_number || '-'})</span></div>
+        <div class="row"><span>Payment Date</span><span>${paidDate}</span></div>
+        <div class="row"><span>Payment Mode</span><span>${r.payment_mode || 'Online'}</span></div>
+        <div class="row"><span>Status</span><span class="badge">Paid &amp; Verified</span></div>
+      </body></html>`;
 
-      const { uri } = await Print.printToFileAsync({ html });
-      clearInterval(progressTimer.current!);
+      if (progressTimer.current) clearInterval(progressTimer.current);
       setDlProgress(100);
       setDlStatus('done');
-      await downloadAndSaveFile(uri, `${fileName}.pdf`, 'application/pdf', true);
+
+      const { uri } = await Print.printToFileAsync({ html });
+      await Sharing.shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf' });
+      showSuccess('Receipt ready for download / share!');
     } catch (e: any) {
-      clearInterval(progressTimer.current!);
-      setDlProgress(100);
+      if (progressTimer.current) clearInterval(progressTimer.current);
       setDlStatus('error');
-      const isOffline = !e?.response;
-      setDlError(isOffline ? 'offline' : 'not_found');
+      showError('Failed to generate receipt PDF.');
     }
   };
 
-  const closeDl = () => {
-    if (dlStatus === 'loading') return;
-    setDlVisible(false);
-    setDlError(null);
-  };
+  const hasAadhaarFront = !!(profile?.id_proof_front_url || profile?.id_proof_document_url);
+  const hasAadhaarBack = !!profile?.id_proof_back_url;
+  const hasPhoto = !!profile?.profile_photo_url;
+  const isKycVerified = profile?.id_proof_status === 1 || profile?.is_verified;
 
   return (
-    <View style={{ flex: 1, backgroundColor: BG }}>
-      <StatusBar barStyle="light-content" backgroundColor={BLUE} />
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <StatusBar barStyle="dark-content" backgroundColor={WHITE} />
+      <OfflineBanner />
 
-      <AppHeader
-        title="My Documents"
-        subtitle="Manage your ID and agreements"
-        showBack={navigation.canGoBack()}
-      />
-
-      {/* ── Offline Banner ── */}
-      <View style={{ paddingHorizontal: 16, paddingTop: 8 }}>
-        <OfflineBanner />
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
+          <ArrowLeft size={20} color={TEXT_DARK} />
+        </TouchableOpacity>
+        <View style={styles.headerTitleWrap}>
+          <Text style={styles.headerTitle}>My Documents</Text>
+          <Text style={styles.headerSubtitle}>KYC proofs & payment receipts</Text>
+        </View>
+        <View style={{ width: 40 }} />
       </View>
 
-      {/* ── Filter chips ── */}
-      {!loading && !error && documents.length > 0 && (
+      {/* KYC Status Banner */}
+      {profile && (
+        <View style={[styles.kycBanner, isKycVerified ? styles.kycVerifiedBg : styles.kycPendingBg]}>
+          <View style={[styles.kycIconCircle, isKycVerified ? styles.kycVerifiedIcon : styles.kycPendingIcon]}>
+            {isKycVerified ? <ShieldCheck size={20} color={SUCCESS} /> : <ShieldAlert size={20} color={AMBER} />}
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.kycBannerTitle, { color: isKycVerified ? '#065F46' : '#92400E' }]}>
+              {isKycVerified ? 'KYC Complete & Verified' : 'KYC Verification Pending'}
+            </Text>
+            <Text style={[styles.kycBannerSub, { color: isKycVerified ? '#047857' : '#B45309' }]}>
+              {isKycVerified
+                ? 'Your identity documents are verified by the hostel management.'
+                : 'Your uploaded ID proofs are under review.'}
+            </Text>
+          </View>
+        </View>
+      )}
+
+      {/* Filter Tabs */}
+      <View style={styles.tabsRow}>
+        {DOC_FILTERS.map(f => {
+          const isActive = activeFilter === f.key;
+          return (
+            <TouchableOpacity
+              key={f.key}
+              style={[styles.tabBtn, isActive && styles.tabBtnActive]}
+              onPress={() => setActiveFilter(f.key)}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.tabBtnText, isActive && styles.tabBtnTextActive]}>
+                {f.label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
+      {loading ? (
+        <View style={{ padding: 16 }}>
+          <DocumentsSkeleton />
+        </View>
+      ) : error ? (
+        <Phase3ErrorState variant="error" onAction={fetchDocuments} />
+      ) : (
         <ScrollView
-          horizontal showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: 20, paddingVertical: 10, gap: 8 }}
-          style={{ backgroundColor: WHITE, borderBottomWidth: 1, borderBottomColor: BORDER }}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
         >
-          {DOC_FILTERS.map(f => {
-            const active = activeFilter === f;
-            return (
-              <TouchableOpacity
-                key={f} onPress={() => setActiveFilter(f)} activeOpacity={0.7}
-                style={{ paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, backgroundColor: active ? BLUE : '#F1F5F9', borderWidth: 1, borderColor: active ? BLUE : BORDER }}
-              >
-                <Text style={{ fontSize: 12, fontWeight: '700', color: active ? '#FFF' : TEXT_MID }}>{f}</Text>
-              </TouchableOpacity>
-            );
-          })}
+          {/* ────────────────── KYC & ID PROOFS SECTION ────────────────── */}
+          {(activeFilter === 'All' || activeFilter === 'KYC') && (
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <IdCard size={18} color={BLUE} />
+                <Text style={styles.sectionTitle}>Identity & KYC Proofs</Text>
+              </View>
+
+              {/* ID Proof Card */}
+              <View style={styles.card}>
+                <View style={styles.cardHead}>
+                  <View>
+                    <Text style={styles.cardTitle}>
+                      {profile?.id_proof_type_name || profile?.id_proof_type || 'Govt ID Proof'}
+                    </Text>
+                    <Text style={styles.cardDocNumber}>
+                      {profile?.id_proof_number ? `Number: ${profile.id_proof_number}` : 'ID Number on file'}
+                    </Text>
+                  </View>
+                  <View style={[styles.badge, isKycVerified ? styles.badgeSuccess : styles.badgeAmber]}>
+                    <Text style={[styles.badgeText, { color: isKycVerified ? SUCCESS : AMBER }]}>
+                      {isKycVerified ? 'Verified' : 'Submitted'}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Thumbnails Row */}
+                <View style={styles.docsGrid}>
+                  {/* Front Side */}
+                  {hasAadhaarFront && (
+                    <TouchableOpacity
+                      style={styles.docTile}
+                      activeOpacity={0.85}
+                      onPress={() => {
+                        const raw = profile.id_proof_front_url || profile.id_proof_document_url;
+                        setPreviewImage({ uri: getResolvedImageUrl(raw) || raw, title: 'ID Proof (Front Side)' });
+                      }}
+                    >
+                      <Image
+                        source={{ uri: getResolvedImageUrl(profile.id_proof_front_url || profile.id_proof_document_url) || '' }}
+                        style={styles.docThumb}
+                        resizeMode="cover"
+                      />
+                      <View style={styles.docTileOverlay}>
+                        <Eye size={14} color={WHITE} />
+                        <Text style={styles.docTileLabel}>Front Side</Text>
+                      </View>
+                    </TouchableOpacity>
+                  )}
+
+                  {/* Back Side */}
+                  {hasAadhaarBack && (
+                    <TouchableOpacity
+                      style={styles.docTile}
+                      activeOpacity={0.85}
+                      onPress={() => {
+                        const raw = profile.id_proof_back_url;
+                        setPreviewImage({ uri: getResolvedImageUrl(raw) || raw, title: 'ID Proof (Back Side)' });
+                      }}
+                    >
+                      <Image
+                        source={{ uri: getResolvedImageUrl(profile.id_proof_back_url) || '' }}
+                        style={styles.docThumb}
+                        resizeMode="cover"
+                      />
+                      <View style={styles.docTileOverlay}>
+                        <Eye size={14} color={WHITE} />
+                        <Text style={styles.docTileLabel}>Back Side</Text>
+                      </View>
+                    </TouchableOpacity>
+                  )}
+
+                  {/* Profile Photo */}
+                  {hasPhoto && (
+                    <TouchableOpacity
+                      style={styles.docTile}
+                      activeOpacity={0.85}
+                      onPress={() => {
+                        const raw = profile.profile_photo_url;
+                        setPreviewImage({ uri: getResolvedImageUrl(raw) || raw, title: 'Passport / Profile Photo' });
+                      }}
+                    >
+                      <Image
+                        source={{ uri: getResolvedImageUrl(profile.profile_photo_url) || '' }}
+                        style={styles.docThumb}
+                        resizeMode="cover"
+                      />
+                      <View style={styles.docTileOverlay}>
+                        <User size={14} color={WHITE} />
+                        <Text style={styles.docTileLabel}>Passport Photo</Text>
+                      </View>
+                    </TouchableOpacity>
+                  )}
+                </View>
+
+                {!hasAadhaarFront && !hasAadhaarBack && !hasPhoto && (
+                  <Text style={styles.noDocText}>No KYC photo documents uploaded yet.</Text>
+                )}
+              </View>
+            </View>
+          )}
+
+          {/* ────────────────── RENT RECEIPTS SECTION ────────────────── */}
+          {(activeFilter === 'All' || activeFilter === 'Receipt') && (
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Receipt size={18} color={SUCCESS} />
+                <Text style={styles.sectionTitle}>Rent Receipts ({receipts.length})</Text>
+              </View>
+
+              {receipts.length === 0 ? (
+                <View style={styles.emptyCard}>
+                  <Receipt size={32} color={TEXT_MUTED} />
+                  <Text style={styles.emptyCardTitle}>No Receipts Yet</Text>
+                  <Text style={styles.emptyCardSub}>Verified rent payments will generate downloadable receipts here.</Text>
+                </View>
+              ) : (
+                receipts.map((rec, index) => (
+                  <View key={rec.id || index} style={styles.receiptCard}>
+                    <View style={styles.receiptIcon}>
+                      <FileCheck2 size={20} color={SUCCESS} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.receiptName}>{rec.name}</Text>
+                      <Text style={styles.receiptMeta}>
+                        {rec.date ? new Date(rec.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'} &bull; &#8377;{Number(rec.amount).toLocaleString('en-IN')}
+                      </Text>
+                    </View>
+                    <TouchableOpacity
+                      style={styles.downloadBtn}
+                      onPress={() => handleDownloadReceipt(rec.paymentId, `${rec.name}.pdf`)}
+                      activeOpacity={0.8}
+                    >
+                      <Download size={16} color={BLUE} />
+                      <Text style={styles.downloadBtnText}>PDF</Text>
+                    </TouchableOpacity>
+                  </View>
+                ))
+              )}
+            </View>
+          )}
         </ScrollView>
       )}
 
-      <ScrollView 
-        contentContainerStyle={[
-          s.scroll, 
-          { flexGrow: 1 },
-          (documents.length === 0 || (!loading && !error && activeFilter !== 'All' && documents.filter(d => d.type === activeFilter).length === 0)) 
-            ? { justifyContent: 'center' } 
-            : {}
-        ]} 
-        showsVerticalScrollIndicator={false}
+      {/* ── Image Preview Zoom Modal ── */}
+      <Modal
+        visible={!!previewImage}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setPreviewImage(null)}
       >
-        {loading ? (
-          <DocumentsSkeleton />
-        ) : error ? (
-          <View style={{ marginTop: 40 }}>
-            <Phase3ErrorState variant="server" onAction={fetchDocuments} />
-          </View>
-        ) : documents.length === 0 ? (
-          <EmptyState
-            icon={FileText}
-            title="No Documents Found"
-            message="Your rental agreement, payment receipts, and KYC documents will appear here once verified."
-          />
-        ) : null}
-
-        {!loading && !error && documents.length > 0 && (() => {
-          const filtered = activeFilter === 'All' ? documents : documents.filter(d => d.type === activeFilter);
-          if (filtered.length === 0) return (
-            <View style={{ marginTop: 24 }}>
-              <EmptyState
-                icon={FileText}
-                title={`No ${activeFilter} Documents`}
-                message="No documents of this type found."
-              />
+        <View style={styles.previewModalOverlay}>
+          <SafeAreaView style={{ flex: 1 }}>
+            <View style={styles.previewModalHeader}>
+              <Text style={styles.previewModalTitle}>{previewImage?.title || 'Document Preview'}</Text>
+              <TouchableOpacity
+                onPress={() => setPreviewImage(null)}
+                style={styles.previewCloseBtn}
+                activeOpacity={0.7}
+              >
+                <X size={22} color={WHITE} />
+              </TouchableOpacity>
             </View>
-          );
-          return (
-            <View style={s.listCard}>
-              {filtered.map((d, i) => {
-                const meta = typeMeta[d.type as DocType] || typeMeta.Other;
-                const Icon = meta.icon;
-                return (
-                  <View key={d.id}>
-                    <View style={s.row}>
-                      <View style={[s.iconWrap, { backgroundColor: meta.soft }]}>
-                        <Icon size={22} color={meta.tint} />
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <Text style={s.nameTxt} numberOfLines={1}>{d.name}</Text>
-                        <Text style={s.metaTxt}>
-                          {d.type} • {new Date(d.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
-                        </Text>
-                      </View>
-                      <TouchableOpacity style={s.dlBtn} activeOpacity={0.7} onPress={() => handleDownload(d.paymentId, d.name)}>
-                        <Download size={18} color={BLUE} strokeWidth={2.5} />
-                      </TouchableOpacity>
-                    </View>
-                    {i < filtered.length - 1 && <View style={s.divider} />}
-                  </View>
-                );
-              })}
+            <View style={styles.previewImageContainer}>
+              {previewImage?.uri ? (
+                <Image
+                  source={{ uri: previewImage.uri }}
+                  style={styles.previewImage}
+                  resizeMode="contain"
+                />
+              ) : (
+                <ActivityIndicator color={WHITE} size="large" />
+              )}
             </View>
-          );
-        })()}
+          </SafeAreaView>
+        </View>
+      </Modal>
 
-        {/* File error inline state (when download failed) */}
-        {dlError && !dlVisible && (
-          <View style={{ marginTop: 12 }}>
-            <FileErrorState type={dlError} />
-          </View>
-        )}
-      </ScrollView>
-
-      {/* Floating Action Button for Upload */}
-      <TouchableOpacity 
-        style={[
-          s.fab,
-          {
-            bottom: Math.max(insets.bottom + 85, 100),
-          },
-        ]}
-        onPress={() => showError('Document upload feature coming soon!')}
-        activeOpacity={0.85}
-      >
-        <Plus size={26} color="#FFF" strokeWidth={2.8} />
-      </TouchableOpacity>
-
-      {/* ── Download Progress Sheet ── */}
+      {/* Download sheet */}
       <DownloadProgressSheet
         visible={dlVisible}
         fileName={dlFileName}
         progress={dlProgress}
         status={dlStatus}
-        onClose={closeDl}
+        onClose={() => setDlVisible(false)}
       />
-    </View>
+    </SafeAreaView>
   );
 }
 
-const s = StyleSheet.create({
-  headerSection: { backgroundColor: BLUE, paddingBottom: 24, borderBottomLeftRadius: 32, borderBottomRightRadius: 32, shadowColor: BLUE, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 12, elevation: 8, zIndex: 10 },
-  headerTop: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingTop: 12 },
-  backBtnLight: { padding: 8, marginLeft: -8, backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 12 },
-  headerGreeting: { fontSize: 22, fontWeight: '800', color: WHITE },
-  headerSub: { fontSize: 13, color: 'rgba(255,255,255,0.8)', marginTop: 2 },
-  scroll: { padding: 20, paddingBottom: 60 },
-  emptyCard: { backgroundColor: WHITE, borderRadius: 24, padding: 32, alignItems: 'center', borderWidth: 1, borderColor: BORDER, borderStyle: 'dashed', marginTop: 20 },
-  emptyIconWrap: { width: 64, height: 64, borderRadius: 32, backgroundColor: '#F1F5F9', justifyContent: 'center', alignItems: 'center', marginBottom: 16 },
-  emptyTitle: { fontSize: 18, fontWeight: '700', color: TEXT_DARK, marginBottom: 8 },
-  emptySub: { fontSize: 14, color: TEXT_MID, textAlign: 'center', lineHeight: 20 },
-  listCard: { backgroundColor: WHITE, borderRadius: 24, paddingHorizontal: 16, marginBottom: 24, borderWidth: 1, borderColor: BORDER, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 12, elevation: 2, marginTop: 10 },
-  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 16 },
-  iconWrap: { width: 48, height: 48, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginRight: 16 },
-  nameTxt: { fontSize: 15, fontWeight: '700', color: TEXT_DARK, marginBottom: 4 },
-  metaTxt: { fontSize: 13, color: TEXT_MID, fontWeight: '500' },
-  dlBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: BLUE_SOFT, alignItems: 'center', justifyContent: 'center' },
-  divider: { height: 1, backgroundColor: BORDER, marginLeft: 64 },
-  fab: { position: 'absolute', bottom: 100, right: 20, width: 56, height: 56, borderRadius: 28, backgroundColor: BLUE, justifyContent: 'center', alignItems: 'center', shadowColor: BLUE, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.35, shadowRadius: 8, elevation: 12, zIndex: 99999 },
+const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: BG,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: WHITE,
+    borderBottomWidth: 1,
+    borderBottomColor: BORDER,
+  },
+  backBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: BG,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTitleWrap: {
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: TEXT_DARK,
+  },
+  headerSubtitle: {
+    fontSize: 12,
+    color: TEXT_MID,
+    marginTop: 1,
+  },
+  kycBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginHorizontal: 16,
+    marginTop: 14,
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  kycVerifiedBg: {
+    backgroundColor: SUCCESS_SOFT,
+    borderColor: '#A7F3D0',
+  },
+  kycPendingBg: {
+    backgroundColor: AMBER_SOFT,
+    borderColor: '#FDE68A',
+  },
+  kycIconCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  kycVerifiedIcon: {
+    backgroundColor: '#D1FAE5',
+  },
+  kycPendingIcon: {
+    backgroundColor: '#FEF3C7',
+  },
+  kycBannerTitle: {
+    fontSize: 13.5,
+    fontWeight: '800',
+  },
+  kycBannerSub: {
+    fontSize: 11.5,
+    marginTop: 2,
+    fontWeight: '500',
+  },
+  tabsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingHorizontal: 16,
+    marginTop: 14,
+    marginBottom: 6,
+  },
+  tabBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: WHITE,
+    borderWidth: 1,
+    borderColor: BORDER,
+  },
+  tabBtnActive: {
+    backgroundColor: BLUE,
+    borderColor: BLUE,
+  },
+  tabBtnText: {
+    fontSize: 12.5,
+    fontWeight: '700',
+    color: TEXT_MID,
+  },
+  tabBtnTextActive: {
+    color: WHITE,
+  },
+  scrollContent: {
+    padding: 16,
+    gap: 20,
+    paddingBottom: 40,
+  },
+  section: {
+    gap: 10,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  sectionTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: TEXT_DARK,
+  },
+  card: {
+    backgroundColor: WHITE,
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: BORDER,
+  },
+  cardHead: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 14,
+  },
+  cardTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: TEXT_DARK,
+  },
+  cardDocNumber: {
+    fontSize: 12.5,
+    color: TEXT_MID,
+    marginTop: 2,
+    fontWeight: '500',
+  },
+  badge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  badgeSuccess: {
+    backgroundColor: SUCCESS_SOFT,
+  },
+  badgeAmber: {
+    backgroundColor: AMBER_SOFT,
+  },
+  badgeText: {
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  docsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  docTile: {
+    width: (SCREEN_WIDTH - 32 - 32 - 12) / 2,
+    height: 120,
+    borderRadius: 12,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: BORDER,
+    backgroundColor: '#0F172A',
+  },
+  docThumb: {
+    width: '100%',
+    height: '100%',
+  },
+  docTileOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(0,0,0,0.65)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+    paddingVertical: 6,
+  },
+  docTileLabel: {
+    color: WHITE,
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  noDocText: {
+    fontSize: 13,
+    color: TEXT_MUTED,
+    textAlign: 'center',
+    marginVertical: 12,
+  },
+  receiptCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: WHITE,
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: BORDER,
+    marginBottom: 10,
+  },
+  receiptIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: SUCCESS_SOFT,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  receiptName: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: TEXT_DARK,
+  },
+  receiptMeta: {
+    fontSize: 12,
+    color: TEXT_MID,
+    marginTop: 2,
+  },
+  downloadBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: BLUE_SOFT,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+  },
+  downloadBtnText: {
+    color: BLUE,
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  emptyCard: {
+    backgroundColor: WHITE,
+    borderRadius: 16,
+    padding: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: BORDER,
+    gap: 8,
+  },
+  emptyCardTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: TEXT_DARK,
+  },
+  emptyCardSub: {
+    fontSize: 12,
+    color: TEXT_MID,
+    textAlign: 'center',
+  },
+  previewModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.92)',
+  },
+  previewModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+  },
+  previewModalTitle: {
+    color: WHITE,
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  previewCloseBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  previewImageContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+  },
+  previewImage: {
+    width: '100%',
+    height: '100%',
+  },
 });

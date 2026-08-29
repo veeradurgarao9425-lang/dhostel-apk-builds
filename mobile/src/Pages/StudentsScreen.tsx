@@ -503,6 +503,8 @@ export default function StudentsScreen({ navigation, route }: any) {
     useEffect(() => {
         setPage(1);
         setHasMore(true);
+        setAllStudents([]);
+        setInitialLoading(true);
         fetchPage(1, false);
         return () => { abortRef.current?.abort(); };
     }, [activeTab, debouncedSearch, dateFilter, startDateFilter, endDateFilter]);
@@ -511,6 +513,7 @@ export default function StudentsScreen({ navigation, route }: any) {
     const isMounted = useRef(false);
     useEffect(() => {
         const unsubscribe = navigation.addListener('focus', () => {
+            fetchCounts();
             if (!isMounted.current) { isMounted.current = true; return; }
             // Skip focus reload if we have incoming route parameters (they will trigger their own fetch)
             if (route?.params?.startDate || route?.params?.endDate || route?.params?.filter) {
@@ -531,7 +534,9 @@ export default function StudentsScreen({ navigation, route }: any) {
         }
         setPage(1);
         setHasMore(true);
-        fetchPage(1, false); // Change to false to show the loading screen/skeleton immediately
+        setAllStudents([]);
+        setInitialLoading(true);
+        fetchPage(1, false);
         fetchCounts();
     }, [refreshCounter, refreshPayload]);
 
@@ -540,20 +545,22 @@ export default function StudentsScreen({ navigation, route }: any) {
 
     const fetchCounts = async () => {
         try {
-            // Check if /students/stats works (for when backend is deployed)
             const res = await api.get('/students/stats').catch(() => null);
             if (res?.data?.success && res.data.data) {
                 setCounts(res.data.data);
             }
-            // Optimizing database connection pool efficiency
         } catch (e) {
             if (__DEV__) console.log('Error fetching counts', e);
         }
     };
 
+    useEffect(() => {
+        fetchCounts();
+    }, []);
+
     useFocusEffect(useCallback(() => {
         const now = Date.now();
-        if (now - lastCountsFetchRef.current < 30000) return;
+        if (now - lastCountsFetchRef.current < 10000) return;
         lastCountsFetchRef.current = now;
         fetchCounts();
     }, []));
@@ -798,15 +805,15 @@ export default function StudentsScreen({ navigation, route }: any) {
                     contentContainerStyle={styles.tabScrollContent}
                 >
                     {[
-                        { key: 'Active', label: t('students.active'), count: counts.active, show: counts.active > 0 || activeTab === 'Active' },
-                        { key: 'AdmissionPending', label: 'Admission Pending', count: counts.pendingAdmissions || 0, show: (counts.pendingAdmissions || 0) > 0 || activeTab === 'AdmissionPending' },
-                        { key: 'Unallocated', label: t('students.unallocatedTab', 'No Room'), count: counts.unallocated, show: counts.unallocated > 0 || activeTab === 'Unallocated' },
-                        { key: 'PreBooked', label: t('students.prebooked'), count: counts.prebooked, show: counts.prebooked > 0 || activeTab === 'PreBooked' },
-                        { key: 'QRRegister', label: t('students.qrSignups'), count: counts.qrRegister, show: counts.qrRegister > 0 || activeTab === 'QRRegister' },
-                        { key: 'Rejected', label: 'Rejected', count: counts.rejected, show: counts.rejected > 0 || activeTab === 'Rejected' },
-                        { key: 'Inactive', label: t('students.inactive'), count: counts.inactive, show: counts.inactive > 0 || activeTab === 'Inactive' },
-                        { key: 'All', label: t('students.total'), count: counts.total, show: counts.total > 0 || activeTab === 'All' }
-                    ].filter(tab => tab.show).map((tab: any) => (
+                        { key: 'Active', label: t('students.active', 'Active'), count: counts.active },
+                        { key: 'Unallocated', label: t('students.unallocatedTab', 'No Room'), count: counts.unallocated },
+                        { key: 'QRRegister', label: t('students.qrSignups', 'QR Signups'), count: counts.qrRegister },
+                        { key: 'AdmissionPending', label: 'Admission Pending', count: counts.pendingAdmissions || 0 },
+                        { key: 'PreBooked', label: t('students.prebooked', 'Pre-Booked'), count: counts.prebooked },
+                        { key: 'Rejected', label: 'Rejected', count: counts.rejected },
+                        { key: 'Inactive', label: t('students.inactive', 'Inactive'), count: counts.inactive },
+                        { key: 'All', label: t('students.total', 'Total'), count: counts.total }
+                    ].map((tab: any) => (
 
                         <TouchableOpacity
                             key={tab.key}

@@ -1,20 +1,26 @@
 /**
  * notificationService.ts
  * Pure Firebase Cloud Messaging (FCM) via @react-native-firebase/messaging modular API.
+ * Safely guards native module access in local Expo dev environments.
  */
-import {
-  getMessaging,
-  getToken,
-  onMessage,
-  onTokenRefresh,
-  onNotificationOpenedApp,
-  getInitialNotification,
-  requestPermission,
-  AuthorizationStatus,
-  type RemoteMessage,
-} from '@react-native-firebase/messaging';
-import { Platform, PermissionsAndroid } from 'react-native';
+import { Platform, PermissionsAndroid, NativeModules } from 'react-native';
 import api from './api';
+
+const getFirebaseMessagingModule = () => {
+  try {
+    const hasNativeFirebase = !!(
+      NativeModules?.RNFBAppModule ||
+      NativeModules?.RNFBMessagingModule ||
+      (typeof (global as any)?.__turboModuleProxy === 'function' && (global as any)?.__turboModuleProxy('NativeRNFBTurboApp'))
+    );
+    if (!hasNativeFirebase) {
+      return null;
+    }
+    return require('@react-native-firebase/messaging');
+  } catch {
+    return null;
+  }
+};
 
 export const notificationService = {
   _lastRegisteredToken: null as string | null,
@@ -38,11 +44,17 @@ export const notificationService = {
         }
       }
 
+      const fcm = getFirebaseMessagingModule();
+      if (!fcm) {
+        // Native Firebase module is not linked in current dev binary (active after native build)
+        return null;
+      }
+
+      const { getMessaging, requestPermission, getToken, AuthorizationStatus } = fcm;
       let messaging: any = null;
       try {
         messaging = getMessaging();
       } catch (nativeErr: any) {
-        // Native Firebase module is not linked in current dev binary (will activate after full native APK build)
         return null;
       }
       if (!messaging) return null;
@@ -71,7 +83,7 @@ export const notificationService = {
 
       return token;
     } catch (err: any) {
-      console.error('[FCM] ❌ Registration failed:', err?.message || err);
+      console.warn('[FCM] ℹ️ Push notifications registration skipped in dev:', err?.message || err);
       return null;
     }
   },
@@ -119,6 +131,10 @@ export const notificationService = {
     let unsubscribeRefresh = () => {};
 
     try {
+      const fcm = getFirebaseMessagingModule();
+      if (!fcm) return () => {};
+
+      const { getMessaging, onMessage, onTokenRefresh, onNotificationOpenedApp, getInitialNotification } = fcm;
       let messaging: any = null;
       try {
         messaging = getMessaging();
@@ -128,7 +144,7 @@ export const notificationService = {
       if (!messaging) return () => {};
 
       // Foreground message handler
-      unsubscribeForeground = onMessage(messaging, (remoteMessage: RemoteMessage) => {
+      unsubscribeForeground = onMessage(messaging, (remoteMessage: any) => {
         console.log('[FCM] 📨 Foreground message:', remoteMessage.notification?.title);
         if (navigate && remoteMessage.data?.screen) {
           navigate(String(remoteMessage.data.screen), remoteMessage.data.params || {});
@@ -143,7 +159,7 @@ export const notificationService = {
       });
 
       // Background / quit state notification tap handler
-      onNotificationOpenedApp(messaging, (remoteMessage: RemoteMessage) => {
+      onNotificationOpenedApp(messaging, (remoteMessage: any) => {
         const screen = remoteMessage.data?.screen as string | undefined;
         const params = remoteMessage.data?.params;
         if (navigate && screen) {
@@ -152,7 +168,7 @@ export const notificationService = {
       });
 
       // Check if app was launched from a killed state via notification tap
-      getInitialNotification(messaging).then(remoteMessage => {
+      getInitialNotification(messaging).then((remoteMessage: any) => {
         if (remoteMessage) {
           const screen = remoteMessage.data?.screen as string | undefined;
           const params = remoteMessage.data?.params;

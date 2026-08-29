@@ -237,6 +237,7 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
 
     return (
         <>
+            <FullScreenLoader visible={logoutLoading} message="Signing out..." />
             <NavigationContainer
                 ref={navigationRef}
 

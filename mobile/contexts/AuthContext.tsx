@@ -508,9 +508,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setCachedToken(null, false);
       setCachedToken(null, true);
       notificationService._lastRegisteredToken = null;
-      setUser(null);
-      setHostels([]);
-      setConnectedHostel(null);
       await removeSecureItem('token');
       await removeSecureItem('developer_token');
       await AsyncStorage.multiRemove(['token', 'user', 'developer_token', 'connected_hostel']);
@@ -522,10 +519,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           routes: [{ name: 'RoleSelect' }],
         });
       }
+      setUser(null);
+      setHostels([]);
+      setConnectedHostel(null);
     } catch (e) {
       console.error('Error signing out', e);
     } finally {
-      setLogoutLoading(false);
+      setTimeout(() => {
+        setLogoutLoading(false);
+      }, 450);
     }
   };
 

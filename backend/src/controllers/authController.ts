@@ -1617,14 +1617,28 @@ export const authController = {
         .orderBy('due_date', 'asc')
         .first();
 
+      let idProofTypeName = 'Govt ID Proof';
+      if (tenant.id_proof_type) {
+        if (!isNaN(Number(tenant.id_proof_type))) {
+          const typeRow = await db('id_proof_types').where({ id: Number(tenant.id_proof_type) }).first().catch(() => null);
+          if (typeRow?.name) idProofTypeName = typeRow.name;
+        } else {
+          idProofTypeName = String(tenant.id_proof_type);
+        }
+      }
+
       return res.json({
         success: true,
         data: {
           id: tenant.student_id,
-          name: tenant.first_name + (tenant.last_name ? ' ' + tenant.last_name : ''),
+          student_id: tenant.student_id,
+          first_name: tenant.first_name,
+          last_name: tenant.last_name || null,
+          name: `${tenant.first_name}${tenant.last_name ? ' ' + tenant.last_name : ''}`.trim(),
           email: tenant.email,
           phone: tenant.phone,
           gender: tenant.gender,
+          date_of_birth: tenant.date_of_birth,
           status,
           is_allocated: isAllocated,
           room_id: tenant.room_id || null,
@@ -1634,6 +1648,19 @@ export const authController = {
           outstanding_due: Number(dueRow?.total_balance || 0),
           next_due_date: nextDue?.due_date || null,
           hostel_id: tenant.hostel_id,
+          profile_photo_url: tenant.profile_photo_url || null,
+          id_proof_front_url: tenant.id_proof_front_url || tenant.id_proof_document_url || null,
+          id_proof_back_url: tenant.id_proof_back_url || null,
+          id_proof_document_url: tenant.id_proof_document_url || tenant.id_proof_front_url || null,
+          id_proof_number: tenant.id_proof_number || null,
+          id_proof_type: tenant.id_proof_type || null,
+          id_proof_type_name: idProofTypeName,
+          id_proof_status: tenant.id_proof_status ?? 0,
+          current_address: tenant.current_address || tenant.present_working_address || null,
+          permanent_address: tenant.permanent_address || null,
+          guardian_name: tenant.guardian_name || null,
+          guardian_phone: tenant.guardian_phone || null,
+          admission_date: tenant.admission_date || null,
         },
       });
     } catch (error) {
