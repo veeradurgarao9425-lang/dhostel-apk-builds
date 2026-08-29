@@ -217,7 +217,7 @@ export default function RegisterScreen({ navigation }: any) {
 
     const handleRegister = async () => {
         Keyboard.dismiss();
-        
+
         // Trim inputs
         const trimmedName = fullName.trim();
         const trimmedEmail = email.trim();
@@ -382,8 +382,8 @@ export default function RegisterScreen({ navigation }: any) {
 
                 {/* Email + verify */}
                 <View style={styles.inputGroup}>
-                    <Field 
-                        label="Email" 
+                    <Field
+                        label="Email"
                         error={getFieldError('email', email)}
                         rightAction={otpSent ? (
                             <TouchableOpacity
@@ -452,8 +452,8 @@ export default function RegisterScreen({ navigation }: any) {
                 {/* OTP entry — shown only after a code has been sent and not yet verified */}
                 {otpSent && !emailVerified && (
                     <View style={{ marginTop: 10 }}>
-                        <Field 
-                            label="Enter Verification Code" 
+                        <Field
+                            label="Enter Verification Code"
                             error={getFieldError('otp', otp)}
                             rightAction={
                                 <TouchableOpacity
@@ -471,35 +471,35 @@ export default function RegisterScreen({ navigation }: any) {
                                 </TouchableOpacity>
                             }
                         >
-                        <Ionicons name="key-outline" size={18} color="#7C3AED" style={styles.icon} />
-                        <TextInput
-                            ref={otpRef}
-                            style={styles.input}
-                            placeholder="6-digit code"
-                            placeholderTextColor="#B8B8B8"
-                            keyboardType="number-pad"
-                            maxLength={6}
-                            value={otp}
-                            returnKeyType="done"
-                            onSubmitEditing={handleVerifyOtp}
-                            onBlur={() => markTouched('otp')}
-                            onChangeText={(t) => {
-                                const clean = t.replace(/[^0-9]/g, '');
-                                setOtp(clean);
-                                validateField('otp', clean);
-                                clearErr();
-                            }}
-                        />
-                        <TouchableOpacity
-                            style={[styles.verifyBtn, (verifyingOtp || otp.length !== 6) && { opacity: 0.6 }]}
-                            onPress={handleVerifyOtp}
-                            disabled={verifyingOtp || otp.length !== 6}
-                            activeOpacity={0.8}
-                        >
-                            {verifyingOtp
-                                ? <ActivityIndicator color="#5F2EEA" size="small" />
-                                : <Text style={styles.verifyBtnText}>Confirm</Text>}
-                        </TouchableOpacity>
+                            <Ionicons name="key-outline" size={18} color="#7C3AED" style={styles.icon} />
+                            <TextInput
+                                ref={otpRef}
+                                style={styles.input}
+                                placeholder="6-digit code"
+                                placeholderTextColor="#B8B8B8"
+                                keyboardType="number-pad"
+                                maxLength={6}
+                                value={otp}
+                                returnKeyType="done"
+                                onSubmitEditing={handleVerifyOtp}
+                                onBlur={() => markTouched('otp')}
+                                onChangeText={(t) => {
+                                    const clean = t.replace(/[^0-9]/g, '');
+                                    setOtp(clean);
+                                    validateField('otp', clean);
+                                    clearErr();
+                                }}
+                            />
+                            <TouchableOpacity
+                                style={[styles.verifyBtn, (verifyingOtp || otp.length !== 6) && { opacity: 0.6 }]}
+                                onPress={handleVerifyOtp}
+                                disabled={verifyingOtp || otp.length !== 6}
+                                activeOpacity={0.8}
+                            >
+                                {verifyingOtp
+                                    ? <ActivityIndicator color="#5F2EEA" size="small" />
+                                    : <Text style={styles.verifyBtnText}>Confirm</Text>}
+                            </TouchableOpacity>
                         </Field>
 
                         {/* Delayed Spam/Junk hint (appears after 15s) */}
@@ -580,8 +580,8 @@ export default function RegisterScreen({ navigation }: any) {
                 </Field>
 
                 {/* Address */}
-                <Field 
-                    label="Address" 
+                <Field
+                    label="Address"
                     error={getFieldError('address', address)}
                     containerStyle={{ height: 100, alignItems: 'flex-start', paddingTop: 14 }}
                 >
@@ -605,7 +605,7 @@ export default function RegisterScreen({ navigation }: any) {
                 </Field>
 
                 {/* Joining Fee */}
-                <Field label="Joining Fee (Optional)" optional error={getFieldError('admissionFee', admissionFee)}>
+                <Field label="Joining Fee" optional error={getFieldError('admissionFee', admissionFee)}>
                     <Ionicons name="card-outline" size={18} color="#7C3AED" style={styles.icon} />
                     <TextInput
                         style={styles.input}
@@ -619,7 +619,7 @@ export default function RegisterScreen({ navigation }: any) {
                 </Field>
 
                 {/* Refundable Deposit */}
-                <Field label="Refundable Deposit (Optional)" optional error={getFieldError('defaultDeposit', defaultDeposit)}>
+                <Field label="Refundable Deposit" optional error={getFieldError('defaultDeposit', defaultDeposit)}>
                     <Ionicons name="cash-outline" size={18} color="#7C3AED" style={styles.icon} />
                     <TextInput
                         style={styles.input}

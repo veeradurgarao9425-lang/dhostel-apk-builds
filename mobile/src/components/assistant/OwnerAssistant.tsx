@@ -295,6 +295,46 @@ export const OwnerAssistant: React.FC<{ currentRoute?: string | null }> = ({ cur
   const [isFocused, setIsFocused] = useState(false);
   const [isKeyboardActive, setIsKeyboardActive] = useState(false);
 
+  // Staff role and permission gating
+  const isStaff = user?.role === 'STAFF' || user?.role_id === 4;
+  const staffPermissions = useMemo(() => {
+    let perms = (user as any)?.permissions;
+    if (typeof perms === 'string') {
+      try { perms = JSON.parse(perms); } catch (_) { perms = {}; }
+    }
+    return perms || {};
+  }, [user?.permissions]);
+
+  const hasPerm = useCallback((k: string) => {
+    if (!isStaff) return true;
+    const v = staffPermissions[k];
+    return v === 'manage' || v === 'view' || v === true || v === '1' || v === 1;
+  }, [isStaff, staffPermissions]);
+
+  const visibleTopScrollPills = useMemo(() => {
+    if (!isStaff) return TOP_SCROLL_PILLS;
+    return TOP_SCROLL_PILLS.filter(p => {
+      const q = p.q.toLowerCase();
+      if (q.includes('profit') || q.includes('expenses') || q.includes('staff') || q.includes('switch hostel')) return false;
+      if (q.includes('paid') || q.includes('dues') || q.includes('overdue')) {
+        return hasPerm('dues') || hasPerm('finance');
+      }
+      return true;
+    });
+  }, [isStaff, hasPerm]);
+
+  const visibleWelcomeChips = useMemo(() => {
+    if (!isStaff) return WELCOME_CHIPS;
+    return WELCOME_CHIPS.filter(c => {
+      const q = c.q.toLowerCase();
+      if (q.includes('profit') || q.includes('expenses')) return false;
+      if (q.includes('paid') || q.includes('dues') || q.includes('overdue')) {
+        return hasPerm('dues') || hasPerm('finance');
+      }
+      return true;
+    });
+  }, [isStaff, hasPerm]);
+
   const handleFeedback = useCallback((msgIdStr: string, type: 'up' | 'down') => {
     Haptics.selectionAsync().catch(() => {});
     setFeedbackMap(prev => ({
@@ -1415,6 +1455,13 @@ export const OwnerAssistant: React.FC<{ currentRoute?: string | null }> = ({ cur
       }
 
       case 'SHOW_REPORTS': {
+        if (isStaff && !hasPerm('reports')) {
+          addBot([
+            { type: 'info_tip', text: '🔒 Financial Reports Restricted', icon: 'lock-closed-outline', color: '#DC2626' },
+            { type: 'text', text: 'Hostel financial reports and P&L analytics are confidential and restricted to owners. You can ask me about resident check-ins, vacant beds, rooms, or notices.' }
+          ]);
+          break;
+        }
         setIsTyping(true);
         const fin = await fetchFinancialOverview();
         if (!fin) {
@@ -1436,6 +1483,13 @@ export const OwnerAssistant: React.FC<{ currentRoute?: string | null }> = ({ cur
       }
 
       case 'SHOW_EXPENSES': {
+        if (isStaff && !hasPerm('expenses')) {
+          addBot([
+            { type: 'info_tip', text: '🔒 Expenses Restricted', icon: 'lock-closed-outline', color: '#DC2626' },
+            { type: 'text', text: 'Hostel expense records are restricted for staff. You can ask me about vacant beds, rooms, or resident check-ins.' }
+          ]);
+          break;
+        }
         setIsTyping(true);
         const exp = await fetchExpenseSummary();
         if (!exp || exp.count === 0) {
@@ -1476,6 +1530,13 @@ export const OwnerAssistant: React.FC<{ currentRoute?: string | null }> = ({ cur
       }
 
       case 'SHOW_INCOME': {
+        if (isStaff && !hasPerm('income')) {
+          addBot([
+            { type: 'info_tip', text: '🔒 Confidential Revenue Data', icon: 'lock-closed-outline', color: '#DC2626' },
+            { type: 'text', text: 'Detailed hostel revenue and profit analytics are restricted to owners. You can ask me about vacant beds, tenant rooms, notices, or rent dues to collect.' }
+          ]);
+          break;
+        }
         setIsTyping(true);
         try {
           const incData = await fetchDetailedIncomeBreakdown();
@@ -1498,6 +1559,13 @@ export const OwnerAssistant: React.FC<{ currentRoute?: string | null }> = ({ cur
 
 
       case 'SHOW_HOSTELS': {
+        if (isStaff) {
+          addBot([
+            { type: 'info_tip', text: 'Assigned Property Context', icon: 'business-outline', color: '#4F46E5' },
+            { type: 'text', text: `You are assigned to ${user?.hostel_name || 'your designated hostel'}. Multi-hostel management is restricted to owners.` }
+          ]);
+          break;
+        }
         setIsTyping(true);
         const hostelsList = await fetchMyHostels();
         if (!hostelsList || hostelsList.length === 0) {
@@ -1522,6 +1590,13 @@ export const OwnerAssistant: React.FC<{ currentRoute?: string | null }> = ({ cur
       }
 
       case 'SHOW_STAFF': {
+        if (isStaff) {
+          addBot([
+            { type: 'info_tip', text: '🔒 Staff Directory Restricted', icon: 'lock-closed-outline', color: '#DC2626' },
+            { type: 'text', text: 'Staff team list and salary records are restricted to owners and administrators.' }
+          ]);
+          break;
+        }
         setIsTyping(true);
         const staff = await fetchStaffList();
         if (!staff || staff.length === 0) {
@@ -1884,7 +1959,7 @@ export const OwnerAssistant: React.FC<{ currentRoute?: string | null }> = ({ cur
                     showsHorizontalScrollIndicator={false}
                     contentContainerStyle={{ gap: 8, flexDirection: 'row', paddingHorizontal: 2, paddingVertical: 4 }}
                   >
-                    {TOP_SCROLL_PILLS.map((pill, idx) => (
+                    {visibleTopScrollPills.map((pill, idx) => (
                       <TouchableOpacity
                         key={idx}
                         style={[
@@ -1918,7 +1993,7 @@ export const OwnerAssistant: React.FC<{ currentRoute?: string | null }> = ({ cur
                   <View style={s.chipsSection}>
                     <Text style={s.chipsSectionLabel}>💬 Frequently Asked</Text>
                     <View style={s.chipsGrid}>
-                      {WELCOME_CHIPS.map((chip, i) => (
+                      {visibleWelcomeChips.map((chip, i) => (
                         <TouchableOpacity
                           key={i}
                           style={s.chipsGridItem}

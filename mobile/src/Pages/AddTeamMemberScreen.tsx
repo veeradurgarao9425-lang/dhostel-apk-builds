@@ -65,11 +65,12 @@ const BOTTOM_TABS_CONFIG = [
     {
         key: 'students',
         title: 'Students (Students Tab)',
-        subtitle: 'Resident list, profiles, room status & check-ins',
+        subtitle: 'Resident list, profiles, room check-in & allocations',
         icon: Users,
         color: '#7C3AED',
         bg: '#F5F3FF',
         borderActive: '#DDD6FE',
+        required: true,
     },
     {
         key: 'dues',
@@ -110,15 +111,6 @@ const OPERATIONS_CONFIG = [
         color: '#8B5CF6',
         bg: '#F5F3FF',
         borderActive: '#DDD6FE',
-    },
-    {
-        key: 'staff',
-        title: 'Staff Management',
-        subtitle: 'Staff team list, wage payments & records',
-        icon: Briefcase,
-        color: '#0EA5E9',
-        bg: '#E0F2FE',
-        borderActive: '#BAE6FD',
     },
     {
         key: 'expenses',
@@ -376,7 +368,8 @@ export default function AddTeamMemberScreen() {
 
     const renderModuleCard = (item: any) => {
         const IconComponent = item.icon;
-        const isEnabled = Boolean(modules[item.key]);
+        const isRequired = Boolean(item.required);
+        const isEnabled = isRequired ? true : Boolean(modules[item.key]);
 
         return (
             <View
@@ -401,13 +394,18 @@ export default function AddTeamMemberScreen() {
                             isEnabled && { color: item.color, fontWeight: '700' },
                         ]}
                     >
-                        {isEnabled ? 'Full access' : 'No access'}
+                        {isRequired ? 'Mandatory (Check-in & Residents)' : (isEnabled ? 'Full access' : 'No access')}
                     </Text>
                 </View>
 
                 <Switch
                     value={isEnabled}
-                    onValueChange={val => setModules(m => ({ ...m, [item.key]: val }))}
+                    disabled={isRequired}
+                    onValueChange={val => {
+                        if (!isRequired) {
+                            setModules(m => ({ ...m, [item.key]: val }));
+                        }
+                    }}
                     trackColor={{ false: '#E2E8F0', true: item.color }}
                     thumbColor="#FFFFFF"
                 />
