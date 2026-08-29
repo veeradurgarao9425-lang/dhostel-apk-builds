@@ -202,7 +202,22 @@ const ProfileScreen = ({ navigation }: any) => {
         .toUpperCase()
         .slice(0, 2);
 
-    const roleLabel = user?.role_id === 1 ? t('profile.administrator', 'Administrator') : t('profile.hostelOwner', 'Hostel Owner');
+    const isStaff = user?.role === 'STAFF' || user?.role_id === 4;
+    const roleLabel = isStaff ? 'Hostel Staff / Manager' : (user?.role_id === 1 ? t('profile.administrator', 'Administrator') : t('profile.hostelOwner', 'Hostel Owner'));
+
+    const permissions = React.useMemo(() => {
+        let perms = user?.permissions;
+        if (typeof perms === 'string') {
+            try { perms = JSON.parse(perms); } catch (_) { perms = {}; }
+        }
+        return perms || {};
+    }, [user?.permissions]);
+
+    const hasPerm = (key: string) => {
+        if (!isStaff) return true;
+        const val = permissions[key];
+        return val === 'manage' || val === 'view' || val === true || val === '1';
+    };
 
     const totalHostels = stats?.hostelsCount ?? contextHostels?.length ?? 0;
     const totalTenants = stats?.totalStudents ?? stats?.tenantsCount ?? 0;
@@ -261,15 +276,15 @@ const ProfileScreen = ({ navigation }: any) => {
 
                     {/* Profile Details Column */}
                     <View style={styles.profileDetailsCol}>
-                        <Text style={styles.profileName} numberOfLines={1}>{displayName || t('profile.hostelOwner', 'Hostel Owner')}</Text>
-                        <View style={styles.roleBadge}>
-                            <Ionicons name="shield-checkmark" size={12} color="#7C3AED" />
-                            <Text style={styles.roleBadgeText}>{roleLabel}</Text>
+                        <Text style={styles.profileName} numberOfLines={1}>{displayName || (isStaff ? 'Staff Member' : t('profile.hostelOwner', 'Hostel Owner'))}</Text>
+                        <View style={[styles.roleBadge, isStaff && { backgroundColor: '#10B981', borderColor: '#10B981' }]}>
+                            <Ionicons name="shield-checkmark" size={12} color={isStaff ? '#FFF' : '#7C3AED'} />
+                            <Text style={[styles.roleBadgeText, isStaff && { color: '#FFF' }]}>{roleLabel}</Text>
                         </View>
                         <View style={styles.activeHostelSubRow}>
                             <Ionicons name="business" size={14} color="rgba(255, 255, 255, 0.85)" />
                             <Text style={styles.activeHostelSubText} numberOfLines={1}>
-                                {activeHostelName || t('profile.noActiveHostel', 'No Active Hostel')}
+                                {activeHostelName || t('profile.noActiveHostel', 'Assigned Hostel')}
                             </Text>
                         </View>
                     </View>
@@ -283,71 +298,121 @@ const ProfileScreen = ({ navigation }: any) => {
             >
                 {/* ── APP-STYLE STATS GRID ── */}
                 <View style={styles.statsGrid}>
-                    {/* Hostels */}
-                    <TouchableOpacity 
-                        style={[styles.statCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}
-                        onPress={() => navigation.navigate('Hostels')}
-                        activeOpacity={0.7}
-                    >
-                        <View style={[styles.statIconBox, { backgroundColor: '#EDE9FE' }]}>
-                            <Ionicons name="business" size={18} color="#7C3AED" />
-                        </View>
-                        <Text style={[styles.statValue, { color: theme.textPrimary }]}>{totalHostels}</Text>
-                        <Text style={[styles.statLabel, { color: theme.textSecondary }]}>{t('profile.hostels', 'Hostels')}</Text>
-                    </TouchableOpacity>
+                    {isStaff ? (
+                        <>
+                            {/* Tenants */}
+                            <TouchableOpacity 
+                                style={[styles.statCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}
+                                onPress={() => hasPerm('students') && navigation.navigate('Students')}
+                                activeOpacity={0.7}
+                            >
+                                <View style={[styles.statIconBox, { backgroundColor: '#DCFCE7' }]}>
+                                    <Ionicons name="people" size={18} color="#10B981" />
+                                </View>
+                                <Text style={[styles.statValue, { color: theme.textPrimary }]}>{totalTenants}</Text>
+                                <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Tenants</Text>
+                            </TouchableOpacity>
 
-                    {/* Tenants */}
-                    <TouchableOpacity 
-                        style={[styles.statCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}
-                        onPress={() => navigation.navigate('Students')}
-                        activeOpacity={0.7}
-                    >
-                        <View style={[styles.statIconBox, { backgroundColor: '#DCFCE7' }]}>
-                            <Ionicons name="people" size={18} color="#10B981" />
-                        </View>
-                        <Text style={[styles.statValue, { color: theme.textPrimary }]}>{totalTenants}</Text>
-                        <Text style={[styles.statLabel, { color: theme.textSecondary }]}>{t('profile.tenants', 'Tenants')}</Text>
-                    </TouchableOpacity>
+                            {/* Occupied */}
+                            <TouchableOpacity 
+                                style={[styles.statCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}
+                                onPress={() => hasPerm('rooms') && navigation.navigate('Rooms')}
+                                activeOpacity={0.7}
+                            >
+                                <View style={[styles.statIconBox, { backgroundColor: '#E0F2FE' }]}>
+                                    <Ionicons name="bed" size={18} color="#0284C7" />
+                                </View>
+                                <Text style={[styles.statValue, { color: theme.textPrimary }]}>{occupiedBeds}</Text>
+                                <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Occupied</Text>
+                            </TouchableOpacity>
 
-                    {/* Occupied */}
-                    <TouchableOpacity 
-                        style={[styles.statCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}
-                        onPress={() => navigation.navigate('Rooms')}
-                        activeOpacity={0.7}
-                    >
-                        <View style={[styles.statIconBox, { backgroundColor: '#E0F2FE' }]}>
-                            <Ionicons name="bed" size={18} color="#0284C7" />
-                        </View>
-                        <Text style={[styles.statValue, { color: theme.textPrimary }]}>{occupiedBeds}</Text>
-                        <Text style={[styles.statLabel, { color: theme.textSecondary }]}>{t('profile.occupied', 'Occupied')}</Text>
-                    </TouchableOpacity>
+                            {/* Total Beds */}
+                            <View style={[styles.statCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}>
+                                <View style={[styles.statIconBox, { backgroundColor: '#EDE9FE' }]}>
+                                    <Ionicons name="layers" size={18} color="#7C3AED" />
+                                </View>
+                                <Text style={[styles.statValue, { color: theme.textPrimary }]}>{totalBeds}</Text>
+                                <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Total Beds</Text>
+                            </View>
 
-                    {/* Revenue (This Month) */}
-                    <TouchableOpacity 
-                        style={[styles.statCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}
-                        onPress={() => navigation.navigate('Reports')}
-                        activeOpacity={0.7}
-                    >
-                        <View style={[styles.statIconBox, { backgroundColor: '#FEF3C7' }]}>
-                            <Ionicons name="cash" size={18} color="#D97706" />
-                        </View>
-                        <Text style={[styles.statValue, { color: theme.textPrimary }]} numberOfLines={1}>{fmt(thisMonthRevenue)}</Text>
-                        <Text style={[styles.statLabel, { color: theme.textSecondary }]} numberOfLines={1}>{t('profile.thisMonth', 'This Month')}</Text>
-                    </TouchableOpacity>
+                            {/* Occupancy % */}
+                            <View style={[styles.statCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}>
+                                <View style={[styles.statIconBox, { backgroundColor: '#FEF3C7' }]}>
+                                    <Ionicons name="trending-up" size={18} color="#D97706" />
+                                </View>
+                                <Text style={[styles.statValue, { color: theme.textPrimary }]}>{occupancyRate}%</Text>
+                                <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Occupancy</Text>
+                            </View>
+                        </>
+                    ) : (
+                        <>
+                            {/* Hostels */}
+                            <TouchableOpacity 
+                                style={[styles.statCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}
+                                onPress={() => navigation.navigate('Hostels')}
+                                activeOpacity={0.7}
+                            >
+                                <View style={[styles.statIconBox, { backgroundColor: '#EDE9FE' }]}>
+                                    <Ionicons name="business" size={18} color="#7C3AED" />
+                                </View>
+                                <Text style={[styles.statValue, { color: theme.textPrimary }]}>{totalHostels}</Text>
+                                <Text style={[styles.statLabel, { color: theme.textSecondary }]}>{t('profile.hostels', 'Hostels')}</Text>
+                            </TouchableOpacity>
+
+                            {/* Tenants */}
+                            <TouchableOpacity 
+                                style={[styles.statCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}
+                                onPress={() => navigation.navigate('Students')}
+                                activeOpacity={0.7}
+                            >
+                                <View style={[styles.statIconBox, { backgroundColor: '#DCFCE7' }]}>
+                                    <Ionicons name="people" size={18} color="#10B981" />
+                                </View>
+                                <Text style={[styles.statValue, { color: theme.textPrimary }]}>{totalTenants}</Text>
+                                <Text style={[styles.statLabel, { color: theme.textSecondary }]}>{t('profile.tenants', 'Tenants')}</Text>
+                            </TouchableOpacity>
+
+                            {/* Occupied */}
+                            <TouchableOpacity 
+                                style={[styles.statCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}
+                                onPress={() => navigation.navigate('Rooms')}
+                                activeOpacity={0.7}
+                            >
+                                <View style={[styles.statIconBox, { backgroundColor: '#E0F2FE' }]}>
+                                    <Ionicons name="bed" size={18} color="#0284C7" />
+                                </View>
+                                <Text style={[styles.statValue, { color: theme.textPrimary }]}>{occupiedBeds}</Text>
+                                <Text style={[styles.statLabel, { color: theme.textSecondary }]}>{t('profile.occupied', 'Occupied')}</Text>
+                            </TouchableOpacity>
+
+                            {/* Revenue (This Month) */}
+                            <TouchableOpacity 
+                                style={[styles.statCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}
+                                onPress={() => navigation.navigate('Reports')}
+                                activeOpacity={0.7}
+                            >
+                                <View style={[styles.statIconBox, { backgroundColor: '#FEF3C7' }]}>
+                                    <Ionicons name="cash" size={18} color="#D97706" />
+                                </View>
+                                <Text style={[styles.statValue, { color: theme.textPrimary }]} numberOfLines={1}>{fmt(thisMonthRevenue)}</Text>
+                                <Text style={[styles.statLabel, { color: theme.textSecondary }]} numberOfLines={1}>{t('profile.thisMonth', 'This Month')}</Text>
+                            </TouchableOpacity>
+                        </>
+                    )}
                 </View>
 
                 {/* ── ACTIVE HOSTEL SECTION ── */}
                 <View style={styles.sectionHeaderRow}>
                     <Ionicons name="business" size={16} color="#7C3AED" />
                     <Text style={[styles.sectionTitle, { color: isDark ? '#F1F5F9' : '#0F172A' }]}>
-                        {t('profile.activeHostelSection', 'Active Hostel')}
+                        {isStaff ? 'Assigned Property' : t('profile.activeHostelSection', 'Active Hostel')}
                     </Text>
                 </View>
 
                 <TouchableOpacity 
                     style={[styles.activeHostelCard, { backgroundColor: isDark ? '#1E293B' : '#F5F3FF', borderColor: isDark ? '#334155' : '#DDD6FE' }]}
-                    onPress={openHostelSelector}
-                    activeOpacity={0.8}
+                    onPress={() => !isStaff && openHostelSelector()}
+                    activeOpacity={isStaff ? 1 : 0.8}
                 >
                     <View style={styles.activeHostelDetailsRow}>
                         {/* Purple-tinted building icon container */}
@@ -358,13 +423,13 @@ const ProfileScreen = ({ navigation }: any) => {
                         {/* Details */}
                         <View style={{ flex: 1, marginLeft: 14 }}>
                             <Text style={[styles.activeHostelName, { color: isDark ? '#F8FAFC' : '#1E1B4B' }]} numberOfLines={1}>
-                                {activeHostelName || t('profile.noActiveHostel', 'No Active Hostel')}
+                                {activeHostelName || t('profile.noActiveHostel', 'Assigned Hostel')}
                             </Text>
                             
                             {/* Currently Active Status Pill */}
                             <View style={styles.activeStatusPill}>
                                 <View style={styles.activeStatusDot} />
-                                <Text style={styles.activeStatusText}>{t('profile.currentlyActive', 'Currently Active')}</Text>
+                                <Text style={styles.activeStatusText}>{isStaff ? 'Assigned Duty Branch' : t('profile.currentlyActive', 'Currently Active')}</Text>
                             </View>
 
                             {/* Sub stats grid/columns */}
@@ -397,6 +462,55 @@ const ProfileScreen = ({ navigation }: any) => {
                     </View>
                 </TouchableOpacity>
 
+                {/* ── STAFF GRANTED PERMISSIONS SECTION ── */}
+                {isStaff && (
+                    <>
+                        <View style={styles.sectionHeaderRow}>
+                            <Ionicons name="key-outline" size={16} color="#7C3AED" />
+                            <Text style={[styles.sectionTitle, { color: isDark ? '#F1F5F9' : '#0F172A' }]}>
+                                Assigned Role Permissions
+                            </Text>
+                        </View>
+                        <View style={[styles.accountCard, { backgroundColor: theme.cardBg, padding: 14 }]}>
+                            <Text style={{ fontSize: 12, color: theme.textSecondary, marginBottom: 10 }}>
+                                You have been granted access to the following operational modules:
+                            </Text>
+                            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                                {[
+                                    { key: 'students', label: 'Residents / Tenants', icon: 'people' },
+                                    { key: 'rooms', label: 'Rooms & Beds', icon: 'bed' },
+                                    { key: 'dues', label: 'Rent Collection', icon: 'cash' },
+                                    { key: 'verify_rent', label: 'Payment Verification', icon: 'shield-checkmark' },
+                                    { key: 'complaints', label: 'Complaints & Maintenance', icon: 'construct' },
+                                    { key: 'mess', label: 'Mess Menu', icon: 'restaurant' },
+                                    { key: 'notices', label: 'Notices Board', icon: 'megaphone' },
+                                    { key: 'expenses', label: 'Expenses', icon: 'card' },
+                                ]
+                                    .filter(p => hasPerm(p.key))
+                                    .map(p => (
+                                        <View
+                                            key={p.key}
+                                            style={{
+                                                flexDirection: 'row',
+                                                alignItems: 'center',
+                                                gap: 5,
+                                                backgroundColor: '#EEF2FF',
+                                                paddingHorizontal: 10,
+                                                paddingVertical: 5,
+                                                borderRadius: 20,
+                                                borderWidth: 1,
+                                                borderColor: '#C7D2FE',
+                                            }}
+                                        >
+                                            <Ionicons name={p.icon as any} size={13} color="#4F46E5" />
+                                            <Text style={{ fontSize: 11.5, fontWeight: '700', color: '#4F46E5' }}>{p.label}</Text>
+                                        </View>
+                                    ))}
+                            </View>
+                        </View>
+                    </>
+                )}
+
                 {/* ── ACCOUNT DETAILS ── */}
                 <View style={styles.sectionHeaderRow}>
                     <Ionicons name="person" size={16} color="#7C3AED" />
@@ -418,7 +532,7 @@ const ProfileScreen = ({ navigation }: any) => {
                         { icon: 'person-outline', label: t('profile.fullName', 'Full Name'), value: user?.full_name || t('profile.notSet', 'Not Set'), color: '#7C3AED', bg: '#EDE9FE' },
                         { icon: 'mail-outline', label: t('profile.email', 'Email Address'), value: user?.email || t('profile.notSet', 'Not Set'), color: '#0284C7', bg: '#E0F2FE' },
                         { icon: 'call-outline', label: t('profile.phone', 'Phone Number'), value: user?.phone || t('profile.notProvided', 'Not Provided'), color: '#059669', bg: '#DCFCE7' },
-                        { icon: 'home-outline', label: t('profile.registeredHostel', 'Registered Hostel'), value: activeHostelName || t('profile.none', 'None'), color: '#D97706', bg: '#FEF3C7' },
+                        { icon: 'home-outline', label: isStaff ? 'Assigned Property' : t('profile.registeredHostel', 'Registered Hostel'), value: activeHostelName || t('profile.none', 'None'), color: '#D97706', bg: '#FEF3C7' },
                     ].map((item, i, arr) => (
                         <View key={i}>
                             <View style={styles.infoRow}>
@@ -439,17 +553,22 @@ const ProfileScreen = ({ navigation }: any) => {
                 <View style={styles.sectionHeaderRow}>
                     <Ionicons name="grid" size={16} color="#7C3AED" />
                     <Text style={[styles.sectionTitle, { color: isDark ? '#F1F5F9' : '#0F172A' }]}>
-                        {t('profile.manage', 'Manage')}
+                        {isStaff ? 'Quick Shortcuts' : t('profile.manage', 'Manage')}
                     </Text>
                 </View>
 
                 <View style={styles.manageGrid}>
-                    {[
+                    {(isStaff ? [
+                        { icon: 'folder-open', label: 'KYC Files', color: '#9333EA', bg: '#F3E8FF', onPress: () => navigation.navigate('DocumentsHub') },
+                        { icon: 'bed', label: 'Rooms', color: '#0284C7', bg: '#E0F2FE', onPress: () => hasPerm('rooms') && navigation.navigate('Rooms') },
+                        { icon: 'alert-circle', label: 'Complaints', color: '#DC2626', bg: '#FEE2E2', onPress: () => hasPerm('complaints') && navigation.navigate('ComplaintsManagement') },
+                        { icon: 'chatbubble-ellipses', label: 'Feedback & Help', color: '#10B981', bg: '#DCFCE7', onPress: () => navigation.navigate('Feedback') },
+                    ] : [
                         { icon: 'swap-horizontal', label: t('profile.switchHostel', 'Switch Hostel'), color: '#10B981', bg: '#DCFCE7', onPress: openHostelSelector },
                         { icon: 'business', label: t('profile.manageHostels', 'Hostels'), color: '#7C3AED', bg: '#EDE9FE', onPress: () => navigation.navigate('Hostels') },
                         { icon: 'bar-chart', label: t('profile.reports', 'Reports'), color: '#0284C7', bg: '#E0F2FE', onPress: () => navigation.navigate('Reports') },
                         { icon: 'chatbubble-ellipses', label: 'Feedback & Help', color: '#EF4444', bg: '#FEE2E2', onPress: () => navigation.navigate('Feedback') },
-                    ].map((item, i) => (
+                    ]).map((item, i) => (
                         <TouchableOpacity key={i} style={styles.manageItem} onPress={item.onPress} activeOpacity={0.7}>
                             <View style={[styles.manageIconBox, { backgroundColor: item.bg }]}>
                                 <Ionicons name={item.icon as any} size={18} color={item.color} />

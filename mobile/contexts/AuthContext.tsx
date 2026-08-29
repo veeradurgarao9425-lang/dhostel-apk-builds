@@ -17,6 +17,7 @@ export type User = {
   hostel_id?: number;
   hostel_name?: string;
   phone?: string;
+  permissions?: any;
   // Tenant specific fields
   gender?: string;
   status?: number;

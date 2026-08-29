@@ -67,20 +67,20 @@ const BottomTabNavigator = ({ state, descriptors, navigation }: any) => {
 
                 // Dynamic Staff Tab Visibility Filtering
                 const isStaff = user?.role === 'STAFF' || user?.role_id === 4;
-                const permissions = (user as any)?.permissions;
-                if (isStaff && permissions) {
-                    if (route.name === 'PendingDuesTab' && (permissions.dues === 'none' || (permissions.dues === undefined && permissions.finance === 'none'))) {
+                let perms = (user as any)?.permissions;
+                if (typeof perms === 'string') {
+                    try { perms = JSON.parse(perms); } catch (_) { perms = {}; }
+                }
+                if (isStaff) {
+                    // Hide Finance tab (Owner confidential income/profit analytics)
+                    if (route.name === 'OverviewTab' && (!perms?.income && !perms?.reports && perms?.finance !== 'manage')) {
                         return null;
                     }
-                    if (route.name === 'OverviewTab' && permissions.finance === 'none') {
+                    // Hide PendingDuesTab only if dues are explicitly disabled
+                    if (route.name === 'PendingDuesTab' && perms?.dues === 'none' && perms?.finance === 'none') {
                         return null;
                     }
-                    if (route.name === 'StudentsTab' && (permissions.students === 'none' || permissions.tenants === 'none')) {
-                        return null;
-                    }
-                    if (route.name === 'HomeTab' && permissions.dashboard === 'none') {
-                        return null;
-                    }
+                    // StudentsTab & HomeTab are core operational tabs and always accessible to staff
                 }
 
                 const isActive = state.index === index;

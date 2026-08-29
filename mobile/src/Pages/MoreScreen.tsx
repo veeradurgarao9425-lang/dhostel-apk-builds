@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import {
     View, Text, StyleSheet, TouchableOpacity,
     StatusBar, ScrollView, Platform, TextInput,
@@ -109,283 +109,365 @@ export default function MoreScreen({ hideHeader = false }: MoreScreenProps) {
     const { t } = useTranslation();
     const { showToast, showSuccess, showError, showApiError } = useToast();
 
-    const topTools = useMemo<MenuItem[]>(() => [
-        {
-            label: t('more.qrSignup'),
-            subtitle: t('more.qrSignupSub'),
-            icon: 'qr-code',
-            iconColor: '#7C3AED',
-            iconBg: '#EDE9FE',
-            route: 'QRSignup',
-        },
-        {
-            label: t('more.expenses'),
-            subtitle: t('more.expensesSub'),
-            icon: 'card',
-            iconColor: '#2563EB',
-            iconBg: '#DBEAFE',
-            route: 'Expenses',
-        },
-        {
-            label: t('more.guests'),
-            subtitle: t('more.guestsSub'),
-            icon: 'walk',
-            iconColor: '#0891B2',
-            iconBg: '#CFFAFE',
-            route: 'Guests',
-        },
-    ], [t]);
+    const isStaff = user?.role === 'STAFF';
 
-    const menuGroups = useMemo(() => [
-        {
-            groupTitle: 'Quick Actions (One-Tap)',
-            items: [
-                {
-                    label: 'Add Tenant',
-                    subtitle: 'Register and check-in a new tenant',
-                    icon: 'person-add-outline',
-                    iconColor: '#7C3AED',
-                    iconBg: '#EDE9FE',
-                    route: 'AddStudent',
-                },
-                {
-                    label: 'Add Room',
-                    subtitle: 'Create a new room or beds',
-                    icon: 'bed-outline',
-                    iconColor: '#0284C7',
-                    iconBg: '#E0F2FE',
-                    route: 'AddRoom',
-                },
-                {
-                    label: 'Collect Rent',
-                    subtitle: 'Record manual rent payments',
-                    icon: 'cash-outline',
-                    iconColor: '#10B981',
-                    iconBg: '#D1FAE5',
-                    route: 'CollectedPayments',
-                },
-                {
-                    label: 'Add Expense',
-                    subtitle: 'Record hostel maintenance expenses',
-                    icon: 'receipt-outline',
-                    iconColor: '#EA580C',
-                    iconBg: '#FFEDD5',
-                    route: 'AddExpense',
-                },
-                {
-                    label: 'Add Staff',
-                    subtitle: 'Register a new hostel helper/guard',
-                    icon: 'people-outline',
-                    iconColor: '#0891B2',
-                    iconBg: '#CFFAFE',
-                    route: 'AddStaff',
-                },
-            ],
-        },
-        {
-            groupTitle: 'People & Documents',
-            items: [
-                {
-                    label: t('more.tenants'),
-                    subtitle: t('more.tenantsSub'),
-                    icon: 'people',
-                    iconColor: '#7C3AED',
-                    iconBg: '#EDE9FE',
-                    route: 'Students',
-                    badgeCount: (stats?.tenantsCount || stats?.totalStudents || 0) > 0 ? (stats?.tenantsCount || stats?.totalStudents) : undefined,
-                },
-                {
-                    label: 'Documents & KYC Files',
-                    subtitle: 'All resident ID proofs & photos in one place',
-                    icon: 'folder-open-outline',
-                    iconColor: '#9333EA',
-                    iconBg: '#F3E8FF',
-                    route: 'DocumentsHub',
-                },
-                {
-                    label: t('more.staffManagement'),
-                    subtitle: t('more.staffManagementSub'),
-                    icon: 'person-circle',
-                    iconColor: '#0891B2',
-                    iconBg: '#CFFAFE',
-                    route: 'Staff',
-                    badgeCount: stats?.staffCount ?? 0,
-                },
-                {
-                    label: t('more.guests'),
-                    subtitle: t('more.guestsSub'),
-                    icon: 'walk',
-                    iconColor: '#0891B2',
-                    iconBg: '#CFFAFE',
-                    route: 'Guests',
-                },
-                {
-                    label: 'Vacate Bed & Checkouts',
-                    subtitle: 'Manage vacating tenants & settlements',
-                    icon: 'log-out-outline',
-                    iconColor: '#EF4444',
-                    iconBg: '#FEE2E2',
-                    route: 'Notices',
-                },
-            ],
-        },
-        {
-            groupTitle: 'Money & Finance',
-            items: [
-                {
-                    label: t('more.pendingPayments'),
-                    subtitle: t('more.pendingPaymentsSub'),
-                    icon: 'alert-circle',
-                    iconColor: '#DC2626',
-                    iconBg: '#FEE2E2',
-                    route: 'PendingTab',
-                    badgeCount: stats?.pendingDuesCount ?? 0,
-                },
-                {
-                    label: 'Verify Rent',
-                    subtitle: 'Verify uploaded payment proofs',
-                    icon: 'shield-checkmark-outline',
-                    iconColor: '#16A34A',
-                    iconBg: '#DCFCE7',
-                    route: 'PaymentVerification',
-                    badgeCount: 0,
-                },
-                {
-                    label: t('more.expenses'),
-                    subtitle: t('more.expensesSub'),
-                    icon: 'card',
-                    iconColor: '#2563EB',
-                    iconBg: '#DBEAFE',
-                    route: 'Expenses',
-                },
-                {
-                    label: 'Bill Reminders',
-                    subtitle: 'Track pending tenant rent & utility dues',
-                    icon: 'receipt-outline',
-                    iconColor: '#EA580C',
-                    iconBg: '#FFEDD5',
-                    route: 'BillReminders',
-                },
-                {
-                    label: t('more.incomeReport'),
-                    subtitle: t('more.incomeReportSub'),
-                    icon: 'trending-up',
-                    iconColor: '#16A34A',
-                    iconBg: '#DCFCE7',
-                    route: 'IncomeDetails',
-                    routeParams: { period: 'month' },
-                },
-                {
-                    label: t('more.reportsAnalytics'),
-                    subtitle: t('more.reportsAnalyticsSub'),
-                    icon: 'bar-chart',
-                    iconColor: '#059669',
-                    iconBg: '#D1FAE5',
-                    route: 'Reports',
-                },
-            ],
-        },
-        {
-            groupTitle: 'Property & Operations',
-            items: [
-                {
-                    label: t('more.rooms'),
-                    subtitle: t('more.roomsSub', 'Manage rooms and bed configurations'),
-                    icon: 'bed',
-                    iconColor: '#2563EB',
-                    iconBg: '#DBEAFE',
-                    route: 'Rooms',
-                    badgeCount: stats?.rooms ? `${stats.rooms.occupied_beds}/${stats.rooms.total_beds}` : '0/0',
-                },
-                {
-                    label: t('more.hostels', 'My Hostels'),
-                    subtitle: t('more.hostelsSub', 'Manage and switch branches'),
-                    icon: 'business',
-                    iconColor: '#16A34A',
-                    iconBg: '#DCFCE7',
-                    route: 'Hostels',
-                    badgeCount: stats?.hostelsCount || 0,
-                },
-                {
-                    label: 'Complaints & Maintenance',
-                    subtitle: 'Track & resolve resident tickets',
-                    icon: 'construct-outline',
-                    iconColor: '#E11D48',
-                    iconBg: '#FFE4E6',
-                    route: 'ComplaintsManagement',
-                },
-                {
-                    label: 'Mess & Food Menu',
-                    subtitle: 'Weekly menu & dining schedule',
-                    icon: 'restaurant-outline',
-                    iconColor: '#EA580C',
-                    iconBg: '#FFEDD5',
-                    route: 'MessMenuManagement',
-                },
-                {
-                    label: 'Bulk Delete & Cleanup',
-                    subtitle: 'Manage deleted records & bulk room cleanup',
-                    icon: 'trash-outline',
-                    iconColor: '#DC2626',
-                    iconBg: '#FEE2E2',
-                    route: 'BulkDelete',
-                },
-            ],
-        },
-        {
-            groupTitle: 'Shortcuts & Info',
-            items: [
-                {
-                    label: 'Reminders & Tasks',
-                    subtitle: 'Create hostel alerts & custom reminders',
-                    icon: 'alarm-outline',
-                    iconColor: '#0284C7',
-                    iconBg: '#E0F2FE',
-                    route: 'Reminders',
-                },
-                {
-                    label: t('more.qrSignup', 'Tenant QR Register'),
-                    subtitle: t('more.qrSignupSub', 'Invite tenants to self-register'),
-                    icon: 'qr-code',
-                    iconColor: '#7C3AED',
-                    iconBg: '#EDE9FE',
-                    route: 'QRSignup',
-                },
-                {
-                    label: 'Pre-Bookings',
-                    subtitle: 'Manage upcoming reservations',
-                    icon: 'calendar-outline',
-                    iconColor: '#D97706',
-                    iconBg: '#FEF3C7',
-                    route: 'PreBooking',
-                },
-                {
-                    label: 'Notices Board',
-                    subtitle: 'Post announcements to tenants',
-                    icon: 'megaphone-outline',
-                    iconColor: '#7C3AED',
-                    iconBg: '#EDE9FE',
-                    route: 'NoticesManagement',
-                },
-                {
-                    label: t('more.appSettings', 'Settings & Privacy'),
-                    subtitle: t('more.appSettingsSub', 'Hostel details, profile & app preferences'),
-                    icon: 'settings-outline',
-                    iconColor: '#475569',
-                    iconBg: '#F1F5F9',
-                    route: 'Settings',
-                },
-                {
-                    label: t('more.privacyPolicy', 'Privacy Policy'),
-                    subtitle: t('more.privacyPolicySub', 'Terms of service & privacy compliance'),
-                    icon: 'shield-checkmark-outline',
-                    iconColor: '#059669',
-                    iconBg: '#D1FAE5',
-                    route: 'PrivacyPolicy',
-                },
-            ]
+    const permissions = useMemo(() => {
+        let perms = user?.permissions;
+        if (typeof perms === 'string') {
+            try {
+                perms = JSON.parse(perms);
+            } catch (_) {
+                perms = {};
+            }
         }
-    ], [t, stats]);
+        return perms || {};
+    }, [user?.permissions]);
+
+    const hasPerm = useCallback((moduleKey: string) => {
+        if (!isStaff) return true; // Owners have full access
+        const val = permissions[moduleKey];
+        return val === 'manage' || val === 'view' || val === true || val === '1';
+    }, [isStaff, permissions]);
+
+    const topTools = useMemo<MenuItem[]>(() => {
+        const list: MenuItem[] = [];
+        if (hasPerm('students') || hasPerm('tenants')) {
+            list.push({
+                label: t('more.qrSignup', 'Tenant QR Register'),
+                subtitle: t('more.qrSignupSub', 'Self-registration code'),
+                icon: 'qr-code',
+                iconColor: '#7C3AED',
+                iconBg: '#EDE9FE',
+                route: 'QRSignup',
+            });
+        }
+        if (hasPerm('expenses')) {
+            list.push({
+                label: t('more.expenses', 'Expenses'),
+                subtitle: t('more.expensesSub', 'Track daily spending'),
+                icon: 'card',
+                iconColor: '#2563EB',
+                iconBg: '#DBEAFE',
+                route: 'Expenses',
+            });
+        }
+        if (hasPerm('students')) {
+            list.push({
+                label: t('more.guests', 'Guests'),
+                subtitle: t('more.guestsSub', 'Short-stay visitors'),
+                icon: 'walk',
+                iconColor: '#0891B2',
+                iconBg: '#CFFAFE',
+                route: 'Guests',
+            });
+        }
+        return list;
+    }, [t, hasPerm]);
+
+    const menuGroups = useMemo(() => {
+        const groups: { groupTitle: string; items: MenuItem[] }[] = [];
+
+        // 1. Quick Actions
+        const quickItems: MenuItem[] = [];
+        if (hasPerm('students') || hasPerm('tenants')) {
+            quickItems.push({
+                label: 'Add Tenant',
+                subtitle: 'Register and check-in a new tenant',
+                icon: 'person-add-outline',
+                iconColor: '#7C3AED',
+                iconBg: '#EDE9FE',
+                route: 'AddStudent',
+            });
+        }
+        if (hasPerm('rooms')) {
+            quickItems.push({
+                label: 'Add Room',
+                subtitle: 'Create a new room or beds',
+                icon: 'bed-outline',
+                iconColor: '#0284C7',
+                iconBg: '#E0F2FE',
+                route: 'AddRoom',
+            });
+        }
+        if (hasPerm('dues') || hasPerm('finance')) {
+            quickItems.push({
+                label: 'Collect Rent',
+                subtitle: 'Record manual rent payments',
+                icon: 'cash-outline',
+                iconColor: '#10B981',
+                iconBg: '#D1FAE5',
+                route: 'CollectedPayments',
+            });
+        }
+        if (hasPerm('expenses')) {
+            quickItems.push({
+                label: 'Add Expense',
+                subtitle: 'Record hostel maintenance expenses',
+                icon: 'receipt-outline',
+                iconColor: '#EA580C',
+                iconBg: '#FFEDD5',
+                route: 'AddExpense',
+            });
+        }
+        if (!isStaff) {
+            quickItems.push({
+                label: 'Add Staff',
+                subtitle: 'Register a new hostel helper/guard',
+                icon: 'people-outline',
+                iconColor: '#0891B2',
+                iconBg: '#CFFAFE',
+                route: 'AddStaff',
+            });
+        }
+        if (quickItems.length > 0) {
+            groups.push({ groupTitle: 'Quick Actions (One-Tap)', items: quickItems });
+        }
+
+        // 2. People & Documents
+        const peopleItems: MenuItem[] = [];
+        if (hasPerm('students') || hasPerm('tenants')) {
+            peopleItems.push({
+                label: t('more.tenants', 'Tenants'),
+                subtitle: t('more.tenantsSub', 'Manage resident profiles'),
+                icon: 'people',
+                iconColor: '#7C3AED',
+                iconBg: '#EDE9FE',
+                route: 'Students',
+                badgeCount: (stats?.tenantsCount || stats?.totalStudents || 0) > 0 ? (stats?.tenantsCount || stats?.totalStudents) : undefined,
+            });
+        }
+        peopleItems.push({
+            label: 'Documents & KYC Files',
+            subtitle: 'All resident ID proofs & photos in one place',
+            icon: 'folder-open-outline',
+            iconColor: '#9333EA',
+            iconBg: '#F3E8FF',
+            route: 'DocumentsHub',
+        });
+        if (!isStaff) {
+            peopleItems.push({
+                label: t('more.staffManagement', 'Staff Management'),
+                subtitle: t('more.staffManagementSub', 'Manage staff roles & credentials'),
+                icon: 'person-circle',
+                iconColor: '#0891B2',
+                iconBg: '#CFFAFE',
+                route: 'Staff',
+                badgeCount: stats?.staffCount ?? 0,
+            });
+        }
+        if (hasPerm('students')) {
+            peopleItems.push({
+                label: t('more.guests', 'Guests'),
+                subtitle: t('more.guestsSub', 'Short-stay visitors'),
+                icon: 'walk',
+                iconColor: '#0891B2',
+                iconBg: '#CFFAFE',
+                route: 'Guests',
+            });
+        }
+        if (hasPerm('students') || hasPerm('rooms')) {
+            peopleItems.push({
+                label: 'Vacate Bed & Checkouts',
+                subtitle: 'Manage vacating tenants & settlements',
+                icon: 'log-out-outline',
+                iconColor: '#EF4444',
+                iconBg: '#FEE2E2',
+                route: 'Notices',
+            });
+        }
+        if (peopleItems.length > 0) {
+            groups.push({ groupTitle: 'People & Documents', items: peopleItems });
+        }
+
+        // 3. Money & Finance
+        const financeItems: MenuItem[] = [];
+        if (hasPerm('dues') || hasPerm('finance')) {
+            financeItems.push({
+                label: t('more.pendingPayments', 'Pending Dues'),
+                subtitle: t('more.pendingPaymentsSub', 'Track overdue rent payments'),
+                icon: 'alert-circle',
+                iconColor: '#DC2626',
+                iconBg: '#FEE2E2',
+                route: 'PendingTab',
+                badgeCount: stats?.pendingDuesCount ?? 0,
+            });
+        }
+        if (hasPerm('verify_rent')) {
+            financeItems.push({
+                label: 'Verify Rent',
+                subtitle: 'Verify uploaded payment proofs',
+                icon: 'shield-checkmark-outline',
+                iconColor: '#16A34A',
+                iconBg: '#DCFCE7',
+                route: 'PaymentVerification',
+                badgeCount: 0,
+            });
+        }
+        if (hasPerm('expenses')) {
+            financeItems.push({
+                label: t('more.expenses', 'Expenses'),
+                subtitle: t('more.expensesSub', 'Hostel maintenance & utility costs'),
+                icon: 'card',
+                iconColor: '#2563EB',
+                iconBg: '#DBEAFE',
+                route: 'Expenses',
+            });
+        }
+        if (hasPerm('dues') || hasPerm('finance')) {
+            financeItems.push({
+                label: 'Bill Reminders',
+                subtitle: 'Track pending tenant rent & utility dues',
+                icon: 'receipt-outline',
+                iconColor: '#EA580C',
+                iconBg: '#FFEDD5',
+                route: 'BillReminders',
+            });
+        }
+        if (!isStaff && (hasPerm('income') || hasPerm('reports'))) {
+            financeItems.push({
+                label: t('more.incomeReport', 'Income Report'),
+                subtitle: t('more.incomeReportSub', 'Monthly collections & net cashflow'),
+                icon: 'trending-up',
+                iconColor: '#16A34A',
+                iconBg: '#DCFCE7',
+                route: 'IncomeDetails',
+                routeParams: { period: 'month' },
+            });
+        }
+        if (!isStaff && hasPerm('reports')) {
+            financeItems.push({
+                label: t('more.reportsAnalytics', 'Reports & Analytics'),
+                subtitle: t('more.reportsAnalyticsSub', 'Financial summaries & exports'),
+                icon: 'bar-chart',
+                iconColor: '#059669',
+                iconBg: '#D1FAE5',
+                route: 'Reports',
+            });
+        }
+        if (financeItems.length > 0) {
+            groups.push({ groupTitle: 'Money & Finance', items: financeItems });
+        }
+
+        // 4. Property & Operations
+        const propertyItems: MenuItem[] = [];
+        if (hasPerm('rooms')) {
+            propertyItems.push({
+                label: t('more.rooms', 'Rooms & Beds'),
+                subtitle: t('more.roomsSub', 'Manage rooms and bed configurations'),
+                icon: 'bed',
+                iconColor: '#2563EB',
+                iconBg: '#DBEAFE',
+                route: 'Rooms',
+                badgeCount: stats?.rooms ? `${stats.rooms.occupied_beds}/${stats.rooms.total_beds}` : '0/0',
+            });
+        }
+        if (!isStaff) {
+            propertyItems.push({
+                label: t('more.hostels', 'My Hostels'),
+                subtitle: t('more.hostelsSub', 'Manage and switch branches'),
+                icon: 'business',
+                iconColor: '#16A34A',
+                iconBg: '#DCFCE7',
+                route: 'Hostels',
+                badgeCount: stats?.hostelsCount || 0,
+            });
+        }
+        if (hasPerm('complaints')) {
+            propertyItems.push({
+                label: 'Complaints & Maintenance',
+                subtitle: 'Track & resolve resident tickets',
+                icon: 'construct-outline',
+                iconColor: '#E11D48',
+                iconBg: '#FFE4E6',
+                route: 'ComplaintsManagement',
+            });
+        }
+        if (hasPerm('mess')) {
+            propertyItems.push({
+                label: 'Mess & Food Menu',
+                subtitle: 'Weekly menu & dining schedule',
+                icon: 'restaurant-outline',
+                iconColor: '#EA580C',
+                iconBg: '#FFEDD5',
+                route: 'MessMenuManagement',
+            });
+        }
+        if (!isStaff) {
+            propertyItems.push({
+                label: 'Bulk Delete & Cleanup',
+                subtitle: 'Manage deleted records & bulk room cleanup',
+                icon: 'trash-outline',
+                iconColor: '#DC2626',
+                iconBg: '#FEE2E2',
+                route: 'BulkDelete',
+            });
+        }
+        if (propertyItems.length > 0) {
+            groups.push({ groupTitle: 'Property & Operations', items: propertyItems });
+        }
+
+        // 5. Shortcuts & Info
+        const shortcutItems: MenuItem[] = [];
+        if (hasPerm('notices') || hasPerm('dues')) {
+            shortcutItems.push({
+                label: 'Reminders & Tasks',
+                subtitle: 'Create hostel alerts & custom reminders',
+                icon: 'alarm-outline',
+                iconColor: '#0284C7',
+                iconBg: '#E0F2FE',
+                route: 'Reminders',
+            });
+        }
+        if (hasPerm('students')) {
+            shortcutItems.push({
+                label: t('more.qrSignup', 'Tenant QR Register'),
+                subtitle: t('more.qrSignupSub', 'Invite tenants to self-register'),
+                icon: 'qr-code',
+                iconColor: '#7C3AED',
+                iconBg: '#EDE9FE',
+                route: 'QRSignup',
+            });
+        }
+        if (hasPerm('rooms') || hasPerm('students')) {
+            shortcutItems.push({
+                label: 'Pre-Bookings',
+                subtitle: 'Manage upcoming reservations',
+                icon: 'calendar-outline',
+                iconColor: '#D97706',
+                iconBg: '#FEF3C7',
+                route: 'PreBooking',
+            });
+        }
+        if (hasPerm('notices')) {
+            shortcutItems.push({
+                label: 'Notices Board',
+                subtitle: 'Post announcements to tenants',
+                icon: 'megaphone-outline',
+                iconColor: '#7C3AED',
+                iconBg: '#EDE9FE',
+                route: 'NoticesManagement',
+            });
+        }
+        shortcutItems.push({
+            label: t('more.appSettings', 'Settings & Privacy'),
+            subtitle: t('more.appSettingsSub', 'Profile & app preferences'),
+            icon: 'settings-outline',
+            iconColor: '#475569',
+            iconBg: '#F1F5F9',
+            route: 'Settings',
+        });
+        shortcutItems.push({
+            label: t('more.privacyPolicy', 'Privacy Policy'),
+            subtitle: t('more.privacyPolicySub', 'Terms of service & privacy compliance'),
+            icon: 'shield-checkmark-outline',
+            iconColor: '#059669',
+            iconBg: '#D1FAE5',
+            route: 'PrivacyPolicy',
+        });
+        groups.push({ groupTitle: 'Shortcuts & Info', items: shortcutItems });
+
+        return groups;
+    }, [t, stats, hasPerm, isStaff]);
 
     const [searchQuery, setSearchQuery] = useState('');
     const [selectorVisible, setSelectorVisible] = useState(false);
@@ -531,27 +613,51 @@ export default function MoreScreen({ hideHeader = false }: MoreScreenProps) {
                                     {user?.full_name || user?.name || ((user as any)?.first_name ? `${(user as any).first_name} ${(user as any).last_name || ''}`.trim() : '') || (user?.role_id === 1 ? 'Hostel Administrator' : 'Hostel Owner')}
                                 </Text>
                             </View>
-                            <TouchableOpacity
-                                onPress={openHostelSelector}
-                                activeOpacity={0.8}
-                                style={{
-                                    flexDirection: 'row',
-                                    alignItems: 'center',
-                                    gap: 4,
-                                    backgroundColor: 'rgba(0,0,0,0.25)',
-                                    alignSelf: 'flex-start',
-                                    paddingHorizontal: 8,
-                                    paddingVertical: 3,
-                                    borderRadius: 10,
-                                    marginTop: 4,
-                                }}
-                            >
-                                <Ionicons name="business" size={12} color="#FCD34D" />
-                                <Text style={{ fontSize: 11, fontWeight: '700', color: '#FCD34D' }} numberOfLines={1}>
-                                    {user?.hostel_name || 'Switch Hostel'}
-                                </Text>
-                                <Ionicons name="chevron-down" size={12} color="#FCD34D" />
-                            </TouchableOpacity>
+                            {isStaff ? (
+                                <View
+                                    style={{
+                                        flexDirection: 'row',
+                                        alignItems: 'center',
+                                        gap: 4,
+                                        backgroundColor: 'rgba(0,0,0,0.25)',
+                                        alignSelf: 'flex-start',
+                                        paddingHorizontal: 8,
+                                        paddingVertical: 3,
+                                        borderRadius: 10,
+                                        marginTop: 4,
+                                    }}
+                                >
+                                    <Ionicons name="business" size={12} color="#A7F3D0" />
+                                    <Text style={{ fontSize: 11, fontWeight: '700', color: '#A7F3D0' }} numberOfLines={1}>
+                                        {user?.hostel_name || (hostels.find(h => Number(h.hostel_id) === Number(user?.hostel_id))?.hostel_name) || 'Assigned Hostel'}
+                                    </Text>
+                                    <View style={{ backgroundColor: '#10B981', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4, marginLeft: 4 }}>
+                                        <Text style={{ fontSize: 9, fontWeight: '900', color: '#FFFFFF' }}>STAFF</Text>
+                                    </View>
+                                </View>
+                            ) : (
+                                <TouchableOpacity
+                                    onPress={openHostelSelector}
+                                    activeOpacity={0.8}
+                                    style={{
+                                        flexDirection: 'row',
+                                        alignItems: 'center',
+                                        gap: 4,
+                                        backgroundColor: 'rgba(0,0,0,0.25)',
+                                        alignSelf: 'flex-start',
+                                        paddingHorizontal: 8,
+                                        paddingVertical: 3,
+                                        borderRadius: 10,
+                                        marginTop: 4,
+                                    }}
+                                >
+                                    <Ionicons name="business" size={12} color="#FCD34D" />
+                                    <Text style={{ fontSize: 11, fontWeight: '700', color: '#FCD34D' }} numberOfLines={1}>
+                                        {user?.hostel_name || 'Switch Hostel'}
+                                    </Text>
+                                    <Ionicons name="chevron-down" size={12} color="#FCD34D" />
+                                </TouchableOpacity>
+                            )}
                         </View>
 
                         <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.7)" />

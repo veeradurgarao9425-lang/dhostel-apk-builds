@@ -803,10 +803,8 @@ export const recordPayment = async (req: AuthRequest, res: Response) => {
 
     const user = req.user;
 
-    // Only Owner (role 2) is restricted to their own hostel; Admin/Super Admin (role 1)
-    // bypasses and may record a payment for any hostel_id they specify.
-    // (use Number() to avoid string vs number mismatch)
-    if (user?.role_id === 2 && Number(hostel_id) !== Number(user.hostel_id)) {
+    // Owner (role 2) or Staff (role 4) is restricted to their assigned hostel
+    if ((user?.role_id === 2 || user?.role_id === 4) && Number(hostel_id) !== Number(user.hostel_id)) {
       return res.status(403).json({
         success: false,
         error: 'You do not have permission to record payments for this hostel.'
@@ -966,6 +964,11 @@ export const recordPayment = async (req: AuthRequest, res: Response) => {
       }
 
       const actualReceiptNumber = receipt_number || `RCP-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+      const collectorInfo = (user?.role === 'STAFF' || user?.role_id === 4)
+        ? `[Collected by: ${user.full_name || 'Staff'}]`
+        : null;
+      const combinedNotes = [notes, collectorInfo].filter(Boolean).join(' - ') || null;
+
       const paymentData: any = {
         fee_id: actualFeeId,
         student_id: Number(student_id),
@@ -975,7 +978,7 @@ export const recordPayment = async (req: AuthRequest, res: Response) => {
         payment_mode_id: payment_mode_id ? Number(payment_mode_id) : null,
         transaction_id: transaction_id || null,
         receipt_number: actualReceiptNumber,
-        notes: notes || null,
+        notes: combinedNotes,
         created_at: new Date(),
         updated_at: new Date()
       };

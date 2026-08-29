@@ -36,6 +36,7 @@ import { TopOverdueStudents } from '../components/dashboard/TopOverdueStudents';
 import { UpcomingDues } from '../components/dashboard/UpcomingDues';
 import { OccupancyCard } from '../components/dashboard/OccupancyCard';
 import { SetupGuideCard } from '../components/dashboard/SetupGuideCard';
+import { StaffDashboardView } from '../components/dashboard/StaffDashboardView';
 import { DashboardFooter } from '../components/dashboard/DashboardFooter';
 
 // ─── Initial state ────────────────────────────────────────────────────────────
@@ -826,43 +827,55 @@ export default function HomeScreen() {
                     >
                         <View style={s.body}>
                             {/* Setup guide for first-time owners: show whenever setup is incomplete (missing rooms OR missing tenants) */}
-                            {!loading && (data.totalStudentsCount === 0 || (data.totalBeds === 0 && data.totalRooms === 0)) ? (
-                                <View collapsable={false}>
-                                    <SetupGuideCard
-                                        hasHostel={Boolean(user?.hostel_id || data.hostelName)}
-                                        hasRooms={data.totalBeds > 0 || data.totalRooms > 0}
-                                        hasTenants={data.totalStudentsCount > 0 || data.occupiedBeds > 0}
-                                    />
-                                </View>
-                            ) : null}
-                            {(data.unallocatedCount > 0 || data.qrRegisterCount > 0 || data.openComplaintsCount > 0 || data.pendingAdmissionsCount > 0 || (data.prebookingsCount || 0) > 0 || (data.vacateCount || 0) > 0 || (data.activeGuestsCount || 0) > 0) && (
-                                <View collapsable={false}>
-                                    <WarningCards data={data} />
-                                </View>
-                            )}
-                            {(data.totalBeds > 0 || data.totalRooms > 0) && (
-                                <View collapsable={false}>
-                                    <OverviewCard data={data} setShowCollectionSheet={setShowCollectionSheet} pulseValue={pulseValue} fmt={fmt} />
-                                </View>
-                            )}
-                            <View collapsable={false}>
-                                <QuickActionsGrid data={data} />
-                            </View>
-                            {(data.totalBeds > 0 || data.totalRooms > 0) && (
+                            {user?.role === 'STAFF' ? (
+                                <StaffDashboardView
+                                    data={data}
+                                    theme={theme}
+                                    isDark={isDark}
+                                    navigation={navigation}
+                                    user={user}
+                                />
+                            ) : (
                                 <>
+                                    {!loading && (data.totalStudentsCount === 0 || (data.totalBeds === 0 && data.totalRooms === 0)) ? (
+                                        <View collapsable={false}>
+                                            <SetupGuideCard
+                                                hasHostel={Boolean(user?.hostel_id || data.hostelName)}
+                                                hasRooms={data.totalBeds > 0 || data.totalRooms > 0}
+                                                hasTenants={data.totalStudentsCount > 0 || data.occupiedBeds > 0}
+                                            />
+                                        </View>
+                                    ) : null}
+                                    {(data.unallocatedCount > 0 || data.qrRegisterCount > 0 || data.openComplaintsCount > 0 || data.pendingAdmissionsCount > 0 || (data.prebookingsCount || 0) > 0 || (data.vacateCount || 0) > 0 || (data.activeGuestsCount || 0) > 0) && (
+                                        <View collapsable={false}>
+                                            <WarningCards data={data} />
+                                        </View>
+                                    )}
+                                    {(data.totalBeds > 0 || data.totalRooms > 0) && (
+                                        <View collapsable={false}>
+                                            <OverviewCard data={data} setShowCollectionSheet={setShowCollectionSheet} pulseValue={pulseValue} fmt={fmt} />
+                                        </View>
+                                    )}
                                     <View collapsable={false}>
-                                        <StatisticsGrid data={data} fmt={fmt} />
+                                        <QuickActionsGrid data={data} />
                                     </View>
-                                    <View collapsable={false}>
-                                        <TopOverdueStudents data={data} />
-                                    </View>
-                                    <View collapsable={false}>
-                                        <UpcomingDues data={data} renewalStudents={renewalStudents} />
-                                    </View>
-                                    <View collapsable={false}>
-                                        <UpcomingCheckoutSchedules data={data} />
-                                    </View>
-                                    <OccupancyCard data={data} />
+                                    {(data.totalBeds > 0 || data.totalRooms > 0) && (
+                                        <>
+                                            <View collapsable={false}>
+                                                <StatisticsGrid data={data} fmt={fmt} />
+                                            </View>
+                                            <View collapsable={false}>
+                                                <TopOverdueStudents data={data} />
+                                            </View>
+                                            <View collapsable={false}>
+                                                <UpcomingDues data={data} renewalStudents={renewalStudents} />
+                                            </View>
+                                            <View collapsable={false}>
+                                                <UpcomingCheckoutSchedules data={data} />
+                                            </View>
+                                            <OccupancyCard data={data} />
+                                        </>
+                                    )}
                                 </>
                             )}
                             <TenantAppCard theme={theme} isDark={isDark} hostelCode={data.hostelCode} />
