@@ -20,7 +20,7 @@ export const downloadAndSaveFile = async (
 
         Toast.show({
             type: 'info',
-            text1: '⏳ Saving receipt...',
+            text1: '⏳ Downloading file...',
             text2: filename,
             autoHide: false,
         });
@@ -38,33 +38,26 @@ export const downloadAndSaveFile = async (
         }
 
         if (Platform.OS === 'android') {
-            // Request media library permission (one-time, persisted by OS)
-            const { status } = await MediaLibrary.requestPermissionsAsync();
-            if (status !== 'granted') {
-                Toast.hide();
-                Toast.show({
-                    type: 'error',
-                    text1: '❌ Permission Denied',
-                    text2: 'Allow storage permission to save the file.',
-                    visibilityTime: 4000,
-                });
-                return;
+            try {
+                // Request media library permission (writeOnly)
+                const { status } = await MediaLibrary.requestPermissionsAsync(true);
+                if (status === 'granted') {
+                    await MediaLibrary.saveToLibraryAsync(finalLocalUri);
+                    Toast.hide();
+                    Toast.show({
+                        type: 'success',
+                        text1: '✅ Saved to Gallery / Downloads!',
+                        text2: filename,
+                        visibilityTime: 4000,
+                    });
+                    return;
+                }
+            } catch (mediaErr) {
+                console.warn('Direct media save failed, falling back to share sheet:', mediaErr);
             }
-
-            // Save directly to Downloads — no folder picker, no share dialog
-            await MediaLibrary.saveToLibraryAsync(finalLocalUri);
-
-            Toast.hide();
-            Toast.show({
-                type: 'success',
-                text1: '✅ Saved to Downloads!',
-                text2: filename,
-                visibilityTime: 4000,
-            });
-            return;
         }
 
-        // iOS: "Save to Files" via share sheet is the standard approach
+        // Fallback to Sharing sheet (Save to Files / Drive / Gallery / WhatsApp)
         Toast.hide();
         await fallbackToShareSheet(finalLocalUri, mimeType, filename);
 
@@ -74,7 +67,7 @@ export const downloadAndSaveFile = async (
         Toast.show({
             type: 'error',
             text1: '❌ Download Failed',
-            text2: error?.message?.slice(0, 80) || 'Could not save the receipt.',
+            text2: error?.message?.slice(0, 80) || 'Could not save the file.',
             visibilityTime: 4000,
         });
     }

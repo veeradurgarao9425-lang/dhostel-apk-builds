@@ -183,7 +183,7 @@ export default function MoreScreen({ hideHeader = false }: MoreScreenProps) {
             ],
         },
         {
-            groupTitle: 'People',
+            groupTitle: 'People & Documents',
             items: [
                 {
                     label: t('more.tenants'),
@@ -193,6 +193,14 @@ export default function MoreScreen({ hideHeader = false }: MoreScreenProps) {
                     iconBg: '#EDE9FE',
                     route: 'Students',
                     badgeCount: (stats?.tenantsCount || stats?.totalStudents || 0) > 0 ? (stats?.tenantsCount || stats?.totalStudents) : undefined,
+                },
+                {
+                    label: 'Documents & KYC Files',
+                    subtitle: 'All resident ID proofs & photos in one place',
+                    icon: 'folder-open-outline',
+                    iconColor: '#9333EA',
+                    iconBg: '#F3E8FF',
+                    route: 'DocumentsHub',
                 },
                 {
                     label: t('more.staffManagement'),
@@ -219,16 +227,6 @@ export default function MoreScreen({ hideHeader = false }: MoreScreenProps) {
                     iconBg: '#FEE2E2',
                     route: 'Notices',
                 },
-                /*
-                {
-                    label: 'Tenant Reviews',
-                    subtitle: 'View ratings from your tenants',
-                    icon: 'star-outline',
-                    iconColor: '#F59E0B',
-                    iconBg: '#FFFBEB',
-                    route: 'RatingsManagement',
-                },
-                */
             ],
         },
         {
@@ -288,7 +286,7 @@ export default function MoreScreen({ hideHeader = false }: MoreScreenProps) {
             ],
         },
         {
-            groupTitle: 'Property & Hostels',
+            groupTitle: 'Property & Operations',
             items: [
                 {
                     label: t('more.rooms'),
@@ -307,6 +305,30 @@ export default function MoreScreen({ hideHeader = false }: MoreScreenProps) {
                     iconBg: '#DCFCE7',
                     route: 'Hostels',
                     badgeCount: stats?.hostelsCount || 0,
+                },
+                {
+                    label: 'Complaints & Maintenance',
+                    subtitle: 'Track & resolve resident tickets',
+                    icon: 'construct-outline',
+                    iconColor: '#E11D48',
+                    iconBg: '#FFE4E6',
+                    route: 'ComplaintsManagement',
+                },
+                {
+                    label: 'Mess & Food Menu',
+                    subtitle: 'Weekly menu & dining schedule',
+                    icon: 'restaurant-outline',
+                    iconColor: '#EA580C',
+                    iconBg: '#FFEDD5',
+                    route: 'MessMenuManagement',
+                },
+                {
+                    label: 'Bulk Delete & Cleanup',
+                    subtitle: 'Manage deleted records & bulk room cleanup',
+                    icon: 'trash-outline',
+                    iconColor: '#DC2626',
+                    iconBg: '#FEE2E2',
+                    route: 'BulkDelete',
                 },
             ],
         },

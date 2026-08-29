@@ -336,7 +336,7 @@ export default function AddTeamMemberScreen() {
 
             const cleanPhoneDigits = String(selectedStaff.phone).replace(/\D/g, '');
             const fallbackEmail = `${cleanPhoneDigits}@hostix.com`;
-            const finalEmail = (email.trim() || selectedStaff.email || fallbackEmail).toLowerCase();
+            const finalEmail = (selectedStaff.email || fallbackEmail).toLowerCase();
 
             const payload: any = {
                 full_name: selectedStaff.full_name,
