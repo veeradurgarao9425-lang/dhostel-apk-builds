@@ -18,6 +18,7 @@ interface PaymentTransaction {
     payment_mode_name?: string;
     transaction_id: string | null;
     notes: string | null;
+    collected_by?: string;
     fee_month: string;
     due_date: string;
 }
@@ -105,8 +106,21 @@ export default function TenantTransactionsScreen() {
                         }
                     </Text>
                     <Text style={styles.txSub}>Mode: {item.payment_mode_name || 'Online'} • {payDate}</Text>
+                    {(() => {
+                        const collectorMatch = item.notes?.match(/\[Collected by:\s*([^\]]+)\]/i) || item.notes?.match(/Collected by:\s*([^\n\r-]+)/i);
+                        const collectorName = item.collected_by || (collectorMatch ? collectorMatch[1].trim() : null);
+                        if (!collectorName) return null;
+                        return (
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4, backgroundColor: '#EEF2FF', paddingHorizontal: 7, paddingVertical: 2, borderRadius: 6, alignSelf: 'flex-start' }}>
+                                <Ionicons name="person-circle" size={12} color="#4F46E5" />
+                                <Text style={{ fontSize: 10.5, fontWeight: '700', color: '#4F46E5' }}>
+                                    Collected by: {collectorName}
+                                </Text>
+                            </View>
+                        );
+                    })()}
                     <Text style={[styles.txSub, { marginTop: 4, fontStyle: 'italic', fontSize: 11 }]}>
-                        {item.notes ? `Note: ${item.notes}` : 'Note: Rent payment successfully recorded'}
+                        {item.notes ? `Note: ${item.notes.replace(/\[Collected by:[^\]]+\]/i, '').trim()}` : 'Note: Rent payment successfully recorded'}
                     </Text>
                 </View>
                 <View style={styles.txRight}>

@@ -67,20 +67,32 @@ const BottomTabNavigator = ({ state, descriptors, navigation }: any) => {
 
                 // Dynamic Staff Tab Visibility Filtering
                 const isStaff = user?.role === 'STAFF' || user?.role_id === 4;
-                let perms = (user as any)?.permissions;
-                if (typeof perms === 'string') {
-                    try { perms = JSON.parse(perms); } catch (_) { perms = {}; }
-                }
                 if (isStaff) {
-                    // Hide Finance tab (Owner confidential income/profit analytics)
-                    if (route.name === 'OverviewTab' && (!perms?.income && !perms?.reports && perms?.finance !== 'manage')) {
+                    let perms = (user as any)?.permissions;
+                    if (typeof perms === 'string') {
+                        try { perms = JSON.parse(perms); } catch (_) { perms = {}; }
+                    }
+                    perms = perms || {};
+
+                    const hasAccess = (k: string) => {
+                        const v = perms[k];
+                        return v === 'manage' || v === 'view' || v === true || v === '1' || v === 1;
+                    };
+
+                    // Money / Dues Tab
+                    if (route.name === 'PendingDuesTab' && !hasAccess('dues') && !hasAccess('finance')) {
                         return null;
                     }
-                    // Hide PendingDuesTab only if dues are explicitly disabled
-                    if (route.name === 'PendingDuesTab' && perms?.dues === 'none' && perms?.finance === 'none') {
+
+                    // Students Tab
+                    if (route.name === 'StudentsTab' && !hasAccess('students') && !hasAccess('tenants')) {
                         return null;
                     }
-                    // StudentsTab & HomeTab are core operational tabs and always accessible to staff
+
+                    // Finance / Analytics Tab
+                    if (route.name === 'OverviewTab' && !hasAccess('income') && !hasAccess('reports')) {
+                        return null;
+                    }
                 }
 
                 const isActive = state.index === index;

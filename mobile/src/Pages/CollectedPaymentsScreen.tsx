@@ -323,6 +323,21 @@ export default function CollectedPaymentsScreen() {
                         </View>
                     </View>
 
+                    {/* Collector Attribution Badge */}
+                    {(() => {
+                        const collectorMatch = item.notes?.match(/\[Collected by:\s*([^\]]+)\]/i) || item.notes?.match(/Collected by:\s*([^\n\r-]+)/i);
+                        const collectorName = item.collected_by || (collectorMatch ? collectorMatch[1].trim() : null);
+                        if (!collectorName) return null;
+                        return (
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: isDark ? '#1E1B4B' : '#EEF2FF', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, marginTop: 8, alignSelf: 'flex-start' }}>
+                                <Ionicons name="person-circle" size={13} color="#4F46E5" />
+                                <Text style={{ fontSize: 11, fontWeight: '700', color: isDark ? '#C7D2FE' : '#4F46E5' }}>
+                                    Collected by: {collectorName}
+                                </Text>
+                            </View>
+                        );
+                    })()}
+
                     <View style={[s.cardFooterRow, { borderTopColor: isDark ? '#334155' : '#F1F5F9' }]}>
                         <View style={s.footerLeftGroup}>
                             <View style={s.footerMetaItem}>

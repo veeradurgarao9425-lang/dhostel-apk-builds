@@ -593,7 +593,8 @@ export const getIncomeAnalytics = async (req: AuthRequest, res: Response) => {
         student_id: fp.student_id,
         room_number: fp.room_number,
         payment_mode: fp.payment_mode || 'Cash',
-        type: 'Rent'
+        type: 'Rent',
+        notes: fp.notes
       })),
       ...guests.map(g => ({
         id: `guest_${g.guest_id}`,

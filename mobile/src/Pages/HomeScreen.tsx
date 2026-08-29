@@ -747,21 +747,30 @@ export default function HomeScreen() {
                         {/* Greeting + name row */}
                         <Text style={s.hdrGreeting} numberOfLines={1}>{t(getGreetingKey())} 👋</Text>
                         <Text style={s.headerOwnerName} numberOfLines={1} ellipsizeMode="tail">
-                            {user?.full_name?.split(' ')[0] || 'Admin'}
+                            {user?.full_name?.split(' ')[0] || (user?.role === 'STAFF' ? 'Staff' : 'Admin')}
                         </Text>
                         {/* Hostel selector pill */}
-                        <TouchableOpacity
-                            ref={headerSelectorRef}
-                            onPress={() => { setShowHostelSelector(true); loadHostels(); }}
-                            activeOpacity={0.75}
-                            style={s.hostelNameBtn}
-                        >
-                            <Ionicons name="business" size={11} color="rgba(255,255,255,0.9)" />
-                            <Text style={s.hostelNameLabel} numberOfLines={1} ellipsizeMode="tail">
-                                {data.hostelName || 'My Hostel'}
-                            </Text>
-                            <Ionicons name="chevron-down" size={10} color="rgba(255,255,255,0.85)" />
-                        </TouchableOpacity>
+                        {user?.role === 'STAFF' || user?.role_id === 4 ? (
+                            <View style={[s.hostelNameBtn, { opacity: 0.95 }]}>
+                                <Ionicons name="business" size={11} color="rgba(255,255,255,0.9)" />
+                                <Text style={s.hostelNameLabel} numberOfLines={1} ellipsizeMode="tail">
+                                    {data.hostelName || user?.hostel_name || 'Assigned Hostel'}
+                                </Text>
+                            </View>
+                        ) : (
+                            <TouchableOpacity
+                                ref={headerSelectorRef}
+                                onPress={() => { setShowHostelSelector(true); loadHostels(); }}
+                                activeOpacity={0.75}
+                                style={s.hostelNameBtn}
+                            >
+                                <Ionicons name="business" size={11} color="rgba(255,255,255,0.9)" />
+                                <Text style={s.hostelNameLabel} numberOfLines={1} ellipsizeMode="tail">
+                                    {data.hostelName || 'My Hostel'}
+                                </Text>
+                                <Ionicons name="chevron-down" size={10} color="rgba(255,255,255,0.85)" />
+                            </TouchableOpacity>
+                        )}
                     </View>
 
                     {/* RIGHT: actions */}
@@ -834,6 +843,7 @@ export default function HomeScreen() {
                                     isDark={isDark}
                                     navigation={navigation}
                                     user={user}
+                                    renewalStudents={renewalStudents}
                                 />
                             ) : (
                                 <>

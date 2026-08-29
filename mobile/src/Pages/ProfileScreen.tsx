@@ -549,7 +549,7 @@ const ProfileScreen = ({ navigation }: any) => {
                     ))}
                 </View>
 
-                {/* ── MANAGE SECTION ── */}
+                {/* ── MANAGE / SHORTCUTS SECTION ── */}
                 <View style={styles.sectionHeaderRow}>
                     <Ionicons name="grid" size={16} color="#7C3AED" />
                     <Text style={[styles.sectionTitle, { color: isDark ? '#F1F5F9' : '#0F172A' }]}>
@@ -559,10 +559,15 @@ const ProfileScreen = ({ navigation }: any) => {
 
                 <View style={styles.manageGrid}>
                     {(isStaff ? [
+                        ...(hasPerm('students') || hasPerm('tenants') ? [{ icon: 'people', label: 'Tenants', color: '#7C3AED', bg: '#EDE9FE', onPress: () => navigation.navigate('Students') }] : []),
+                        ...(hasPerm('rooms') ? [{ icon: 'bed', label: 'Rooms', color: '#0284C7', bg: '#E0F2FE', onPress: () => navigation.navigate('Rooms') }] : []),
+                        ...(hasPerm('dues') || hasPerm('finance') ? [{ icon: 'cash', label: 'Collect Rent', color: '#10B981', bg: '#D1FAE5', onPress: () => navigation.navigate('CollectedPayments') }] : []),
+                        ...(hasPerm('verify_rent') ? [{ icon: 'shield-checkmark', label: 'Verify Rent', color: '#2563EB', bg: '#DBEAFE', onPress: () => navigation.navigate('PaymentVerification') }] : []),
                         { icon: 'folder-open', label: 'KYC Files', color: '#9333EA', bg: '#F3E8FF', onPress: () => navigation.navigate('DocumentsHub') },
-                        { icon: 'bed', label: 'Rooms', color: '#0284C7', bg: '#E0F2FE', onPress: () => hasPerm('rooms') && navigation.navigate('Rooms') },
-                        { icon: 'alert-circle', label: 'Complaints', color: '#DC2626', bg: '#FEE2E2', onPress: () => hasPerm('complaints') && navigation.navigate('ComplaintsManagement') },
-                        { icon: 'chatbubble-ellipses', label: 'Feedback & Help', color: '#10B981', bg: '#DCFCE7', onPress: () => navigation.navigate('Feedback') },
+                        ...(hasPerm('complaints') ? [{ icon: 'chatbubble-ellipses', label: 'Complaints', color: '#E11D48', bg: '#FFE4E6', onPress: () => navigation.navigate('ComplaintsManagement') }] : []),
+                        ...(hasPerm('mess') ? [{ icon: 'restaurant', label: 'Mess Menu', color: '#EA580C', bg: '#FFEDD5', onPress: () => navigation.navigate('MessMenuManagement') }] : []),
+                        ...(hasPerm('notices') ? [{ icon: 'megaphone', label: 'Notices', color: '#4F46E5', bg: '#EEF2FF', onPress: () => navigation.navigate('NoticesManagement') }] : []),
+                        { icon: 'chatbubble-ellipses', label: 'Feedback & Help', color: '#059669', bg: '#DCFCE7', onPress: () => navigation.navigate('Feedback') },
                     ] : [
                         { icon: 'swap-horizontal', label: t('profile.switchHostel', 'Switch Hostel'), color: '#10B981', bg: '#DCFCE7', onPress: openHostelSelector },
                         { icon: 'business', label: t('profile.manageHostels', 'Hostels'), color: '#7C3AED', bg: '#EDE9FE', onPress: () => navigation.navigate('Hostels') },

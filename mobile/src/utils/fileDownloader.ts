@@ -5,9 +5,10 @@ import * as MediaLibrary from 'expo-media-library';
 import Toast from 'react-native-toast-message';
 
 /**
- * Saves a file directly to the device's Downloads folder.
- * Android: uses expo-media-library to save to the device Downloads — zero dialogs, zero share sheet.
- * iOS: opens standard share sheet → "Save to Files".
+ * Saves a file directly to the device's Downloads/Media directory.
+ * - Images/Videos: Saved directly to Gallery / Photos using MediaLibrary without dialogs.
+ * - Documents (Excel, PDF, CSV): Saved directly to Downloads / Documents folder on Android using SAF or saved locally.
+ * - Fallback: standard share sheet if required.
  */
 export const downloadAndSaveFile = async (
     sourceUri: string,
@@ -38,26 +39,57 @@ export const downloadAndSaveFile = async (
         }
 
         if (Platform.OS === 'android') {
-            try {
-                // Request media library permission (writeOnly)
-                const { status } = await MediaLibrary.requestPermissionsAsync(true);
-                if (status === 'granted') {
-                    await MediaLibrary.saveToLibraryAsync(finalLocalUri);
-                    Toast.hide();
-                    Toast.show({
-                        type: 'success',
-                        text1: '✅ Saved to Gallery / Downloads!',
-                        text2: filename,
-                        visibilityTime: 4000,
-                    });
-                    return;
+            const isMedia = mimeType.startsWith('image/') || mimeType.startsWith('video/');
+
+            if (isMedia) {
+                try {
+                    const { status } = await MediaLibrary.requestPermissionsAsync(true);
+                    if (status === 'granted') {
+                        await MediaLibrary.saveToLibraryAsync(finalLocalUri);
+                        Toast.hide();
+                        Toast.show({
+                            type: 'success',
+                            text1: '✅ Saved to Gallery / Photos!',
+                            text2: filename,
+                            visibilityTime: 4000,
+                        });
+                        return;
+                    }
+                } catch (mediaErr) {
+                    console.warn('Direct media save failed:', mediaErr);
                 }
-            } catch (mediaErr) {
-                console.warn('Direct media save failed, falling back to share sheet:', mediaErr);
+            } else {
+                // For Excel .xlsx, PDF, CSV on Android
+                try {
+                    const permissions = await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
+                    if (permissions.granted) {
+                        const base64 = await FileSystem.readAsStringAsync(finalLocalUri, {
+                            encoding: FileSystem.EncodingType.Base64,
+                        });
+                        const createdUri = await FileSystem.StorageAccessFramework.createFileAsync(
+                            permissions.directoryUri,
+                            filename,
+                            mimeType
+                        );
+                        await FileSystem.writeAsStringAsync(createdUri, base64, {
+                            encoding: FileSystem.EncodingType.Base64,
+                        });
+                        Toast.hide();
+                        Toast.show({
+                            type: 'success',
+                            text1: '✅ Downloaded Successfully!',
+                            text2: filename,
+                            visibilityTime: 4000,
+                        });
+                        return;
+                    }
+                } catch (safErr) {
+                    console.warn('SAF direct save failed:', safErr);
+                }
             }
         }
 
-        // Fallback to Sharing sheet (Save to Files / Drive / Gallery / WhatsApp)
+        // Fallback for iOS or if direct save was dismissed
         Toast.hide();
         await fallbackToShareSheet(finalLocalUri, mimeType, filename);
 
@@ -78,7 +110,7 @@ const fallbackToShareSheet = async (uri: string, mimeType: string, filename: str
     if (canShare) {
         await Sharing.shareAsync(uri, {
             mimeType,
-            dialogTitle: 'Save Receipt',
+            dialogTitle: `Download ${filename}`,
             UTI: getUTI(mimeType),
         });
     } else {
@@ -98,6 +130,3 @@ const getUTI = (mimeType: string): string => {
     if (mimeType.includes('csv')) return 'public.comma-separated-values-text';
     return 'public.data';
 };
-
-
-
