@@ -88,12 +88,13 @@ jobs:
         working-directory: mobile/android
         run: chmod +x gradlew
 
-      - name: Configure Gradle Memory
+      - name: Configure Gradle Memory & Asset Settings
         working-directory: mobile/android
         run: |
           echo "org.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=1024m -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8" >> gradle.properties
           echo "org.gradle.daemon=false" >> gradle.properties
           echo "org.gradle.parallel=true" >> gradle.properties
+          echo "android.enablePngCrunchInReleaseBuilds=false" >> gradle.properties
 
       - name: Build Release APK
         working-directory: mobile/android
