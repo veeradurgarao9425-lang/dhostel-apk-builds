@@ -44,6 +44,7 @@
       "favicon": "./assets/HostixNew.png"
     },
     "plugins": [
+      "@react-native-firebase/app",
       "@react-native-community/datetimepicker",
       [
         "expo-notifications",
