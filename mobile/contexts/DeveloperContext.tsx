@@ -65,11 +65,16 @@ export const DeveloperProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           if (parsed.role === 'DEVELOPER' || parsed.is_developer) {
             setDeveloperToken(storedDevToken);
             setDeveloper(parsed);
-            api.defaults.headers.common['Authorization'] = `Bearer ${storedDevToken}`;
+            if (!user || user.role === 'DEVELOPER' || (user as any)?.is_developer) {
+              api.defaults.headers.common['Authorization'] = `Bearer ${storedDevToken}`;
+            }
           }
         } else if (user && (user.role === 'DEVELOPER' || (user as any).is_developer)) {
           setDeveloper(user as any);
-          if (storedDevToken) setDeveloperToken(storedDevToken);
+          if (storedDevToken) {
+            setDeveloperToken(storedDevToken);
+            api.defaults.headers.common['Authorization'] = `Bearer ${storedDevToken}`;
+          }
         }
 
         if (storedSupport) {

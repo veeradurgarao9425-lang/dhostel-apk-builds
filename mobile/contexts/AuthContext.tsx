@@ -221,10 +221,25 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  // ── Owner Auth Methods ─────────────────────────────────────────────────────
+  // ── Owner / Staff Auth Methods ─────────────────────────────────────────────
   const signIn = async (identifier: string, password: string) => {
     try {
-      const response = await api.post('/auth/login', { identifier, password });
+      let response;
+      try {
+        response = await api.post('/auth/login', { identifier, password });
+      } catch (firstErr: any) {
+        // If 401 and identifier is a mobile number, try standard staff email pattern as fallback
+        const cleanPhone = String(identifier).replace(/\D/g, '');
+        if (firstErr?.response?.status === 401 && cleanPhone.length === 10 && !identifier.includes('@')) {
+          try {
+            response = await api.post('/auth/login', { identifier: `${cleanPhone}@hostix.com`, password });
+          } catch (_) {
+            throw firstErr;
+          }
+        } else {
+          throw firstErr;
+        }
+      }
 
       const contentType = response.headers['content-type'];
       if (contentType && !contentType.includes('application/json')) {

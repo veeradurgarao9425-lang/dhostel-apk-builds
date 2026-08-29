@@ -65,6 +65,24 @@ const BottomTabNavigator = ({ state, descriptors, navigation }: any) => {
                 const tabConfig = TABS.find(t => t.route === route.name);
                 if (!tabConfig) return null;
 
+                // Dynamic Staff Tab Visibility Filtering
+                const isStaff = user?.role === 'STAFF' || user?.role_id === 4;
+                const permissions = (user as any)?.permissions;
+                if (isStaff && permissions) {
+                    if (route.name === 'PendingDuesTab' && (permissions.dues === 'none' || (permissions.dues === undefined && permissions.finance === 'none'))) {
+                        return null;
+                    }
+                    if (route.name === 'OverviewTab' && permissions.finance === 'none') {
+                        return null;
+                    }
+                    if (route.name === 'StudentsTab' && (permissions.students === 'none' || permissions.tenants === 'none')) {
+                        return null;
+                    }
+                    if (route.name === 'HomeTab' && permissions.dashboard === 'none') {
+                        return null;
+                    }
+                }
+
                 const isActive = state.index === index;
                 const iconName = isActive ? tabConfig.activeIcon : tabConfig.inactiveIcon;
 

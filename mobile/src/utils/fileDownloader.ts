@@ -1,19 +1,13 @@
 import * as FileSystem from 'expo-file-system/legacy';
 import { Platform } from 'react-native';
 import * as Sharing from 'expo-sharing';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as MediaLibrary from 'expo-media-library';
 import Toast from 'react-native-toast-message';
-
-const { StorageAccessFramework } = FileSystem;
-const DOWNLOAD_DIR_KEY = 'saf_download_directory_uri';
 
 /**
  * Saves a file directly to the device's Downloads folder.
- *
- * Android has no direct filesystem write access to public folders (scoped storage),
- * so this uses the Storage Access Framework: the user grants a Downloads folder once
- * (persisted for next time), and every file after that writes straight there with no
- * share sheet involved.
+ * Android: uses expo-media-library to save to the device Downloads — zero dialogs, zero share sheet.
+ * iOS: opens standard share sheet → "Save to Files".
  */
 export const downloadAndSaveFile = async (
     sourceUri: string,
@@ -44,11 +38,33 @@ export const downloadAndSaveFile = async (
         }
 
         if (Platform.OS === 'android') {
-            await saveToDownloadsAndroid(finalLocalUri, filename, mimeType);
+            // Request media library permission (one-time, persisted by OS)
+            const { status } = await MediaLibrary.requestPermissionsAsync();
+            if (status !== 'granted') {
+                Toast.hide();
+                Toast.show({
+                    type: 'error',
+                    text1: '❌ Permission Denied',
+                    text2: 'Allow storage permission to save the file.',
+                    visibilityTime: 4000,
+                });
+                return;
+            }
+
+            // Save directly to Downloads — no folder picker, no share dialog
+            await MediaLibrary.saveToLibraryAsync(finalLocalUri);
+
+            Toast.hide();
+            Toast.show({
+                type: 'success',
+                text1: '✅ Saved to Downloads!',
+                text2: filename,
+                visibilityTime: 4000,
+            });
             return;
         }
 
-        // iOS has no public Downloads folder; share sheet -> "Save to Files" is standard.
+        // iOS: "Save to Files" via share sheet is the standard approach
         Toast.hide();
         await fallbackToShareSheet(finalLocalUri, mimeType, filename);
 
@@ -62,66 +78,6 @@ export const downloadAndSaveFile = async (
             visibilityTime: 4000,
         });
     }
-};
-
-const saveToDownloadsAndroid = async (localUri: string, filename: string, mimeType: string) => {
-    let directoryUri = await AsyncStorage.getItem(DOWNLOAD_DIR_KEY);
-
-    if (!directoryUri) {
-        const permission = await StorageAccessFramework.requestDirectoryPermissionsAsync();
-        if (!permission.granted) {
-            Toast.hide();
-            Toast.show({
-                type: 'error',
-                text1: '❌ Permission Denied',
-                text2: 'Please allow access to a folder to download the PDF.',
-                visibilityTime: 4000,
-            });
-            return;
-        }
-        directoryUri = permission.directoryUri;
-        await AsyncStorage.setItem(DOWNLOAD_DIR_KEY, directoryUri);
-    }
-
-    const base64Content = await FileSystem.readAsStringAsync(localUri, {
-        encoding: FileSystem.EncodingType.Base64,
-    });
-
-    const nameWithoutExt = filename.replace(/\.[^/.]+$/, '');
-
-    try {
-        const destFileUri = await StorageAccessFramework.createFileAsync(directoryUri, nameWithoutExt, mimeType);
-        await FileSystem.writeAsStringAsync(destFileUri, base64Content, {
-            encoding: FileSystem.EncodingType.Base64,
-        });
-    } catch (writeError) {
-        // The saved folder permission may have been revoked; ask again and retry once.
-        await AsyncStorage.removeItem(DOWNLOAD_DIR_KEY);
-        const permission = await StorageAccessFramework.requestDirectoryPermissionsAsync();
-        if (!permission.granted) {
-            Toast.hide();
-            Toast.show({
-                type: 'error',
-                text1: '❌ Permission Denied',
-                text2: 'Please allow access to a folder to download the PDF.',
-                visibilityTime: 4000,
-            });
-            return;
-        }
-        await AsyncStorage.setItem(DOWNLOAD_DIR_KEY, permission.directoryUri);
-        const destFileUri = await StorageAccessFramework.createFileAsync(permission.directoryUri, nameWithoutExt, mimeType);
-        await FileSystem.writeAsStringAsync(destFileUri, base64Content, {
-            encoding: FileSystem.EncodingType.Base64,
-        });
-    }
-
-    Toast.hide();
-    Toast.show({
-        type: 'success',
-        text1: '✅ Saved to Downloads!',
-        text2: filename,
-        visibilityTime: 4000,
-    });
 };
 
 const fallbackToShareSheet = async (uri: string, mimeType: string, filename: string) => {
@@ -149,3 +105,6 @@ const getUTI = (mimeType: string): string => {
     if (mimeType.includes('csv')) return 'public.comma-separated-values-text';
     return 'public.data';
 };
+
+
+

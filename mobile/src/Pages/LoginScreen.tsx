@@ -207,14 +207,14 @@ export default function LoginScreen({ navigation }: any) {
                 <Text style={[styles.signInTitle, isSmall && { fontSize: 20, marginBottom: 2 }]}>Welcome back 👋</Text>
                 <Text style={[styles.signInSubtitle, isSmall && { fontSize: 13, marginBottom: 16 }]}>Sign in to continue managing your PG</Text>
 
-                {/* Email */}
+                {/* Email or Phone */}
                 <View style={styles.inputGroup}>
-                    <Text style={styles.label}>Email</Text>
+                    <Text style={styles.label}>Email or Phone Number</Text>
                     <View style={[styles.inputContainer, getFieldError('identifier') ? { borderColor: '#EF4444' } : null]}>
-                        <Ionicons name="mail-outline" size={18} color="#7C3AED" style={styles.inputIcon} />
+                        <Ionicons name="person-outline" size={18} color="#7C3AED" style={styles.inputIcon} />
                         <TextInput
                             style={styles.input}
-                            placeholder="Enter your email"
+                            placeholder="Enter your email or phone number"
                             placeholderTextColor="#B8B8B8"
                             autoCapitalize="none"
                             keyboardType="email-address"

@@ -236,6 +236,7 @@ const PhotoUpload = ({ uri, onCapture, onRemove, label = 'Add Photo', error }: a
 // ─── ID Document Upload Box ────────────────────────────────────────────────────
 const DocBox = ({ label, uri, onCapture, onRemove, error }: any) => {
   const [modalVisible, setModalVisible] = useState(false);
+  const [zoomVisible, setZoomVisible] = useState(false);
 
   const onSelectCamera = async () => {
     try {
@@ -260,21 +261,82 @@ const DocBox = ({ label, uri, onCapture, onRemove, error }: any) => {
   };
 
   return (
-    <View style={{ flex: 1 }}>
-      <TouchableOpacity style={[st.docBox, error && { borderColor: DANGER, backgroundColor: '#FEE2E2' }]} onPress={() => setModalVisible(true)} activeOpacity={0.8}>
-        {uri ? (
-          <View style={StyleSheet.absoluteFill}>
-            <Image source={{ uri }} style={st.docImg} resizeMode="cover" />
-            <TouchableOpacity style={st.docRemove} onPress={onRemove}><Text style={{ color: WHITE, fontSize: 10, fontWeight: '700' }}>✕</Text></TouchableOpacity>
+    <View style={{ width: '100%' }}>
+      {uri ? (
+        <View style={{
+          backgroundColor: '#F0FDF4',
+          borderColor: '#10B981',
+          borderWidth: 1.5,
+          borderRadius: 14,
+          padding: 12,
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}>
+          <TouchableOpacity
+            onPress={() => setZoomVisible(true)}
+            activeOpacity={0.8}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}
+          >
+            <Image
+              source={{ uri }}
+              style={{ width: 60, height: 60, borderRadius: 10, borderWidth: 1, borderColor: '#10B981' }}
+              resizeMode="cover"
+            />
+            <View style={{ flex: 1 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <Check size={14} color="#10B981" strokeWidth={3} />
+                <Text style={{ fontSize: 14, fontWeight: '700', color: TEXT_DARK }}>{label}</Text>
+              </View>
+              <Text style={{ fontSize: 12, color: '#15803D', fontWeight: '600', marginTop: 2 }}>Uploaded</Text>
+              <Text style={{ fontSize: 11, color: TEXT_HINT, marginTop: 2 }}>Tap thumbnail to zoom</Text>
+            </View>
+          </TouchableOpacity>
+
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <TouchableOpacity
+              style={{ backgroundColor: '#E2E8F0', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, flexDirection: 'row', alignItems: 'center', gap: 4 }}
+              onPress={() => setModalVisible(true)}
+              activeOpacity={0.7}
+            >
+              <Camera size={12} color={TEXT_DARK} />
+              <Text style={{ fontSize: 11, color: TEXT_DARK, fontWeight: '600' }}>Retake</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: '#FEE2E2', alignItems: 'center', justifyContent: 'center' }}
+              onPress={onRemove}
+              activeOpacity={0.7}
+            >
+              <Text style={{ color: DANGER, fontSize: 12, fontWeight: '800' }}>✕</Text>
+            </TouchableOpacity>
           </View>
-        ) : (
-          <>
-            <View style={[st.docIconCircle, error && { backgroundColor: DANGER }]}><Upload size={18} color={error ? WHITE : BLUE} /></View>
-            <Text style={[st.docLabel, error && { color: DANGER }]}>{label}</Text>
-            <Text style={[st.docSub, error && { color: DANGER }]}>Tap to upload</Text>
-          </>
-        )}
-      </TouchableOpacity>
+        </View>
+      ) : (
+        <TouchableOpacity
+          style={[st.docBox, error && { borderColor: DANGER, backgroundColor: '#FEE2E2' }]}
+          onPress={() => setModalVisible(true)}
+          activeOpacity={0.8}
+        >
+          <View style={[st.docIconCircle, error && { backgroundColor: DANGER }]}><Upload size={18} color={error ? WHITE : BLUE} /></View>
+          <Text style={[st.docLabel, error && { color: DANGER }]}>{label}</Text>
+          <Text style={[st.docSub, error && { color: DANGER }]}>Tap to upload</Text>
+        </TouchableOpacity>
+      )}
+
+      {/* Zoom Modal */}
+      <Modal visible={zoomVisible} transparent animationType="fade" onRequestClose={() => setZoomVisible(false)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.92)', justifyContent: 'center', alignItems: 'center' }}>
+          <TouchableOpacity
+            style={{ position: 'absolute', top: 50, right: 20, zIndex: 10, backgroundColor: 'rgba(255,255,255,0.25)', padding: 10, borderRadius: 25 }}
+            onPress={() => setZoomVisible(false)}
+          >
+            <Text style={{ color: WHITE, fontSize: 18, fontWeight: '700' }}>✕</Text>
+          </TouchableOpacity>
+          {uri && (
+            <Image source={{ uri }} style={{ width: '92%', height: '80%' }} resizeMode="contain" />
+          )}
+        </View>
+      </Modal>
 
       <ImageSourceModal
         visible={modalVisible}
@@ -1093,7 +1155,7 @@ const st = StyleSheet.create({
 
   // Document upload
   docSectionLabel: { fontSize: 13, fontWeight: '700', color: TEXT_DARK, marginBottom: 10, marginTop: 4 },
-  docRow: { flexDirection: 'row', gap: 12 },
+  docRow: { flexDirection: 'column', gap: 12 },
   docBox: {
     flex: 1, height: 110, borderRadius: 10,
     borderWidth: 1.5, borderColor: BORDER, borderStyle: 'dashed',

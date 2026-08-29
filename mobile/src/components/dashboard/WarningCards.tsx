@@ -41,7 +41,7 @@ export const WarningCards = ({ data }: WarningCardsProps) => {
             color: '#0284C7',
             bg: isDark ? 'rgba(2,132,199,0.18)' : '#F0F9FF',
             border: isDark ? 'rgba(2,132,199,0.4)' : '#BAE6FD',
-            onPress: () => navigation.navigate('Students', { filter: 'QRRegister', tab: 'Requests' }),
+            onPress: () => navigation.navigate('Students', { filter: 'QRRegister' }),
         });
     }
 
@@ -54,7 +54,7 @@ export const WarningCards = ({ data }: WarningCardsProps) => {
             color: '#E11D48',
             bg: isDark ? 'rgba(225,29,72,0.18)' : '#FFF1F2',
             border: isDark ? 'rgba(225,29,72,0.4)' : '#FECDD3',
-            onPress: () => navigation.navigate('Students', { filterUnallocated: true, tab: 'All' }),
+            onPress: () => navigation.navigate('Students', { filter: 'Unallocated', filterUnallocated: true }),
         });
     }
 
@@ -67,7 +67,7 @@ export const WarningCards = ({ data }: WarningCardsProps) => {
             color: '#D97706',
             bg: isDark ? 'rgba(217,119,6,0.18)' : '#FFFBEB',
             border: isDark ? 'rgba(217,119,6,0.4)' : '#FDE68A',
-            onPress: () => navigation.navigate('Students', { filter: 'AdmissionPending', tab: 'All' }),
+            onPress: () => navigation.navigate('Students', { filter: 'AdmissionPending' }),
         });
     }
 
@@ -88,12 +88,12 @@ export const WarningCards = ({ data }: WarningCardsProps) => {
     if ((data.vacateCount || 0) > 0) {
         chips.push({
             count: data.vacateCount!,
-            label: 'Vacate Notices',
+            label: 'Vacate Bed',
             icon: 'exit-outline',
             color: '#DC2626',
             bg: isDark ? 'rgba(220,38,38,0.18)' : '#FEF2F2',
             border: isDark ? 'rgba(220,38,38,0.4)' : '#FECACA',
-            onPress: () => navigation.navigate('Students', { filter: 'Vacating', tab: 'All' }),
+            onPress: () => navigation.navigate('Notices'),
         });
     }
 

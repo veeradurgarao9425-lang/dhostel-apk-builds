@@ -27,6 +27,7 @@ export const authController = {
       }
 
       const cleanIdentifier = String(identifier).trim().toLowerCase();
+      const phoneDigits = String(identifier).replace(/\D/g, '');
 
       // Parallelize developer user and standard user lookups for max speed
       const [devUser, user] = await Promise.all([
@@ -47,8 +48,21 @@ export const authController = {
             'user_roles.role_name'
           )
           .leftJoin('user_roles', 'users.role_id', 'user_roles.role_id')
-          .where('users.email', cleanIdentifier)
-          .where('users.is_active', true)
+          .where(function () {
+            this.where('users.email', cleanIdentifier)
+              .orWhere('users.username', cleanIdentifier);
+            if (phoneDigits && phoneDigits.length >= 10) {
+              this.orWhere('users.phone', phoneDigits)
+                .orWhere('users.phone', 'like', `%${phoneDigits.slice(-10)}`);
+            } else if (cleanIdentifier) {
+              this.orWhere('users.phone', cleanIdentifier);
+            }
+          })
+          .where(function () {
+            this.where('users.is_active', true)
+              .orWhere('users.is_active', 1)
+              .orWhereNull('users.is_active');
+          })
           .first(),
       ]);
 
@@ -151,6 +165,19 @@ export const authController = {
         deduplicateKey: `welcome_owner_login_${user.user_id}_${new Date().toISOString().split('T')[0]}`,
       }).catch((err) => console.error('[OwnerLogin] Notification error:', err));
 
+      // Fetch staff permissions if role_id is 4 (Staff)
+      let staffPermissions: any = null;
+      if (user.role_id === 4) {
+        const staffRec = await db('staff').where({ user_id: user.user_id }).first().catch(() => null);
+        if (staffRec && staffRec.permissions) {
+          try {
+            staffPermissions = typeof staffRec.permissions === 'string' ? JSON.parse(staffRec.permissions) : staffRec.permissions;
+          } catch (_) {
+            staffPermissions = null;
+          }
+        }
+      }
+
       // Return response immediately
       return res.json({
         success: true,
@@ -159,10 +186,11 @@ export const authController = {
             user_id: user.user_id,
             email: user.email,
             full_name: user.full_name,
-            role: user.role_name,
+            role: user.role_id === 4 ? 'STAFF' : user.role_name,
             role_id: user.role_id,
             phone: user.phone,
             hostel_id: activeHostelId || user.hostel_id,
+            permissions: staffPermissions,
           },
           token,
         },

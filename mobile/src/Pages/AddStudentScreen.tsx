@@ -384,19 +384,64 @@ const DocumentUploadBox = ({ label, uri, onCapture, onRemove, isFront, error }: 
         }
     };
 
+    const [zoomVisible, setZoomVisible] = useState(false);
+
     return (
         <>
-            <View style={[styles.docUploadBox, { backgroundColor: isDark ? '#1E293B' : '#F9FAFB', borderColor: error ? '#EF4444' : (isDark ? '#334155' : '#E2E8F0'), borderStyle: 'dashed' }]}>
+            <View style={[
+                styles.docUploadBox, 
+                { 
+                    backgroundColor: uri 
+                        ? (isDark ? '#052E16' : '#F0FDF4') 
+                        : (isDark ? '#1E293B' : '#F9FAFB'), 
+                    borderColor: error 
+                        ? '#EF4444' 
+                        : uri 
+                            ? '#10B981' 
+                            : (isDark ? '#334155' : '#E2E8F0'), 
+                    borderStyle: uri ? 'solid' : 'dashed',
+                    height: uri ? 90 : 155,
+                }
+            ]}>
                 {uri ? (
-                    <View style={styles.docPreviewContainer}>
-                        <Image source={{ uri }} style={styles.docPreviewImage} />
-                        <TouchableOpacity style={styles.docRemoveBtn} onPress={onRemove}>
-                            <X size={14} color="#FFF" />
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', height: '100%', paddingHorizontal: 4 }}>
+                        <TouchableOpacity 
+                            onPress={() => setZoomVisible(true)}
+                            activeOpacity={0.8}
+                            style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}
+                        >
+                            <Image 
+                                source={{ uri }} 
+                                style={{ width: 68, height: 68, borderRadius: 10, borderWidth: 1, borderColor: '#10B981' }} 
+                                resizeMode="cover" 
+                            />
+                            <View style={{ flex: 1 }}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                                    <CheckCircle size={14} color="#10B981" />
+                                    <Text style={{ fontSize: 13, fontWeight: '700', color: isDark ? '#FFF' : '#0F172A' }}>{label}</Text>
+                                </View>
+                                <Text style={{ fontSize: 11, color: isDark ? '#A7F3D0' : '#15803D', fontWeight: '600', marginTop: 2 }}>Uploaded</Text>
+                                <Text style={{ fontSize: 10, color: theme.textSecondary, marginTop: 2 }}>Tap thumbnail to zoom</Text>
+                            </View>
                         </TouchableOpacity>
-                        <TouchableOpacity style={[styles.docRetakeRow, { backgroundColor: 'rgba(0,0,0,0.6)' }]} onPress={() => setPickerVisible(true)}>
-                            <Camera size={12} color="#FFF" />
-                            <Text style={{ fontSize: 10, color: '#FFF', fontWeight: '700', marginLeft: 4 }}>Retake</Text>
-                        </TouchableOpacity>
+                        
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                            <TouchableOpacity 
+                                style={{ backgroundColor: isDark ? '#334155' : '#E2E8F0', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, flexDirection: 'row', alignItems: 'center', gap: 4 }} 
+                                onPress={() => setPickerVisible(true)}
+                                activeOpacity={0.7}
+                            >
+                                <Camera size={12} color={theme.textPrimary} />
+                                <Text style={{ fontSize: 11, color: theme.textPrimary, fontWeight: '600' }}>Retake</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity 
+                                style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: '#FEE2E2', alignItems: 'center', justifyContent: 'center' }} 
+                                onPress={onRemove}
+                                activeOpacity={0.7}
+                            >
+                                <X size={14} color="#EF4444" />
+                            </TouchableOpacity>
+                        </View>
                     </View>
                 ) : (
                     <View style={{ flex: 1, justifyContent: 'space-between' }}>
@@ -426,23 +471,38 @@ const DocumentUploadBox = ({ label, uri, onCapture, onRemove, isFront, error }: 
                             </View>
                         </View>
 
-                        <View style={{ marginTop: 8 }}>
+                        <View style={{ marginTop: 6 }}>
                             <Text style={[styles.docBoxTitle, { color: error ? '#EF4444' : (isDark ? '#F1F5F9' : '#1E293B') }]}>{label}</Text>
-                            <Text style={styles.docBoxSubtitle}>JPG, PNG or PDF{"\n"}Max. 5MB</Text>
+                            <Text style={styles.docBoxSubtitle}>JPG, PNG or PDF · Max 5MB</Text>
                         </View>
 
                         <TouchableOpacity
-                            style={[styles.docUploadBtn, { borderColor: error ? '#EF4444' : theme.primary }]}
+                            style={[styles.docUploadBtn, { borderColor: error ? '#EF4444' : theme.primary, marginTop: 6 }]}
                             onPress={() => setPickerVisible(true)}
                             activeOpacity={0.7}
                         >
                             <Upload size={12} color={error ? '#EF4444' : theme.primary} />
-                            <Text style={[styles.docUploadBtnText, { color: error ? '#EF4444' : theme.primary }]}>Upload</Text>
+                            <Text style={[styles.docUploadBtnText, { color: error ? '#EF4444' : theme.primary }]}>Upload {label}</Text>
                         </TouchableOpacity>
                     </View>
                 )}
-                {error && <Text style={{ color: '#EF4444', fontSize: 9, marginTop: 4, fontWeight: '600', textAlign: 'center' }}>{error}</Text>}
+                {error && <Text style={{ color: '#EF4444', fontSize: 10, marginTop: 4, fontWeight: '600', textAlign: 'center' }}>{error}</Text>}
             </View>
+
+            {/* Zoom Modal */}
+            <Modal visible={zoomVisible} transparent animationType="fade" onRequestClose={() => setZoomVisible(false)}>
+                <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.92)', justifyContent: 'center', alignItems: 'center' }}>
+                    <TouchableOpacity
+                        style={{ position: 'absolute', top: 50, right: 20, zIndex: 10, backgroundColor: 'rgba(255,255,255,0.25)', padding: 10, borderRadius: 25 }}
+                        onPress={() => setZoomVisible(false)}
+                    >
+                        <X size={22} color="#FFF" />
+                    </TouchableOpacity>
+                    {uri && (
+                        <Image source={{ uri }} style={{ width: '92%', height: '80%' }} resizeMode="contain" />
+                    )}
+                </View>
+            </Modal>
 
             <ImageSourceDrawer
                 visible={pickerVisible}
@@ -652,7 +712,7 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
         if (name === 'first_name') {
             if (!value || !value.trim()) err = 'First name is required';
         } else if (name === 'date_of_birth') {
-            if (!value) err = 'Date of birth is required';
+            // Optional field - no validation required
         } else if (name === 'phone') {
             if (!value) err = 'Mobile number is required';
             else if (!/^[6-9]/.test(value)) err = 'Must start with 6, 7, 8, or 9';
@@ -970,9 +1030,7 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
         if (!formData.first_name || !formData.first_name.trim()) {
             e.first_name = 'First name is required';
         }
-        if (!formData.date_of_birth) {
-            e.date_of_birth = 'Date of birth is required';
-        }
+        // Date of birth is optional
         if (!formData.phone) {
             e.phone = 'Mobile number is required';
         } else {
@@ -1297,7 +1355,7 @@ export const AddStudentScreen = ({ navigation, route }: any) => {
                     <FormInput label="Last Name" icon={User} placeholder="Ex: Goriparthi" value={formData.last_name} onChangeText={(t: string) => up('last_name', t.replace(/[^a-zA-Z0-9\s]/g, ''))} />
                     <Selector label="Gender *" options={['Male', 'Female', 'Other']} selected={formData.gender} onSelect={(v: string) => up('gender', v)} />
                     <SelectField
-                        label="Date of Birth *"
+                        label="Date of Birth (Optional)"
                         icon={Calendar}
                         placeholder="Pick date"
                         value={formData.date_of_birth}
@@ -2229,7 +2287,7 @@ const styles = StyleSheet.create({
         marginTop: 2,
     },
     idUploadBoxesRow: {
-        flexDirection: 'row',
+        flexDirection: 'column',
         gap: 12,
     },
     docUploadBox: {

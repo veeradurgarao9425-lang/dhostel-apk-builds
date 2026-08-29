@@ -26,9 +26,9 @@ export const InputField = ({ label, error, containerStyle, ...props }: InputFiel
     return (
         <View style={[styles.container, containerStyle]}>
             {renderLabel()}
-            <View style={[styles.inputContainer, error && styles.inputError]}>
+            <View style={[styles.inputContainer, error && styles.inputError, props.multiline && { minHeight: 90, alignItems: 'flex-start', paddingTop: 8, paddingBottom: 8 }]}>
                 <TextInput
-                    style={[styles.input, { outlineStyle: 'none' } as any]}
+                    style={[styles.input, { outlineStyle: 'none' } as any, props.multiline && { minHeight: 74, textAlignVertical: 'top', paddingTop: 0 }]}
                     placeholderTextColor="#94A3B8"
                     underlineColorAndroid="transparent"
                     {...props}

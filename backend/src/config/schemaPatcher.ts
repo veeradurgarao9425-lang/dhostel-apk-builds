@@ -2351,32 +2351,97 @@ export async function patchDatabaseSchema() {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
       `);
 
-      // Seed initial developer account if configured in environment variables and not already present
-      const devUsername = process.env.SUPER_ADMIN_USERNAME;
-      const devPassword = process.env.SUPER_ADMIN_PASSWORD;
-      const devEmail = process.env.SUPER_ADMIN_EMAIL || (devUsername ? `${devUsername}@hostix.com` : null);
+      // Seed developer accounts (demo@test.com and SUPER_ADMIN if configured)
+      try {
+        const { hashPassword } = await import('../utils/bcrypt.js');
+        const defaultDevPass = await hashPassword('Demo123');
 
-      if (devUsername && devPassword) {
-        const existingDev = await db('developer_users')
-          .where('username', devUsername)
-          .orWhere('email', devEmail)
+        const devUsername = process.env.SUPER_ADMIN_USERNAME;
+        const devPassword = process.env.SUPER_ADMIN_PASSWORD;
+        const devEmail = process.env.SUPER_ADMIN_EMAIL || (devUsername ? `${devUsername}@hostix.com` : null);
+
+        // Always guarantee demo@test.com developer account exists with Demo123
+        const demoDev = await db('developer_users')
+          .where('username', 'demo@test.com')
+          .orWhere('email', 'demo@test.com')
           .first();
 
-        if (!existingDev) {
-          console.log(`[schema-patch] Seeding initial developer user (${devUsername})...`);
-          const { hashPassword } = await import('../utils/bcrypt.js');
-          const passwordHash = await hashPassword(devPassword);
-
+        if (!demoDev) {
+          console.log('[schema-patch] Seeding developer user demo@test.com...');
           await db('developer_users').insert({
-            username: devUsername,
-            email: devEmail,
-            password_hash: passwordHash,
+            username: 'demo@test.com',
+            email: 'demo@test.com',
+            password_hash: defaultDevPass,
             full_name: 'Developer Super Admin',
             role_title: 'Developer Super Admin',
             status: 'ACTIVE',
           });
-          console.log('[schema-patch] Developer user seeded successfully from environment configuration.');
+        } else {
+          await db('developer_users').where('id', demoDev.id).update({
+            password_hash: defaultDevPass,
+            status: 'ACTIVE'
+          });
         }
+
+        if (devUsername && devPassword) {
+          const existingDev = await db('developer_users')
+            .where('username', devUsername)
+            .orWhere('email', devEmail)
+            .first();
+
+          if (!existingDev) {
+            console.log(`[schema-patch] Seeding initial developer user (${devUsername})...`);
+            const envDevPass = await hashPassword(devPassword);
+            await db('developer_users').insert({
+              username: devUsername,
+              email: devEmail,
+              password_hash: envDevPass,
+              full_name: 'Developer Super Admin',
+              role_title: 'Developer Super Admin',
+              status: 'ACTIVE',
+            });
+          }
+        }
+      } catch (e: any) {
+        console.warn('[schema-patch] Developer user seed notice:', e?.message);
+      }
+
+      // Ensure Staff role exists in user_roles (role_id: 4)
+      try {
+        const staffRole = await db('user_roles').where({ role_id: 4 }).first();
+        if (!staffRole) {
+          console.log('[schema-patch] Adding Staff role (role_id: 4) to user_roles...');
+          await db('user_roles').insert({
+            role_id: 4,
+            role_name: 'Staff',
+            role_description: 'Hostel staff with delegated module permissions'
+          });
+        }
+      } catch (e: any) {
+        console.warn('[schema-patch] user_roles patch notice:', e?.message);
+      }
+
+      // Ensure staff table has user_id, permissions, and can_login columns
+      try {
+        if (tableNamesLower.includes('staff')) {
+          const [staffCols] = await db.raw("SHOW COLUMNS FROM staff");
+          const sColNames = (staffCols as any[]).map(c => c.Field?.toLowerCase());
+
+          if (!sColNames.includes('user_id')) {
+            console.log('[schema-patch] Adding user_id to staff table...');
+            await db.raw("ALTER TABLE staff ADD COLUMN user_id INT NULL");
+          }
+          if (!sColNames.includes('permissions')) {
+            console.log('[schema-patch] Adding permissions to staff table...');
+            await db.raw("ALTER TABLE staff ADD COLUMN permissions TEXT NULL");
+          }
+          if (!sColNames.includes('can_login')) {
+            console.log('[schema-patch] Adding can_login to staff table...');
+            await db.raw("ALTER TABLE staff ADD COLUMN can_login TINYINT DEFAULT 0");
+          }
+        }
+      } catch (e: any) {
+        console.warn('[schema-patch] staff table patch notice:', e?.message);
       }
       // Ensure high-performance composite indexes on tables
       try {

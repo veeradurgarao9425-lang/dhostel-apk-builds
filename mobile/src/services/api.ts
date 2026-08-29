@@ -89,9 +89,13 @@ api.interceptors.response.use(
       console.error(`[API Error] ${error.config?.url} | Status: ${status || 'No Response'} | Message: ${error.message}`, error.response?.data || '');
     }
 
-    // 401 → clear session + redirect (deduplicated, ignore on login attempts)
+    // 401 → clear session + redirect (deduplicated, ignore on login attempts & background auxiliary checks)
     const isLoginEndpoint = error.config?.url?.includes('/auth/login') || error.config?.url?.includes('/developer/auth/login');
-    if (status === 401 && !isHandling401 && !isLoginEndpoint) {
+    const isAuxiliaryEndpoint = error.config?.url?.includes('/notifications/register-token') ||
+      error.config?.url?.includes('/notifications/deregister-token') ||
+      error.config?.url?.includes('/auth/tenant/me');
+
+    if (status === 401 && !isHandling401 && !isLoginEndpoint && !isAuxiliaryEndpoint) {
       isHandling401 = true;
       try {
         const isDevEndpoint = error.config?.url?.startsWith('/developer');

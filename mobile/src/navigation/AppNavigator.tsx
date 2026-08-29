@@ -108,6 +108,7 @@ import ReportsScreen from '../Pages/ReportsScreen';
 import ComingSoonScreen from '../Pages/ComingSoonScreen';
 import StaffScreen from '../Pages/StaffScreen';
 import AddStaffScreen from '../Pages/AddStaffScreen';
+import AddTeamMemberScreen from '../Pages/AddTeamMemberScreen';
 import StaffPaymentsScreen from '../Pages/StaffPaymentsScreen';
 import StaffDetailsScreen from '../Pages/StaffDetailsScreen';
 import GuestsScreen from '../Pages/GuestsScreen';
@@ -326,6 +327,11 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
                     <Stack.Screen
                         name="AddStaff"
                         component={AddStaffScreen}
+                        options={{ animation: 'slide_from_bottom' }}
+                    />
+                    <Stack.Screen
+                        name="AddTeamMember"
+                        component={AddTeamMemberScreen}
                         options={{ animation: 'slide_from_bottom' }}
                     />
                     <Stack.Screen name="StaffPayments" component={StaffPaymentsScreen} />

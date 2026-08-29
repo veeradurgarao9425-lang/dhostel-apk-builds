@@ -16,6 +16,7 @@ import {
   Animated,
   Switch,
   Pressable,
+  Modal,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
@@ -114,6 +115,7 @@ export default function PublicRegistrationScreen({ route, navigation }: any) {
   const [dob, setDob] = useState<Date | null>(null);
   const [isDobPickerVisible, setDobPickerVisible] = useState(false);
   const [phone, setPhone] = useState('');
+  const [selectedShare, setSelectedShare] = useState<any>(null);
 
   // Step 2: KYC & ID Proof
   const [selectedIdType, setSelectedIdType] = useState<number>(0);
@@ -121,6 +123,7 @@ export default function PublicRegistrationScreen({ route, navigation }: any) {
   const [idFrontUri, setIdFrontUri] = useState<string | null>(null);
   const [idBackUri, setIdBackUri] = useState<string | null>(null);
   const [showIdDropdown, setShowIdDropdown] = useState(false);
+  const [zoomImageUri, setZoomImageUri] = useState<string | null>(null);
 
   // Step 3: Address & Emergency Contacts
   const [guardianName, setGuardianName] = useState('');
@@ -149,6 +152,10 @@ export default function PublicRegistrationScreen({ route, navigation }: any) {
         const res = await api.get(`/public/hostel-info?${queryParam}`).catch(() => null);
         if (isMounted && res?.data?.success && res.data.data) {
           setHostelData(res.data.data);
+          const opts = res.data.data.sharing_options || [];
+          if (opts.length > 0) {
+            setSelectedShare(opts[0]);
+          }
         }
       } catch (err) {
         console.warn('Failed to load hostel info, using default:', err);
@@ -395,6 +402,11 @@ export default function PublicRegistrationScreen({ route, navigation }: any) {
       formData.append('permanent_address', perm.trim());
       formData.append('id_proof_type', String(selectedIdType));
       formData.append('id_proof_number', cleanId);
+      if (selectedShare) {
+        formData.append('monthly_rent', String(selectedShare.rent || 0));
+        formData.append('sharing_type', String(selectedShare.name || `${selectedShare.share} Sharing`));
+        formData.append('room_share', String(selectedShare.share));
+      }
 
       // Append Profile Photo
       if (profilePhoto) {
@@ -727,6 +739,63 @@ export default function PublicRegistrationScreen({ route, navigation }: any) {
                 onCancel={() => setDobPickerVisible(false)}
               />
 
+              {/* Room Sharing Option Selector */}
+              <View style={{ marginTop: 18, marginBottom: 10 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <Text style={styles.label}>Select Room Sharing *</Text>
+                  {selectedShare && (
+                    <View style={{ backgroundColor: '#EDE9FE', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10 }}>
+                      <Text style={{ fontSize: 12, fontWeight: '700', color: PRIMARY }}>
+                        ₹{Number(selectedShare.rent || 0).toLocaleString('en-IN')}/mo
+                      </Text>
+                    </View>
+                  )}
+                </View>
+
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 8 }}>
+                  {((hostelData?.sharing_options && hostelData.sharing_options.length > 0)
+                    ? hostelData.sharing_options
+                    : [
+                        { share: 2, name: '2 Sharing', rent: 8000 },
+                        { share: 3, name: '3 Sharing', rent: 6500 },
+                        { share: 4, name: '4 Sharing', rent: 5000 },
+                        { share: 6, name: '6 Sharing', rent: 4500 }
+                      ]
+                  ).map((opt: any, idx: number) => {
+                    const isSelected = (selectedShare?.share === opt.share) || (selectedShare?.name === opt.name);
+                    return (
+                      <TouchableOpacity
+                        key={idx}
+                        style={[
+                          styles.shareChipCard,
+                          isSelected && styles.shareChipCardActive,
+                        ]}
+                        onPress={() => setSelectedShare(opt)}
+                        activeOpacity={0.75}
+                      >
+                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                          <Users size={15} color={isSelected ? PRIMARY : '#64748B'} />
+                          {isSelected ? (
+                            <View style={{ width: 16, height: 16, borderRadius: 8, backgroundColor: PRIMARY, alignItems: 'center', justifyContent: 'center' }}>
+                              <Check size={10} color="#FFF" />
+                            </View>
+                          ) : (
+                            <View style={{ width: 16, height: 16, borderRadius: 8, borderWidth: 1, borderColor: '#CBD5E1' }} />
+                          )}
+                        </View>
+                        <Text style={[styles.shareChipTitle, isSelected && { color: PRIMARY, fontWeight: '700' }]}>
+                          {opt.name || `${opt.share} Sharing`}
+                        </Text>
+                        <Text style={[styles.shareChipPrice, isSelected && { color: PRIMARY_DARK, fontWeight: '800' }]}>
+                          ₹{Number(opt.rent || 0).toLocaleString('en-IN')}
+                          <Text style={{ fontSize: 10, fontWeight: '500', color: '#94A3B8' }}>/mo</Text>
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+
               {/* Continue Button */}
               <TouchableOpacity
                 style={styles.primaryActionBtn}
@@ -812,6 +881,7 @@ export default function PublicRegistrationScreen({ route, navigation }: any) {
                       style={styles.textInput}
                       placeholder={ID_PROOF_TYPES.find((t) => t.id === selectedIdType)?.placeholder || 'Enter ID number'}
                       placeholderTextColor={TEXT_HINT}
+                      keyboardType={selectedIdType === 1 ? 'numeric' : 'default'}
                       autoCapitalize="characters"
                       value={idProofNumber}
                       onChangeText={handleIdNumberChange}
@@ -823,63 +893,156 @@ export default function PublicRegistrationScreen({ route, navigation }: any) {
                   <Text style={[styles.label, { marginTop: 18 }]}>
                     Document Photos <Text style={{ color: TEXT_MUTED, fontWeight: '400' }}>(Optional)</Text>
                   </Text>
-                  <View style={styles.rowTwoCols}>
+                  <View style={{ flexDirection: 'column', gap: 12 }}>
                     {/* Front Document */}
-                    <View style={{ flex: 1 }}>
-                      <TouchableOpacity
-                        style={[styles.docUploadCard, idFrontUri && styles.docUploadCardDone]}
-                        activeOpacity={0.8}
-                        onPress={() => pickPhoto('front')}
-                      >
-                        {idFrontUri ? (
-                          <>
-                            <Image source={{ uri: idFrontUri }} style={styles.docImgPreview} />
+                    <View style={{ width: '100%' }}>
+                      {idFrontUri ? (
+                        <View style={{
+                          backgroundColor: '#F0FDF4',
+                          borderColor: '#10B981',
+                          borderWidth: 1.5,
+                          borderRadius: 14,
+                          padding: 12,
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                        }}>
+                          <TouchableOpacity
+                            onPress={() => setZoomImageUri(idFrontUri)}
+                            activeOpacity={0.8}
+                            style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}
+                          >
+                            <Image
+                              source={{ uri: idFrontUri }}
+                              style={{ width: 60, height: 60, borderRadius: 10, borderWidth: 1, borderColor: '#10B981' }}
+                              resizeMode="cover"
+                            />
+                            <View style={{ flex: 1 }}>
+                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                                <Check size={14} color="#10B981" strokeWidth={3} />
+                                <Text style={{ fontSize: 14, fontWeight: '700', color: TEXT_MAIN }}>Front Side</Text>
+                              </View>
+                              <Text style={{ fontSize: 12, color: '#15803D', fontWeight: '600', marginTop: 2 }}>Uploaded</Text>
+                              <Text style={{ fontSize: 11, color: TEXT_MUTED, marginTop: 2 }}>Tap thumbnail to zoom</Text>
+                            </View>
+                          </TouchableOpacity>
+
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                             <TouchableOpacity
-                              style={styles.docRemoveBtn}
-                              onPress={() => setIdFrontUri(null)}
+                              style={{ backgroundColor: '#E2E8F0', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, flexDirection: 'row', alignItems: 'center', gap: 4 }}
+                              onPress={() => pickPhoto('front')}
+                              activeOpacity={0.7}
                             >
-                              <X size={12} color="#FFFFFF" />
+                              <Camera size={12} color={TEXT_MAIN} />
+                              <Text style={{ fontSize: 11, color: TEXT_MAIN, fontWeight: '600' }}>Retake</Text>
                             </TouchableOpacity>
-                          </>
-                        ) : (
+                            <TouchableOpacity
+                              style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: '#FEE2E2', alignItems: 'center', justifyContent: 'center' }}
+                              onPress={() => setIdFrontUri(null)}
+                              activeOpacity={0.7}
+                            >
+                              <X size={14} color="#EF4444" />
+                            </TouchableOpacity>
+                          </View>
+                        </View>
+                      ) : (
+                        <TouchableOpacity
+                          style={styles.docUploadCard}
+                          activeOpacity={0.8}
+                          onPress={() => pickPhoto('front')}
+                        >
                           <View style={styles.docPlaceholder}>
                             <Upload size={22} color={PRIMARY} />
                             <Text style={styles.docPlaceholderTitle}>Front Side</Text>
                             <Text style={styles.docPlaceholderSub}>Tap to upload</Text>
                           </View>
-                        )}
-                      </TouchableOpacity>
+                        </TouchableOpacity>
+                      )}
                     </View>
 
                     {/* Back Document */}
-                    <View style={{ flex: 1 }}>
-                      <TouchableOpacity
-                        style={[styles.docUploadCard, idBackUri && styles.docUploadCardDone]}
-                        activeOpacity={0.8}
-                        onPress={() => pickPhoto('back')}
-                      >
-                        {idBackUri ? (
-                          <>
-                            <Image source={{ uri: idBackUri }} style={styles.docImgPreview} />
+                    <View style={{ width: '100%' }}>
+                      {idBackUri ? (
+                        <View style={{
+                          backgroundColor: '#F0FDF4',
+                          borderColor: '#10B981',
+                          borderWidth: 1.5,
+                          borderRadius: 14,
+                          padding: 12,
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                        }}>
+                          <TouchableOpacity
+                            onPress={() => setZoomImageUri(idBackUri)}
+                            activeOpacity={0.8}
+                            style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}
+                          >
+                            <Image
+                              source={{ uri: idBackUri }}
+                              style={{ width: 60, height: 60, borderRadius: 10, borderWidth: 1, borderColor: '#10B981' }}
+                              resizeMode="cover"
+                            />
+                            <View style={{ flex: 1 }}>
+                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                                <Check size={14} color="#10B981" strokeWidth={3} />
+                                <Text style={{ fontSize: 14, fontWeight: '700', color: TEXT_MAIN }}>Back Side</Text>
+                              </View>
+                              <Text style={{ fontSize: 12, color: '#15803D', fontWeight: '600', marginTop: 2 }}>Uploaded</Text>
+                              <Text style={{ fontSize: 11, color: TEXT_MUTED, marginTop: 2 }}>Tap thumbnail to zoom</Text>
+                            </View>
+                          </TouchableOpacity>
+
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                             <TouchableOpacity
-                              style={styles.docRemoveBtn}
-                              onPress={() => setIdBackUri(null)}
+                              style={{ backgroundColor: '#E2E8F0', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, flexDirection: 'row', alignItems: 'center', gap: 4 }}
+                              onPress={() => pickPhoto('back')}
+                              activeOpacity={0.7}
                             >
-                              <X size={12} color="#FFFFFF" />
+                              <Camera size={12} color={TEXT_MAIN} />
+                              <Text style={{ fontSize: 11, color: TEXT_MAIN, fontWeight: '600' }}>Retake</Text>
                             </TouchableOpacity>
-                          </>
-                        ) : (
+                            <TouchableOpacity
+                              style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: '#FEE2E2', alignItems: 'center', justifyContent: 'center' }}
+                              onPress={() => setIdBackUri(null)}
+                              activeOpacity={0.7}
+                            >
+                              <X size={14} color="#EF4444" />
+                            </TouchableOpacity>
+                          </View>
+                        </View>
+                      ) : (
+                        <TouchableOpacity
+                          style={styles.docUploadCard}
+                          activeOpacity={0.8}
+                          onPress={() => pickPhoto('back')}
+                        >
                           <View style={styles.docPlaceholder}>
                             <Upload size={22} color={PRIMARY} />
                             <Text style={styles.docPlaceholderTitle}>Back Side</Text>
                             <Text style={styles.docPlaceholderSub}>Tap to upload</Text>
                           </View>
-                        )}
-                      </TouchableOpacity>
+                        </TouchableOpacity>
+                      )}
                     </View>
                   </View>
                 </View>
               )}
+
+              {/* Fullscreen Image Zoom Modal */}
+              <Modal visible={!!zoomImageUri} transparent animationType="fade" onRequestClose={() => setZoomImageUri(null)}>
+                <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.92)', justifyContent: 'center', alignItems: 'center' }}>
+                  <TouchableOpacity
+                    style={{ position: 'absolute', top: 50, right: 20, zIndex: 10, backgroundColor: 'rgba(255,255,255,0.25)', padding: 10, borderRadius: 25 }}
+                    onPress={() => setZoomImageUri(null)}
+                  >
+                    <X size={22} color="#FFF" />
+                  </TouchableOpacity>
+                  {zoomImageUri && (
+                    <Image source={{ uri: zoomImageUri }} style={{ width: '92%', height: '80%' }} resizeMode="contain" />
+                  )}
+                </View>
+              </Modal>
 
               {/* Navigation Actions */}
               <View style={styles.btnRow}>
@@ -1815,5 +1978,29 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     color: '#FFFFFF',
+  },
+  shareChipCard: {
+    width: '48%',
+    padding: 12,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    backgroundColor: '#F8FAFC',
+    marginBottom: 6,
+  },
+  shareChipCardActive: {
+    borderColor: PRIMARY,
+    backgroundColor: '#F5F3FF',
+  },
+  shareChipTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: TEXT_MAIN,
+    marginBottom: 3,
+  },
+  shareChipPrice: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#0F172A',
   },
 });

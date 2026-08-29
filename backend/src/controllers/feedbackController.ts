@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import db from '../config/database.js';
 import { sendEmail } from '../utils/email.js';
+import fs from 'fs';
 
 let tableChecked = false;
 async function ensureFeedbackTable() {
@@ -88,6 +89,29 @@ export const submitFeedback = async (req: any, res: Response) => {
     // Send instant email notification to Super Admin / Support team (non-blocking)
     const superAdmin = process.env.SUPER_ADMIN_EMAIL || 'hostixhelp@gmail.com';
     const categoryBadge = category === 'Bug / Issue' ? '🐛 BUG REPORT' : (category === 'Feature Request' ? '💡 FEATURE REQUEST' : '💬 APP FEEDBACK');
+    const serverBaseUrl = (process.env.PUBLIC_API_URL || process.env.API_BASE_URL || process.env.BACKEND_URL || 'https://dark-dew-bf62.veeradurgarao840.workers.dev').replace(/\/api\/?$/, '');
+
+    const imageLinksHtml = imagePaths.map((p, idx) => {
+      const fullUrl = p.startsWith('http') ? p : `${serverBaseUrl}${p.startsWith('/') ? '' : '/'}${p}`;
+      return `
+        <div style="margin-top: 12px; padding: 14px; background-color: #F8FAFC; border-radius: 10px; border: 1px solid #E2E8F0;">
+          <div style="margin-bottom: 8px;">
+            <a href="${fullUrl}" target="_blank" style="display: inline-block; background-color: #7C3AED; color: #FFFFFF; text-decoration: none; padding: 8px 16px; border-radius: 6px; font-weight: 700; font-size: 13px;">
+              🔍 Open Screenshot #${idx + 1}
+            </a>
+            <span style="font-size: 12px; color: #64748B; margin-left: 8px;">(Click to view full image in browser)</span>
+          </div>
+          <div style="margin-bottom: 8px;">
+            <a href="${fullUrl}" target="_blank" style="color: #2563EB; font-size: 12px; word-break: break-all;">${fullUrl}</a>
+          </div>
+          <div>
+            <a href="${fullUrl}" target="_blank">
+              <img src="${fullUrl}" alt="Attachment ${idx + 1}" style="max-width: 100%; max-height: 320px; border-radius: 8px; border: 1px solid #CBD5E1; display: block;" />
+            </a>
+          </div>
+        </div>
+      `;
+    }).join('');
 
     const emailHtml = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #E2E8F0; border-radius: 16px; background-color: #FFFFFF;">
@@ -111,8 +135,8 @@ export const submitFeedback = async (req: any, res: Response) => {
 
         ${imagePaths.length > 0 ? `
           <div style="margin-bottom: 20px;">
-            <h4 style="margin: 0 0 8px 0; color: #1E293B; font-size: 14px;">Attached Screenshots (${imagePaths.length}):</h4>
-            <p style="margin: 0; font-size: 13px; color: #2563EB;">Attachments uploaded to server uploads directory.</p>
+            <h4 style="margin: 0 0 8px 0; color: #1E293B; font-size: 15px;">📷 Attached Screenshots (${imagePaths.length}):</h4>
+            ${imageLinksHtml}
           </div>
         ` : ''}
 
@@ -121,10 +145,23 @@ export const submitFeedback = async (req: any, res: Response) => {
       </div>
     `;
 
+    const emailAttachments = (files || []).map(f => {
+      try {
+        return {
+          filename: f.originalname || f.filename,
+          content: fs.readFileSync(f.path),
+          contentType: f.mimetype,
+        };
+      } catch {
+        return null;
+      }
+    }).filter(Boolean) as any[];
+
     sendEmail({
       to: superAdmin,
       subject: `[Hostix Feedback] ${categoryBadge}: From ${userName}`,
       html: emailHtml,
+      attachments: emailAttachments,
     }).catch((e: any) => console.warn('Feedback notification email notice:', e?.message || e));
 
     return res.status(201).json({

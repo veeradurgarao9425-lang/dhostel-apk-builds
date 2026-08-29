@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
     View, Text, StyleSheet, ScrollView, TouchableOpacity,
-    ActivityIndicator, Alert, RefreshControl, StatusBar, Platform, LayoutAnimation, UIManager
+    ActivityIndicator, Alert, RefreshControl, StatusBar, Platform, LayoutAnimation, UIManager, Modal, Image
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { List, AlertCircle, Clock, CheckCircle2 } from 'lucide-react-native';
+import { List, AlertCircle, Clock, CheckCircle2, X } from 'lucide-react-native';
 import { CustomDatePicker } from '../components/ui/pickers/CustomDatePicker';
 import { AppHeader } from '../components/AppHeader';
 import { EmptyState } from '../components/ui/EmptyState';
@@ -14,6 +14,7 @@ import { StatCard } from '../components/ui/StatCard';
 import api from '../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { showErrorToast, showSuccessToast } from '../hooks/Toastconfig';
+import { getResolvedImageUrl } from '../utils/imageHelper';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
     UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -32,6 +33,8 @@ export default function ComplaintsManagementScreen({ navigation }: any) {
     const [activeTab, setActiveTab] = useState('All');
     const [selectedDate, setSelectedDate] = useState<Date | null>(null);
     const [isDatePickerVisible, setDatePickerVisible] = useState(false);
+    const [selectedComplaint, setSelectedComplaint] = useState<any | null>(null);
+    const [zoomImage, setZoomImage] = useState<string | null>(null);
 
     const fetchComplaints = useCallback(async (isRefresh = false) => {
         if (!user?.hostel_id) return;
@@ -208,7 +211,12 @@ export default function ComplaintsManagementScreen({ navigation }: any) {
                             const statusBg = isResolved ? '#DCFCE7' : isProgress ? '#FEF3C7' : '#FEE2E2';
 
                             return (
-                                <View key={c.complaint_id} style={[s.card, isResolved && { opacity: 0.85, borderColor: '#DCFCE7' }]}>
+                                <TouchableOpacity 
+                                    key={c.complaint_id} 
+                                    style={[s.card, isResolved && { opacity: 0.85, borderColor: '#DCFCE7' }]}
+                                    onPress={() => setSelectedComplaint(c)}
+                                    activeOpacity={0.85}
+                                >
                                     <View style={s.cardTop}>
                                         <View style={{ flex: 1 }}>
                                             <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
@@ -233,8 +241,11 @@ export default function ComplaintsManagementScreen({ navigation }: any) {
                                     <View style={s.divider} />
                                     <View style={s.cardBottom}>
                                         <Text style={s.complaintTitle}>{c.title}</Text>
-                                        <Text style={s.description}>{c.description || 'No additional details provided.'}</Text>
-                                        <Text style={s.categoryTag}>{c.category}</Text>
+                                        <Text style={s.description} numberOfLines={3}>{c.description || 'No additional details provided.'}</Text>
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
+                                            <Text style={s.categoryTag}>{c.category || 'General'}</Text>
+                                            <Text style={{ fontSize: 11, fontWeight: '700', color: '#7C3AED' }}>Tap to view details & photos →</Text>
+                                        </View>
                                     </View>
                                     <View style={s.actionsRow}>
                                         {c.status !== 'In Progress' && c.status !== 'Resolved' && (
@@ -256,7 +267,7 @@ export default function ComplaintsManagementScreen({ navigation }: any) {
                                             </TouchableOpacity>
                                         )}
                                     </View>
-                                </View>
+                                </TouchableOpacity>
                             );
                         })
                     )}
@@ -274,6 +285,165 @@ export default function ComplaintsManagementScreen({ navigation }: any) {
                 initialDate={selectedDate || new Date()}
                 title="Select Date"
             />
+
+            {/* ── COMPLAINT DETAIL VIEW MODAL ── */}
+            <Modal
+                visible={!!selectedComplaint}
+                animationType="slide"
+                transparent={false}
+                onRequestClose={() => setSelectedComplaint(null)}
+            >
+                {selectedComplaint && (() => {
+                    const c = selectedComplaint;
+                    const isResolved = c.status === 'Resolved';
+                    const isProgress = c.status === 'In Progress';
+                    const statusColor = isResolved ? '#16A34A' : isProgress ? '#D97706' : '#DC2626';
+                    const statusBg = isResolved ? '#DCFCE7' : isProgress ? '#FEF3C7' : '#FEE2E2';
+
+                    let attachedList: string[] = [];
+                    if (c.image_urls) {
+                        try {
+                            if (Array.isArray(c.image_urls)) attachedList = c.image_urls;
+                            else if (typeof c.image_urls === 'string') {
+                                if (c.image_urls.startsWith('[')) attachedList = JSON.parse(c.image_urls);
+                                else attachedList = c.image_urls.split(',').map((u: string) => u.trim()).filter(Boolean);
+                            }
+                        } catch (e) {
+                            attachedList = [c.image_urls];
+                        }
+                    }
+
+                    return (
+                        <View style={{ flex: 1, backgroundColor: '#F8F7FF' }}>
+                            <StatusBar barStyle="light-content" backgroundColor="#7C3AED" />
+                            <AppHeader
+                                title="Complaint Details"
+                                subtitle={`ID #${c.complaint_id}`}
+                                alignLeft={true}
+                                onBack={() => setSelectedComplaint(null)}
+                            />
+
+                            <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
+                                {/* Top Resident Card */}
+                                <View style={[s.card, { marginBottom: 16 }]}>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                                            <View style={[s.avatarCircle, { width: 46, height: 46, borderRadius: 23 }]}>
+                                                <Text style={[s.avatarInitials, { fontSize: 16 }]}>
+                                                    {c.first_name?.[0] || '?'}{c.last_name?.[0] || ''}
+                                                </Text>
+                                            </View>
+                                            <View>
+                                                <Text style={{ fontSize: 16, fontWeight: '800', color: '#1E293B' }}>{c.first_name} {c.last_name}</Text>
+                                                <Text style={{ fontSize: 13, color: '#64748B', fontWeight: '600' }}>Room {c.room_number || 'N/A'}</Text>
+                                                {c.phone ? <Text style={{ fontSize: 12, color: '#7C3AED', marginTop: 2 }}>📞 {c.phone}</Text> : null}
+                                            </View>
+                                        </View>
+                                        <View style={[s.statusBadge, { backgroundColor: statusBg, paddingHorizontal: 12, paddingVertical: 6 }]}>
+                                            <Text style={[s.statusText, { color: statusColor, fontSize: 12 }]}>{c.status}</Text>
+                                        </View>
+                                    </View>
+                                </View>
+
+                                {/* Complaint Content */}
+                                <View style={[s.card, { marginBottom: 16, padding: 16 }]}>
+                                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                                        <Text style={{ fontSize: 17, fontWeight: '800', color: '#0F172A', flex: 1, marginRight: 8 }}>{c.title}</Text>
+                                        <Text style={{ fontSize: 12, color: '#94A3B8' }}>{new Date(c.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</Text>
+                                    </View>
+                                    <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
+                                        <Text style={s.categoryTag}>{c.category || 'General'}</Text>
+                                        {c.priority ? (
+                                            <View style={{ backgroundColor: c.priority === 'High' ? '#FEE2E2' : '#FEF3C7', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}>
+                                                <Text style={{ fontSize: 11, fontWeight: '700', color: c.priority === 'High' ? '#DC2626' : '#D97706' }}>{c.priority} Priority</Text>
+                                            </View>
+                                        ) : null}
+                                    </View>
+
+                                    <Text style={{ fontSize: 12, fontWeight: '700', color: '#64748B', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>Description</Text>
+                                    <View style={{ backgroundColor: '#F8FAFC', padding: 14, borderRadius: 12, borderWidth: 1, borderColor: '#E2E8F0' }}>
+                                        <Text style={{ fontSize: 14, color: '#334155', lineHeight: 22 }}>{c.description || 'No additional details provided by tenant.'}</Text>
+                                    </View>
+                                </View>
+
+                                {/* Attached Images */}
+                                {attachedList.length > 0 && (
+                                    <View style={[s.card, { marginBottom: 16, padding: 16 }]}>
+                                        <Text style={{ fontSize: 14, fontWeight: '800', color: '#0F172A', marginBottom: 12 }}>
+                                            Attached Photos ({attachedList.length})
+                                        </Text>
+                                        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
+                                            {attachedList.map((imgUri: string, idx: number) => {
+                                                const resolved = getResolvedImageUrl(imgUri);
+                                                return (
+                                                    <TouchableOpacity
+                                                        key={idx}
+                                                        onPress={() => setZoomImage(resolved)}
+                                                        activeOpacity={0.8}
+                                                        style={{ width: 100, height: 100, borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: '#E2E8F0', backgroundColor: '#F1F5F9' }}
+                                                    >
+                                                        {resolved ? (
+                                                            <Image source={{ uri: resolved }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                                                        ) : (
+                                                            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                                                                <Ionicons name="image-outline" size={28} color="#94A3B8" />
+                                                            </View>
+                                                        )}
+                                                    </TouchableOpacity>
+                                                );
+                                            })}
+                                        </View>
+                                        <Text style={{ fontSize: 11, color: '#64748B', marginTop: 8 }}>Tap any image to view full screen</Text>
+                                    </View>
+                                )}
+
+                                {/* Action Buttons */}
+                                <View style={{ gap: 10, marginTop: 8 }}>
+                                    {c.status !== 'In Progress' && c.status !== 'Resolved' && (
+                                        <TouchableOpacity
+                                            style={[s.btn, { backgroundColor: '#F59E0B', paddingVertical: 14, borderRadius: 12 }]}
+                                            onPress={async () => {
+                                                await updateStatus(c.complaint_id, 'In Progress');
+                                                setSelectedComplaint((prev: any) => prev ? { ...prev, status: 'In Progress' } : null);
+                                            }}
+                                            disabled={updatingId !== null}
+                                        >
+                                            {updatingId === c.complaint_id ? <ActivityIndicator color="#FFF" /> : <Text style={[s.btnText, { fontSize: 15, fontWeight: '700' }]}>Mark In Progress</Text>}
+                                        </TouchableOpacity>
+                                    )}
+                                    {c.status !== 'Resolved' && (
+                                        <TouchableOpacity
+                                            style={[s.btn, { backgroundColor: '#10B981', paddingVertical: 14, borderRadius: 12 }]}
+                                            onPress={async () => {
+                                                await updateStatus(c.complaint_id, 'Resolved');
+                                                setSelectedComplaint((prev: any) => prev ? { ...prev, status: 'Resolved' } : null);
+                                            }}
+                                            disabled={updatingId !== null}
+                                        >
+                                            {updatingId === c.complaint_id ? <ActivityIndicator color="#FFF" /> : <Text style={[s.btnText, { fontSize: 15, fontWeight: '700' }]}>Mark Resolved</Text>}
+                                        </TouchableOpacity>
+                                    )}
+                                </View>
+                            </ScrollView>
+                        </View>
+                    );
+                })()}
+            </Modal>
+
+            {/* ── FULLSCREEN IMAGE ZOOM MODAL ── */}
+            <Modal visible={!!zoomImage} transparent animationType="fade" onRequestClose={() => setZoomImage(null)}>
+                <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.95)', justifyContent: 'center', alignItems: 'center' }}>
+                    <TouchableOpacity
+                        style={{ position: 'absolute', top: 50, right: 20, zIndex: 10, backgroundColor: 'rgba(255,255,255,0.25)', padding: 10, borderRadius: 25 }}
+                        onPress={() => setZoomImage(null)}
+                    >
+                        <X size={24} color="#FFF" />
+                    </TouchableOpacity>
+                    {zoomImage && (
+                        <Image source={{ uri: zoomImage }} style={{ width: '92%', height: '80%' }} resizeMode="contain" />
+                    )}
+                </View>
+            </Modal>
         </View>
     );
 }

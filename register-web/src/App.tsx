@@ -75,6 +75,7 @@ export default function App() {
   const [phone, setPhone]             = useState('');
   const [email, setEmail]             = useState('');
   const [dob, setDob]                 = useState('');
+  const [selectedShare, setSelectedShare] = useState<any>(null);
 
   // Guest Specific State
   const [purpose, setPurpose]         = useState('Exam / Test');
@@ -105,7 +106,14 @@ export default function App() {
     if (!HOSTEL_ID) return;
     fetch(`${API_BASE}/public/hostel-info?hostelId=${encodeURIComponent(HOSTEL_ID)}`)
       .then(r => r.json())
-      .then(d => { if (d.success && d.data) setHostelInfo(d.data); })
+      .then(d => {
+        if (d.success && d.data) {
+          setHostelInfo(d.data);
+          if (d.data.sharing_options && d.data.sharing_options.length > 0) {
+            setSelectedShare(d.data.sharing_options[0]);
+          }
+        }
+      })
       .catch(() => {});
   }, []);
 
@@ -228,6 +236,11 @@ export default function App() {
     if (backFile)    fd.append('id_proof_back', backFile);
     if (ROOM_ID) fd.append('room_id', ROOM_ID);
     if (BED_ID)  fd.append('bed_id', BED_ID);
+    if (selectedShare) {
+      fd.append('monthly_rent', String(selectedShare.rent || 0));
+      fd.append('sharing_type', String(selectedShare.name || `${selectedShare.share} Sharing`));
+      fd.append('room_share', String(selectedShare.share));
+    }
 
     let url = `${API_BASE}/public/qr-signup?hostelId=${encodeURIComponent(HOSTEL_ID)}`;
     if (ROOM_ID) url += `&roomId=${encodeURIComponent(ROOM_ID)}`;
@@ -942,13 +955,63 @@ export default function App() {
 
             {/* Date of Birth (Full Width) */}
             <div className="form-group">
-              <label className="form-label">Date of Birth</label>
+              <label className="form-label">Date of Birth (Optional)</label>
               <input
                 type="date"
                 className="form-input"
                 value={dob}
                 onChange={e => setDob(e.target.value)}
               />
+            </div>
+
+            {/* Room Sharing Selection */}
+            <div className="form-group" style={{ marginTop: '16px', marginBottom: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                <label className="form-label" style={{ margin: 0, fontWeight: 700 }}>Select Room Sharing *</label>
+                {selectedShare && (
+                  <span style={{ fontSize: '12px', fontWeight: 700, color: '#7C3AED', background: '#EDE9FE', padding: '3px 8px', borderRadius: '12px' }}>
+                    ₹{Number(selectedShare.rent || 0).toLocaleString('en-IN')}/mo
+                  </span>
+                )}
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px' }}>
+                {(((hostelInfo as any)?.sharing_options && (hostelInfo as any).sharing_options.length > 0)
+                  ? (hostelInfo as any).sharing_options
+                  : [
+                      { share: 2, name: '2 Sharing', rent: 8000 },
+                      { share: 3, name: '3 Sharing', rent: 6500 },
+                      { share: 4, name: '4 Sharing', rent: 5000 },
+                      { share: 6, name: '6 Sharing', rent: 4500 }
+                    ]
+                ).map((opt: any, idx: number) => {
+                  const isSelected = (selectedShare?.share === opt.share) || (selectedShare?.name === opt.name);
+                  return (
+                    <div
+                      key={idx}
+                      onClick={() => setSelectedShare(opt)}
+                      style={{
+                        padding: '12px 10px',
+                        borderRadius: '12px',
+                        border: isSelected ? '2px solid #7C3AED' : '1px solid #E2E8F0',
+                        background: isSelected ? '#F5F3FF' : '#FFFFFF',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                        <span style={{ fontSize: '13px', fontWeight: isSelected ? 700 : 600, color: isSelected ? '#7C3AED' : '#1E293B' }}>
+                          {opt.name || `${opt.share} Sharing`}
+                        </span>
+                        {isSelected && <Check size={14} color="#7C3AED" />}
+                      </div>
+                      <div style={{ fontSize: '14px', fontWeight: 800, color: isSelected ? '#5B21B6' : '#334155' }}>
+                        ₹{Number(opt.rent || 0).toLocaleString('en-IN')} <span style={{ fontSize: '11px', fontWeight: 500, color: '#94A3B8' }}>/mo</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
 
             <div className="action-btn-row">

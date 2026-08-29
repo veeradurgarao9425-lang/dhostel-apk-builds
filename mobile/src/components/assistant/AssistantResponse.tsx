@@ -1126,7 +1126,11 @@ const FollowUpChipsBlock = ({ label, chips }: {
                 elevation: 1,
               }
             ]}
-            onPress={() => { Haptics.selectionAsync().catch(() => { }); chip.onPress(); }}
+            onPress={() => { 
+              Haptics.selectionAsync().catch(() => { }); 
+              DeviceEventEmitter.emit('ASSISTANT_CHIP_CLICKED', chip.label);
+              chip.onPress(); 
+            }}
             activeOpacity={0.75}
           >
             {chip.icon ? (
@@ -2029,6 +2033,7 @@ const VacantRoomsCardBlock = ({ title, rooms, onSelectRoom }: {
   const handlePressRoom = (r: any) => {
     Haptics.selectionAsync().catch(() => {});
     if (onSelectRoom) {
+      DeviceEventEmitter.emit('ASSISTANT_CHIP_CLICKED', `Room ${r.room_number}`);
       onSelectRoom(r.room_number);
     } else {
       RootNavigation.navigate('RoomDetails', { roomId: r.room_id || r.id, roomNumber: r.room_number });

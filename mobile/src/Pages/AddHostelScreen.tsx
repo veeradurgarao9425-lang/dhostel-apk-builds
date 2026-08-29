@@ -127,11 +127,6 @@ export const AddHostelScreen = ({ navigation, route }: any) => {
         if (pincode) {
             if (!/^\d{6}$/.test(pincode.trim())) {
                 errs.pincode = 'Pincode must be exactly 6 digits';
-            } else if (city) {
-                const prefixes = CITY_PINCODE_PREFIXES[city];
-                if (prefixes && !prefixes.some(prefix => pincode.trim().startsWith(prefix))) {
-                    errs.pincode = `Pincode does not match the selected city (${city})`;
-                }
             }
         }
 
@@ -332,9 +327,11 @@ export const AddHostelScreen = ({ navigation, route }: any) => {
 
                     <InputField
                         label="Address *"
-                        placeholder="Street address"
+                        placeholder="Street address, building name, landmark, area..."
                         value={formData.address}
                         error={fieldErrors.address}
+                        multiline={true}
+                        numberOfLines={3}
                         onChangeText={(text) => {
                             setFormData({ ...formData, address: text });
                             if (fieldErrors.address) setFieldErrors(prev => { const e = {...prev}; delete e.address; return e; });

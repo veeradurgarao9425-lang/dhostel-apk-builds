@@ -95,16 +95,29 @@ export const resolveOwnerHostelId = async (
     return { hostelId: primaryHostelId, error: null };
   }
 
+  // Staff (role 4): strictly locked to their single assigned hostel
+  if (user?.role_id === 4) {
+    const staffHostelId = user.hostel_id ? Number(user.hostel_id) : null;
+    if (!staffHostelId) {
+      return { hostelId: null, error: 'Staff account has no hostel assigned.' };
+    }
+    if (requestedId !== null && requestedId !== staffHostelId) {
+      return {
+        hostelId: null,
+        error: `Access denied: You are only authorized to access hostel ${staffHostelId}.`
+      };
+    }
+    return { hostelId: staffHostelId, error: null };
+  }
+
   // Other roles: fall back to their own hostel_id
   return { hostelId: user?.hostel_id ?? null, error: null };
 };
 
 /**
  * Ownership check for a single resource already loaded from the DB (a student,
- * a payment, ...). Owner (role 2) may only touch resources belonging to their
- * own hostel_id; Super Admin (role 1) is unrestricted. Everyone else is denied —
- * routes that need a different rule (e.g. tenants acting on their own record)
- * must check that separately before/instead of calling this.
+ * a payment, ...). Owner (role 2) and Staff (role 4) may only touch resources
+ * belonging to their own hostel_id; Super Admin (role 1) is unrestricted.
  */
 export const canAccessHostel = (
   user?: TokenPayload,

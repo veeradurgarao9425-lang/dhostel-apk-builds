@@ -38,9 +38,17 @@ export const getStaff = async (req: AuthRequest, res: Response) => {
 
     const staff = await query.orderBy('created_at', 'desc');
 
+    const formattedStaff = staff.map((s: any) => {
+      let perms = s.permissions;
+      if (typeof perms === 'string') {
+        try { perms = JSON.parse(perms); } catch (_) {}
+      }
+      return { ...s, permissions: perms };
+    });
+
     res.json({
       success: true,
-      data: staff
+      data: formattedStaff
     });
   } catch (error: any) {
     console.error('Get staff error:', error);
@@ -148,6 +156,56 @@ export const createStaff = async (req: AuthRequest, res: Response) => {
     const finalStatusStr = isInactive ? 'INACTIVE' : 'ACTIVE';
     const finalStatusId = isInactive ? 0 : 1;
 
+    // Handle App Login Credentials if requested
+    const canLogin = req.body.can_login === true || req.body.can_login === 'true' || req.body.can_login === 1 || !!req.body.password;
+    let linkedUserId: number | null = null;
+
+    if (canLogin && req.body.password) {
+      const { hashPassword } = await import('../utils/bcrypt.js');
+      const hashedPassword = await hashPassword(String(req.body.password).trim());
+      const cleanPhone = phone ? String(phone).replace(/\D/g, '') : null;
+      const cleanEmail = email ? String(email).trim().toLowerCase() : null;
+
+      let existingUserQuery = db('users');
+      if (cleanEmail && cleanPhone) {
+        existingUserQuery = existingUserQuery.where('email', cleanEmail).orWhere('phone', cleanPhone);
+      } else if (cleanEmail) {
+        existingUserQuery = existingUserQuery.where('email', cleanEmail);
+      } else if (cleanPhone) {
+        existingUserQuery = existingUserQuery.where('phone', cleanPhone);
+      }
+
+      const existingUser = (cleanEmail || cleanPhone) ? await existingUserQuery.first() : null;
+
+      if (existingUser) {
+        linkedUserId = existingUser.user_id;
+        await db('users').where({ user_id: linkedUserId }).update({
+          password: hashedPassword,
+          password_hash: hashedPassword,
+          role_id: 4,
+          role: 'STAFF',
+          hostel_id: hostelId, // Locked strictly to this hostel!
+          full_name: full_name || existingUser.full_name,
+          is_active: 1,
+        });
+      } else {
+        const username = cleanEmail || cleanPhone || `staff_${Date.now()}`;
+        const [newUserId] = await db('users').insert({
+          username,
+          email: cleanEmail,
+          phone: cleanPhone,
+          full_name,
+          password: hashedPassword,
+          password_hash: hashedPassword,
+          role_id: 4,
+          role: 'STAFF',
+          hostel_id: hostelId, // Locked strictly to this hostel!
+          is_active: 1,
+        });
+        linkedUserId = newUserId;
+      }
+    }
+
     const staffInsertData: any = {
       hostel_id: hostelId,
       full_name,
@@ -163,6 +221,9 @@ export const createStaff = async (req: AuthRequest, res: Response) => {
       aadhaar_front: finalFront,
       aadhaar_back: finalBack,
       notes: notes || null,
+      user_id: linkedUserId,
+      can_login: canLogin ? 1 : 0,
+      permissions: typeof req.body.permissions === 'string' ? req.body.permissions : JSON.stringify(req.body.permissions || {}),
       created_at: new Date(),
       updated_at: new Date()
     };
@@ -261,6 +322,66 @@ export const updateStaff = async (req: AuthRequest, res: Response) => {
     if (finalFront !== undefined) updateData.aadhaar_front = finalFront;
     if (finalBack !== undefined) updateData.aadhaar_back = finalBack;
     if (notes !== undefined) updateData.notes = notes;
+    if (req.body.permissions !== undefined) {
+      updateData.permissions = typeof req.body.permissions === 'string' ? req.body.permissions : JSON.stringify(req.body.permissions);
+    }
+    if (req.body.can_login !== undefined) {
+      updateData.can_login = (req.body.can_login === true || req.body.can_login === 'true' || req.body.can_login === 1) ? 1 : 0;
+    }
+
+    // Sync password if provided
+    if (req.body.password && String(req.body.password).trim().length >= 6) {
+      const { hashPassword } = await import('../utils/bcrypt.js');
+      const hashedPassword = await hashPassword(String(req.body.password).trim());
+      if (staff.user_id) {
+        await db('users').where({ user_id: staff.user_id }).update({
+          password: hashedPassword,
+          password_hash: hashedPassword
+        });
+      } else {
+        const cleanPhone = (phone || staff.phone) ? String(phone || staff.phone).replace(/\D/g, '') : null;
+        const cleanEmail = (email || staff.email) ? String(email || staff.email).trim().toLowerCase() : null;
+        const effectiveEmail = cleanEmail || (cleanPhone ? `${cleanPhone}@hostix.com` : `staff_${staff.staff_id}@hostix.com`);
+        const username = cleanPhone || cleanEmail || `staff_${staff.staff_id}_${Date.now()}`;
+        
+        let existingUserQuery = db('users');
+        if (cleanPhone) {
+          existingUserQuery = existingUserQuery.where('phone', cleanPhone).orWhere('email', effectiveEmail);
+        } else {
+          existingUserQuery = existingUserQuery.where('email', effectiveEmail);
+        }
+        const existingUser = await existingUserQuery.first();
+
+        if (existingUser) {
+          await db('users').where({ user_id: existingUser.user_id }).update({
+            password: hashedPassword,
+            password_hash: hashedPassword,
+            role_id: 4,
+            role: 'STAFF',
+            hostel_id: staff.hostel_id,
+            full_name: full_name || staff.full_name || existingUser.full_name,
+            is_active: 1,
+          });
+          updateData.user_id = existingUser.user_id;
+          updateData.can_login = 1;
+        } else {
+          const [newUserId] = await db('users').insert({
+            username,
+            email: effectiveEmail,
+            phone: cleanPhone,
+            full_name: full_name || staff.full_name,
+            password: hashedPassword,
+            password_hash: hashedPassword,
+            role_id: 4,
+            role: 'STAFF',
+            hostel_id: staff.hostel_id,
+            is_active: 1,
+          });
+          updateData.user_id = newUserId;
+          updateData.can_login = 1;
+        }
+      }
+    }
 
     // Validate uniqueness if phone/email/aadhaar changed
     const checkingPhone = phone !== undefined ? phone : staff.phone;

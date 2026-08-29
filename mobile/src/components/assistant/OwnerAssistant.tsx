@@ -220,7 +220,7 @@ const TOP_SCROLL_PILLS = [
   { label: '💰 Check Dues', icon: 'alert-circle', q: "Who hasn't paid this month?", bg: '#FEF2F2', border: '#FECACA', text: '#B91C1C', iconColor: '#EF4444' },
   { label: '🚪 Check Vacate', icon: 'exit', q: "Who is ready to vacate?", bg: '#FFF7ED', border: '#FED7AA', text: '#C2410C', iconColor: '#F97316' },
   { label: '⚠️ Check Overdue', icon: 'time', q: "Overdue dues", bg: '#FEF2F2', border: '#FCA5A5', text: '#991B1B', iconColor: '#DC2626' },
-  { label: '📅 Today Joiners', icon: 'calendar', q: "Joined this month", bg: '#ECFDF5', border: '#A7F3D0', text: '#047857', iconColor: '#10B981' },
+  { label: '📅 Joined This Month', icon: 'calendar', q: "Joined this month", bg: '#ECFDF5', border: '#A7F3D0', text: '#047857', iconColor: '#10B981' },
   { label: '⏳ Pending Dues', icon: 'wallet', q: "Pending dues", bg: '#FEF3C7', border: '#FDE68A', text: '#92400E', iconColor: '#F59E0B' },
   { label: '👥 All Students', icon: 'people', q: "Total students count", bg: '#EEF2FF', border: '#C7D2FE', text: '#4338CA', iconColor: '#6366F1' },
   { label: '🛏️ Vacant Rooms', icon: 'bed', q: "Vacant rooms list", bg: '#E0F2FE', border: '#BAE6FD', text: '#0369A1', iconColor: '#0EA5E9' },
@@ -256,7 +256,7 @@ const WELCOME_CHIPS: Array<{ icon: string; label: string; q: string; color?: str
   { icon: 'exit-outline', label: 'Ready to Vacate', q: 'Who is ready to vacate?', color: '#EA580C', bg: '#FFEDD5' },
   { icon: 'bed-outline', label: 'Available Beds', q: 'How many beds available?', color: '#0284C7', bg: '#E0F2FE' },
   { icon: 'people-outline', label: 'Active Students', q: 'Total students count', color: '#6366F1', bg: '#EEF2FF' },
-  { icon: 'calendar-outline', label: 'Today Joiners', q: 'Joined this month', color: '#059669', bg: '#ECFDF5' },
+  { icon: 'calendar-outline', label: 'Joined This Month', q: 'Joined this month', color: '#059669', bg: '#ECFDF5' },
   { icon: 'cash-outline', label: 'Month Profit', q: 'Profit this month', color: '#10B981', bg: '#ECFDF5' },
   { icon: 'card-outline', label: 'Expenses', q: 'Expenses this month', color: '#DB2777', bg: '#FDF2F8' },
   { icon: 'person-add-outline', label: 'Add Student', q: 'How to add student', color: '#6366F1', bg: '#EEF2FF' },
@@ -341,6 +341,7 @@ export const OwnerAssistant: React.FC<{ currentRoute?: string | null }> = ({ cur
   const scrollRef = useRef<ScrollView>(null);
   const inputRef = useRef<TextInput>(null);
   const handleQueryRef = useRef<(text: string) => void>(() => {});
+  const lastChipClickedRef = useRef<string | null>(null);
   const msgId = useRef(0);
 
   const menuItems = useMemo(() => {
@@ -466,12 +467,20 @@ export const OwnerAssistant: React.FC<{ currentRoute?: string | null }> = ({ cur
     const routeSub = DeviceEventEmitter.addListener('ROUTE_CHANGED', (routeName: string) => {
       setCurrentRoute(routeName);
     });
+    const chipSub = DeviceEventEmitter.addListener('ASSISTANT_CHIP_CLICKED', (label: string) => {
+      if (label) {
+        lastChipClickedRef.current = label;
+        addUser(label);
+        setIsTyping(true);
+      }
+    });
     return () => {
       sub.remove();
       hideSub.remove();
       closeSub.remove();
       openSub.remove();
       routeSub.remove();
+      chipSub.remove();
     };
   }, []);
 
@@ -1736,7 +1745,10 @@ export const OwnerAssistant: React.FC<{ currentRoute?: string | null }> = ({ cur
   const handleQuery = useCallback((text: string) => {
     if (!text.trim()) return;
     inputRef.current?.blur();
-    addUser(text);
+    if (lastChipClickedRef.current !== text) {
+      addUser(text);
+    }
+    lastChipClickedRef.current = null;
     setIsTyping(true);
     setInputText('');
     handleIntent(resolveIntent(text));
@@ -1747,6 +1759,7 @@ export const OwnerAssistant: React.FC<{ currentRoute?: string | null }> = ({ cur
   }, [handleQuery]);
 
   const triggerMenuAction = useCallback((label: string, intent: AssistantIntent) => {
+    lastChipClickedRef.current = label;
     addUser(label);
     setIsTyping(true);
     setInputText('');

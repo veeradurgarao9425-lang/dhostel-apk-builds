@@ -53,14 +53,13 @@ export const createHostel = async (req: AuthRequest, res: Response) => {
 
     // Verify owner exists
     const owner = await db('users')
-      .where({ user_id: finalOwnerId, is_active: 1 })
-      .whereIn('role_id', [1, 2])
+      .where({ user_id: finalOwnerId })
       .first();
 
     if (!owner) {
       return res.status(404).json({
         success: false,
-        error: 'Owner not found or inactive'
+        error: 'Owner account not found'
       });
     }
 
@@ -449,8 +448,8 @@ export const updateHostel = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    // Verify permissions: Admin can edit any, Owner can edit only their own
-    if (req.user?.role_id === 2 && existingHostel.owner_id !== req.user.user_id) {
+    // Verify permissions: Admin can edit any, Owner can edit their own or active hostel
+    if (req.user?.role_id === 2 && existingHostel.owner_id !== req.user.user_id && req.user.hostel_id !== existingHostel.hostel_id) {
       return res.status(403).json({
         success: false,
         error: 'Access denied. You can only edit your own hostel.'

@@ -11,6 +11,10 @@ import {
     TextInput,
     Alert,
     Linking,
+    KeyboardAvoidingView,
+    Platform,
+    Keyboard,
+    TouchableWithoutFeedback,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -207,6 +211,10 @@ const ProfileScreen = ({ navigation }: any) => {
     const occupancyRate = stats?.occupancyRate ?? (totalBeds > 0 ? Math.round((occupiedBeds / totalBeds) * 100) : 0);
     const thisMonthRevenue = stats?.feeCollection ?? stats?.monthlyRentCollected ?? 0;
 
+    // Bulletproof active hostel name fallback: check user, contextHostels list, and stats
+    const matchedHostel = contextHostels?.find((h: any) => Number(h.hostel_id) === Number(user?.hostel_id)) || contextHostels?.[0];
+    const activeHostelName = user?.hostel_name || matchedHostel?.hostel_name || stats?.hostel_name || stats?.hostel?.hostel_name || (totalHostels > 0 ? (contextHostels?.[0]?.hostel_name || 'My Hostel') : null);
+
     return (
         <View style={[styles.root, { backgroundColor: isDark ? '#0F172A' : '#F8FAFC' }]}>
             <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
@@ -259,9 +267,9 @@ const ProfileScreen = ({ navigation }: any) => {
                             <Text style={styles.roleBadgeText}>{roleLabel}</Text>
                         </View>
                         <View style={styles.activeHostelSubRow}>
-                            <Ionicons name="business" size={13} color="rgba(255,255,255,0.8)" />
+                            <Ionicons name="business" size={14} color="rgba(255, 255, 255, 0.85)" />
                             <Text style={styles.activeHostelSubText} numberOfLines={1}>
-                                {user?.hostel_name || t('profile.noActiveHostel', 'No Active Hostel')}
+                                {activeHostelName || t('profile.noActiveHostel', 'No Active Hostel')}
                             </Text>
                         </View>
                     </View>
@@ -350,7 +358,7 @@ const ProfileScreen = ({ navigation }: any) => {
                         {/* Details */}
                         <View style={{ flex: 1, marginLeft: 14 }}>
                             <Text style={[styles.activeHostelName, { color: isDark ? '#F8FAFC' : '#1E1B4B' }]} numberOfLines={1}>
-                                {user?.hostel_name || t('profile.noActiveHostel', 'No Active Hostel')}
+                                {activeHostelName || t('profile.noActiveHostel', 'No Active Hostel')}
                             </Text>
                             
                             {/* Currently Active Status Pill */}
@@ -410,7 +418,7 @@ const ProfileScreen = ({ navigation }: any) => {
                         { icon: 'person-outline', label: t('profile.fullName', 'Full Name'), value: user?.full_name || t('profile.notSet', 'Not Set'), color: '#7C3AED', bg: '#EDE9FE' },
                         { icon: 'mail-outline', label: t('profile.email', 'Email Address'), value: user?.email || t('profile.notSet', 'Not Set'), color: '#0284C7', bg: '#E0F2FE' },
                         { icon: 'call-outline', label: t('profile.phone', 'Phone Number'), value: user?.phone || t('profile.notProvided', 'Not Provided'), color: '#059669', bg: '#DCFCE7' },
-                        { icon: 'home-outline', label: t('profile.registeredHostel', 'Registered Hostel'), value: user?.hostel_name || t('profile.none', 'None'), color: '#D97706', bg: '#FEF3C7' },
+                        { icon: 'home-outline', label: t('profile.registeredHostel', 'Registered Hostel'), value: activeHostelName || t('profile.none', 'None'), color: '#D97706', bg: '#FEF3C7' },
                     ].map((item, i, arr) => (
                         <View key={i}>
                             <View style={styles.infoRow}>
@@ -622,20 +630,26 @@ const ProfileScreen = ({ navigation }: any) => {
                 </View>
             </Modal>
 
-            {/* ─── EDIT PROFILE MODAL ─── */}
+            {/* ─── EDIT PROFILE MODAL (FIXED KEYBOARD AVOIDING & SCROLL) ─── */}
             <Modal
-                animationType="fade"
+                animationType="slide"
                 transparent={true}
                 visible={editModalVisible}
                 onRequestClose={() => setEditModalVisible(false)}
             >
-                <View style={styles.modalOverlay}>
+                <KeyboardAvoidingView
+                    behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                    style={styles.modalOverlay}
+                >
                     <TouchableOpacity
                         style={StyleSheet.absoluteFillObject}
                         activeOpacity={1}
-                        onPress={() => setEditModalVisible(false)}
+                        onPress={() => {
+                            Keyboard.dismiss();
+                            setEditModalVisible(false);
+                        }}
                     />
-                    <View style={[styles.modalSheet, { backgroundColor: theme.cardBg, paddingBottom: 30 }]}>
+                    <View style={[styles.modalSheet, { backgroundColor: theme.cardBg, maxHeight: '90%', paddingBottom: Math.max(insets.bottom + 16, 24) }]}>
                         <View style={styles.modalHeader}>
                             <Text style={[styles.modalTitle, { color: theme.textPrimary }]}>{t('profile.editProfile', 'Edit Profile')}</Text>
                             <TouchableOpacity
@@ -646,7 +660,11 @@ const ProfileScreen = ({ navigation }: any) => {
                             </TouchableOpacity>
                         </View>
 
-                        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 4 }}>
+                        <ScrollView
+                            showsVerticalScrollIndicator={false}
+                            keyboardShouldPersistTaps="handled"
+                            contentContainerStyle={{ paddingHorizontal: 4, paddingBottom: 24 }}
+                        >
                             <View style={styles.inputGroup}>
                                 <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>{t('profile.fullName', 'Full Name')}</Text>
                                 <TextInput
@@ -686,7 +704,7 @@ const ProfileScreen = ({ navigation }: any) => {
                                 <ActivityIndicator size="large" color={theme.primary} style={{ marginTop: 20 }} />
                             ) : (
                                 <TouchableOpacity
-                                    style={[styles.saveBtn, { backgroundColor: theme.primary }]}
+                                    style={[styles.saveBtn, { backgroundColor: theme.primary, marginBottom: 12 }]}
                                     onPress={handleSaveProfile}
                                     activeOpacity={0.8}
                                 >
@@ -695,7 +713,7 @@ const ProfileScreen = ({ navigation }: any) => {
                             )}
                         </ScrollView>
                     </View>
-                </View>
+                </KeyboardAvoidingView>
             </Modal>
             {/* ── SUPPORT MODAL ── */}
             <Modal visible={supportModalVisible} transparent animationType="fade" onRequestClose={() => setSupportModalVisible(false)}>

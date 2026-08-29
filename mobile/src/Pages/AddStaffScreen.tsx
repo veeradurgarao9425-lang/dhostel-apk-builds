@@ -13,6 +13,8 @@ import {
     Keyboard,
     Alert,
     Image,
+    Modal,
+    Switch,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -27,8 +29,125 @@ import { AppHeader } from '../components/AppHeader';
 import { FullScreenLoader } from '../components/FullScreenLoader';
 import { SPACING } from '../theme/index';
 import { OptionsDrawer, ModalSheet } from '../components/FormComponents';
-import { ChevronDown, Camera, Upload, X, Check, User } from 'lucide-react-native';
+import {
+    ChevronDown,
+    Camera,
+    Upload,
+    X,
+    Check,
+    User,
+    Shield,
+    Lock,
+    Eye,
+    EyeOff,
+    Building,
+    Sparkles,
+    CheckCircle2,
+    Sliders,
+    KeyRound,
+    AlertCircle,
+    RefreshCw
+} from 'lucide-react-native';
 import { getResolvedImageUrl, isLocalDeviceUri, appendImageFileToFormData } from '../utils/imageHelper';
+
+export interface ModulePermissions {
+    dashboard: 'manage' | 'view' | 'none';
+    rooms: 'manage' | 'view' | 'none';
+    tenants: 'manage' | 'view' | 'none';
+    finance: 'manage' | 'view' | 'none';
+    mess: 'manage' | 'view' | 'none';
+    complaints: 'manage' | 'view' | 'none';
+    reports: 'view' | 'none';
+}
+
+const DEFAULT_PERMISSIONS: ModulePermissions = {
+    dashboard: 'view',
+    rooms: 'manage',
+    tenants: 'manage',
+    finance: 'none',
+    mess: 'manage',
+    complaints: 'manage',
+    reports: 'none',
+};
+
+const MODULE_CONFIG = [
+    {
+        key: 'dashboard' as const,
+        label: 'Dashboard & Metrics',
+        desc: 'Key property statistics, alerts, and vacancy indicators',
+        icon: '📊',
+        options: [
+            { id: 'manage', label: 'Full Access' },
+            { id: 'view', label: 'View Only' },
+            { id: 'none', label: 'Hidden' },
+        ],
+    },
+    {
+        key: 'rooms' as const,
+        label: 'Rooms & Beds',
+        desc: 'Room allocation, floor management, and bed vacancy',
+        icon: '🛏️',
+        options: [
+            { id: 'manage', label: 'Allocate' },
+            { id: 'view', label: 'View Only' },
+            { id: 'none', label: 'Hidden' },
+        ],
+    },
+    {
+        key: 'tenants' as const,
+        label: 'Tenants & Admissions',
+        desc: 'Tenant profiles, approvals, vacate notices, and KYC records',
+        icon: '👥',
+        options: [
+            { id: 'manage', label: 'Add & Edit' },
+            { id: 'view', label: 'View Only' },
+            { id: 'none', label: 'Hidden' },
+        ],
+    },
+    {
+        key: 'finance' as const,
+        label: 'Finance & Payments',
+        desc: 'Rent collection, dues tracking, income, and payment records',
+        icon: '💳',
+        options: [
+            { id: 'manage', label: 'Collect' },
+            { id: 'view', label: 'View Dues' },
+            { id: 'none', label: 'No Access' },
+        ],
+    },
+    {
+        key: 'mess' as const,
+        label: 'Mess & Food Menu',
+        desc: 'Daily meal schedule, mess skip requests, and kitchen log',
+        icon: '🍽️',
+        options: [
+            { id: 'manage', label: 'Manage' },
+            { id: 'view', label: 'View Only' },
+            { id: 'none', label: 'Hidden' },
+        ],
+    },
+    {
+        key: 'complaints' as const,
+        label: 'Complaints & Notices',
+        desc: 'Resolve student issues, maintenance tickets, and notices',
+        icon: '📑',
+        options: [
+            { id: 'manage', label: 'Resolve' },
+            { id: 'view', label: 'View Only' },
+            { id: 'none', label: 'Hidden' },
+        ],
+    },
+    {
+        key: 'reports' as const,
+        label: 'Reports & Export',
+        desc: 'Generate Excel summaries and financial audits',
+        icon: '📈',
+        options: [
+            { id: 'view', label: 'Export' },
+            { id: 'none', label: 'Disabled' },
+        ],
+    },
+];
 
 const ROLES = ['Cook', 'Housekeeping', 'Security', 'Warden', 'Cleaner', 'Others'];
 
@@ -107,19 +226,64 @@ const DocumentUploadBox = ({ label, uri, onCapture, onRemove, isFront, error }: 
         }
     };
 
+    const [zoomVisible, setZoomVisible] = useState(false);
+
     return (
         <>
-            <View style={[styles.docUploadBox, { backgroundColor: isDark ? '#1E293B' : '#F9FAFB', borderColor: error ? '#EF4444' : (isDark ? '#334155' : '#E2E8F0'), borderStyle: 'dashed' }]}>
+            <View style={[
+                styles.docUploadBox, 
+                { 
+                    backgroundColor: uri 
+                        ? (isDark ? '#052E16' : '#F0FDF4') 
+                        : (isDark ? '#1E293B' : '#F9FAFB'), 
+                    borderColor: error 
+                        ? '#EF4444' 
+                        : uri 
+                            ? '#10B981' 
+                            : (isDark ? '#334155' : '#E2E8F0'), 
+                    borderStyle: uri ? 'solid' : 'dashed',
+                    height: uri ? 90 : 155,
+                }
+            ]}>
                 {uri ? (
-                    <View style={styles.docPreviewContainer}>
-                        <Image source={{ uri }} style={styles.docPreviewImage} />
-                        <TouchableOpacity style={styles.docRemoveBtn} onPress={onRemove}>
-                            <X size={14} color="#FFF" />
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', height: '100%', paddingHorizontal: 4 }}>
+                        <TouchableOpacity 
+                            onPress={() => setZoomVisible(true)}
+                            activeOpacity={0.8}
+                            style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}
+                        >
+                            <Image 
+                                source={{ uri }} 
+                                style={{ width: 68, height: 68, borderRadius: 10, borderWidth: 1, borderColor: '#10B981' }} 
+                                resizeMode="cover" 
+                            />
+                            <View style={{ flex: 1 }}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                                    <Ionicons name="checkmark-circle" size={16} color="#10B981" />
+                                    <Text style={{ fontSize: 13, fontWeight: '700', color: isDark ? '#FFF' : '#0F172A' }}>{label}</Text>
+                                </View>
+                                <Text style={{ fontSize: 11, color: isDark ? '#A7F3D0' : '#15803D', fontWeight: '600', marginTop: 2 }}>Uploaded</Text>
+                                <Text style={{ fontSize: 10, color: theme.textSecondary, marginTop: 2 }}>Tap thumbnail to zoom</Text>
+                            </View>
                         </TouchableOpacity>
-                        <TouchableOpacity style={[styles.docRetakeRow, { backgroundColor: 'rgba(0,0,0,0.6)' }]} onPress={() => setPickerVisible(true)}>
-                            <Camera size={12} color="#FFF" />
-                            <Text style={{ fontSize: 10, color: '#FFF', fontWeight: '700', marginLeft: 4 }}>Retake</Text>
-                        </TouchableOpacity>
+                        
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                            <TouchableOpacity 
+                                style={{ backgroundColor: isDark ? '#334155' : '#E2E8F0', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, flexDirection: 'row', alignItems: 'center', gap: 4 }} 
+                                onPress={() => setPickerVisible(true)}
+                                activeOpacity={0.7}
+                            >
+                                <Camera size={12} color={theme.textPrimary} />
+                                <Text style={{ fontSize: 11, color: theme.textPrimary, fontWeight: '600' }}>Retake</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity 
+                                style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: '#FEE2E2', alignItems: 'center', justifyContent: 'center' }} 
+                                onPress={onRemove}
+                                activeOpacity={0.7}
+                            >
+                                <X size={14} color="#EF4444" />
+                            </TouchableOpacity>
+                        </View>
                     </View>
                 ) : (
                     <View style={{ flex: 1, justifyContent: 'space-between' }}>
@@ -147,23 +311,38 @@ const DocumentUploadBox = ({ label, uri, onCapture, onRemove, isFront, error }: 
                             </View>
                         </View>
 
-                        <View style={{ marginTop: 8 }}>
+                        <View style={{ marginTop: 6 }}>
                             <Text style={[styles.docBoxTitle, { color: error ? '#EF4444' : (isDark ? '#F1F5F9' : '#1E293B') }]}>{label}</Text>
-                            <Text style={styles.docBoxSubtitle}>JPG, PNG or PDF{"\n"}Max. 5MB</Text>
+                            <Text style={styles.docBoxSubtitle}>JPG, PNG or PDF · Max 5MB</Text>
                         </View>
 
                         <TouchableOpacity
-                            style={[styles.docUploadBtn, { borderColor: error ? '#EF4444' : theme.primary }]}
+                            style={[styles.docUploadBtn, { borderColor: error ? '#EF4444' : theme.primary, marginTop: 6 }]}
                             onPress={() => setPickerVisible(true)}
                             activeOpacity={0.7}
                         >
                             <Upload size={12} color={error ? '#EF4444' : theme.primary} />
-                            <Text style={[styles.docUploadBtnText, { color: error ? '#EF4444' : theme.primary }]}>Upload</Text>
+                            <Text style={[styles.docUploadBtnText, { color: error ? '#EF4444' : theme.primary }]}>Upload {label}</Text>
                         </TouchableOpacity>
                     </View>
                 )}
-                {error && <Text style={{ color: '#EF4444', fontSize: 9, marginTop: 4, fontWeight: '600', textAlign: 'center' }}>{error}</Text>}
+                {error && <Text style={{ color: '#EF4444', fontSize: 10, marginTop: 4, fontWeight: '600', textAlign: 'center' }}>{error}</Text>}
             </View>
+
+            {/* Zoom Modal */}
+            <Modal visible={zoomVisible} transparent animationType="fade" onRequestClose={() => setZoomVisible(false)}>
+                <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.92)', justifyContent: 'center', alignItems: 'center' }}>
+                    <TouchableOpacity
+                        style={{ position: 'absolute', top: 50, right: 20, zIndex: 10, backgroundColor: 'rgba(255,255,255,0.25)', padding: 10, borderRadius: 25 }}
+                        onPress={() => setZoomVisible(false)}
+                    >
+                        <X size={22} color="#FFF" />
+                    </TouchableOpacity>
+                    {uri && (
+                        <Image source={{ uri }} style={{ width: '92%', height: '80%' }} resizeMode="contain" />
+                    )}
+                </View>
+            </Modal>
 
             <ImageSourceDrawer
                 visible={pickerVisible}
@@ -308,6 +487,17 @@ export default function AddStaffScreen() {
     const [idProofTypeId, setIdProofTypeId] = useState('');
     const [idProofNumber, setIdProofNumber] = useState('');
 
+    // Multi-Hostel assignment
+    const [availableHostels, setAvailableHostels] = useState<any[]>([]);
+    const [selectedHostelId, setSelectedHostelId] = useState<number | null>(user?.hostel_id || null);
+    const [hostelModalVisible, setHostelModalVisible] = useState(false);
+
+    // App Login Credentials & Permissions
+    const [canLogin, setCanLogin] = useState(false);
+    const [loginPassword, setLoginPassword] = useState('');
+    const [passwordVisible, setPasswordVisible] = useState(false);
+    const [permissions, setPermissions] = useState<ModulePermissions>(DEFAULT_PERMISSIONS);
+
     // Verification Real Image State
     const [photoUri, setPhotoUri] = useState<string | null>(null);
     const [aadhaarFrontUri, setAadhaarFrontUri] = useState<string | null>(null);
@@ -317,27 +507,98 @@ export default function AddStaffScreen() {
     const [proofModalVisible, setProofModalVisible] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
 
+    const applyPreset = (preset: 'warden' | 'supervisor' | 'cook' | 'reset') => {
+        if (preset === 'warden') {
+            setPermissions({
+                dashboard: 'manage',
+                rooms: 'manage',
+                tenants: 'manage',
+                finance: 'manage',
+                mess: 'manage',
+                complaints: 'manage',
+                reports: 'view',
+            });
+        } else if (preset === 'supervisor') {
+            setPermissions({
+                dashboard: 'view',
+                rooms: 'view',
+                tenants: 'view',
+                finance: 'view',
+                mess: 'view',
+                complaints: 'manage',
+                reports: 'none',
+            });
+        } else if (preset === 'cook') {
+            setPermissions({
+                dashboard: 'none',
+                rooms: 'none',
+                tenants: 'none',
+                finance: 'none',
+                mess: 'manage',
+                complaints: 'manage',
+                reports: 'none',
+            });
+        } else {
+            setPermissions({
+                dashboard: 'none',
+                rooms: 'none',
+                tenants: 'none',
+                finance: 'none',
+                mess: 'none',
+                complaints: 'none',
+                reports: 'none',
+            });
+        }
+    };
+
+    const generateSecurePassword = () => {
+        const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+        let result = 'Staff@';
+        for (let i = 0; i < 4; i++) {
+            result += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        setLoginPassword(result);
+        setPasswordVisible(true);
+        if (errors.loginPassword) {
+            setErrors(p => {
+                const c = { ...p };
+                delete c.loginPassword;
+                return c;
+            });
+        }
+    };
+
     useEffect(() => {
-        const fetchInitialData = async () => {
+        const init = async () => {
             try {
+                let fetchedProofs: any[] = [];
                 const proofRes = await api.get('/id-proof-types');
-                if (proofRes.data.success) {
-                    setIdProofTypes(proofRes.data.data);
+                if (proofRes.data?.success) {
+                    fetchedProofs = proofRes.data.data;
+                    setIdProofTypes(fetchedProofs);
+                }
+
+                try {
+                    const hostelsRes = await api.get('/hostels?my_hostels=true');
+                    if (hostelsRes.data?.success && Array.isArray(hostelsRes.data.data)) {
+                        setAvailableHostels(hostelsRes.data.data);
+                        if (!selectedHostelId && hostelsRes.data.data.length > 0) {
+                            setSelectedHostelId(hostelsRes.data.data[0].hostel_id);
+                        }
+                    }
+                } catch (_) {}
+
+                if (isEdit && staffId) {
+                    await fetchStaffDetails(fetchedProofs);
                 }
             } catch (error) {
-                console.error("Error fetching proof types:", error);
+                console.error("Error fetching staff init data:", error);
             }
         };
-        fetchInitialData();
-    }, []);
-
-    useEffect(() => {
-        if (isEdit && staffId) {
-            fetchStaffDetails();
-        }
+        init();
     }, [isEdit, staffId]);
 
-    const fetchStaffDetails = async () => {
+    const fetchStaffDetails = async (proofsList?: any[]) => {
         try {
             setLoading(true);
             const res = await api.get(`/staff/${staffId}`);
@@ -355,13 +616,48 @@ export default function AddStaffScreen() {
                     } catch {}
                 }
                 setMonthlySalary(s.monthly_salary ? s.monthly_salary.toString() : '');
-                setIdProofTypeId(s.id_proof_type_id ? s.id_proof_type_id.toString() : (s.id_proof_type ? s.id_proof_type.toString() : ''));
+
+                if (s.hostel_id) {
+                    setSelectedHostelId(Number(s.hostel_id));
+                }
+                if (s.can_login || s.user_id) {
+                    setCanLogin(true);
+                }
+                if (s.permissions) {
+                    try {
+                        const parsed = typeof s.permissions === 'string' ? JSON.parse(s.permissions) : s.permissions;
+                        setPermissions(prev => ({ ...prev, ...parsed }));
+                    } catch (_) {}
+                }
+
+                const currentProofs = (proofsList && proofsList.length > 0) ? proofsList : idProofTypes;
+                const rawProofType = s.id_proof_type_id || s.id_proof_type;
+                let matchedProofId = '';
+                if (rawProofType) {
+                    const found = currentProofs.find((p: any) => p.id?.toString() === rawProofType.toString() || p.name?.toLowerCase() === rawProofType.toString().toLowerCase());
+                    if (found) matchedProofId = found.id.toString();
+                }
+                if (!matchedProofId) {
+                    const aadhaarProof = currentProofs.find((p: any) => p.name?.toLowerCase().includes('aadhar') || p.name?.toLowerCase().includes('aadhaar'));
+                    if (aadhaarProof) {
+                        matchedProofId = aadhaarProof.id.toString();
+                    } else if (currentProofs.length > 0) {
+                        matchedProofId = currentProofs[0].id.toString();
+                    }
+                }
+                setIdProofTypeId(matchedProofId);
+
                 setIdProofNumber(s.id_proof_number || s.aadhaar_number || '');
                 setNotes(s.notes || '');
                 
-                setPhotoUri(s.photo ? getResolvedImageUrl(s.photo) : null);
-                setAadhaarFrontUri(s.aadhaar_front ? getResolvedImageUrl(s.aadhaar_front) : null);
-                setAadhaarBackUri(s.aadhaar_back ? getResolvedImageUrl(s.aadhaar_back) : null);
+                const photoVal = s.photo || s.photo_url || s.profile_photo || s.avatar;
+                setPhotoUri(photoVal ? getResolvedImageUrl(photoVal) : null);
+
+                const frontVal = s.aadhaar_front || s.aadhaar_front_url || s.id_proof_front || s.id_proof_front_url;
+                setAadhaarFrontUri(frontVal ? getResolvedImageUrl(frontVal) : null);
+
+                const backVal = s.aadhaar_back || s.aadhaar_back_url || s.id_proof_back || s.id_proof_back_url;
+                setAadhaarBackUri(backVal ? getResolvedImageUrl(backVal) : null);
             }
         } catch (e: any) {
             showApiError(e, 'Failed to fetch staff details');
@@ -471,6 +767,14 @@ export default function AddStaffScreen() {
             else if (!/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/i.test(idProofNumber)) errs.idProofNumber = 'Invalid PAN format';
         }
 
+        if (canLogin) {
+            if (!isEdit && (!loginPassword || loginPassword.trim().length < 6)) {
+                errs.loginPassword = 'Password must be at least 6 characters for app login';
+            } else if (loginPassword && loginPassword.trim().length < 6) {
+                errs.loginPassword = 'Password must be at least 6 characters';
+            }
+        }
+
         setErrors(errs);
         return errs;
     };
@@ -525,6 +829,7 @@ export default function AddStaffScreen() {
                 monthlySalary: 'Monthly Salary',
                 idProofTypeId: 'ID Proof Type',
                 idProofNumber: 'ID Proof Number',
+                loginPassword: 'Login Password',
                 selfie: 'Profile Photo',
                 idFront: 'ID Front Photo',
                 idBack: 'ID Back Photo',
@@ -542,7 +847,7 @@ export default function AddStaffScreen() {
             setLoadingMessage(isEdit ? 'Updating staff profile...' : 'Registering staff member...');
             
             const payload: any = {
-                hostel_id: user?.hostel_id,
+                hostel_id: selectedHostelId || user?.hostel_id,
                 full_name: fullName.trim(),
                 phone: phone.trim(),
                 email: email.trim() || null,
@@ -556,6 +861,9 @@ export default function AddStaffScreen() {
                 id_proof_type_id: idProofTypeId,
                 id_proof_number: idProofNumber.trim(),
                 notes: notes.trim() || null,
+                can_login: canLogin ? 1 : 0,
+                permissions: JSON.stringify(permissions),
+                ...(canLogin && loginPassword ? { password: loginPassword.trim() } : {}),
             };
 
             const hasNewPhoto = isLocalDeviceUri(photoUri);
@@ -656,6 +964,60 @@ export default function AddStaffScreen() {
                     onRemove={() => setPhotoUri(null)} 
                     error={errors.selfie} 
                 />
+
+                {/* Assigned Hostel Selection Card */}
+                <View style={styles.formCard}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                            <Building size={20} color={theme.primary} />
+                            <Text style={styles.sectionTitle}>Assigned Hostel</Text>
+                        </View>
+                        <View style={[styles.hostelBadge, { backgroundColor: theme.primary + '18' }]}>
+                            <Shield size={12} color={theme.primary} />
+                            <Text style={[styles.hostelBadgeText, { color: theme.primary }]}>Strict Isolation</Text>
+                        </View>
+                    </View>
+
+                    <Text style={styles.fieldHint}>
+                        This staff member's credentials will be strictly locked to this property and cannot view or access your other hostels.
+                    </Text>
+
+                    {availableHostels.length > 1 ? (
+                        <TouchableOpacity
+                            style={[styles.hostelPickerBtn, { borderColor: theme.primary + '50' }]}
+                            onPress={() => setHostelModalVisible(true)}
+                            activeOpacity={0.8}
+                        >
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
+                                <View style={[styles.hostelIconBg, { backgroundColor: theme.primary + '15' }]}>
+                                    <Building size={18} color={theme.primary} />
+                                </View>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={styles.hostelPickerTitle} numberOfLines={1}>
+                                        {availableHostels.find(h => h.hostel_id === selectedHostelId)?.hostel_name || 'Select Hostel'}
+                                    </Text>
+                                    <Text style={styles.hostelPickerSubtitle} numberOfLines={1}>
+                                        {availableHostels.find(h => h.hostel_id === selectedHostelId)?.city || 'Tap to switch assigned property'}
+                                    </Text>
+                                </View>
+                            </View>
+                            <ChevronDown size={18} color="#64748B" />
+                        </TouchableOpacity>
+                    ) : (
+                        <View style={[styles.singleHostelCard, { backgroundColor: '#F8FAFC' }]}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
+                                <Building size={18} color={theme.primary} />
+                                <Text style={styles.singleHostelName}>
+                                    {availableHostels[0]?.hostel_name || user?.hostel_name || 'Primary Hostel'}
+                                </Text>
+                            </View>
+                            <View style={styles.lockedBadge}>
+                                <Lock size={12} color="#10B981" />
+                                <Text style={styles.lockedBadgeText}>Locked</Text>
+                            </View>
+                        </View>
+                    )}
+                </View>
 
                 {/* Personal Information */}
                 <View style={styles.formCard}>
@@ -807,6 +1169,208 @@ export default function AddStaffScreen() {
                     </View>
                 </View>
 
+                {/* Mobile App Login Credentials */}
+                <View style={styles.formCard}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                            <KeyRound size={20} color={theme.primary} />
+                            <Text style={styles.sectionTitle}>Hostix App Access</Text>
+                        </View>
+                        <Switch
+                            value={canLogin}
+                            onValueChange={setCanLogin}
+                            trackColor={{ false: '#CBD5E1', true: theme.primary }}
+                            thumbColor="#FFFFFF"
+                        />
+                    </View>
+
+                    <Text style={styles.fieldHint}>
+                        Allow this staff member to log in to the Hostix mobile app with their mobile number or email.
+                    </Text>
+
+                    {canLogin && (
+                        <View style={{ marginTop: 14, gap: 14 }}>
+                            <View style={styles.inputGroup}>
+                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                                    <Text style={styles.inputLabel}>
+                                        {isEdit ? "Set New Password (optional)" : "Staff Login Password *"}
+                                    </Text>
+                                    <TouchableOpacity
+                                        onPress={generateSecurePassword}
+                                        style={styles.generateBtn}
+                                        activeOpacity={0.7}
+                                    >
+                                        <Sparkles size={13} color={theme.primary} />
+                                        <Text style={[styles.generateBtnText, { color: theme.primary }]}>Auto-Generate</Text>
+                                    </TouchableOpacity>
+                                </View>
+                                <View style={[styles.inputContainer, errors.loginPassword && styles.inputError]}>
+                                    <Lock size={18} color={errors.loginPassword ? '#EF4444' : theme.primary} style={styles.inputIcon} />
+                                    <TextInput
+                                        style={[styles.input, { paddingRight: 40 }]}
+                                        placeholder={isEdit ? "Leave blank to keep existing password" : "Enter minimum 6 characters"}
+                                        placeholderTextColor="#A0AEC0"
+                                        secureTextEntry={!passwordVisible}
+                                        value={loginPassword}
+                                        onChangeText={t => {
+                                            setLoginPassword(t);
+                                            if (errors.loginPassword) {
+                                                setErrors(p => {
+                                                    const c = { ...p };
+                                                    delete c.loginPassword;
+                                                    return c;
+                                                });
+                                            }
+                                        }}
+                                    />
+                                    <TouchableOpacity
+                                        onPress={() => setPasswordVisible(!passwordVisible)}
+                                        style={styles.eyeBtn}
+                                        activeOpacity={0.7}
+                                    >
+                                        {passwordVisible ? <EyeOff size={18} color="#64748B" /> : <Eye size={18} color="#64748B" />}
+                                    </TouchableOpacity>
+                                </View>
+                                {errors.loginPassword && <Text style={styles.errorText}>{errors.loginPassword}</Text>}
+                            </View>
+
+                            <View style={[styles.securityNoticeBox, { backgroundColor: '#F0FDF4', borderColor: '#BBF7D0' }]}>
+                                <Shield size={16} color="#16A34A" style={{ marginTop: 2 }} />
+                                <View style={{ flex: 1 }}>
+                                    <Text style={[styles.securityNoticeTitle, { color: '#166534' }]}>
+                                        Hostel Isolation Guaranteed
+                                    </Text>
+                                    <Text style={[styles.securityNoticeText, { color: '#15803D' }]}>
+                                        When this staff logs in, they will strictly only access {availableHostels.find(h => h.hostel_id === selectedHostelId)?.hostel_name || 'the selected hostel'}. They cannot view or manage your other hostels.
+                                    </Text>
+                                </View>
+                            </View>
+                        </View>
+                    )}
+                </View>
+
+                {/* Module Privileges Matrix */}
+                {canLogin && (
+                    <View style={styles.formCard}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                <Sliders size={20} color={theme.primary} />
+                                <Text style={styles.sectionTitle}>Module Privileges</Text>
+                            </View>
+                            <TouchableOpacity
+                                onPress={() => applyPreset('warden')}
+                                style={[styles.presetQuickBtn, { backgroundColor: theme.primary + '15' }]}
+                            >
+                                <Text style={[styles.presetQuickText, { color: theme.primary }]}>Quick Presets</Text>
+                            </TouchableOpacity>
+                        </View>
+
+                        <Text style={styles.fieldHint}>
+                            Choose what parts of the hostel management app this team member is allowed to see or modify.
+                        </Text>
+
+                        {/* Presets Row */}
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.presetsRow}>
+                            <TouchableOpacity
+                                style={[styles.presetPill, { borderColor: theme.primary }]}
+                                onPress={() => applyPreset('warden')}
+                                activeOpacity={0.7}
+                            >
+                                <Text style={[styles.presetPillText, { color: theme.primary }]}>🛡️ Full Warden</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={styles.presetPill}
+                                onPress={() => applyPreset('supervisor')}
+                                activeOpacity={0.7}
+                            >
+                                <Text style={styles.presetPillText}>👁️ View Only</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={styles.presetPill}
+                                onPress={() => applyPreset('cook')}
+                                activeOpacity={0.7}
+                            >
+                                <Text style={styles.presetPillText}>🍽️ Kitchen / Mess</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[styles.presetPill, { borderColor: '#E2E8F0' }]}
+                                onPress={() => applyPreset('reset')}
+                                activeOpacity={0.7}
+                            >
+                                <Text style={[styles.presetPillText, { color: '#94A3B8' }]}>✕ Clear All</Text>
+                            </TouchableOpacity>
+                        </ScrollView>
+
+                        {/* Permission Modules List */}
+                        <View style={{ gap: 10, marginTop: 12 }}>
+                            {MODULE_CONFIG.map((mod) => {
+                                const currentVal = (permissions as any)[mod.key] || 'none';
+                                return (
+                                    <View
+                                        key={mod.key}
+                                        style={[
+                                            styles.modulePermissionCard,
+                                            { backgroundColor: '#F8FAFC' }
+                                        ]}
+                                    >
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
+                                                <Text style={{ fontSize: 18 }}>{mod.icon}</Text>
+                                                <View style={{ flex: 1 }}>
+                                                    <Text style={[styles.moduleTitle, { color: theme.textPrimary }]}>{mod.label}</Text>
+                                                    <Text style={styles.moduleDesc} numberOfLines={1}>{mod.desc}</Text>
+                                                </View>
+                                            </View>
+                                        </View>
+
+                                        {/* Segmented Controller */}
+                                        <View style={styles.segmentedToggle}>
+                                            {mod.options.map((opt) => {
+                                                const isOptSelected = currentVal === opt.id;
+                                                return (
+                                                    <TouchableOpacity
+                                                        key={opt.id}
+                                                        style={[
+                                                            styles.segmentedOption,
+                                                            isOptSelected && [
+                                                                styles.segmentedOptionActive,
+                                                                {
+                                                                    backgroundColor:
+                                                                        opt.id === 'manage'
+                                                                            ? '#10B981'
+                                                                            : opt.id === 'view'
+                                                                            ? '#3B82F6'
+                                                                            : '#64748B'
+                                                                }
+                                                            ]
+                                                        ]}
+                                                        onPress={() => {
+                                                            setPermissions(prev => ({
+                                                                ...prev,
+                                                                [mod.key]: opt.id
+                                                            }));
+                                                        }}
+                                                        activeOpacity={0.8}
+                                                    >
+                                                        <Text
+                                                            style={[
+                                                                styles.segmentedOptionText,
+                                                                isOptSelected && styles.segmentedOptionTextActive
+                                                            ]}
+                                                        >
+                                                            {opt.label}
+                                                        </Text>
+                                                    </TouchableOpacity>
+                                                );
+                                            })}
+                                        </View>
+                                    </View>
+                                );
+                            })}
+                        </View>
+                    </View>
+                )}
+
                 {/* Identity Verification */}
                 <View style={styles.formCard}>
                     <Text style={styles.sectionTitle}>🪪 Verification Documents</Text>
@@ -952,6 +1516,19 @@ export default function AddStaffScreen() {
                     setIdProofNumber(''); 
                 }} 
                 onClose={() => setProofModalVisible(false)} 
+            />
+
+            <OptionsDrawer
+                visible={hostelModalVisible}
+                title="Select Assigned Hostel"
+                data={availableHostels}
+                selectedId={selectedHostelId?.toString() || ''}
+                keyExtractor={(i: any) => i.hostel_id.toString()}
+                labelExtractor={(i: any) => `${i.hostel_name}${i.city ? ` (${i.city})` : ''}`}
+                onSelect={(i: any) => {
+                    setSelectedHostelId(i.hostel_id);
+                }}
+                onClose={() => setHostelModalVisible(false)}
             />
         </KeyboardAvoidingView>
     );
@@ -1130,7 +1707,7 @@ const styles = StyleSheet.create({
 
     // ID Proof Documents (Front & Back) matching AddStudent
     idUploadBoxesRow: {
-        flexDirection: 'row',
+        flexDirection: 'column',
         gap: 12,
         marginTop: 4,
     },
@@ -1275,6 +1852,189 @@ const styles = StyleSheet.create({
     sourceOptionText: {
         fontWeight: '700',
         fontSize: 13,
+    },
+    // Assigned Hostel Styles
+    hostelBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 5,
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 8,
+    },
+    hostelBadgeText: {
+        fontSize: 11,
+        fontWeight: '700',
+    },
+    fieldHint: {
+        fontSize: 12,
+        color: '#64748B',
+        marginBottom: 12,
+        lineHeight: 16,
+    },
+    hostelPickerBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: 12,
+        borderRadius: 12,
+        borderWidth: 1.5,
+        backgroundColor: '#FFF',
+    },
+    hostelIconBg: {
+        width: 36,
+        height: 36,
+        borderRadius: 10,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    hostelPickerTitle: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: '#1E293B',
+    },
+    hostelPickerSubtitle: {
+        fontSize: 12,
+        color: '#64748B',
+    },
+    singleHostelCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: 14,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+    },
+    singleHostelName: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: '#1E293B',
+    },
+    lockedBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        backgroundColor: '#ECFDF5',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 6,
+    },
+    lockedBadgeText: {
+        fontSize: 11,
+        fontWeight: '700',
+        color: '#059669',
+    },
+
+    // App Login & Security Styles
+    generateBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        borderRadius: 6,
+        backgroundColor: '#F3EEFF',
+    },
+    generateBtnText: {
+        fontSize: 11,
+        fontWeight: '700',
+    },
+    eyeBtn: {
+        position: 'absolute',
+        right: 12,
+        height: '100%',
+        justifyContent: 'center',
+    },
+    securityNoticeBox: {
+        flexDirection: 'row',
+        gap: 10,
+        padding: 12,
+        borderRadius: 10,
+        borderWidth: 1,
+    },
+    securityNoticeTitle: {
+        fontSize: 12,
+        fontWeight: '700',
+        marginBottom: 2,
+    },
+    securityNoticeText: {
+        fontSize: 11,
+        lineHeight: 15,
+    },
+
+    // Module Privileges Styles
+    presetQuickBtn: {
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 8,
+    },
+    presetQuickText: {
+        fontSize: 11,
+        fontWeight: '700',
+    },
+    presetsRow: {
+        flexDirection: 'row',
+        gap: 8,
+        paddingBottom: 4,
+    },
+    presetPill: {
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 20,
+        borderWidth: 1,
+        borderColor: '#CBD5E1',
+        backgroundColor: '#FFF',
+    },
+    presetPillText: {
+        fontSize: 12,
+        fontWeight: '600',
+        color: '#334155',
+    },
+    modulePermissionCard: {
+        padding: 12,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+    },
+    moduleTitle: {
+        fontSize: 13,
+        fontWeight: '700',
+    },
+    moduleDesc: {
+        fontSize: 11,
+        color: '#64748B',
+    },
+    segmentedToggle: {
+        flexDirection: 'row',
+        backgroundColor: '#E2E8F0',
+        borderRadius: 8,
+        padding: 2,
+        gap: 2,
+        marginTop: 4,
+    },
+    segmentedOption: {
+        flex: 1,
+        paddingVertical: 7,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderRadius: 6,
+    },
+    segmentedOptionActive: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 2,
+        elevation: 2,
+    },
+    segmentedOptionText: {
+        fontSize: 11,
+        fontWeight: '600',
+        color: '#64748B',
+    },
+    segmentedOptionTextActive: {
+        color: '#FFFFFF',
+        fontWeight: '700',
     },
 
     // Sticky Footer

@@ -265,6 +265,64 @@ app.get('/api/public/hostel-info', async (req, res) => {
       return res.status(404).json({ success: false, error: 'Hostel not found or invalid QR link' });
     }
 
+    // Fetch configured room sharing types and pricing for this hostel
+    const rawRooms = await db('rooms as r')
+      .leftJoin('room_types as rt', 'r.room_type_id', 'rt.room_type_id')
+      .where('r.hostel_id', hostel.hostel_id)
+      .select('r.capacity', 'r.rent_per_bed', 'rt.room_type_name')
+      .orderBy('r.capacity', 'asc');
+
+    const shareMap = new Map<number, { share: number; name: string; rent: number; count: number }>();
+    rawRooms.forEach((r: any) => {
+      const cap = Number(r.capacity) || 1;
+      const rent = Number(r.rent_per_bed) || 0;
+      if (!shareMap.has(cap)) {
+        shareMap.set(cap, {
+          share: cap,
+          name: r.room_type_name || `${cap} Sharing`,
+          rent: rent,
+          count: 1
+        });
+      } else {
+        const item = shareMap.get(cap)!;
+        item.count += 1;
+        if ((!item.rent || item.rent === 0) && rent > 0) item.rent = rent;
+      }
+    });
+
+    let sharingOptions = Array.from(shareMap.values()).sort((a, b) => a.share - b.share);
+
+    // Fallback if hostel has no rooms configured yet
+    if (sharingOptions.length === 0) {
+      const standardTypes = await db('room_types').select('*').catch(() => []);
+      if (standardTypes && standardTypes.length > 0) {
+        sharingOptions = standardTypes.map((st: any) => {
+          let cap = 1;
+          const lower = (st.room_type_name || '').toLowerCase();
+          if (lower.includes('single') || lower.includes('1')) cap = 1;
+          else if (lower.includes('double') || lower.includes('2')) cap = 2;
+          else if (lower.includes('triple') || lower.includes('3')) cap = 3;
+          else if (lower.includes('4')) cap = 4;
+          else if (lower.includes('5')) cap = 5;
+          else if (lower.includes('6')) cap = 6;
+          else if (lower.includes('8')) cap = 8;
+          return {
+            share: cap,
+            name: st.room_type_name || `${cap} Sharing`,
+            rent: Number(st.base_price) || 5000,
+            count: 0
+          };
+        });
+      } else {
+        sharingOptions = [
+          { share: 1, name: 'Single (Private)', rent: 10000, count: 0 },
+          { share: 2, name: '2 Sharing', rent: 8000, count: 0 },
+          { share: 3, name: '3 Sharing', rent: 6500, count: 0 },
+          { share: 4, name: '4 Sharing', rent: 5000, count: 0 },
+        ];
+      }
+    }
+
     return res.status(200).json({
       success: true,
       data: {
@@ -279,6 +337,7 @@ app.get('/api/public/hostel-info', async (req, res) => {
         total_floors: hostel.total_floors,
         admission_fee: hostel.admission_fee,
         default_refundable_deposit: hostel.default_refundable_deposit,
+        sharing_options: sharingOptions,
       }
     });
   } catch (error: any) {
@@ -441,7 +500,7 @@ app.post('/api/public/qr-signup', qrSignupUpload.fields([
       room_id:          roomId ? parseInt(roomId, 10) : null,
       bed_id:           bedId || null,
       floor_number:     null,
-      monthly_rent:     null,
+      monthly_rent:     req.body.monthly_rent ? parseFloat(String(req.body.monthly_rent)) : (req.body.rent ? parseFloat(String(req.body.rent)) : null),
       id_proof_type:    typeId || null,
       id_proof_number:  cleanId || null,
       id_proof_status:  typeId ? 1 : 0, // Submitted

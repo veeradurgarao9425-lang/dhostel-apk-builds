@@ -520,12 +520,12 @@ export const BulkRoomSetupScreen = ({ navigation }: any) => {
                             <X size={16} color={isDark ? '#A7F3D0' : '#065F46'} />
                         </TouchableOpacity>
                     </View>
-                    <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
+                    <View style={{ marginTop: 10 }}>
                         <TouchableOpacity
                             style={{
-                                flex: 1,
+                                width: '100%',
                                 backgroundColor: '#10B981',
-                                paddingVertical: 9,
+                                paddingVertical: 10,
                                 borderRadius: 10,
                                 alignItems: 'center',
                                 justifyContent: 'center',
@@ -535,23 +535,6 @@ export const BulkRoomSetupScreen = ({ navigation }: any) => {
                         >
                             <Text style={{ color: '#FFFFFF', fontWeight: '800', fontSize: 13 }}>
                                 View Rooms List ➔
-                            </Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            style={{
-                                paddingHorizontal: 14,
-                                paddingVertical: 9,
-                                borderRadius: 10,
-                                borderWidth: 1,
-                                borderColor: '#10B981',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                            }}
-                            onPress={() => navigation.navigate('Main')}
-                            activeOpacity={0.8}
-                        >
-                            <Text style={{ color: isDark ? '#A7F3D0' : '#065F46', fontWeight: '700', fontSize: 13 }}>
-                                Dashboard
                             </Text>
                         </TouchableOpacity>
                     </View>

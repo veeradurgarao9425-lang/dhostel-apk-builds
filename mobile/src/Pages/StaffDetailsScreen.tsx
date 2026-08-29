@@ -7,7 +7,8 @@ import { Card } from '../components/Card';
 import {
     Phone, Mail, Calendar, CreditCard,
     User, IndianRupee, Clock, Check, X,
-    Receipt, Edit, Briefcase, Plus, MessageCircle, MessageSquare, ArrowRight, Eye
+    Receipt, Edit, Briefcase, Plus, MessageCircle, MessageSquare, ArrowRight, Eye,
+    KeyRound, Shield
 } from 'lucide-react-native';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../services/api';
@@ -530,6 +531,88 @@ export default function StaffDetailsScreen({ route, navigation }: any) {
                                     </View>
                                 </View>
 
+                                {/* App Login Access & Permissions Card */}
+                                <View style={[styles.infoSectionCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}>
+                                    <View style={[styles.infoSectionHeader, { justifyContent: 'space-between' }]}>
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                            <KeyRound size={14} color={theme.primary} />
+                                            <Text style={[styles.infoSectionHeaderTitle, { color: theme.primary }]}>App Access & Bottom Tabs</Text>
+                                        </View>
+                                        <TouchableOpacity
+                                            onPress={() => navigation.navigate('AddTeamMember', { staffId: staff.staff_id })}
+                                            style={{
+                                                flexDirection: 'row',
+                                                alignItems: 'center',
+                                                gap: 4,
+                                                backgroundColor: theme.primary + '15',
+                                                paddingHorizontal: 8,
+                                                paddingVertical: 3,
+                                                borderRadius: 6,
+                                            }}
+                                            activeOpacity={0.7}
+                                        >
+                                            <Edit size={11} color={theme.primary} />
+                                            <Text style={{ fontSize: 11, fontWeight: '700', color: theme.primary }}>Edit Access</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                    <View style={styles.infoSectionBody}>
+                                        <View style={styles.infoRow}>
+                                            <View style={[styles.infoRowIconCircle, { backgroundColor: staff.can_login ? '#ECFDF5' : '#F1F5F9' }]}>
+                                                {staff.can_login ? <Check size={13} color="#059669" /> : <X size={13} color="#94A3B8" />}
+                                            </View>
+                                            <View style={styles.infoRowText}>
+                                                <Text style={styles.infoRowLabel}>Mobile App Login</Text>
+                                                <Text style={[styles.infoRowValue, { color: staff.can_login ? '#059669' : '#64748B' }]}>
+                                                    {staff.can_login ? 'Enabled (Active Access)' : 'Disabled'}
+                                                </Text>
+                                            </View>
+                                        </View>
+
+                                        {staff.can_login && (
+                                            <>
+                                                <View style={styles.infoRowDivider} />
+                                                <Text style={[styles.infoRowLabel, { marginBottom: 6, marginTop: 2 }]}>Bottom Navigation Tabs Visible:</Text>
+                                                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+                                                    {(!staff.permissions || (typeof staff.permissions === 'object' && staff.permissions.dashboard !== 'none')) && (
+                                                        <View style={styles.miniTabBadge}>
+                                                            <Ionicons name="home" size={11} color="#4F46E5" />
+                                                            <Text style={styles.miniTabBadgeText}>Home</Text>
+                                                        </View>
+                                                    )}
+                                                    {staff.permissions && typeof staff.permissions === 'object' && staff.permissions.finance !== 'none' && (
+                                                        <View style={[styles.miniTabBadge, { backgroundColor: '#ECFDF5', borderColor: '#BBF7D0' }]}>
+                                                            <Ionicons name="cash" size={11} color="#16A34A" />
+                                                            <Text style={[styles.miniTabBadgeText, { color: '#16A34A' }]}>Money</Text>
+                                                        </View>
+                                                    )}
+                                                    {(!staff.permissions || (typeof staff.permissions === 'object' && staff.permissions.tenants !== 'none')) && (
+                                                        <View style={styles.miniTabBadge}>
+                                                            <Ionicons name="people" size={11} color="#4F46E5" />
+                                                            <Text style={styles.miniTabBadgeText}>Students</Text>
+                                                        </View>
+                                                    )}
+                                                    {staff.permissions && typeof staff.permissions === 'object' && staff.permissions.finance !== 'none' && (
+                                                        <View style={[styles.miniTabBadge, { backgroundColor: '#ECFDF5', borderColor: '#BBF7D0' }]}>
+                                                            <Ionicons name="trending-up" size={11} color="#16A34A" />
+                                                            <Text style={[styles.miniTabBadgeText, { color: '#16A34A' }]}>Finance</Text>
+                                                        </View>
+                                                    )}
+                                                </View>
+                                            </>
+                                        )}
+
+                                        {/* Action Button to Open AddTeamMember Full Page Screen */}
+                                        <TouchableOpacity
+                                            onPress={() => navigation.navigate('AddTeamMember', { staffId: staff.staff_id })}
+                                            style={[styles.configurePermsBtn, { backgroundColor: theme.primary }]}
+                                            activeOpacity={0.85}
+                                        >
+                                            <Ionicons name="options-outline" size={15} color="#FFFFFF" />
+                                            <Text style={styles.configurePermsBtnText}>Configure Feature Tabs & Access</Text>
+                                        </TouchableOpacity>
+                                    </View>
+                                </View>
+
                                 {/* Identity Details */}
                                 <View style={[styles.infoSectionCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}>
                                     <View style={styles.infoSectionHeader}>
@@ -916,4 +999,34 @@ const styles = StyleSheet.create({
         marginBottom: 12,
     },
     viewCycleBtnText: { flex: 1, fontSize: 13, fontWeight: '800' },
+    miniTabBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 6,
+        backgroundColor: '#EEF2FF',
+        borderWidth: 1,
+        borderColor: '#C7D2FE',
+    },
+    miniTabBadgeText: {
+        fontSize: 11,
+        fontWeight: '700',
+        color: '#4F46E5',
+    },
+    configurePermsBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        paddingVertical: 10,
+        borderRadius: 10,
+        marginTop: 10,
+    },
+    configurePermsBtnText: {
+        fontSize: 12.5,
+        fontWeight: '700',
+        color: '#FFFFFF',
+    },
 });

@@ -24,11 +24,14 @@ export const UpcomingCheckoutSchedules = ({ data }: UpcomingCheckoutSchedulesPro
 
     return (
         <View style={[s.card, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}>
-            <View style={s.cardHeader}>
+            <View style={[s.cardHeader, { justifyContent: 'space-between' }]}>
                 <View style={s.cardHeaderLeft}>
                     <Ionicons name="calendar-outline" size={15} color="#EF4444" />
                     <Text style={[s.cardTitle, { fontSize: fontSize - 1, color: theme.textPrimary }]}>{t('dashboard.upcomingCheckoutSchedules')}</Text>
                 </View>
+                <TouchableOpacity onPress={() => navigation.navigate('Notices')} activeOpacity={0.7}>
+                    <Text style={{ fontSize: 13, fontWeight: '700', color: theme.primary }}>View All</Text>
+                </TouchableOpacity>
             </View>
             <View style={{ gap: 10 }}>
                 {data.upcomingVacates.map((item, idx) => (

@@ -17,34 +17,59 @@ import { useConfirmation } from '../../contexts/ConfirmationContext';
 import { EmptyState } from '../components/ui/EmptyState';
 import { SkeletonList } from '../components/ui/SkeletonCard';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { SPACING } from '../theme/index';
-import { Plus } from 'lucide-react-native';
+import { Plus, UserPlus, KeyRound, Check } from 'lucide-react-native';
 import { getResolvedImageUrl } from '../utils/imageHelper';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
     UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
-// ─── Staff Categories ────────────────────────────────────────────────────────
-const CATEGORIES = [
-    { key: 'All', label: 'Management', icon: 'briefcase', color: '#4F46E5', bg: '#EEF2FF' },
-    { key: 'Cook', label: 'Kitchen', icon: 'restaurant', color: '#D97706', bg: '#FEF3C7' },
-    { key: 'Housekeeping', label: 'Housekeeping', icon: 'brush', color: '#059669', bg: '#D1FAE5' },
-    { key: 'Security', label: 'Security', icon: 'shield-checkmark', color: '#DC2626', bg: '#FEE2E2' },
-    { key: 'Others', label: 'Others', icon: 'ellipsis-horizontal', color: '#475569', bg: '#F1F5F9' },
-];
-
-const ROLES = ['Cook', 'Housekeeping', 'Security', 'Warden', 'Cleaner', 'Others'];
-
 // ─── Staff Card Component ───────────────────────────────────────────────────
-const StaffCard = React.memo(({ item, onCall, onWhatsApp, onToggleStatus, onPayments, onPressCard }: any) => {
+const StaffCard = React.memo(({ item, onCall, onWhatsApp, onToggleStatus, onPayments, onEditAccess, onPressCard }: any) => {
     const isActive = item.status === 'ACTIVE';
+    const hasAccess = Boolean(item.can_login || item.user_id);
     const initials = item.full_name ? item.full_name[0].toUpperCase() : 'S';
     const [imgErr, setImgErr] = useState(false);
     const photoUrl = getResolvedImageUrl(item.photo);
 
     return (
         <TouchableOpacity style={s.card} activeOpacity={0.9} onPress={() => onPressCard(item)}>
+            {/* ── Top Tags Strip ("tags in card top") ── */}
+            <View style={s.cardTopTags}>
+                <View style={s.tagGroupLeft}>
+                    {/* Role Tag */}
+                    <View style={s.roleBadge}>
+                        <Text style={s.roleBadgeText}>{item.role || 'Staff'}</Text>
+                    </View>
+
+                    {/* App Access Tag */}
+                    {hasAccess ? (
+                        <View style={s.accessBadge}>
+                            <Ionicons name="key" size={10} color="#2563EB" />
+                            <Text style={s.accessBadgeText}>App Access</Text>
+                        </View>
+                    ) : null}
+
+                    {/* Monthly Salary Tag */}
+                    {item.monthly_salary != null && item.monthly_salary !== '' && (
+                        <View style={[s.roleBadge, { backgroundColor: '#F0FDF4' }]}>
+                            <Text style={[s.roleBadgeText, { color: '#16A34A' }]}>
+                                ₹{Number(item.monthly_salary).toLocaleString('en-IN')}
+                            </Text>
+                        </View>
+                    )}
+                </View>
+
+                {/* Status Tag */}
+                <View style={[s.statusBadge, { backgroundColor: isActive ? '#DCFCE7' : '#FEE2E2' }]}>
+                    <View style={[s.statusDot, { backgroundColor: isActive ? '#16A34A' : '#EF4444' }]} />
+                    <Text style={[s.statusBadgeText, { color: isActive ? '#16A34A' : '#EF4444' }]}>
+                        {item.status}
+                    </Text>
+                </View>
+            </View>
+
+            {/* ── Main Details ── */}
             <View style={s.cardMain}>
                 <View style={s.avatarBox}>
                     {photoUrl && !imgErr ? (
@@ -60,26 +85,13 @@ const StaffCard = React.memo(({ item, onCall, onWhatsApp, onToggleStatus, onPaym
                 <View style={s.infoContainer}>
                     <Text style={s.nameText} numberOfLines={1}>{item.full_name}</Text>
                     <Text style={s.phoneText}>{item.phone}</Text>
-                    <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
-                        <View style={s.roleBadge}>
-                            <Text style={s.roleBadgeText}>{item.role}</Text>
-                        </View>
-                        {item.monthly_salary != null && item.monthly_salary !== '' && (
-                            <View style={[s.roleBadge, { backgroundColor: '#F0FDF4' }]}>
-                                <Text style={[s.roleBadgeText, { color: '#16A34A' }]}>₹ {Number(item.monthly_salary).toLocaleString('en-IN')}</Text>
-                            </View>
-                        )}
-                    </View>
-                </View>
-                <View style={[s.statusBadge, { backgroundColor: isActive ? '#DCFCE7' : '#FEE2E2', position: 'absolute', top: 15, right: 15 }]}>
-                    <Text style={[s.statusBadgeText, { color: isActive ? '#16A34A' : '#EF4444' }]}>
-                        {item.status}
-                    </Text>
+                    {item.email ? <Text style={s.emailText} numberOfLines={1}>{item.email}</Text> : null}
                 </View>
             </View>
 
             <View style={s.divider} />
 
+            {/* ── Actions Strip ── */}
             <View style={s.cardActions}>
                 <View style={{ flexDirection: 'row', gap: 8 }}>
                     <TouchableOpacity
@@ -99,13 +111,31 @@ const StaffCard = React.memo(({ item, onCall, onWhatsApp, onToggleStatus, onPaym
                         <Text style={s.actionBtnIconText}>Call</Text>
                     </TouchableOpacity>
                 </View>
+
                 <View style={{ flexDirection: 'row', gap: 6 }}>
+                    {/* Direct App Access Button */}
+                    <TouchableOpacity
+                        onPress={() => onEditAccess(item)}
+                        style={[
+                            s.statusToggleBtnNew,
+                            {
+                                backgroundColor: hasAccess ? '#EFF6FF' : '#F8FAFC',
+                                borderColor: hasAccess ? '#BFDBFE' : '#E2E8F0',
+                            }
+                        ]}
+                    >
+                        <Text style={[s.statusToggleTextNew, { color: hasAccess ? '#2563EB' : '#64748B' }]}>
+                            {hasAccess ? 'Access' : '+ Access'}
+                        </Text>
+                    </TouchableOpacity>
+
                     <TouchableOpacity
                         onPress={() => onPayments(item)}
                         style={[s.statusToggleBtnNew, { backgroundColor: '#F3E8FF', borderColor: '#E9D5FF' }]}
                     >
                         <Text style={[s.statusToggleTextNew, { color: '#9333EA' }]}>Wallet</Text>
                     </TouchableOpacity>
+
                     <TouchableOpacity
                         onPress={() => onToggleStatus(item)}
                         style={[
@@ -138,13 +168,26 @@ export default function StaffScreen() {
     const [staffList, setStaffList] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
+    const [activeTab, setActiveTab] = useState<'all' | 'active' | 'inactive' | 'access' | 'cook' | 'housekeeping' | 'security' | 'others'>('all');
 
     const lastStaffFetchRef = useRef<number>(0);
+
+    // ── Helper to check if staff has app access ─────────────────────────────
+    const hasAppAccess = useCallback((s: any) => {
+        if (!s) return false;
+        if (s.can_login === 1 || s.can_login === '1' || s.can_login === true || s.can_login === 'true') return true;
+        if (s.user_id && s.user_id !== 0 && s.user_id !== '0') return true;
+        if (s.permissions && typeof s.permissions === 'object') {
+            const vals = Object.values(s.permissions);
+            if (vals.some(v => v === 'manage' || v === 'view' || v === true)) return true;
+        }
+        return false;
+    }, []);
 
     // ── Fetch Staff list ─────────────────────────────────────────────────────
     const fetchStaff = async (isSilent = false, force = false) => {
         const now = Date.now();
-        if (!force && staffList.length > 0 && now - lastStaffFetchRef.current < 15000) {
+        if (!force && staffList.length > 0 && now - lastStaffFetchRef.current < 5000) {
             return;
         }
         try {
@@ -163,22 +206,80 @@ export default function StaffScreen() {
 
     useFocusEffect(
         useCallback(() => {
-            fetchStaff(true);
-        }, [staffList.length])
+            fetchStaff(true, true);
+        }, [])
     );
+
+    // ── Calculate Category & Status Counts ────────────────────────────────────
+    const counts = useMemo(() => {
+        const total = staffList.length;
+        const active = staffList.filter(s => s.status === 'ACTIVE').length;
+        const inactive = staffList.filter(s => s.status !== 'ACTIVE').length;
+        const access = staffList.filter(hasAppAccess).length;
+        const cook = staffList.filter(s => (s.role || '').toLowerCase().includes('cook')).length;
+        const housekeeping = staffList.filter(s => {
+            const r = (s.role || '').toLowerCase();
+            return r.includes('housekeeping') || r.includes('cleaner') || r.includes('laundry');
+        }).length;
+        const security = staffList.filter(s => (s.role || '').toLowerCase().includes('security')).length;
+        const others = staffList.filter(s => {
+            const r = (s.role || '').toLowerCase();
+            return !r.includes('cook') && !r.includes('housekeeping') && !r.includes('cleaner') && !r.includes('laundry') && !r.includes('security') && !r.includes('warden') && !r.includes('manager');
+        }).length;
+        return { total, active, inactive, access, cook, housekeeping, security, others };
+    }, [staffList, hasAppAccess]);
+
+    // ── Small Filter Tabs Config ──────────────────────────────────────────────
+    const FILTER_TABS = useMemo(() => [
+        { key: 'all', label: 'All', count: counts.total },
+        { key: 'active', label: 'Active', count: counts.active },
+        { key: 'inactive', label: 'Inactive', count: counts.inactive },
+        { key: 'access', label: 'App Access', count: counts.access, icon: 'key-outline' },
+        { key: 'cook', label: 'Kitchen', count: counts.cook },
+        { key: 'housekeeping', label: 'Housekeeping', count: counts.housekeeping },
+        { key: 'security', label: 'Security', count: counts.security },
+        { key: 'others', label: 'Others', count: counts.others },
+    ], [counts]);
 
     // ── Group filtered staff by role category ──────────────────────────────────
     const groupedStaff = useMemo(() => {
         const q = search.toLowerCase().trim();
         const filtered = staffList.filter(item => {
-            return !q ||
+            const matchSearch = !q ||
                 item.full_name?.toLowerCase().includes(q) ||
                 item.phone?.includes(q) ||
                 item.role?.toLowerCase().includes(q);
+            if (!matchSearch) return false;
+
+            if (activeTab === 'active') return item.status === 'ACTIVE';
+            if (activeTab === 'inactive') return item.status !== 'ACTIVE';
+            if (activeTab === 'access') return hasAppAccess(item);
+            if (activeTab === 'cook') return (item.role || '').toLowerCase().includes('cook');
+            if (activeTab === 'housekeeping') {
+                const r = (item.role || '').toLowerCase();
+                return r.includes('housekeeping') || r.includes('cleaner') || r.includes('laundry');
+            }
+            if (activeTab === 'security') return (item.role || '').toLowerCase().includes('security');
+            if (activeTab === 'others') {
+                const r = (item.role || '').toLowerCase();
+                return !r.includes('cook') && !r.includes('housekeeping') && !r.includes('cleaner') && !r.includes('laundry') && !r.includes('security') && !r.includes('warden') && !r.includes('manager');
+            }
+
+            return true;
         });
 
+        if (activeTab === 'access') {
+            return filtered.length > 0 ? [{
+                title: `Staff with App Access (${filtered.length})`,
+                icon: 'key',
+                color: '#2563EB',
+                bg: '#EFF6FF',
+                data: filtered
+            }] : [];
+        }
+
         const groups: Record<string, { title: string; icon: string; color: string; bg: string; data: any[] }> = {
-            Management: { title: 'Management', icon: 'briefcase', color: '#4F46E5', bg: '#EEF2FF', data: [] },
+            Management: { title: 'Management & Wardens', icon: 'briefcase', color: '#4F46E5', bg: '#EEF2FF', data: [] },
             Kitchen: { title: 'Kitchen Staff', icon: 'restaurant', color: '#D97706', bg: '#FEF3C7', data: [] },
             Housekeeping: { title: 'Housekeeping & Cleaning', icon: 'brush', color: '#059669', bg: '#D1FAE5', data: [] },
             Security: { title: 'Security', icon: 'shield-checkmark', color: '#DC2626', bg: '#FEE2E2', data: [] },
@@ -201,7 +302,7 @@ export default function StaffScreen() {
         });
 
         return Object.values(groups).filter(sec => sec.data.length > 0);
-    }, [staffList, search]);
+    }, [staffList, search, activeTab, hasAppAccess]);
 
     // ── Handlers ─────────────────────────────────────────────────────────────
     const handleCall = useCallback((num: string) => {
@@ -235,9 +336,12 @@ export default function StaffScreen() {
         });
     }, [confirm]);
 
-    // ── Rendering helper for list items ──────────────────────────────────────
     const handlePayments = useCallback((item: any) => {
         navigation.navigate('StaffPayments', { staffId: item.staff_id, staffName: item.full_name });
+    }, [navigation]);
+
+    const handleEditAccess = useCallback((item: any) => {
+        navigation.navigate('AddTeamMember', { staffId: item.staff_id });
     }, [navigation]);
 
     const handleCardPress = useCallback((item: any) => {
@@ -251,9 +355,10 @@ export default function StaffScreen() {
             onWhatsApp={handleWhatsApp}
             onToggleStatus={handleToggleStatus}
             onPayments={handlePayments}
+            onEditAccess={handleEditAccess}
             onPressCard={handleCardPress}
         />
-    ), [handleCall, handleWhatsApp, handleToggleStatus, handlePayments, handleCardPress]);
+    ), [handleCall, handleWhatsApp, handleToggleStatus, handlePayments, handleEditAccess, handleCardPress]);
 
     return (
         <View style={s.container}>
@@ -288,6 +393,70 @@ export default function StaffScreen() {
                 </View>
             </AppHeader>
 
+            {/* ── Top Small Tabs (All, Active, Inactive, App Access, Categories) ── */}
+            <View style={s.filterTabsContainer}>
+                <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={s.filterTabsScroll}
+                >
+                    {FILTER_TABS.map(tab => {
+                        const isSelected = activeTab === tab.key;
+                        return (
+                            <TouchableOpacity
+                                key={tab.key}
+                                onPress={() => {
+                                    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                                    setActiveTab(tab.key as any);
+                                }}
+                                style={[
+                                    s.filterTabPill,
+                                    isSelected && s.filterTabPillActive,
+                                ]}
+                                activeOpacity={0.7}
+                            >
+                                {tab.icon && (
+                                    <Ionicons
+                                        name={tab.icon as any}
+                                        size={12}
+                                        color={isSelected ? '#FFFFFF' : '#2563EB'}
+                                        style={{ marginRight: 4 }}
+                                    />
+                                )}
+                                <Text style={[s.filterTabText, isSelected && s.filterTabTextActive]}>
+                                    {tab.label}
+                                </Text>
+                                <View style={[s.filterTabBadge, isSelected && s.filterTabBadgeActive]}>
+                                    <Text style={[s.filterTabBadgeText, isSelected && s.filterTabBadgeTextActive]}>
+                                        {tab.count}
+                                    </Text>
+                                </View>
+                            </TouchableOpacity>
+                        );
+                    })}
+                </ScrollView>
+            </View>
+
+            {/* ── Banner when App Access Tab is selected ── */}
+            {activeTab === 'access' && (
+                <View style={s.accessHeaderBanner}>
+                    <View style={{ flex: 1 }}>
+                        <Text style={s.accessBannerTitle}>App Access Members</Text>
+                        <Text style={s.accessBannerSub}>
+                            Staff who can log into Hostix and manage enabled modules.
+                        </Text>
+                    </View>
+                    <TouchableOpacity
+                        style={s.addTeamMemberBtn}
+                        onPress={() => navigation.navigate('AddTeamMember')}
+                        activeOpacity={0.8}
+                    >
+                        <UserPlus size={14} color="#FFFFFF" />
+                        <Text style={s.addTeamMemberBtnText}>Add Member</Text>
+                    </TouchableOpacity>
+                </View>
+            )}
+
             {/* Content List */}
             {loading ? (
                 <SkeletonList count={6} />
@@ -309,37 +478,46 @@ export default function StaffScreen() {
                     )}
                     contentContainerStyle={[
                         s.listContent,
-                        staffList.length === 0 && { flexGrow: 1, justifyContent: 'center' }
+                        groupedStaff.length === 0 && { flexGrow: 1, justifyContent: 'center' }
                     ]}
                     showsVerticalScrollIndicator={false}
                     ListEmptyComponent={
-                        <EmptyState illustration="staff"
-                            title={search.trim() ? 'No Results' : 'No Staff Yet'}
+                        <EmptyState
+                            illustration="staff"
+                            title={
+                                activeTab === 'access'
+                                    ? 'No Members with App Access'
+                                    : search.trim()
+                                    ? 'No Results'
+                                    : 'No Staff Found'
+                            }
                             subtitle={
-                                search.trim()
+                                activeTab === 'access'
+                                    ? 'Add a team member to give them mobile app login and module access.'
+                                    : search.trim()
                                     ? `No staff match "${search.trim()}"`
                                     : 'Add your first staff member to get started.'
                             }
-                            actionLabel={search.trim() ? undefined : 'Add Staff'}
-                            onAction={search.trim() ? undefined : () => navigation.navigate('AddStaff')}
+                            actionLabel={activeTab === 'access' ? 'Add Team Member' : 'Add Staff'}
+                            onAction={() => navigation.navigate(activeTab === 'access' ? 'AddTeamMember' : 'AddStaff')}
                         />
                     }
                 />
             )}
 
-            {/* Floating Action Button (FAB) to Add Staff */}
+            {/* Floating Action Button (FAB) */}
             <TouchableOpacity
                 style={[
                     s.fab,
                     {
-                        backgroundColor: theme.primary,
+                        backgroundColor: activeTab === 'access' ? '#2563EB' : theme.primary,
                         bottom: Math.max(insets.bottom + 20, 24),
                     },
                 ]}
-                onPress={() => navigation.navigate('AddStaff')}
+                onPress={() => navigation.navigate(activeTab === 'access' ? 'AddTeamMember' : 'AddStaff')}
                 activeOpacity={0.85}
             >
-                <Plus color="#FFF" size={26} strokeWidth={2.8} />
+                <Plus size={28} color="#FFF" />
             </TouchableOpacity>
         </View>
     );
@@ -351,8 +529,107 @@ const s = StyleSheet.create({
 
     headerActions: { flexDirection: 'row', gap: 12 },
 
-    searchContainer: { backgroundColor: '#FFF', borderRadius: 16, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 15, height: 46 },
+    searchContainer: {
+        backgroundColor: '#FFF',
+        borderRadius: 16,
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 15,
+        height: 46,
+    },
     searchInput: { flex: 1, marginLeft: 10, fontWeight: '600', color: '#1E293B' },
+
+    // ── Top Small Filter Tabs ──
+    filterTabsContainer: {
+        backgroundColor: '#FFFFFF',
+        borderBottomWidth: 1,
+        borderBottomColor: '#F1F5F9',
+        paddingVertical: 10,
+    },
+    filterTabsScroll: {
+        paddingHorizontal: 16,
+        gap: 8,
+    },
+    filterTabPill: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 20,
+        backgroundColor: '#F1F5F9',
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+    },
+    filterTabPillActive: {
+        backgroundColor: '#2563EB',
+        borderColor: '#2563EB',
+    },
+    filterTabText: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: '#64748B',
+    },
+    filterTabTextActive: {
+        color: '#FFFFFF',
+    },
+    filterTabBadge: {
+        backgroundColor: '#E2E8F0',
+        paddingHorizontal: 6,
+        paddingVertical: 1,
+        borderRadius: 10,
+        marginLeft: 6,
+    },
+    filterTabBadgeActive: {
+        backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    },
+    filterTabBadgeText: {
+        fontSize: 10,
+        fontWeight: '800',
+        color: '#475569',
+    },
+    filterTabBadgeTextActive: {
+        color: '#FFFFFF',
+    },
+
+    // ── App Access Banner ──
+    accessHeaderBanner: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        backgroundColor: '#EFF6FF',
+        marginHorizontal: 16,
+        marginTop: 12,
+        marginBottom: 4,
+        padding: 12,
+        borderRadius: 14,
+        borderWidth: 1,
+        borderColor: '#DBEAFE',
+    },
+    accessBannerTitle: {
+        fontSize: 13,
+        fontWeight: '800',
+        color: '#1D4ED8',
+    },
+    accessBannerSub: {
+        fontSize: 11,
+        color: '#60A5FA',
+        fontWeight: '500',
+        marginTop: 2,
+    },
+    addTeamMemberBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        backgroundColor: '#2563EB',
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 10,
+    },
+    addTeamMemberBtnText: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: '#FFFFFF',
+    },
 
     // Section Headers
     sectionHeaderContainer: {
@@ -361,40 +638,40 @@ const s = StyleSheet.create({
         paddingVertical: 8,
         paddingHorizontal: 16,
         borderRadius: 12,
-        marginTop: 16,
+        marginTop: 14,
         marginBottom: 8,
-        gap: 8
+        gap: 8,
     },
     sectionIconContainer: {
         width: 24,
         height: 24,
         borderRadius: 12,
         alignItems: 'center',
-        justifyContent: 'center'
+        justifyContent: 'center',
     },
     sectionHeaderTitle: {
-        fontSize: 13,
+        fontSize: 12,
         fontWeight: '800',
         textTransform: 'uppercase',
         letterSpacing: 0.8,
-        flex: 1
+        flex: 1,
     },
     sectionHeaderBadge: {
         borderRadius: 10,
         paddingHorizontal: 8,
         paddingVertical: 2,
         alignItems: 'center',
-        justifyContent: 'center'
+        justifyContent: 'center',
     },
     sectionHeaderBadgeText: {
         color: '#FFF',
         fontSize: 10,
-        fontWeight: '900'
+        fontWeight: '900',
     },
 
     listContent: { padding: 16, paddingBottom: 180 },
 
-    // Cards
+    // ── Card ──
     card: {
         backgroundColor: '#FFF',
         borderRadius: 20,
@@ -405,43 +682,117 @@ const s = StyleSheet.create({
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.05,
     },
-    cardMain: { flex: 1, padding: 15, flexDirection: 'row', alignItems: 'center' },
-    avatarBox: {
-        width: 50, height: 50, borderRadius: 25,
-        backgroundColor: '#E0E7FF',
-        justifyContent: 'center', alignItems: 'center',
-        overflow: 'hidden',
+    // Top Tags Row ("tags in card top")
+    cardTopTags: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 14,
+        paddingTop: 12,
+        paddingBottom: 4,
     },
-    avatarImg: { width: 50, height: 50, borderRadius: 25 },
-    avatarInitials: { fontSize: 20, fontWeight: '900', color: '#4F46E5' },
-    infoContainer: { flex: 1, marginLeft: 15 },
-    nameText: { fontSize: 15, fontWeight: '800', color: '#1E293B', marginBottom: 2 },
-    phoneText: { fontSize: 11, color: '#94A3B8', fontWeight: '600', marginBottom: 2 },
-    salaryText: { fontSize: 12, color: '#475569', fontWeight: '800', marginBottom: 6 },
-    badgeRow: { flexDirection: 'row', gap: 6, alignItems: 'center' },
+    tagGroupLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        flex: 1,
+        flexWrap: 'wrap',
+    },
     roleBadge: {
         backgroundColor: '#F1F5F9',
-        paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        borderRadius: 6,
     },
-    roleBadgeText: { fontSize: 9, fontWeight: '800', color: '#64748B', textTransform: 'uppercase' },
+    roleBadgeText: {
+        fontSize: 10,
+        fontWeight: '800',
+        color: '#475569',
+        textTransform: 'uppercase',
+    },
+    accessBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        backgroundColor: '#EFF6FF',
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        borderRadius: 6,
+        borderWidth: 1,
+        borderColor: '#DBEAFE',
+    },
+    accessBadgeText: {
+        fontSize: 10,
+        fontWeight: '800',
+        color: '#2563EB',
+    },
     statusBadge: {
-        paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 5,
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        borderRadius: 6,
     },
-    statusBadgeText: { fontSize: 9, fontWeight: '900' },
+    statusDot: {
+        width: 6,
+        height: 6,
+        borderRadius: 3,
+    },
+    statusBadgeText: {
+        fontSize: 10,
+        fontWeight: '800',
+    },
 
-    actionColumn: { flexDirection: 'row', gap: 8, alignItems: 'center' },
-    iconCircle: {
-        width: 36, height: 36, borderRadius: 18,
-        backgroundColor: '#F8FAFC',
-        justifyContent: 'center', alignItems: 'center',
-        borderWidth: 1, borderColor: '#F1F5F9'
+    cardMain: {
+        paddingHorizontal: 14,
+        paddingVertical: 10,
+        flexDirection: 'row',
+        alignItems: 'center',
     },
+    avatarBox: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        backgroundColor: '#E0E7FF',
+        justifyContent: 'center',
+        alignItems: 'center',
+        overflow: 'hidden',
+    },
+    avatarImg: { width: 48, height: 48, borderRadius: 24 },
+    avatarInitials: { fontSize: 18, fontWeight: '900', color: '#4F46E5' },
+    infoContainer: { flex: 1, marginLeft: 12 },
+    nameText: { fontSize: 15, fontWeight: '800', color: '#1E293B', marginBottom: 2 },
+    phoneText: { fontSize: 12, color: '#64748B', fontWeight: '600' },
+    emailText: { fontSize: 11, color: '#94A3B8', fontWeight: '500', marginTop: 1 },
 
     divider: { height: 1, backgroundColor: '#F1F5F9' },
-    cardActions: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 12, backgroundColor: '#FAFAFA' },
-    actionBtnIcon: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E2E8F0' },
+    cardActions: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        backgroundColor: '#FAFAFA',
+    },
+    actionBtnIcon: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 5,
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 8,
+        backgroundColor: '#FFF',
+        borderWidth: 1,
+        borderColor: '#E2E8F0',
+    },
     actionBtnIconText: { fontSize: 11, fontWeight: '700', color: '#64748B' },
-    statusToggleBtnNew: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, borderWidth: 1 },
+    statusToggleBtnNew: {
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 8,
+        borderWidth: 1,
+    },
     statusToggleTextNew: { fontSize: 11, fontWeight: '800' },
 
     fab: {
@@ -459,71 +810,4 @@ const s = StyleSheet.create({
         shadowRadius: 8,
         zIndex: 99999,
     },
-
-    emptyWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', marginTop: 80 },
-    emptyText: { fontSize: 14, color: '#94A3B8', fontWeight: '600' },
-
-    formLabel: { fontSize: 12, fontWeight: '800', color: '#475569', marginBottom: 6, marginTop: 12 },
-    formInput: { backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, padding: 10, fontSize: 14, color: '#1E293B', fontWeight: '600' },
-
-    // Selfie box
-    selfieBox: { borderStyle: 'dashed', borderWidth: 1.5, borderColor: '#FCA5A5', backgroundColor: '#FFF5F5', borderRadius: 16, padding: 16, alignItems: 'center', justifyContent: 'center', marginTop: 4 },
-    selfieLabel: { fontSize: 13, fontWeight: '800', color: '#EC4899', marginTop: 8 },
-    selfieSub: { fontSize: 10, color: '#94A3B8', fontWeight: '500', marginTop: 2 },
-
-    roleSelector: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 },
-    roleChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 18, borderWidth: 1, borderColor: '#E2E8F0', backgroundColor: '#FFF' },
-    roleChipText: { fontSize: 12, fontWeight: '700', color: '#64748B' },
-
-    statusSelector: { flexDirection: 'row', gap: 8, marginTop: 4 },
-    statusChip: { flex: 1, paddingVertical: 8, borderRadius: 10, borderWidth: 1, borderColor: '#E2E8F0', backgroundColor: '#FFF', alignItems: 'center' },
-    statusChipText: { fontSize: 12, fontWeight: '800', color: '#64748B' },
-
-    dateField: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, padding: 12, gap: 10 },
-    dateText: { fontSize: 14, fontWeight: '600', color: '#1E293B' },
-
-    uploadRow: { flexDirection: 'row', marginTop: 4 },
-    uploadButton: { height: 42, backgroundColor: '#4F46E5', borderRadius: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
-    uploadBtnText: { color: '#FFF', fontWeight: '800', fontSize: 13 },
-
-    stickyFooter: {
-        flexDirection: 'row',
-        gap: 12,
-        paddingHorizontal: 16,
-        paddingTop: 12,
-        backgroundColor: '#FFF',
-        borderTopWidth: 1,
-        borderTopColor: '#F1F5F9',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: -2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 8,
-        elevation: 8,
-    },
-    cancelButton: {
-        flex: 1,
-        height: 48,
-        borderRadius: 12,
-        borderWidth: 1.5,
-        borderColor: '#CBD5E1',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: '#FFF'
-    },
-    cancelButtonText: { color: '#475569', fontWeight: '600', fontSize: 15 },
-    submitButton: {
-        flex: 2,
-        height: 48,
-        borderRadius: 12,
-        backgroundColor: '#FF6B6B',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    submitButtonText: { color: '#FFF', fontWeight: '700', fontSize: 15 },
-
-    // Modal Styles
-    modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
-    sheet: { backgroundColor: '#FFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingBottom: 32 },
-    sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
-    sheetTitle: { fontSize: 18, fontWeight: '800', color: '#1E293B' },
 });

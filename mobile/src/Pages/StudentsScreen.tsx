@@ -51,6 +51,7 @@ type TabType = 'Active' | 'Unallocated' | 'Inactive' | 'PreBooked' | 'QRRegister
 
 const TABS: { key: TabType; label: string }[] = [
     { key: 'Active', label: 'Active' },
+    { key: 'Unallocated', label: 'No Room' },
     { key: 'AdmissionPending', label: 'Admission Pending' },
     { key: 'PreBooked', label: 'Pre-Booked' },
     { key: 'QRRegister', label: 'QR Signups' },

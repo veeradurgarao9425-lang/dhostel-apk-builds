@@ -1157,20 +1157,21 @@ const RULES: Rule[] = [
     keywords: [
       'main goal', 'main goal of app', 'main goal of this app', 'goal of this app',
       'purpose of app', 'purpose of this app', 'what is goal', 'why this app',
-      'what is hostix', 'about hostix', 'app goal', 'app purpose',
-      'what is the main goal', 'what is the goal',
+      'what is hostix', 'about hostix', 'app goal', 'app goals', 'goals', 'goal',
+      'main goals', 'app purpose', 'what is the main goal', 'what is the goal',
+      'main gial', 'app goasl', 'aim of app', 'objective of app',
     ],
     intent: { type: 'SHOW_APP_INFO', topic: 'goal' },
-    priority: 9,
+    priority: 10,
   },
   {
     keywords: [
-      'how to use this app', 'how app works', 'how does this app work',
-      'how to use hostix', 'app guide', 'getting started with app',
-      'how to start', 'guide for app', 'how to run app',
+      'how to use', 'how to use this app', 'how to use app', 'how app works', 'how does this app work',
+      'how to use hostix', 'app guide', 'getting started with app', 'how to start',
+      'guide for app', 'how to run app', 'how use', 'how use app', 'app help',
     ],
     intent: { type: 'SHOW_APP_INFO', topic: 'usage' },
-    priority: 9,
+    priority: 10,
   },
 ];
 
@@ -1241,6 +1242,28 @@ export function resolveIntent(rawQuery: string): AssistantIntent {
 
   // ── 3. Direct Fast Path for Common Core Inquiries ──
   const cleanQ = rawLower.replace(/[?!.,]+$/g, '').trim();
+
+  // App goals & info fast paths
+  if (
+    cleanQ === 'app goal' || cleanQ === 'app goals' || cleanQ === 'main goal' || cleanQ === 'main goals' ||
+    cleanQ === 'goal' || cleanQ === 'goals' || cleanQ.includes('app goal') || cleanQ.includes('main goal') ||
+    cleanQ.includes('app goasl') || cleanQ.includes('main gial') || cleanQ.includes('goal of') || cleanQ === 'purpose' || cleanQ.includes('purpose of app')
+  ) {
+    return { type: 'SHOW_APP_INFO', topic: 'goal' };
+  }
+  if (
+    cleanQ === 'how to use' || cleanQ === 'how to use app' || cleanQ === 'how to use this app' || cleanQ === 'how to use hostix' ||
+    cleanQ === 'how to start' || cleanQ === 'guide' || cleanQ === 'app guide' || cleanQ.includes('how to use') || cleanQ.includes('how use') ||
+    cleanQ.includes('how app works') || cleanQ.includes('how does this app work')
+  ) {
+    return { type: 'SHOW_APP_INFO', topic: 'usage' };
+  }
+  if (
+    cleanQ === 'app owner' || cleanQ === 'who is owner' || cleanQ === 'developer' || cleanQ === 'who developed' || cleanQ === 'who built' ||
+    cleanQ.includes('app owner') || cleanQ.includes('developer details') || cleanQ.includes('who is developer') || cleanQ.includes('veeradurgarao')
+  ) {
+    return { type: 'SHOW_APP_INFO', topic: 'owner' };
+  }
 
   if (cleanQ.includes('paid student list') || cleanQ.includes('list of paid student') || cleanQ.includes('who paid') || cleanQ.includes('paid fee') || cleanQ.includes('paid money') || cleanQ.includes('money received')) {
     return { type: 'SHOW_PAID_STUDENTS' };

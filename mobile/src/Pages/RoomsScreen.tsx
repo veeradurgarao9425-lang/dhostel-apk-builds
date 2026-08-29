@@ -459,15 +459,6 @@ export default function RoomsScreen({ navigation, route }: any) {
                     )}
                 />
             )}
-
-            {/* Plus FAB */}
-            <TouchableOpacity
-                style={styles.fab}
-                onPress={() => navigation.navigate('BulkRoomSetup')}
-                activeOpacity={0.85}
-            >
-                <Ionicons name="add" size={28} color="#FFF" />
-            </TouchableOpacity>
         </View>
     );
 }

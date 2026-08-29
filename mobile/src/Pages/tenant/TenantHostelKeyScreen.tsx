@@ -214,7 +214,7 @@ export function TenantHostelKeyScreen() {
             <KeyIcon />
             <TextInput
               style={styles.inputField}
-              placeholder="Enter Portal Key  (e.g. HX9A2B)"
+              placeholder="Portal Key (e.g. HX9A2B)"
               placeholderTextColor={INPUT_HINT}
               value={key}
               onChangeText={(t) => setKey(t.toUpperCase())}
@@ -223,6 +223,8 @@ export function TenantHostelKeyScreen() {
               autoCapitalize="characters"
               autoCorrect={false}
               maxLength={10}
+              returnKeyType="done"
+              onSubmitEditing={handleConnect}
             />
           </View>
 
@@ -371,7 +373,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   inputCardFocused: { borderColor: PURPLE },
-  inputField: { flex: 1, fontSize: 16, color: TEXT_DARK, fontWeight: '600', letterSpacing: 1 },
+  inputField: { flex: 1, fontSize: 14, color: TEXT_DARK, fontWeight: '600', letterSpacing: 1 },
   connectBtnWrap: { borderRadius: 16, marginBottom: 16 },
   connectBtn: { borderRadius: 16, height: 58, justifyContent: 'center', alignItems: 'center' },
   btnInner: { flexDirection: 'row', alignItems: 'center', gap: 10 },
