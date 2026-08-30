@@ -127,30 +127,37 @@ export const sendNotificationToUser = async (options: SendNotificationOptions): 
       console.error('[Notification] Socket emission error:', socErr);
     }
 
-    // 2. Fetch push tokens for this user/student
+    // 2. Fetch push tokens for this user/student (cross-resolve student_id <-> user_id)
     let userTokens: any[] = [];
-    if (userId && studentId) {
-      userTokens = await db('user_push_tokens')
-        .where(function() {
-          this.where('user_id', userId).orWhere('student_id', studentId);
-        })
-        .select('push_token');
-    } else if (userId) {
-      userTokens = await db('user_push_tokens')
-        .where(function() {
-          this.where('user_id', userId).orWhere('student_id', userId);
-        })
-        .select('push_token');
-    } else if (studentId) {
-      userTokens = await db('user_push_tokens')
-        .where(function() {
-          this.where('student_id', studentId).orWhere('user_id', studentId);
-        })
-        .select('push_token');
+    let resolvedUserId = userId;
+    let resolvedStudentId = studentId;
+
+    if (studentId && !resolvedUserId) {
+      const studentRecord = await db('students').where({ student_id: studentId }).select('user_id').first().catch(() => null);
+      if (studentRecord?.user_id) {
+        resolvedUserId = studentRecord.user_id;
+      }
+    } else if (userId && !resolvedStudentId) {
+      const studentRecord = await db('students').where({ user_id: userId }).select('student_id').first().catch(() => null);
+      if (studentRecord?.student_id) {
+        resolvedStudentId = studentRecord.student_id;
+      }
     }
 
+    userTokens = await db('user_push_tokens')
+      .where(function() {
+        if (resolvedUserId && resolvedStudentId) {
+          this.where('user_id', resolvedUserId).orWhere('student_id', resolvedStudentId).orWhere('user_id', resolvedStudentId);
+        } else if (resolvedUserId) {
+          this.where('user_id', resolvedUserId);
+        } else if (resolvedStudentId) {
+          this.where('student_id', resolvedStudentId).orWhere('user_id', resolvedStudentId);
+        }
+      })
+      .select('push_token');
+
     if (!userTokens || userTokens.length === 0) {
-      console.log(`[Notification] No push tokens found in DB for User:${userId ?? '-'} / Student:${studentId ?? '-'}. Push delivery skipped.`);
+      console.log(`[Notification] No push tokens found in DB for User:${userId ?? '-'} / Student:${studentId ?? '-'} (resolved User:${resolvedUserId ?? '-'}). Push delivery skipped.`);
       return;
     }
 
