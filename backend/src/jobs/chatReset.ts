@@ -9,19 +9,27 @@ export const startChatResetJob = () => {
     console.log('🔄 [Cron] Running Weekly Chat Reset...');
     
     try {
+      const hasChatMessages = await db.schema.hasTable('chat_messages');
+      if (!hasChatMessages) {
+        console.log('[Cron] chat_messages table does not exist, skipping weekly reset.');
+        return;
+      }
+
       // 1. Fetch all media URLs from messages before deleting
       const messagesWithMedia = await db('chat_messages')
         .whereNotNull('media_url')
-        .select('media_url', 'thumbnail');
+        .select('media_url', 'thumbnail')
+        .catch(() => []);
 
       // 2. Fetch all raw uploads before deleting
-      const uploads = await db('chat_uploads').select('filename');
+      const hasChatUploads = await db.schema.hasTable('chat_uploads');
+      const uploads = hasChatUploads ? await db('chat_uploads').select('filename').catch(() => []) : [];
 
       // 3. Clear database tables
-      await db('chat_reads').del();
-      await db('chat_reactions').del();
-      await db('chat_messages').del();
-      await db('chat_uploads').del();
+      if (await db.schema.hasTable('chat_reads')) await db('chat_reads').del().catch(() => {});
+      if (await db.schema.hasTable('chat_reactions')) await db('chat_reactions').del().catch(() => {});
+      await db('chat_messages').del().catch(() => {});
+      if (hasChatUploads) await db('chat_uploads').del().catch(() => {});
 
       console.log('✅ [Cron] Cleared chat database tables.');
 

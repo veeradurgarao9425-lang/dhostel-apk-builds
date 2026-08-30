@@ -222,6 +222,33 @@ export async function patchDatabaseSchema() {
           ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         `);
       }
+      if (!tableNamesLower.includes('chat_messages')) {
+        console.log('[schema-patch] creating missing chat_messages table...');
+        await db.raw(`
+          CREATE TABLE chat_messages (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            room_id VARCHAR(100) NOT NULL,
+            sender_id INT NOT NULL,
+            message TEXT NULL,
+            media_url TEXT NULL,
+            thumbnail TEXT NULL,
+            media_type VARCHAR(50) NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        `);
+      }
+      if (tableNamesLower.includes('hostel_master')) {
+        const [hColumns] = await db.raw("SHOW COLUMNS FROM hostel_master");
+        const hColNames = (hColumns as any[]).map(col => col.Field.toLowerCase());
+        if (!hColNames.includes('subscription_end_date')) {
+          console.log('[schema-patch] adding subscription_end_date to hostel_master...');
+          await db.raw("ALTER TABLE hostel_master ADD COLUMN subscription_end_date DATETIME NULL");
+        }
+        if (!hColNames.includes('trial_end_date')) {
+          console.log('[schema-patch] adding trial_end_date to hostel_master...');
+          await db.raw("ALTER TABLE hostel_master ADD COLUMN trial_end_date DATETIME NULL");
+        }
+      }
     } catch (e: any) {
       console.error('[schema-patch] Error creating core parent tables:', e.message);
     }
