@@ -46,108 +46,165 @@ import {
     Sliders,
     KeyRound,
     AlertCircle,
-    RefreshCw
+    RefreshCw,
+    LayoutDashboard,
+    Users,
+    CreditCard,
+    TrendingUp,
+    Building2,
+    BedDouble,
+    Receipt,
+    Wallet,
+    ShieldCheck,
+    BarChart3,
+    Utensils,
+    Megaphone,
+    Info,
 } from 'lucide-react-native';
 import { getResolvedImageUrl, isLocalDeviceUri, appendImageFileToFormData } from '../utils/imageHelper';
 
-export interface ModulePermissions {
-    dashboard: 'manage' | 'view' | 'none';
-    rooms: 'manage' | 'view' | 'none';
-    tenants: 'manage' | 'view' | 'none';
-    finance: 'manage' | 'view' | 'none';
-    mess: 'manage' | 'view' | 'none';
-    complaints: 'manage' | 'view' | 'none';
-    reports: 'view' | 'none';
-}
-
-const DEFAULT_PERMISSIONS: ModulePermissions = {
-    dashboard: 'view',
-    rooms: 'manage',
-    tenants: 'manage',
-    finance: 'none',
-    mess: 'manage',
-    complaints: 'manage',
-    reports: 'none',
-};
-
-const MODULE_CONFIG = [
+// ── 1. The 4 Bottom Navigation Bar Tabs ──
+const BOTTOM_TABS_CONFIG = [
     {
-        key: 'dashboard' as const,
-        label: 'Dashboard & Metrics',
-        desc: 'Key property statistics, alerts, and vacancy indicators',
-        icon: '📊',
-        options: [
-            { id: 'manage', label: 'Full Access' },
-            { id: 'view', label: 'View Only' },
-            { id: 'none', label: 'Hidden' },
-        ],
+        key: 'dashboard',
+        title: 'Dashboard (Home Tab)',
+        subtitle: 'Key hostel metrics, vacancies & quick stats',
+        icon: LayoutDashboard,
+        color: '#0284C7',
+        bg: '#E0F2FE',
+        borderActive: '#BAE6FD',
     },
     {
-        key: 'rooms' as const,
-        label: 'Rooms & Beds',
-        desc: 'Room allocation, floor management, and bed vacancy',
-        icon: '🛏️',
-        options: [
-            { id: 'manage', label: 'Allocate' },
-            { id: 'view', label: 'View Only' },
-            { id: 'none', label: 'Hidden' },
-        ],
+        key: 'students',
+        title: 'Students (Students Tab)',
+        subtitle: 'Resident list, profiles, room check-in & allocations',
+        icon: Users,
+        color: '#7C3AED',
+        bg: '#F5F3FF',
+        borderActive: '#DDD6FE',
+        required: true,
     },
     {
-        key: 'tenants' as const,
-        label: 'Tenants & Admissions',
-        desc: 'Tenant profiles, approvals, vacate notices, and KYC records',
-        icon: '👥',
-        options: [
-            { id: 'manage', label: 'Add & Edit' },
-            { id: 'view', label: 'View Only' },
-            { id: 'none', label: 'Hidden' },
-        ],
+        key: 'dues',
+        title: 'Money (Pending Dues Tab)',
+        subtitle: 'Pending rent collection & overdue tracking',
+        icon: CreditCard,
+        color: '#16A34A',
+        bg: '#DCFCE7',
+        borderActive: '#BBF7D0',
     },
     {
-        key: 'finance' as const,
-        label: 'Finance & Payments',
-        desc: 'Rent collection, dues tracking, income, and payment records',
-        icon: '💳',
-        options: [
-            { id: 'manage', label: 'Collect' },
-            { id: 'view', label: 'View Dues' },
-            { id: 'none', label: 'No Access' },
-        ],
-    },
-    {
-        key: 'mess' as const,
-        label: 'Mess & Food Menu',
-        desc: 'Daily meal schedule, mess skip requests, and kitchen log',
-        icon: '🍽️',
-        options: [
-            { id: 'manage', label: 'Manage' },
-            { id: 'view', label: 'View Only' },
-            { id: 'none', label: 'Hidden' },
-        ],
-    },
-    {
-        key: 'complaints' as const,
-        label: 'Complaints & Notices',
-        desc: 'Resolve student issues, maintenance tickets, and notices',
-        icon: '📑',
-        options: [
-            { id: 'manage', label: 'Resolve' },
-            { id: 'view', label: 'View Only' },
-            { id: 'none', label: 'Hidden' },
-        ],
-    },
-    {
-        key: 'reports' as const,
-        label: 'Reports & Export',
-        desc: 'Generate Excel summaries and financial audits',
-        icon: '📈',
-        options: [
-            { id: 'view', label: 'Export' },
-            { id: 'none', label: 'Disabled' },
-        ],
+        key: 'finance',
+        title: 'Finance (Overview Tab)',
+        subtitle: 'Property revenue, P&L & financial accounts',
+        icon: TrendingUp,
+        color: '#2563EB',
+        bg: '#EFF6FF',
+        borderActive: '#BFDBFE',
     },
 ];
+
+// ── 2. More Screen & Hostel Operations Modules ──
+const OPERATIONS_CONFIG = [
+    {
+        key: 'hostels',
+        title: 'Hostel Management',
+        subtitle: 'Hostel profile, amenities & property settings',
+        icon: Building2,
+        color: '#4F46E5',
+        bg: '#EEF2FF',
+        borderActive: '#C7D2FE',
+    },
+    {
+        key: 'rooms',
+        title: 'Rooms & Vacant Beds',
+        subtitle: 'Room configuration, vacant bed counters & floor view',
+        icon: BedDouble,
+        color: '#8B5CF6',
+        bg: '#F5F3FF',
+        borderActive: '#DDD6FE',
+    },
+    {
+        key: 'expenses',
+        title: 'Hostel Expenses',
+        subtitle: 'Record & track daily hostel maintenance expenses',
+        icon: Receipt,
+        color: '#EF4444',
+        bg: '#FEE2E2',
+        borderActive: '#FECACA',
+    },
+    {
+        key: 'income',
+        title: 'Hostel Income',
+        subtitle: 'Record additional receipts & miscellaneous income',
+        icon: Wallet,
+        color: '#10B981',
+        bg: '#D1FAE5',
+        borderActive: '#A7F3D0',
+    },
+    {
+        key: 'verify_rent',
+        title: 'Verify Rent & Payments',
+        subtitle: 'Review & verify online UPI payment proofs',
+        icon: ShieldCheck,
+        color: '#059669',
+        bg: '#ECFDF5',
+        borderActive: '#A7F3D0',
+    },
+    {
+        key: 'reports',
+        title: 'Analytics & Reports',
+        subtitle: 'Download Excel/PDF spreadsheets & financial trends',
+        icon: BarChart3,
+        color: '#D97706',
+        bg: '#FEF3C7',
+        borderActive: '#FDE68A',
+    },
+    {
+        key: 'mess',
+        title: 'Mess & Food Menu',
+        subtitle: 'Daily meal schedule, weekly menu & dining options',
+        icon: Utensils,
+        color: '#EA580C',
+        bg: '#FFF7ED',
+        borderActive: '#FED7AA',
+    },
+    {
+        key: 'complaints',
+        title: 'Complaints & Maintenance',
+        subtitle: 'Track resident tickets & repair maintenance issues',
+        icon: AlertCircle,
+        color: '#E11D48',
+        bg: '#FFE4E6',
+        borderActive: '#FECDD3',
+    },
+    {
+        key: 'notices',
+        title: 'Notices & Announcements',
+        subtitle: 'Post announcements & broadcast notices to residents',
+        icon: Megaphone,
+        color: '#9333EA',
+        bg: '#F3E8FF',
+        borderActive: '#E9D5FF',
+    },
+];
+
+const DEFAULT_MODULES: Record<string, boolean> = {
+    dashboard: true,
+    students: true,
+    dues: true,
+    finance: false,
+    hostels: true,
+    rooms: true,
+    staff: false,
+    expenses: false,
+    income: false,
+    verify_rent: false,
+    reports: false,
+    mess: true,
+    complaints: true,
+    notices: true,
+};
 
 const ROLES = ['Cook', 'Housekeeping', 'Security', 'Warden', 'Cleaner', 'Others'];
 
@@ -193,6 +250,7 @@ const ImageSourceDrawer = ({ visible, onClose, onSelectCamera, onSelectGallery, 
 const DocumentUploadBox = ({ label, uri, onCapture, onRemove, isFront, error }: { label: string; uri: string | null; onCapture: (uri: string) => void; onRemove: () => void; isFront: boolean; error?: string }) => {
     const { theme, isDark } = useTheme();
     const [pickerVisible, setPickerVisible] = useState(false);
+    const [zoomVisible, setZoomVisible] = useState(false);
 
     const onSelectCamera = async () => {
         try {
@@ -201,7 +259,7 @@ const DocumentUploadBox = ({ label, uri, onCapture, onRemove, isFront, error }: 
                 Alert.alert('Permission Required', 'Camera permission is needed to upload documents.');
                 return;
             }
-            const r = await ImagePicker.launchCameraAsync({ quality: 0.5 });
+            const r = await ImagePicker.launchCameraAsync({ quality: 0.6 });
             if (!r.canceled && r.assets && r.assets.length > 0) {
                 onCapture(r.assets[0].uri);
             }
@@ -217,7 +275,7 @@ const DocumentUploadBox = ({ label, uri, onCapture, onRemove, isFront, error }: 
                 Alert.alert('Permission Required', 'Media library permission is needed to upload documents.');
                 return;
             }
-            const r = await ImagePicker.launchImageLibraryAsync({ quality: 0.5 });
+            const r = await ImagePicker.launchImageLibraryAsync({ quality: 0.6 });
             if (!r.canceled && r.assets && r.assets.length > 0) {
                 onCapture(r.assets[0].uri);
             }
@@ -226,64 +284,32 @@ const DocumentUploadBox = ({ label, uri, onCapture, onRemove, isFront, error }: 
         }
     };
 
-    const [zoomVisible, setZoomVisible] = useState(false);
-
     return (
         <>
             <View style={[
                 styles.docUploadBox, 
                 { 
-                    backgroundColor: uri 
-                        ? (isDark ? '#052E16' : '#F0FDF4') 
-                        : (isDark ? '#1E293B' : '#F9FAFB'), 
-                    borderColor: error 
-                        ? '#EF4444' 
-                        : uri 
-                            ? '#10B981' 
-                            : (isDark ? '#334155' : '#E2E8F0'), 
+                    backgroundColor: isDark ? '#1E293B' : '#F9FAFB', 
+                    borderColor: error ? '#EF4444' : uri ? '#10B981' : (isDark ? '#334155' : '#E2E8F0'), 
                     borderStyle: uri ? 'solid' : 'dashed',
-                    height: uri ? 90 : 155,
                 }
             ]}>
                 {uri ? (
-                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', height: '100%', paddingHorizontal: 4 }}>
+                    <View style={styles.docPreviewContainer}>
                         <TouchableOpacity 
-                            onPress={() => setZoomVisible(true)}
-                            activeOpacity={0.8}
-                            style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}
+                            style={{ flex: 1, width: '100%', height: '100%' }} 
+                            onPress={() => setZoomVisible(true)} 
+                            activeOpacity={0.85}
                         >
-                            <Image 
-                                source={{ uri }} 
-                                style={{ width: 68, height: 68, borderRadius: 10, borderWidth: 1, borderColor: '#10B981' }} 
-                                resizeMode="cover" 
-                            />
-                            <View style={{ flex: 1 }}>
-                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                                    <Ionicons name="checkmark-circle" size={16} color="#10B981" />
-                                    <Text style={{ fontSize: 13, fontWeight: '700', color: isDark ? '#FFF' : '#0F172A' }}>{label}</Text>
-                                </View>
-                                <Text style={{ fontSize: 11, color: isDark ? '#A7F3D0' : '#15803D', fontWeight: '600', marginTop: 2 }}>Uploaded</Text>
-                                <Text style={{ fontSize: 10, color: theme.textSecondary, marginTop: 2 }}>Tap thumbnail to zoom</Text>
-                            </View>
+                            <Image source={{ uri }} style={styles.docPreviewImage} resizeMode="cover" />
                         </TouchableOpacity>
-                        
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                            <TouchableOpacity 
-                                style={{ backgroundColor: isDark ? '#334155' : '#E2E8F0', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, flexDirection: 'row', alignItems: 'center', gap: 4 }} 
-                                onPress={() => setPickerVisible(true)}
-                                activeOpacity={0.7}
-                            >
-                                <Camera size={12} color={theme.textPrimary} />
-                                <Text style={{ fontSize: 11, color: theme.textPrimary, fontWeight: '600' }}>Retake</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity 
-                                style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: '#FEE2E2', alignItems: 'center', justifyContent: 'center' }} 
-                                onPress={onRemove}
-                                activeOpacity={0.7}
-                            >
-                                <X size={14} color="#EF4444" />
-                            </TouchableOpacity>
-                        </View>
+                        <TouchableOpacity style={styles.docRemoveBtn} onPress={onRemove} activeOpacity={0.8}>
+                            <X size={13} color="#FFF" />
+                        </TouchableOpacity>
+                        <TouchableOpacity style={[styles.docRetakeRow, { backgroundColor: 'rgba(0,0,0,0.65)' }]} onPress={() => setPickerVisible(true)} activeOpacity={0.8}>
+                            <Camera size={11} color="#FFF" />
+                            <Text style={{ fontSize: 10, color: '#FFF', fontWeight: '700', marginLeft: 4 }}>Retake</Text>
+                        </TouchableOpacity>
                     </View>
                 ) : (
                     <View style={{ flex: 1, justifyContent: 'space-between' }}>
@@ -311,22 +337,22 @@ const DocumentUploadBox = ({ label, uri, onCapture, onRemove, isFront, error }: 
                             </View>
                         </View>
 
-                        <View style={{ marginTop: 6 }}>
-                            <Text style={[styles.docBoxTitle, { color: error ? '#EF4444' : (isDark ? '#F1F5F9' : '#1E293B') }]}>{label}</Text>
-                            <Text style={styles.docBoxSubtitle}>JPG, PNG or PDF · Max 5MB</Text>
+                        <View style={{ marginTop: 4 }}>
+                            <Text style={[styles.docBoxTitle, { color: error ? '#EF4444' : (isDark ? '#F1F5F9' : '#1E293B') }]} numberOfLines={1}>{label}</Text>
+                            <Text style={styles.docBoxSubtitle}>JPG, PNG · Max 5MB</Text>
                         </View>
 
                         <TouchableOpacity
-                            style={[styles.docUploadBtn, { borderColor: error ? '#EF4444' : theme.primary, marginTop: 6 }]}
+                            style={[styles.docUploadBtn, { borderColor: error ? '#EF4444' : theme.primary }]}
                             onPress={() => setPickerVisible(true)}
                             activeOpacity={0.7}
                         >
-                            <Upload size={12} color={error ? '#EF4444' : theme.primary} />
-                            <Text style={[styles.docUploadBtnText, { color: error ? '#EF4444' : theme.primary }]}>Upload {label}</Text>
+                            <Upload size={11} color={error ? '#EF4444' : theme.primary} />
+                            <Text style={[styles.docUploadBtnText, { color: error ? '#EF4444' : theme.primary }]}>Upload</Text>
                         </TouchableOpacity>
                     </View>
                 )}
-                {error && <Text style={{ color: '#EF4444', fontSize: 10, marginTop: 4, fontWeight: '600', textAlign: 'center' }}>{error}</Text>}
+                {error && <Text style={{ color: '#EF4444', fontSize: 9, marginTop: 4, fontWeight: '600', textAlign: 'center' }}>{error}</Text>}
             </View>
 
             {/* Zoom Modal */}
@@ -496,7 +522,7 @@ export default function AddStaffScreen() {
     const [canLogin, setCanLogin] = useState(false);
     const [loginPassword, setLoginPassword] = useState('');
     const [passwordVisible, setPasswordVisible] = useState(false);
-    const [permissions, setPermissions] = useState<ModulePermissions>(DEFAULT_PERMISSIONS);
+    const [modules, setModules] = useState<Record<string, boolean>>(DEFAULT_MODULES);
 
     // Verification Real Image State
     const [photoUri, setPhotoUri] = useState<string | null>(null);
@@ -507,48 +533,51 @@ export default function AddStaffScreen() {
     const [proofModalVisible, setProofModalVisible] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
 
-    const applyPreset = (preset: 'warden' | 'supervisor' | 'cook' | 'reset') => {
-        if (preset === 'warden') {
-            setPermissions({
-                dashboard: 'manage',
-                rooms: 'manage',
-                tenants: 'manage',
-                finance: 'manage',
-                mess: 'manage',
-                complaints: 'manage',
-                reports: 'view',
-            });
-        } else if (preset === 'supervisor') {
-            setPermissions({
-                dashboard: 'view',
-                rooms: 'view',
-                tenants: 'view',
-                finance: 'view',
-                mess: 'view',
-                complaints: 'manage',
-                reports: 'none',
-            });
-        } else if (preset === 'cook') {
-            setPermissions({
-                dashboard: 'none',
-                rooms: 'none',
-                tenants: 'none',
-                finance: 'none',
-                mess: 'manage',
-                complaints: 'manage',
-                reports: 'none',
-            });
-        } else {
-            setPermissions({
-                dashboard: 'none',
-                rooms: 'none',
-                tenants: 'none',
-                finance: 'none',
-                mess: 'none',
-                complaints: 'none',
-                reports: 'none',
-            });
-        }
+    const renderModuleCard = (item: any) => {
+        const IconComponent = item.icon;
+        const isRequired = Boolean(item.required);
+        const isEnabled = isRequired ? true : Boolean(modules[item.key]);
+
+        return (
+            <View
+                key={item.key}
+                style={[
+                    styles.moduleSmallCard,
+                    isEnabled && {
+                        borderColor: item.borderActive,
+                        backgroundColor: '#FFFFFF',
+                    },
+                ]}
+            >
+                <View style={[styles.moduleIconBox, { backgroundColor: item.bg }]}>
+                    <IconComponent size={20} color={item.color} />
+                </View>
+
+                <View style={styles.moduleTextContainer}>
+                    <Text style={styles.moduleCardTitle}>{item.title}</Text>
+                    <Text
+                        style={[
+                            styles.moduleCardSubtitle,
+                            isEnabled && { color: item.color, fontWeight: '700' },
+                        ]}
+                    >
+                        {isRequired ? 'Mandatory (Check-in & Residents)' : (isEnabled ? 'Full access' : 'No access')}
+                    </Text>
+                </View>
+
+                <Switch
+                    value={isEnabled}
+                    disabled={isRequired}
+                    onValueChange={val => {
+                        if (!isRequired) {
+                            setModules(m => ({ ...m, [item.key]: val }));
+                        }
+                    }}
+                    trackColor={{ false: '#E2E8F0', true: item.color }}
+                    thumbColor="#FFFFFF"
+                />
+            </View>
+        );
     };
 
     const generateSecurePassword = () => {
@@ -626,7 +655,22 @@ export default function AddStaffScreen() {
                 if (s.permissions) {
                     try {
                         const parsed = typeof s.permissions === 'string' ? JSON.parse(s.permissions) : s.permissions;
-                        setPermissions(prev => ({ ...prev, ...parsed }));
+                        setModules({
+                            dashboard: parsed.dashboard ? parsed.dashboard !== 'none' : true,
+                            students: parsed.students ? parsed.students !== 'none' : (parsed.tenants ? parsed.tenants !== 'none' : true),
+                            dues: parsed.dues ? parsed.dues !== 'none' : (parsed.finance ? parsed.finance !== 'none' : true),
+                            finance: parsed.finance ? parsed.finance !== 'none' : false,
+                            hostels: parsed.hostels ? parsed.hostels !== 'none' : true,
+                            rooms: parsed.rooms ? parsed.rooms !== 'none' : true,
+                            staff: parsed.staff ? parsed.staff !== 'none' : false,
+                            expenses: parsed.expenses ? parsed.expenses !== 'none' : false,
+                            income: parsed.income ? parsed.income !== 'none' : false,
+                            verify_rent: parsed.verify_rent ? parsed.verify_rent !== 'none' : false,
+                            reports: parsed.reports ? parsed.reports !== 'none' : false,
+                            mess: parsed.mess ? parsed.mess !== 'none' : true,
+                            complaints: parsed.complaints ? parsed.complaints !== 'none' : true,
+                            notices: parsed.notices ? parsed.notices !== 'none' : true,
+                        });
                     } catch (_) {}
                 }
 
@@ -846,6 +890,24 @@ export default function AddStaffScreen() {
             setLoading(true);
             setLoadingMessage(isEdit ? 'Updating staff profile...' : 'Registering staff member...');
             
+            const permissionsPayload = {
+                dashboard: modules.dashboard ? 'view' : 'none',
+                students: modules.students ? 'manage' : 'none',
+                tenants: modules.students ? 'manage' : 'none',
+                dues: modules.dues ? 'manage' : 'none',
+                finance: modules.finance ? 'manage' : 'none',
+                hostels: modules.hostels ? 'manage' : 'none',
+                rooms: modules.rooms ? 'manage' : 'none',
+                staff: modules.staff ? 'manage' : 'none',
+                expenses: modules.expenses ? 'manage' : 'none',
+                income: modules.income ? 'manage' : 'none',
+                verify_rent: modules.verify_rent ? 'manage' : 'none',
+                reports: modules.reports ? 'view' : 'none',
+                mess: modules.mess ? 'manage' : 'none',
+                complaints: modules.complaints ? 'manage' : 'none',
+                notices: modules.notices ? 'manage' : 'none',
+            };
+
             const payload: any = {
                 hostel_id: selectedHostelId || user?.hostel_id,
                 full_name: fullName.trim(),
@@ -862,7 +924,7 @@ export default function AddStaffScreen() {
                 id_proof_number: idProofNumber.trim(),
                 notes: notes.trim() || null,
                 can_login: canLogin ? 1 : 0,
-                permissions: JSON.stringify(permissions),
+                permissions: JSON.stringify(permissionsPayload),
                 ...(canLogin && loginPassword ? { password: loginPassword.trim() } : {}),
             };
 
@@ -933,6 +995,9 @@ export default function AddStaffScreen() {
         setPhotoUri(null);
         setAadhaarFrontUri(null);
         setAadhaarBackUri(null);
+        setCanLogin(false);
+        setLoginPassword('');
+        setModules(DEFAULT_MODULES);
         setErrors({});
     };
 
@@ -1195,126 +1260,29 @@ export default function AddStaffScreen() {
                     )}
                 </View>
 
-                {/* Module Privileges Matrix */}
+                {/* ── App Access Module Privileges ── */}
                 {canLogin && (
-                    <View style={styles.formCard}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                                <Sliders size={20} color={theme.primary} />
-                                <Text style={styles.sectionTitle}>Module Privileges</Text>
+                    <>
+                        <View style={styles.formCard}>
+                            <Text style={styles.sectionTitle}>📱 Bottom Navigation Tabs</Text>
+                            <Text style={styles.fieldHint}>
+                                Control tabs visible in this staff member's bottom navigation bar.
+                            </Text>
+                            <View style={styles.cardsGrid}>
+                                {BOTTOM_TABS_CONFIG.map(renderModuleCard)}
                             </View>
-                            <TouchableOpacity
-                                onPress={() => applyPreset('warden')}
-                                style={[styles.presetQuickBtn, { backgroundColor: theme.primary + '15' }]}
-                            >
-                                <Text style={[styles.presetQuickText, { color: theme.primary }]}>Quick Presets</Text>
-                            </TouchableOpacity>
                         </View>
 
-                        <Text style={styles.fieldHint}>
-                            Choose what parts of the hostel management app this team member is allowed to see or modify.
-                        </Text>
-
-                        {/* Presets Row */}
-                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.presetsRow}>
-                            <TouchableOpacity
-                                style={[styles.presetPill, { borderColor: theme.primary }]}
-                                onPress={() => applyPreset('warden')}
-                                activeOpacity={0.7}
-                            >
-                                <Text style={[styles.presetPillText, { color: theme.primary }]}>🛡️ Full Warden</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                style={styles.presetPill}
-                                onPress={() => applyPreset('supervisor')}
-                                activeOpacity={0.7}
-                            >
-                                <Text style={styles.presetPillText}>👁️ View Only</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                style={styles.presetPill}
-                                onPress={() => applyPreset('cook')}
-                                activeOpacity={0.7}
-                            >
-                                <Text style={styles.presetPillText}>🍽️ Kitchen / Mess</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                style={[styles.presetPill, { borderColor: '#E2E8F0' }]}
-                                onPress={() => applyPreset('reset')}
-                                activeOpacity={0.7}
-                            >
-                                <Text style={[styles.presetPillText, { color: '#94A3B8' }]}>✕ Clear All</Text>
-                            </TouchableOpacity>
-                        </ScrollView>
-
-                        {/* Permission Modules List */}
-                        <View style={{ gap: 10, marginTop: 12 }}>
-                            {MODULE_CONFIG.map((mod) => {
-                                const currentVal = (permissions as any)[mod.key] || 'none';
-                                return (
-                                    <View
-                                        key={mod.key}
-                                        style={[
-                                            styles.modulePermissionCard,
-                                            { backgroundColor: '#F8FAFC' }
-                                        ]}
-                                    >
-                                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
-                                                <Text style={{ fontSize: 18 }}>{mod.icon}</Text>
-                                                <View style={{ flex: 1 }}>
-                                                    <Text style={[styles.moduleTitle, { color: theme.textPrimary }]}>{mod.label}</Text>
-                                                    <Text style={styles.moduleDesc} numberOfLines={1}>{mod.desc}</Text>
-                                                </View>
-                                            </View>
-                                        </View>
-
-                                        {/* Segmented Controller */}
-                                        <View style={styles.segmentedToggle}>
-                                            {mod.options.map((opt) => {
-                                                const isOptSelected = currentVal === opt.id;
-                                                return (
-                                                    <TouchableOpacity
-                                                        key={opt.id}
-                                                        style={[
-                                                            styles.segmentedOption,
-                                                            isOptSelected && [
-                                                                styles.segmentedOptionActive,
-                                                                {
-                                                                    backgroundColor:
-                                                                        opt.id === 'manage'
-                                                                            ? '#10B981'
-                                                                            : opt.id === 'view'
-                                                                            ? '#3B82F6'
-                                                                            : '#64748B'
-                                                                }
-                                                            ]
-                                                        ]}
-                                                        onPress={() => {
-                                                            setPermissions(prev => ({
-                                                                ...prev,
-                                                                [mod.key]: opt.id
-                                                            }));
-                                                        }}
-                                                        activeOpacity={0.8}
-                                                    >
-                                                        <Text
-                                                            style={[
-                                                                styles.segmentedOptionText,
-                                                                isOptSelected && styles.segmentedOptionTextActive
-                                                            ]}
-                                                        >
-                                                            {opt.label}
-                                                        </Text>
-                                                    </TouchableOpacity>
-                                                );
-                                            })}
-                                        </View>
-                                    </View>
-                                );
-                            })}
+                        <View style={styles.formCard}>
+                            <Text style={styles.sectionTitle}>⚙️ Hostel Operations & Features</Text>
+                            <Text style={styles.fieldHint}>
+                                Modules and administrative operations accessible from the More screen.
+                            </Text>
+                            <View style={styles.cardsGrid}>
+                                {OPERATIONS_CONFIG.map(renderModuleCard)}
+                            </View>
                         </View>
-                    </View>
+                    </>
                 )}
 
                 {/* Identity Verification */}
@@ -1640,28 +1608,27 @@ const styles = StyleSheet.create({
 
     // ID Proof Documents (Front & Back) matching AddStudent
     idUploadBoxesRow: {
-        flexDirection: 'column',
+        flexDirection: 'row',
         gap: 12,
-        marginTop: 4,
+        marginTop: 6,
     },
     docUploadBox: {
         flex: 1,
         borderWidth: 1.5,
-        borderStyle: 'dashed',
-        borderRadius: 12,
-        padding: 12,
-        height: 165,
+        borderRadius: 14,
+        padding: 10,
+        height: 145,
     },
     docPreviewContainer: {
         flex: 1,
         position: 'relative',
-        borderRadius: 8,
+        borderRadius: 10,
         overflow: 'hidden',
     },
     docPreviewImage: {
         width: '100%',
         height: '100%',
-        resizeMode: 'cover',
+        borderRadius: 10,
     },
     docRemoveBtn: {
         position: 'absolute',
@@ -1677,12 +1644,13 @@ const styles = StyleSheet.create({
     docRetakeRow: {
         position: 'absolute',
         bottom: 6,
+        left: 6,
         right: 6,
+        paddingVertical: 4,
+        borderRadius: 6,
         flexDirection: 'row',
         alignItems: 'center',
-        borderRadius: 8,
-        paddingHorizontal: 7,
-        paddingVertical: 4,
+        justifyContent: 'center',
     },
     docBoxTopRow: {
         flexDirection: 'row',
@@ -1896,78 +1864,48 @@ const styles = StyleSheet.create({
         lineHeight: 15,
     },
 
-    // Module Privileges Styles
-    presetQuickBtn: {
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 8,
+    // Module Switch Cards Styles
+    cardsGrid: {
+        gap: 10,
+        marginTop: 6,
     },
-    presetQuickText: {
-        fontSize: 11,
-        fontWeight: '700',
-    },
-    presetsRow: {
+    moduleSmallCard: {
         flexDirection: 'row',
-        gap: 8,
-        paddingBottom: 4,
-    },
-    presetPill: {
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 20,
-        borderWidth: 1,
-        borderColor: '#CBD5E1',
-        backgroundColor: '#FFF',
-    },
-    presetPillText: {
-        fontSize: 12,
-        fontWeight: '600',
-        color: '#334155',
-    },
-    modulePermissionCard: {
+        alignItems: 'center',
+        backgroundColor: '#FFFFFF',
+        borderRadius: 14,
         padding: 12,
-        borderRadius: 12,
-        borderWidth: 1,
+        borderWidth: 1.5,
         borderColor: '#E2E8F0',
+        shadowColor: '#0F172A',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.03,
+        shadowRadius: 4,
+        elevation: 1,
     },
-    moduleTitle: {
-        fontSize: 13,
-        fontWeight: '700',
-    },
-    moduleDesc: {
-        fontSize: 11,
-        color: '#64748B',
-    },
-    segmentedToggle: {
-        flexDirection: 'row',
-        backgroundColor: '#E2E8F0',
-        borderRadius: 8,
-        padding: 2,
-        gap: 2,
-        marginTop: 4,
-    },
-    segmentedOption: {
-        flex: 1,
-        paddingVertical: 7,
+    moduleIconBox: {
+        width: 40,
+        height: 40,
+        borderRadius: 10,
         alignItems: 'center',
         justifyContent: 'center',
-        borderRadius: 6,
+        marginRight: 12,
     },
-    segmentedOptionActive: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.1,
-        shadowRadius: 2,
-        elevation: 2,
+    moduleTextContainer: {
+        flex: 1,
+        paddingRight: 8,
     },
-    segmentedOptionText: {
-        fontSize: 11,
-        fontWeight: '600',
-        color: '#64748B',
-    },
-    segmentedOptionTextActive: {
-        color: '#FFFFFF',
+    moduleCardTitle: {
+        fontSize: 14,
         fontWeight: '700',
+        color: '#0F172A',
+        marginBottom: 2,
+    },
+    moduleCardSubtitle: {
+        fontSize: 11.5,
+        color: '#64748B',
+        fontWeight: '500',
+        lineHeight: 16,
     },
 
     // Sticky Footer

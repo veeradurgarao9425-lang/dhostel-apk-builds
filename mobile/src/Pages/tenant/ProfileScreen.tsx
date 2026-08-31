@@ -332,14 +332,16 @@ export default function ProfileScreen({ navigation }: any) {
             activeOpacity={0.7}
             onPress={async () => {
               try {
-                const { triggerLocalTestNotification } = require('../../services/notificationService');
-                await triggerLocalTestNotification('🔔 Hostix Notification', 'Push notifications are active and working on this device!');
-                api.post('/notifications/test', { type: 'General' }).catch(() => {});
+                const res = await api.post('/notifications/test', { type: 'General' });
+                if (res.data?.success) {
+                  Alert.alert('🔔 Firebase Push Sent', 'Firebase notification sent to your device via backend FCM!');
+                }
               } catch (e: any) {
-                Alert.alert('Notification Test', e?.message || 'Failed to trigger test notification');
+                Alert.alert('Firebase Push', e?.response?.data?.error || e?.message || 'Failed to trigger notification');
               }
             }}
           >
+
 
             <View style={[styles.menuIcon, { backgroundColor: '#EDE9FE' }]}>
               <Ionicons name="paper-plane" size={18} color="#7C3AED" />

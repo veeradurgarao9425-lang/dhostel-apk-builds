@@ -16,6 +16,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../../../services/api';
 import { theme } from '../../../theme/tenantTheme';
 import { SkeletonListRow } from '../../../components/tenant/ui/SkeletonLoader';
+import AppHeader from '../../../components/tenant/ui/AppHeader';
+
 
 interface StoryItem {
   level_id: number;
@@ -72,15 +74,12 @@ export function GrowthSavedStoriesScreen({ navigation, route }: any) {
     }
   }, []);
 
-  React.useEffect(() => {
-    loadData(activeTab);
-  }, [activeTab, loadData]);
-
   useFocusEffect(
     useCallback(() => {
       loadData(activeTab);
     }, [activeTab, loadData])
   );
+
 
   const toggleItem = async (levelId: number) => {
     const prefix = activeTab === 'saved' ? 'growth_bookmark_' : 'growth_wishlist_';
@@ -90,59 +89,52 @@ export function GrowthSavedStoriesScreen({ navigation, route }: any) {
 
   return (
     <View style={styles.screen}>
-      <StatusBar barStyle="light-content" backgroundColor="#4F46E5" />
+      <StatusBar barStyle="light-content" backgroundColor={theme.colors.primary} />
 
-      {/* Gradient Header */}
-      <LinearGradient colors={['#4F46E5', '#7C3AED']} style={styles.gradientHeader}>
-        <SafeAreaView edges={['top']} style={{ backgroundColor: 'transparent' }}>
-          <View style={styles.headerRow}>
-            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} hitSlop={12}>
-              <Ionicons name="chevron-back" size={24} color="#FFFFFF" />
-            </TouchableOpacity>
-            <View style={{ flex: 1, marginLeft: 12 }}>
-              <Text style={styles.headerTitle}>My Library</Text>
-              <Text style={styles.headerSub}>
-                {stories.length > 0 ? `${stories.length} ${activeTab === 'saved' ? 'saved' : 'liked'} stories` : 'Your personal reading collection'}
-              </Text>
-            </View>
-            <View style={[styles.countBadge]}>
-              <Text style={styles.countBadgeText}>{stories.length}</Text>
-            </View>
+      {/* Standard Unified AppHeader */}
+      <AppHeader
+        title="My Library"
+        subtitle={stories.length > 0 ? `${stories.length} ${activeTab === 'saved' ? 'saved' : 'liked'} stories` : 'Your personal reading collection'}
+        showBack={true}
+        onBack={() => navigation.goBack()}
+        rightComponent={
+          <View style={styles.countBadge}>
+            <Text style={styles.countBadgeText}>{stories.length}</Text>
           </View>
-
-          {/* Tab switcher inside header */}
-          <View style={styles.tabRow}>
-            <TouchableOpacity
-              style={[styles.tab, activeTab === 'saved' && styles.tabActive]}
-              onPress={() => setActiveTab('saved')}
-            >
-              <Ionicons
-                name={activeTab === 'saved' ? 'bookmark' : 'bookmark-outline'}
-                size={15}
-                color={activeTab === 'saved' ? '#4F46E5' : 'rgba(255,255,255,0.7)'}
-                style={{ marginRight: 5 }}
-              />
-              <Text style={[styles.tabText, activeTab === 'saved' && styles.tabTextActive]}>
-                Saved
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.tab, activeTab === 'liked' && styles.tabActive]}
-              onPress={() => setActiveTab('liked')}
-            >
-              <Ionicons
-                name={activeTab === 'liked' ? 'heart' : 'heart-outline'}
-                size={15}
-                color={activeTab === 'liked' ? '#F43F5E' : 'rgba(255,255,255,0.7)'}
-                style={{ marginRight: 5 }}
-              />
-              <Text style={[styles.tabText, activeTab === 'liked' && styles.tabTextActive]}>
-                Liked
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </SafeAreaView>
-      </LinearGradient>
+        }
+      >
+        {/* Tab switcher inside header */}
+        <View style={styles.tabRow}>
+          <TouchableOpacity
+            style={[styles.tab, activeTab === 'saved' && styles.tabActive]}
+            onPress={() => setActiveTab('saved')}
+          >
+            <Ionicons
+              name={activeTab === 'saved' ? 'bookmark' : 'bookmark-outline'}
+              size={15}
+              color={activeTab === 'saved' ? '#7C3AED' : 'rgba(255,255,255,0.8)'}
+              style={{ marginRight: 5 }}
+            />
+            <Text style={[styles.tabText, activeTab === 'saved' && styles.tabTextActive]}>
+              Saved
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tab, activeTab === 'liked' && styles.tabActive]}
+            onPress={() => setActiveTab('liked')}
+          >
+            <Ionicons
+              name={activeTab === 'liked' ? 'heart' : 'heart-outline'}
+              size={15}
+              color={activeTab === 'liked' ? '#F43F5E' : 'rgba(255,255,255,0.8)'}
+              style={{ marginRight: 5 }}
+            />
+            <Text style={[styles.tabText, activeTab === 'liked' && { color: '#F43F5E', fontWeight: '800' }]}>
+              Liked
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </AppHeader>
 
       {/* Content */}
       {loading ? (
@@ -302,7 +294,8 @@ const styles = StyleSheet.create({
   tabTextActive: { color: '#4F46E5' },
 
   // List
-  list: { padding: 16, paddingBottom: 40 },
+  list: { padding: 16, paddingBottom: 85 },
+
 
   // Card
   card: {

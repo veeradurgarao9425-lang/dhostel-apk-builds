@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, Dimensions, StatusBar, Modal } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, Dimensions, StatusBar, Modal, Linking, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { Megaphone, Calendar, Maximize, Bookmark, Info, Phone, Quote, Clock, CheckCircle, Edit3 } from 'lucide-react-native';
 import ImageViewer from 'react-native-image-zoom-viewer';
 import { AppHeader } from '../components/AppHeader';
@@ -12,16 +13,35 @@ import { getResolvedImageUrl } from '../utils/imageHelper';
 const { width } = Dimensions.get('window');
 
 export default function NoticeDetailsScreen({ route, navigation }: any) {
-    const { notice, categoryConfig, isAdmin } = route.params;
+    const { notice, categoryConfig, isAdmin } = route.params || {};
     const { theme, isDark } = useTheme();
+    const { user, connectedHostel } = useAuth();
     const [isImageModalVisible, setImageModalVisible] = useState(false);
     const [isBookmarked, setIsBookmarked] = useState(false);
 
-    const cfg = categoryConfig || { category_name: notice.notice_type || 'General', emoji: '📌', color: '#8B5CF6' };
+    const u = user as any;
+    const ch = connectedHostel as any;
+    const ownerName = notice?.owner_name || ch?.owner_name || u?.owner_name || 'Hostel Owner';
+    const ownerPhone = notice?.owner_phone || notice?.phone || ch?.owner_phone || ch?.phone || u?.owner_phone || u?.hostel_phone || '';
+
+    const handleCallOwner = () => {
+        if (ownerPhone) {
+            Linking.openURL(`tel:${ownerPhone.replace(/[^\d+]/g, '')}`).catch(() => {
+                Alert.alert('Error', 'Unable to open phone dialer.');
+            });
+        } else {
+            Alert.alert('Owner Contact', 'Owner contact phone number is not available at the moment.');
+        }
+    };
+
+
+    const cfg = categoryConfig || { category_name: notice?.notice_type || notice?.category || 'General', emoji: '📌', color: '#8B5CF6' };
 
     const formatDate = (dateStr: string) => {
+        if (!dateStr) return { date: 'Today', time: '' };
         try {
             const d = new Date(dateStr);
+            if (isNaN(d.getTime())) return { date: dateStr, time: '' };
             return {
                 date: d.toLocaleDateString('en-IN', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' }),
                 time: d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
@@ -31,9 +51,10 @@ export default function NoticeDetailsScreen({ route, navigation }: any) {
         }
     };
 
-    const dateTime = formatDate(notice.created_at);
+    const dateTime = formatDate(notice?.created_at || notice?.date);
     const rawImage = notice?.image_url || notice?.image || notice?.attachment_url || notice?.attachment || notice?.photo || notice?.file_url;
     const imageUrl = getResolvedImageUrl(rawImage);
+
 
     // Convert hex color to rgba for soft backgrounds
     const hexToRgba = (hex: string, alpha: number) => {
@@ -155,9 +176,10 @@ export default function NoticeDetailsScreen({ route, navigation }: any) {
                 <View style={[styles.contentCard, { backgroundColor: isDark ? '#0F172A' : '#FFFFFF', borderColor: isDark ? '#1E293B' : '#E2E8F0' }]}>
                     <Quote size={24} color={softAccent} style={styles.quoteIconBg} fill={softAccent} />
                     <Text style={[styles.bodyText, { color: isDark ? '#E2E8F0' : '#334155' }]}>
-                        {notice.content}
+                        {notice?.content || notice?.body}
                     </Text>
                 </View>
+
 
                 {/* Info & Contact Actions for Tenants ONLY */}
                 {!isAdmin && (
@@ -165,11 +187,11 @@ export default function NoticeDetailsScreen({ route, navigation }: any) {
                         <View style={[styles.infoNoteBox, { backgroundColor: softAccent }]}>
                             <Info size={18} color={accentColor} />
                             <Text style={[styles.infoNoteText, { color: isDark ? '#E2E8F0' : '#334155' }]}>
-                                If you have any questions regarding this notice, please reach out to the administration.
+                                If you have any questions regarding this notice, tap below to contact the hostel owner directly.
                             </Text>
                         </View>
 
-                        <TouchableOpacity activeOpacity={0.8}>
+                        <TouchableOpacity activeOpacity={0.8} onPress={handleCallOwner}>
                             <LinearGradient
                                 colors={[isDark ? '#1E293B' : '#FFFFFF', isDark ? '#0F172A' : '#F8FAFC']}
                                 style={[styles.contactAdminBtn, { borderColor: isDark ? '#334155' : '#E2E8F0' }]}
@@ -178,16 +200,19 @@ export default function NoticeDetailsScreen({ route, navigation }: any) {
                                     <View style={[styles.contactIconBg, { backgroundColor: softAccent }]}>
                                         <Phone size={20} color={accentColor} />
                                     </View>
-                                    <View>
-                                        <Text style={[styles.contactTitle, { color: isDark ? '#F1F5F9' : '#0F172A' }]}>Contact Admin</Text>
-                                        <Text style={[styles.contactSub, { color: isDark ? '#94A3B8' : '#64748B' }]}>Get help or ask questions</Text>
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={[styles.contactTitle, { color: isDark ? '#F1F5F9' : '#0F172A' }]}>Contact Owner</Text>
+                                        <Text style={[styles.contactSub, { color: isDark ? '#94A3B8' : '#64748B' }]} numberOfLines={1}>
+                                            {ownerPhone ? `Call ${ownerName} • ${ownerPhone}` : `Call ${ownerName}`}
+                                        </Text>
                                     </View>
                                 </View>
                                 <View style={[styles.contactChevron, { backgroundColor: isDark ? '#0F172A' : '#F1F5F9' }]}>
-                                    <Ionicons name="chevron-forward" size={18} color={isDark ? '#94A3B8' : '#64748B'} />
+                                    <Ionicons name="call" size={18} color={accentColor} />
                                 </View>
                             </LinearGradient>
                         </TouchableOpacity>
+
                     </View>
                 )}
                 

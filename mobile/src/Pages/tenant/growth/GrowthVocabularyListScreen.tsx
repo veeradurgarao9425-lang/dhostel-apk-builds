@@ -1,12 +1,15 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, StatusBar } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
 import api from '../../../services/api';
 import { theme } from '../../../theme/tenantTheme';
 import { VocabularyModal, VocabWord } from '../../../components/tenant/growth/VocabularyModal';
 import { SkeletonListRow } from '../../../components/tenant/ui/SkeletonLoader';
+
+import AppHeader from '../../../components/tenant/ui/AppHeader';
 
 export function GrowthVocabularyListScreen({ navigation }: any) {
   const [words, setWords] = useState<VocabWord[]>([]);
@@ -24,14 +27,22 @@ export function GrowthVocabularyListScreen({ navigation }: any) {
   );
 
   return (
-    <SafeAreaView style={styles.screen} edges={['top']}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={12}>
-          <Ionicons name="chevron-back" size={24} color={theme.colors.text} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>My Vocabulary</Text>
-        <View style={{ width: 24 }} />
-      </View>
+    <View style={styles.screen}>
+      <StatusBar barStyle="light-content" backgroundColor={theme.colors.primary} />
+
+      {/* Standard Unified AppHeader */}
+      <AppHeader
+        title="My Vocabulary"
+        subtitle={words.length > 0 ? `${words.length} saved words to master` : 'Your personal word bank'}
+        showBack={false}
+        rightComponent={
+          <View style={styles.countBadge}>
+            <Text style={styles.countBadgeText}>{words.length}</Text>
+          </View>
+        }
+      />
+
+
 
       {loading ? (
         <View style={{ paddingTop: theme.spacing.sm }}>
@@ -63,20 +74,56 @@ export function GrowthVocabularyListScreen({ navigation }: any) {
       )}
 
       <VocabularyModal word={selected} onClose={() => setSelected(null)} initiallySaved />
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: theme.colors.bg },
+  gradientHeader: {
+    paddingBottom: 16,
+    paddingHorizontal: 16,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingTop: 8,
+  },
+  backBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: -0.3,
+  },
+  headerSub: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.8)',
+    marginTop: 2,
+  },
+  countBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+  },
+  countBadgeText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: theme.spacing['3xl'], gap: theme.spacing.md },
   emptyText: { ...theme.text.body, color: theme.colors.textMuted, textAlign: 'center' },
-  header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: theme.spacing.lg, paddingVertical: theme.spacing.md,
-  },
-  headerTitle: { ...theme.text.sectionTitle },
-  list: { padding: theme.spacing.lg, gap: theme.spacing.sm },
+  list: { padding: theme.spacing.lg, paddingBottom: 85, gap: theme.spacing.sm },
   card: {
     flexDirection: 'row', alignItems: 'center',
     backgroundColor: theme.colors.surface,
@@ -90,3 +137,4 @@ const styles = StyleSheet.create({
 });
 
 export default GrowthVocabularyListScreen;
+

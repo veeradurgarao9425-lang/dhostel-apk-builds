@@ -495,16 +495,17 @@ export const SettingsScreen = ({ navigation }: any) => {
                         label="Send Test Notification"
                         onPress={async () => {
                             try {
-                                const { triggerLocalTestNotification } = require('../services/notificationService');
-                                await triggerLocalTestNotification('🔔 Hostix Notification', 'Push notifications are active and working on this device!');
-                                api.post('/notifications/test', { type: 'General' }).catch(() => {});
-                                showSuccess('Test notification sent!');
+                                const res = await api.post('/notifications/test', { type: 'General' });
+                                if (res.data?.success) {
+                                    showSuccess('Firebase notification sent to your device!');
+                                }
                             } catch (e: any) {
-                                showError(e?.message || 'Failed to send test push');
+                                showError(e?.response?.data?.error || e?.message || 'Failed to send test push');
                             }
                         }}
                     />
                 </Card>
+
 
 
 

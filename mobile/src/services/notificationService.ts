@@ -1,11 +1,12 @@
 /**
  * notificationService.ts
- * Pure Firebase Cloud Messaging (FCM) via @react-native-firebase/messaging modular API.
- * Safely guards native module access in local Expo dev environments.
+ * Pure Firebase Cloud Messaging (FCM) via @react-native-firebase/messaging.
+ * Handles background & foreground notifications directly via native Android Firebase channels.
  */
 import { Platform, PermissionsAndroid } from 'react-native';
 import Toast from 'react-native-toast-message';
 import api from './api';
+
 
 const getFirebaseMessagingModule = () => {
   try {
@@ -15,20 +16,32 @@ const getFirebaseMessagingModule = () => {
   }
 };
 
-const getExpoNotificationsModule = () => {
-  try {
-    return require('expo-notifications');
-  } catch {
-    return null;
+// Register background message handler at module level for native Firebase
+try {
+  const fcm = getFirebaseMessagingModule();
+  if (fcm) {
+    let messagingInstance: any = null;
+    if (typeof fcm === 'function') {
+      messagingInstance = fcm();
+    } else if (fcm.default && typeof fcm.default === 'function') {
+      messagingInstance = fcm.default();
+    }
+    if (messagingInstance && typeof messagingInstance.setBackgroundMessageHandler === 'function') {
+      messagingInstance.setBackgroundMessageHandler(async (remoteMessage: any) => {
+        console.log('[FCM] 📩 Background Message handled outside app:', remoteMessage?.notification?.title || remoteMessage?.data?.title);
+      });
+    }
   }
-};
+} catch (bgErr) {
+  console.warn('[FCM] Background handler registration skipped in dev:', bgErr);
+}
 
 export const notificationService = {
   _lastRegisteredToken: null as string | null,
 
   /**
    * Request permission (Android 13+ requires runtime POST_NOTIFICATIONS),
-   * get the FCM token (or Expo push token fallback), and send it to our backend.
+   * get the native Firebase FCM token, and send it to our backend.
    */
   async registerForPushNotificationsAsync(): Promise<string | null> {
     try {
@@ -39,31 +52,15 @@ export const notificationService = {
             PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS,
           );
           if (result !== PermissionsAndroid.RESULTS.GRANTED) {
-            console.warn('[FCM] ❌ POST_NOTIFICATIONS permission denied.');
+            console.warn('[FCM] ❌ POST_NOTIFICATIONS permission denied by user.');
             return null;
           }
         }
       }
 
-      // Create Android Notification Channel
-      if (Platform.OS === 'android') {
-        try {
-          const Notifications = getExpoNotificationsModule();
-          if (Notifications?.setNotificationChannelAsync) {
-            await Notifications.setNotificationChannelAsync('default', {
-              name: 'Default',
-              importance: Notifications.AndroidImportance.MAX,
-              vibrationPattern: [0, 250, 250, 250],
-              lightColor: '#6D4AFF',
-              sound: 'default',
-            });
-          }
-        } catch (_) {}
-      }
-
       let token: string | null = null;
 
-      // ── 1. Try Firebase Cloud Messaging (Primary for Native APK) ──
+      // ── Firebase Cloud Messaging (Native FCM Token) ──
       const fcm = getFirebaseMessagingModule();
       if (fcm) {
         let messagingInstance: any = null;
@@ -101,39 +98,12 @@ export const notificationService = {
               token = await fcm.getToken(messagingInstance);
             }
           } catch (tokenErr: any) {
-            console.warn('[FCM] Error obtaining FCM token:', tokenErr);
+            console.warn('[FCM] Error obtaining native FCM token:', tokenErr);
           }
         }
       }
 
-      // ── 2. Fallback to Expo Push Token for Local / Expo Go Testing ──
-      if (!token) {
-        try {
-          const Notifications = getExpoNotificationsModule();
-          if (Notifications?.getExpoPushTokenAsync) {
-            const { status: existingStatus } = await Notifications.getPermissionsAsync();
-            let finalStatus = existingStatus;
-            if (existingStatus !== 'granted') {
-              const { status } = await Notifications.requestPermissionsAsync();
-              finalStatus = status;
-            }
-            if (finalStatus === 'granted') {
-              // projectId is required for Expo push tokens in newer SDK versions
-              const expoTokenData = await Notifications.getExpoPushTokenAsync({
-                projectId: '7303856b-fde0-4922-baf9-c6487aa06e02',
-              });
-              token = expoTokenData?.data || null;
-              console.log('[FCM/Expo] ✅ Expo Push Token obtained:', token ? token.slice(0, 40) + '...' : 'null');
-            } else {
-              console.warn('[FCM/Expo] ❌ Notification permission not granted. Status:', finalStatus);
-            }
-          }
-        } catch (expoErr: any) {
-          console.warn('[FCM/Expo] Error obtaining Expo token:', expoErr?.message || expoErr);
-        }
-      }
-
-      console.log('[Notification] ✅ Final token:', token ? token.slice(0, 40) + '...' : 'null (no token)');
+      console.log('[FCM] ✅ Native Firebase FCM token:', token ? token.slice(0, 35) + '...' : 'null (available in standalone APK)');
 
       if (token) {
         this._lastRegisteredToken = token;
@@ -142,10 +112,11 @@ export const notificationService = {
 
       return token;
     } catch (err: any) {
-      console.warn('[Notification] ℹ️ Push notifications registration skipped:', err?.message || err);
+      console.warn('[FCM] ℹ️ Push notifications registration skipped:', err?.message || err);
       return null;
     }
   },
+
 
   /**
    * Send the push token to our backend so the server can push to this device.
@@ -285,51 +256,30 @@ export const notificationService = {
           }).catch(() => {});
         }
       }
-
-      // Also set up Expo Notification listener if available
-      try {
-        const Notifications = getExpoNotificationsModule();
-        if (Notifications?.addNotificationReceivedListener) {
-          unsubscribeExpoForeground = Notifications.addNotificationReceivedListener((notification: any) => {
-            const title = notification.request?.content?.title || 'Notification';
-            const body = notification.request?.content?.body || '';
-            const data = notification.request?.content?.data || {};
-            Toast.show({
-              type: 'info',
-              text1: title,
-              text2: body,
-              props: {
-                onAction: () => {
-                  if (navigate && data.screen) {
-                    navigate(data.screen, data.params || {});
-                  }
-                }
-              }
-            });
-          });
-
-          if (Notifications.addNotificationResponseReceivedListener) {
-            unsubscribeExpoResponse = Notifications.addNotificationResponseReceivedListener((response: any) => {
-              const data = response.notification?.request?.content?.data || {};
-              if (navigate && data.screen) {
-                navigate(data.screen, data.params || {});
-              }
-            });
-          }
-        }
-      } catch (_) {}
     } catch (e) {
-      console.warn('[Notification] setupNotificationListeners error:', e);
+      console.warn('[FCM] setupNotificationListeners error:', e);
     }
 
     return () => {
       unsubscribeForeground();
       unsubscribeRefresh();
-      if (unsubscribeExpoForeground?.remove) unsubscribeExpoForeground.remove();
-      if (unsubscribeExpoResponse?.remove) unsubscribeExpoResponse.remove();
     };
   },
+
+  async sendTestNotification(title?: string, message?: string, data?: any): Promise<boolean> {
+    try {
+      const res = await api.post('/notifications/test', {
+        title: title || 'Test Push Notification',
+        message: message || 'This is a live native push notification from Hostix!',
+        data: data || { screen: 'Notifications' },
+      });
+      return !!res.data?.success;
+    } catch {
+      return false;
+    }
+  },
 };
+
 
 // ── Notification type definitions ────────────────────────────────────────────
 export type NotificationType =
@@ -401,39 +351,12 @@ export const getNotificationContent = (type: NotificationType, customData?: any)
   }
 };
 
-export const triggerLocalTestNotification = async (title = '🔔 Hostix Push Notification', body = 'Test notification is working perfectly on your device!') => {
-  try {
-    const Notifications = getExpoNotificationsModule();
-    if (Notifications?.scheduleNotificationAsync) {
-      await Notifications.scheduleNotificationAsync({
-        content: {
-          title,
-          body,
-          sound: 'default',
-          color: '#6D4AFF',
-          data: { screen: 'Notifications' },
-        },
-        trigger: null, // Send immediately
-      });
-    }
-
-    Toast.show({
-      type: 'info',
-      text1: title,
-      text2: body,
-    });
-  } catch (e: any) {
-    console.warn('[Notification] triggerLocalTestNotification error:', e);
-    Toast.show({
-      type: 'info',
-      text1: title,
-      text2: body,
-    });
-  }
-};
-
-export const sendAppNotification = async (type: NotificationType, customData?: any) => {
+export const sendAppNotification = async (type: NotificationType, customData?: any): Promise<boolean> => {
   const content = getNotificationContent(type, customData);
-  await triggerLocalTestNotification(content.title, content.body);
+  return notificationService.sendTestNotification(content.title, content.body, customData);
 };
+
+export default notificationService;
+
+
 

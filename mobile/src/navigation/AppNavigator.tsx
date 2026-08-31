@@ -179,7 +179,7 @@ const OwnerTabNavigator = () => (
     </Tab.Navigator>
 );
 
-// ── Tab Navigator (Tenant) — 4 tabs ──────────────────────────────────────────
+// ── Tab Navigator (Tenant) ───────────────────────────────────────────────────
 const TenantTabNavigator = () => (
     <Tab.Navigator
         tabBar={props => <TenantBottomTabNavigator {...props} />}
@@ -189,8 +189,12 @@ const TenantTabNavigator = () => (
         <Tab.Screen name="Dues" component={DuesScreen} />
         <Tab.Screen name="Expenses" component={ExpensesScreen} />
         <Tab.Screen name="Notices" component={TenantNoticesScreen} />
+        <Tab.Screen name="GrowthSavedStories" component={GrowthSavedStoriesScreen} />
+        <Tab.Screen name="GrowthVocabularyList" component={GrowthVocabularyListScreen} />
+        <Tab.Screen name="GrowthStats" component={GrowthStatsScreen} />
     </Tab.Navigator>
 );
+
 
 // ── Tab Navigator (Developer Master Admin) — 5 tabs ───────────────────────────
 const DeveloperTabNavigator = () => (

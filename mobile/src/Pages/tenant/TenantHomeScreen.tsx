@@ -78,13 +78,27 @@ export function TenantHomeScreen({ navigation }: any) {
   const [growthTeaser, setGrowthTeaser] = useState<{ streak: number; level: number } | null>(null);
   const progressAnim = useRef(new Animated.Value(0)).current;
 
+  const scrollToPage = useCallback((pageIndex: number) => {
+    setActivePageIndex(pageIndex);
+    DeviceEventEmitter.emit('TENANT_ACTIVE_PAGE', pageIndex);
+    horizontalScrollRef.current?.scrollTo({ x: pageIndex * SCREEN_WIDTH, animated: true });
+  }, []);
+
   const enterAnims = useRef([...Array(7)].map(() => new Animated.Value(0))).current;
 
   useEffect(() => {
     Animated.stagger(100, 
-      enterAnims.map(a => Animated.spring(a, { toValue: 1, tension: 50, friction: 8, useNativeDriver: true }))
+      enterAnims.map((a: Animated.Value) => Animated.spring(a, { toValue: 1, tension: 50, friction: 8, useNativeDriver: true }))
     ).start();
-  }, []);
+
+    const sub = DeviceEventEmitter.addListener('TENANT_SCROLL_TO_PAGE', (page: number) => {
+      scrollToPage(page);
+    });
+    return () => sub.remove();
+  }, [scrollToPage]);
+
+
+
 
   useEffect(() => {
     if (budget > 0) {
@@ -176,10 +190,12 @@ export function TenantHomeScreen({ navigation }: any) {
     { id: "complaints", name: "Complaints", icon: "chatbubbles" as const, nav: "Complaints", bg: "#FEF2F2", color: "#EF4444" },
     { id: "room", name: "My Room", icon: "bed" as const, nav: "RoomInfo", bg: "#FEF3C7", color: "#D97706" },
     { id: "visitor", name: "Visitor Pass", icon: "person-add" as const, nav: "VisitorPass", bg: "#E0E7FF", color: "#6366F1" },
-    { id: "gatepass", name: "Gate Pass", icon: "qr-code" as const, nav: "GatePass", bg: "#ECFDF5", color: "#10B981" },
+    { id: "gatepass", name: "Gate Pass", icon: "qr-code" as const, nav: "VisitorPass", bg: "#ECFDF5", color: "#10B981" },
     { id: "documents", name: "Documents", icon: "document-text" as const, nav: "Documents", bg: "#FEF2F2", color: "#EF4444" },
     { id: "notes", name: "My Notes", icon: "create" as const, nav: "Notes", bg: "#FEF3C7", color: "#D97706" },
   ];
+
+
 
   const fetchUnreadNotifCount = useCallback(async () => {
     try {
@@ -382,98 +398,126 @@ export function TenantHomeScreen({ navigation }: any) {
     );
   }
 
-  const scrollToPage = (pageIndex: number) => {
-    setActivePageIndex(pageIndex);
-    horizontalScrollRef.current?.scrollTo({ x: pageIndex * SCREEN_WIDTH, animated: true });
-  };
-
   return (
     <View style={styles.root}>
+
+      <StatusBar barStyle="light-content" backgroundColor={BRAND} />
+
+      {/* ── Fixed Top Gradient Header (Unified for both Dashboard & Growth Journey) ── */}
+      <LinearGradient
+        colors={[BRAND, BRAND_DARK]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.headerSection}
+      >
+        <View style={styles.headerAccentCircle} />
+        <View style={styles.headerAccentCircle2} />
+
+        <SafeAreaView edges={["top"]} style={{ backgroundColor: "transparent" }}>
+          <View style={styles.headerRow}>
+            {/* LEFT: Avatar + Greeting + Hostel Name */}
+            <TouchableOpacity
+              style={styles.avatarBtn}
+              onPress={() => navigation.navigate("Profile")}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.avatarText}>{initials}</Text>
+            </TouchableOpacity>
+
+            <View style={{ flex: 1, marginLeft: 10, marginRight: 8, minWidth: 0, justifyContent: 'center' }}>
+              <Text
+                style={styles.headerGreeting}
+                numberOfLines={1}
+                ellipsizeMode="tail"
+                adjustsFontSizeToFit
+                minimumFontScale={0.75}
+              >
+                {greeting}, {firstName}! 👋
+              </Text>
+              <View style={styles.hostelRow}>
+                <Ionicons name="location-outline" size={12} color="rgba(255,255,255,0.75)" />
+                <Text style={styles.hostelName} numberOfLines={1} ellipsizeMode="tail">
+                  {(user as any)?.hostel_name || connectedHostel?.hostel_name || "Hostel Resident"}
+                </Text>
+              </View>
+            </View>
+
+            {/* RIGHT: Page toggle switch + Notification bell */}
+            <View style={styles.headerActions}>
+              <TouchableOpacity
+                style={styles.headerIconBtn}
+                onPress={() => scrollToPage(activePageIndex === 0 ? 1 : 0)}
+                activeOpacity={0.8}
+              >
+                <Ionicons
+                  name={activePageIndex === 0 ? "trending-up" : "grid-outline"}
+                  size={18}
+                  color="#FFF"
+                />
+              </TouchableOpacity>
+
+              <TenantHeaderNotification navigation={navigation} />
+            </View>
+          </View>
+
+          {/* Date Strip */}
+          <View style={styles.headerDateStrip}>
+            <View style={styles.datePill}>
+              <Ionicons name="calendar-outline" size={11} color="rgba(255,255,255,0.8)" />
+              <Text style={styles.datePillText}>
+                {new Date().toLocaleDateString('en-IN', {
+                  weekday: 'short',
+                  day: 'numeric',
+                  month: 'long',
+                })}
+              </Text>
+            </View>
+            {user?.room_number && (
+              <View style={styles.roomPill}>
+                <Ionicons name="bed-outline" size={11} color="rgba(255,255,255,0.8)" />
+                <Text style={styles.datePillText}>Room {user.room_number}</Text>
+              </View>
+            )}
+            {activePageIndex === 1 && (
+              <View style={[styles.roomPill, { backgroundColor: 'rgba(255,255,255,0.18)' }]}>
+                <Text style={[styles.datePillText, { color: '#FDE047', fontWeight: '800' }]}>Growth Mode</Text>
+              </View>
+            )}
+
+          </View>
+        </SafeAreaView>
+      </LinearGradient>
+
       {/* ── Side-by-Side Horizontal Swipe Pager between Dashboard & Growth Journey ── */}
       <ScrollView
         ref={horizontalScrollRef}
         horizontal
-        pagingEnabled
-        scrollEnabled={isPagerScrollEnabled}
+        pagingEnabled={true}
+        scrollEnabled={true}
         keyboardShouldPersistTaps="handled"
         showsHorizontalScrollIndicator={false}
+        nestedScrollEnabled={true}
+        directionalLockEnabled={true}
+        bounces={false}
+        overScrollMode="never"
+        scrollEventThrottle={16}
+        decelerationRate="fast"
         onMomentumScrollEnd={(e) => {
-          const page = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH);
+          const page = Math.max(0, Math.min(1, Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH)));
           setActivePageIndex(page);
+          DeviceEventEmitter.emit('TENANT_ACTIVE_PAGE', page);
         }}
+
         style={{ flex: 1 }}
       >
         {/* ══════════════════════════════════════════════════════
-            PAGE 0: MAIN TENANT DASHBOARD (with purple gradient header)
+            PAGE 0: MAIN TENANT DASHBOARD
         ══════════════════════════════════════════════════════ */}
         <View style={{ width: SCREEN_WIDTH, flex: 1, backgroundColor: '#F8FAFC' }}>
-          <StatusBar barStyle="light-content" backgroundColor={BRAND} />
-
-          <LinearGradient
-            colors={[BRAND, BRAND_DARK]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.headerSection}
-          >
-            <View style={styles.headerAccentCircle} />
-            <View style={styles.headerAccentCircle2} />
-
-            <SafeAreaView edges={["top"]} style={{ backgroundColor: "transparent" }}>
-              <View style={styles.headerRow}>
-                <View style={{ flex: 1, marginRight: 12, minWidth: 0, justifyContent: 'center' }}>
-                  <Text
-                    style={styles.headerGreeting}
-                    numberOfLines={1}
-                    ellipsizeMode="tail"
-                    adjustsFontSizeToFit
-                    minimumFontScale={0.75}
-                  >
-                    {greeting}, {firstName}! 👋
-                  </Text>
-                  <View style={styles.hostelRow}>
-                    <Ionicons name="location-outline" size={12} color="rgba(255,255,255,0.7)" />
-                    <Text style={styles.hostelName} numberOfLines={1} ellipsizeMode="tail">
-                      {(user as any)?.hostel_name || connectedHostel?.hostel_name || "Hostel Resident"}
-                    </Text>
-                  </View>
-                </View>
-
-                <View style={styles.headerActions}>
-                  <TenantHeaderNotification navigation={navigation} />
-
-                  <TouchableOpacity
-                    style={styles.avatarBtn}
-                    onPress={() => navigation.navigate("Profile")}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={styles.avatarText}>{initials}</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-
-              <View style={styles.headerDateStrip}>
-                <View style={styles.datePill}>
-                  <Ionicons name="calendar-outline" size={11} color="rgba(255,255,255,0.8)" />
-                  <Text style={styles.datePillText}>
-                    {new Date().toLocaleDateString('en-IN', {
-                      weekday: 'short',
-                      day: 'numeric',
-                      month: 'long',
-                    })}
-                  </Text>
-                </View>
-                {user?.room_number && (
-                  <View style={styles.roomPill}>
-                    <Ionicons name="bed-outline" size={11} color="rgba(255,255,255,0.8)" />
-                    <Text style={styles.datePillText}>Room {user.room_number}</Text>
-                  </View>
-                )}
-              </View>
-            </SafeAreaView>
-          </LinearGradient>
-
           <Animated.ScrollView
             showsVerticalScrollIndicator={false}
+            nestedScrollEnabled={true}
+            keyboardShouldPersistTaps="handled"
             contentContainerStyle={styles.scrollContent}
             scrollEventThrottle={16}
             refreshControl={
@@ -505,41 +549,10 @@ export function TenantHomeScreen({ navigation }: any) {
 
             <View style={styles.divider} />
 
-            <Animated.View style={{ opacity: enterAnims[2], transform: [{ translateY: enterAnims[2].interpolate({ inputRange: [0, 1], outputRange: [40, 0] }) }] }}>
-              <TouchableOpacity
-                activeOpacity={0.85}
-                onPress={() => scrollToPage(1)}
-                style={styles.growthCardTouchable}
-              >
-                <View style={styles.growthCardCompact}>
-                  <View style={styles.growthIconWrapCompact}>
-                    <Ionicons name="trending-up-outline" size={16} color="#4F46E5" />
-                  </View>
-                  <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <Text style={styles.growthTitleCompact}>Growth Journey</Text>
-                    <Text style={styles.growthSubtitleCompact}>
-                      {growthTeaser
-                        ? `🔥 ${growthTeaser.streak}d streak · Level ${growthTeaser.level}`
-                        : "Swipe right to open →"}
-                    </Text>
-                  </View>
-                  <Ionicons name="chevron-forward" size={16} color="#6366F1" />
-                </View>
-              </TouchableOpacity>
-            </Animated.View>
-
-            <View style={styles.divider} />
-
             <Animated.View style={{ opacity: enterAnims[3], transform: [{ translateY: enterAnims[3].interpolate({ inputRange: [0, 1], outputRange: [40, 0] }) }] }}>
-              <View
-                collapsable={false}
-                onTouchStart={() => setIsPagerScrollEnabled(false)}
-                onTouchEnd={() => setIsPagerScrollEnabled(true)}
-                onTouchCancel={() => setIsPagerScrollEnabled(true)}
-              >
-                <QuickShortcuts shortcuts={shortcuts} />
-              </View>
+              <QuickShortcuts shortcuts={shortcuts} />
             </Animated.View>
+
 
             <View style={styles.divider} />
 
@@ -597,9 +610,9 @@ export function TenantHomeScreen({ navigation }: any) {
         </View>
 
         {/* ══════════════════════════════════════════════════════
-            PAGE 1: GROWTH JOURNEY (with its own separate header)
+            PAGE 1: GROWTH JOURNEY
         ══════════════════════════════════════════════════════ */}
-        <View style={{ width: SCREEN_WIDTH, flex: 1 }}>
+        <View style={{ width: SCREEN_WIDTH, flex: 1, backgroundColor: '#F8FAFC' }}>
           <GrowthHomeScreen
             navigation={navigation}
             embedded={true}
@@ -612,6 +625,7 @@ export function TenantHomeScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
+
   root: {
     flex: 1,
     backgroundColor: '#F8FAFC',
@@ -742,7 +756,44 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: 'rgba(255,255,255,0.85)',
   },
+  segmentContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.18)',
+    borderRadius: 14,
+    padding: 3,
+    marginHorizontal: 18,
+    marginTop: 2,
+    marginBottom: 4,
+  },
+  segmentTab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 7,
+    borderRadius: 11,
+  },
+  segmentTabActive: {
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  segmentLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: 'rgba(255,255,255,0.85)',
+  },
+  segmentLabelActive: {
+    color: '#7C3AED',
+    fontWeight: '800',
+  },
   scrollContent: {
+
     paddingTop: 16,
     paddingBottom: 120,
   },

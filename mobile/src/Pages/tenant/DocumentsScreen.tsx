@@ -7,10 +7,12 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useFocusEffect } from '@react-navigation/native';
 import {
   FileCheck2, Receipt, IdCard, Download, ArrowLeft,
-  ShieldCheck, ShieldAlert, Eye, X, User,
+  ShieldCheck, ShieldAlert, Eye, X, User, Share2,
 } from 'lucide-react-native';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
+import * as FileSystem from 'expo-file-system/legacy';
+
 
 import { useToast } from '../../../contexts/ToastContext';
 import { Phase3ErrorState, DocumentsSkeleton } from '../../components/tenant/UIComponents';
@@ -18,11 +20,17 @@ import { OfflineBanner } from '../../components/tenant/NetworkComponents';
 import { DownloadProgressSheet } from '../../components/tenant/MediaComponents';
 import api from '../../services/api';
 import { getResolvedImageUrl } from '../../utils/imageHelper';
+import AppHeader from '../../components/tenant/ui/AppHeader';
+import { generateReceiptHtml } from '../../utils/receiptHtml';
+import { downloadAndSaveFile } from '../../utils/fileDownloader';
+
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const CARD_GAP = 12;
+const CARD_WIDTH = (SCREEN_WIDTH - 32 - CARD_GAP) / 2;
 
-const BLUE = '#6D4AFF';
-const BLUE_SOFT = '#F4F1FF';
+const BLUE = '#7C3AED';
+const BLUE_SOFT = '#EDE9FE';
 const WHITE = '#FFFFFF';
 const TEXT_DARK = '#0D1B3E';
 const TEXT_MID = '#4A5568';
@@ -84,7 +92,7 @@ export default function DocumentsScreen({ navigation }: any) {
             receiptDocs.push({
               id: payment.payment_id?.toString() || payment.id?.toString(),
               paymentId: payment.payment_id || payment.id,
-              name: `Rent Receipt - ${feeRecord.fee_month || 'Monthly Rent'}`,
+              name: `Receipt - ${feeRecord.fee_month || 'Rent'}`,
               type: 'Receipt',
               date: payment.payment_date || feeRecord.created_at,
               amount: payment.amount_paid || payment.amount || 0,
@@ -99,6 +107,7 @@ export default function DocumentsScreen({ navigation }: any) {
       setError('Could not load your documents.');
       showError('Could not load documents. Please pull down to retry.');
     } finally {
+
       setLoading(false);
     }
   }, []);
@@ -122,50 +131,92 @@ export default function DocumentsScreen({ navigation }: any) {
       const r = res.data?.data;
       if (!res.data?.success || !r) throw new Error('Receipt not found');
 
-      const amount = Number(r.amount_paid || 0).toLocaleString('en-IN');
-      const paidDate = r.payment_date ? new Date(r.payment_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' }) : '-';
-      const tenantName = `${r.first_name || ''} ${r.last_name || ''}`.trim() || 'Tenant';
-      const hostelName = r.hostel_name || 'Hostel';
+      const amountPaid = parseFloat(String(r.amount_paid || r.amount || 0));
+      const studentName = `${r.first_name || ''} ${r.last_name || ''}`.trim() || profile?.full_name || 'Tenant';
+      const hostelName = r.hostel_name || profile?.hostel_name || 'My Hostel';
+      const receiptNo = r.receipt_number || `REC-${paymentId}`;
+      const feeMonth = r.fee_month || r.payment_for_month || 'Rent Payment';
+      const paymentMode = (r.payment_mode || 'Online').toUpperCase();
+      const transactionId = r.transaction_id || '';
 
-      const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/>
-        <style>
-          *{box-sizing:border-box;margin:0;padding:0}
-          body{font-family:-apple-system,Helvetica,Arial,sans-serif;padding:32px;color:#1A1A1A;background:#FFF}
-          .hdr{border-bottom:2px solid #6D4AFF;padding-bottom:16px;margin-bottom:20px}
-          .hdr h1{font-size:20px;color:#6D4AFF;font-weight:800}
-          .hdr p{font-size:13px;color:#64748B;margin-top:4px}
-          .row{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #E2E8F0;font-size:14px}
-          .row span:first-child{color:#64748B}
-          .row span:last-child{font-weight:700}
-          .amount{font-size:28px;font-weight:800;color:#10B981;margin:24px 0;text-align:center}
-          .badge{display:inline-block;padding:4px 10px;background:#DCFCE7;color:#15803D;font-weight:700;font-size:12px;border-radius:6px}
-        </style>
-      </head>
-      <body>
-        <div class="hdr">
-          <h1>${hostelName}</h1>
-          <p>Payment Receipt &bull; ${r.fee_month || 'Rent Payment'}</p>
-        </div>
-        <div class="amount">&#8377;${amount}</div>
-        <div class="row"><span>Receipt No</span><span>${r.receipt_number || `REC-${paymentId}`}</span></div>
-        <div class="row"><span>Tenant</span><span>${tenantName}</span></div>
-        <div class="row"><span>Room / Bed</span><span>Room ${r.room_number || '-'} (Bed ${r.bed_number || '-'})</span></div>
-        <div class="row"><span>Payment Date</span><span>${paidDate}</span></div>
-        <div class="row"><span>Payment Mode</span><span>${r.payment_mode || 'Online'}</span></div>
-        <div class="row"><span>Status</span><span class="badge">Paid &amp; Verified</span></div>
-      </body></html>`;
+      const formatDateTime = (dateString: string) => {
+        if (!dateString) return 'N/A';
+        const date = new Date(dateString);
+        const hours = date.getHours();
+        const minutes = date.getMinutes();
+        const ampm = hours >= 12 ? 'PM' : 'AM';
+        const displayHours = hours % 12 || 12;
+        const displayMinutes = String(minutes).padStart(2, '0');
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        return `${displayHours}:${displayMinutes} ${ampm} • ${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()}`;
+      };
+
+      const transactionTime = formatDateTime(r.payment_date || r.created_at || new Date().toISOString());
+
+      const html = generateReceiptHtml({
+        documentTitle: 'RENT RECEIPT',
+        hostelName,
+        hostelAddress: r.hostel_address || undefined,
+        ownerName: r.owner_name || undefined,
+        ownerContact: r.owner_phone || undefined,
+        payerLabel: 'Paid By (Student)',
+        payerName: studentName,
+        payerContact: r.phone || profile?.phone || undefined,
+        roomNo: r.room_number || profile?.room_number || 'N/A',
+        isStaff: false,
+        receiptNo,
+        transactionTime,
+        paymentMode,
+        transactionId,
+        periodLabel: feeMonth,
+        amountPaid,
+        duesAmount: parseFloat(String(r.total_due ?? r.monthly_rent ?? amountPaid)),
+        netBalance: parseFloat(String(r.balance ?? 0)),
+        recordedBy: r.recorded_by || undefined,
+      });
 
       if (progressTimer.current) clearInterval(progressTimer.current);
       setDlProgress(100);
       setDlStatus('done');
 
       const { uri } = await Print.printToFileAsync({ html });
-      await Sharing.shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf' });
-      showSuccess('Receipt ready for download / share!');
+      const filename = `receipt_${receiptNo.replace(/[^a-zA-Z0-9-_]/g, '_')}.pdf`;
+      await downloadAndSaveFile(uri, filename, 'application/pdf', true);
+      showSuccess('Receipt downloaded successfully!');
     } catch (e: any) {
       if (progressTimer.current) clearInterval(progressTimer.current);
       setDlStatus('error');
       showError('Failed to generate receipt PDF.');
+    }
+  };
+
+
+  const handleDownloadImage = async (imageUrl: string, title: string) => {
+    try {
+      const resolved = getResolvedImageUrl(imageUrl) || imageUrl;
+      if (!resolved) {
+        showError('Document URL unavailable.');
+        return;
+      }
+      setDlFileName(`${title.replace(/\s+/g, '_')}.jpg`);
+      setDlProgress(20);
+      setDlStatus('loading');
+      setDlVisible(true);
+
+      const fileUri = `${FileSystem.cacheDirectory}${Date.now()}_${title.replace(/[^a-zA-Z0-9]/g, '_')}.jpg`;
+      const downloadResult = await FileSystem.downloadAsync(resolved, fileUri);
+      
+      setDlProgress(100);
+      setDlStatus('done');
+
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(downloadResult.uri);
+      } else {
+        showSuccess('File saved to cache.');
+      }
+    } catch (err) {
+      setDlStatus('error');
+      showError('Could not download image.');
     }
   };
 
@@ -175,35 +226,38 @@ export default function DocumentsScreen({ navigation }: any) {
   const isKycVerified = profile?.id_proof_status === 1 || profile?.is_verified;
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top']}>
-      <StatusBar barStyle="dark-content" backgroundColor={WHITE} />
+    <View style={styles.safeArea}>
+      <StatusBar barStyle="light-content" backgroundColor="#7C3AED" />
       <OfflineBanner />
 
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
-          <ArrowLeft size={20} color={TEXT_DARK} />
-        </TouchableOpacity>
-        <View style={styles.headerTitleWrap}>
-          <Text style={styles.headerTitle}>My Documents</Text>
-          <Text style={styles.headerSubtitle}>KYC proofs & payment receipts</Text>
-        </View>
-        <View style={{ width: 40 }} />
-      </View>
+      {/* Unified AppHeader */}
+      <AppHeader
+        title="My Documents"
+        subtitle="KYC proofs & rent receipts"
+        showBack={true}
+        onBack={() => navigation.goBack()}
+        rightComponent={
+          <View style={styles.headerCountBadge}>
+            <Text style={styles.headerCountText}>
+              {(hasAadhaarFront ? 1 : 0) + (hasAadhaarBack ? 1 : 0) + (hasPhoto ? 1 : 0) + receipts.length} Docs
+            </Text>
+          </View>
+        }
+      />
 
       {/* KYC Status Banner */}
       {profile && (
         <View style={[styles.kycBanner, isKycVerified ? styles.kycVerifiedBg : styles.kycPendingBg]}>
           <View style={[styles.kycIconCircle, isKycVerified ? styles.kycVerifiedIcon : styles.kycPendingIcon]}>
-            {isKycVerified ? <ShieldCheck size={20} color={SUCCESS} /> : <ShieldAlert size={20} color={AMBER} />}
+            {isKycVerified ? <ShieldCheck size={18} color={SUCCESS} /> : <ShieldAlert size={18} color={AMBER} />}
           </View>
           <View style={{ flex: 1 }}>
             <Text style={[styles.kycBannerTitle, { color: isKycVerified ? '#065F46' : '#92400E' }]}>
-              {isKycVerified ? 'KYC Complete & Verified' : 'KYC Verification Pending'}
+              {isKycVerified ? 'KYC Verified' : 'KYC Pending Review'}
             </Text>
             <Text style={[styles.kycBannerSub, { color: isKycVerified ? '#047857' : '#B45309' }]}>
               {isKycVerified
-                ? 'Your identity documents are verified by the hostel management.'
+                ? 'Your identity documents are verified.'
                 : 'Your uploaded ID proofs are under review.'}
             </Text>
           </View>
@@ -240,7 +294,7 @@ export default function DocumentsScreen({ navigation }: any) {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          {/* ────────────────── KYC & ID PROOFS SECTION ────────────────── */}
+          {/* ────────────────── KYC & ID PROOFS (SIDE BY SIDE GRID) ────────────────── */}
           {(activeFilter === 'All' || activeFilter === 'KYC') && (
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
@@ -248,30 +302,12 @@ export default function DocumentsScreen({ navigation }: any) {
                 <Text style={styles.sectionTitle}>Identity & KYC Proofs</Text>
               </View>
 
-              {/* ID Proof Card */}
-              <View style={styles.card}>
-                <View style={styles.cardHead}>
-                  <View>
-                    <Text style={styles.cardTitle}>
-                      {profile?.id_proof_type_name || profile?.id_proof_type || 'Govt ID Proof'}
-                    </Text>
-                    <Text style={styles.cardDocNumber}>
-                      {profile?.id_proof_number ? `Number: ${profile.id_proof_number}` : 'ID Number on file'}
-                    </Text>
-                  </View>
-                  <View style={[styles.badge, isKycVerified ? styles.badgeSuccess : styles.badgeAmber]}>
-                    <Text style={[styles.badgeText, { color: isKycVerified ? SUCCESS : AMBER }]}>
-                      {isKycVerified ? 'Verified' : 'Submitted'}
-                    </Text>
-                  </View>
-                </View>
-
-                {/* Thumbnails Row */}
-                <View style={styles.docsGrid}>
-                  {/* Front Side */}
-                  {hasAadhaarFront && (
+              <View style={styles.gridRow}>
+                {/* Front Side */}
+                {hasAadhaarFront && (
+                  <View style={styles.gridCard}>
                     <TouchableOpacity
-                      style={styles.docTile}
+                      style={styles.cardThumbWrap}
                       activeOpacity={0.85}
                       onPress={() => {
                         const raw = profile.id_proof_front_url || profile.id_proof_document_url;
@@ -280,20 +316,53 @@ export default function DocumentsScreen({ navigation }: any) {
                     >
                       <Image
                         source={{ uri: getResolvedImageUrl(profile.id_proof_front_url || profile.id_proof_document_url) || '' }}
-                        style={styles.docThumb}
+                        style={styles.cardImage}
                         resizeMode="cover"
                       />
-                      <View style={styles.docTileOverlay}>
-                        <Eye size={14} color={WHITE} />
-                        <Text style={styles.docTileLabel}>Front Side</Text>
+                      <View style={styles.docTypeBadge}>
+                        <Text style={styles.docTypeBadgeText}>Front Side</Text>
                       </View>
                     </TouchableOpacity>
-                  )}
 
-                  {/* Back Side */}
-                  {hasAadhaarBack && (
+                    <View style={styles.cardBody}>
+                      <Text style={styles.cardTitle} numberOfLines={1}>
+                        {profile?.id_proof_type_name || profile?.id_proof_type || 'ID Proof Front'}
+                      </Text>
+                      <Text style={styles.cardSubtitle} numberOfLines={1}>
+                        {profile?.id_proof_number ? `No: ${profile.id_proof_number}` : 'Govt ID Proof'}
+                      </Text>
+
+                      <View style={styles.cardActionsRow}>
+                        <TouchableOpacity
+                          style={styles.actionBtn}
+                          onPress={() => {
+                            const raw = profile.id_proof_front_url || profile.id_proof_document_url;
+                            setPreviewImage({ uri: getResolvedImageUrl(raw) || raw, title: 'ID Proof (Front Side)' });
+                          }}
+                          activeOpacity={0.7}
+                        >
+                          <Eye size={13} color={BLUE} />
+                          <Text style={styles.actionBtnText}>View</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          style={[styles.actionBtn, styles.downloadActionBtn]}
+                          onPress={() => handleDownloadImage(profile.id_proof_front_url || profile.id_proof_document_url, 'ID_Proof_Front')}
+                          activeOpacity={0.7}
+                        >
+                          <Download size={13} color="#FFFFFF" />
+                          <Text style={[styles.actionBtnText, { color: '#FFFFFF' }]}>Save</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  </View>
+                )}
+
+                {/* Back Side */}
+                {hasAadhaarBack && (
+                  <View style={styles.gridCard}>
                     <TouchableOpacity
-                      style={styles.docTile}
+                      style={styles.cardThumbWrap}
                       activeOpacity={0.85}
                       onPress={() => {
                         const raw = profile.id_proof_back_url;
@@ -302,47 +371,111 @@ export default function DocumentsScreen({ navigation }: any) {
                     >
                       <Image
                         source={{ uri: getResolvedImageUrl(profile.id_proof_back_url) || '' }}
-                        style={styles.docThumb}
+                        style={styles.cardImage}
                         resizeMode="cover"
                       />
-                      <View style={styles.docTileOverlay}>
-                        <Eye size={14} color={WHITE} />
-                        <Text style={styles.docTileLabel}>Back Side</Text>
+                      <View style={styles.docTypeBadge}>
+                        <Text style={styles.docTypeBadgeText}>Back Side</Text>
                       </View>
                     </TouchableOpacity>
-                  )}
 
-                  {/* Profile Photo */}
-                  {hasPhoto && (
+                    <View style={styles.cardBody}>
+                      <Text style={styles.cardTitle} numberOfLines={1}>
+                        {profile?.id_proof_type_name || profile?.id_proof_type || 'ID Proof Back'}
+                      </Text>
+                      <Text style={styles.cardSubtitle} numberOfLines={1}>
+                        {profile?.id_proof_number ? `No: ${profile.id_proof_number}` : 'Govt ID Proof'}
+                      </Text>
+
+                      <View style={styles.cardActionsRow}>
+                        <TouchableOpacity
+                          style={styles.actionBtn}
+                          onPress={() => {
+                            const raw = profile.id_proof_back_url;
+                            setPreviewImage({ uri: getResolvedImageUrl(raw) || raw, title: 'ID Proof (Back Side)' });
+                          }}
+                          activeOpacity={0.7}
+                        >
+                          <Eye size={13} color={BLUE} />
+                          <Text style={styles.actionBtnText}>View</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          style={[styles.actionBtn, styles.downloadActionBtn]}
+                          onPress={() => handleDownloadImage(profile.id_proof_back_url, 'ID_Proof_Back')}
+                          activeOpacity={0.7}
+                        >
+                          <Download size={13} color="#FFFFFF" />
+                          <Text style={[styles.actionBtnText, { color: '#FFFFFF' }]}>Save</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  </View>
+                )}
+
+                {/* Passport Photo */}
+                {hasPhoto && (
+                  <View style={styles.gridCard}>
                     <TouchableOpacity
-                      style={styles.docTile}
+                      style={styles.cardThumbWrap}
                       activeOpacity={0.85}
                       onPress={() => {
                         const raw = profile.profile_photo_url;
-                        setPreviewImage({ uri: getResolvedImageUrl(raw) || raw, title: 'Passport / Profile Photo' });
+                        setPreviewImage({ uri: getResolvedImageUrl(raw) || raw, title: 'Passport Photo' });
                       }}
                     >
                       <Image
                         source={{ uri: getResolvedImageUrl(profile.profile_photo_url) || '' }}
-                        style={styles.docThumb}
+                        style={styles.cardImage}
                         resizeMode="cover"
                       />
-                      <View style={styles.docTileOverlay}>
-                        <User size={14} color={WHITE} />
-                        <Text style={styles.docTileLabel}>Passport Photo</Text>
+                      <View style={styles.docTypeBadge}>
+                        <Text style={styles.docTypeBadgeText}>Photo</Text>
                       </View>
                     </TouchableOpacity>
-                  )}
-                </View>
 
-                {!hasAadhaarFront && !hasAadhaarBack && !hasPhoto && (
-                  <Text style={styles.noDocText}>No KYC photo documents uploaded yet.</Text>
+                    <View style={styles.cardBody}>
+                      <Text style={styles.cardTitle} numberOfLines={1}>Passport Photo</Text>
+                      <Text style={styles.cardSubtitle} numberOfLines={1}>Profile / KYC</Text>
+
+                      <View style={styles.cardActionsRow}>
+                        <TouchableOpacity
+                          style={styles.actionBtn}
+                          onPress={() => {
+                            const raw = profile.profile_photo_url;
+                            setPreviewImage({ uri: getResolvedImageUrl(raw) || raw, title: 'Passport Photo' });
+                          }}
+                          activeOpacity={0.7}
+                        >
+                          <Eye size={13} color={BLUE} />
+                          <Text style={styles.actionBtnText}>View</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          style={[styles.actionBtn, styles.downloadActionBtn]}
+                          onPress={() => handleDownloadImage(profile.profile_photo_url, 'Passport_Photo')}
+                          activeOpacity={0.7}
+                        >
+                          <Download size={13} color="#FFFFFF" />
+                          <Text style={[styles.actionBtnText, { color: '#FFFFFF' }]}>Save</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  </View>
                 )}
               </View>
+
+              {!hasAadhaarFront && !hasAadhaarBack && !hasPhoto && (
+                <View style={styles.emptyCard}>
+                  <IdCard size={28} color={TEXT_MUTED} />
+                  <Text style={styles.emptyCardTitle}>No KYC Proofs Uploaded</Text>
+                  <Text style={styles.emptyCardSub}>Uploaded Aadhaar or ID proofs will show here side by side.</Text>
+                </View>
+              )}
             </View>
           )}
 
-          {/* ────────────────── RENT RECEIPTS SECTION ────────────────── */}
+          {/* ────────────────── RENT RECEIPTS (SIDE BY SIDE GRID) ────────────────── */}
           {(activeFilter === 'All' || activeFilter === 'Receipt') && (
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
@@ -352,32 +485,46 @@ export default function DocumentsScreen({ navigation }: any) {
 
               {receipts.length === 0 ? (
                 <View style={styles.emptyCard}>
-                  <Receipt size={32} color={TEXT_MUTED} />
-                  <Text style={styles.emptyCardTitle}>No Receipts Yet</Text>
+                  <Receipt size={28} color={TEXT_MUTED} />
+                  <Text style={styles.emptyCardTitle}>No Receipts Available</Text>
                   <Text style={styles.emptyCardSub}>Verified rent payments will generate downloadable receipts here.</Text>
                 </View>
               ) : (
-                receipts.map((rec, index) => (
-                  <View key={rec.id || index} style={styles.receiptCard}>
-                    <View style={styles.receiptIcon}>
-                      <FileCheck2 size={20} color={SUCCESS} />
+                <View style={styles.gridRow}>
+                  {receipts.map((rec, index) => (
+                    <View key={rec.id || index} style={styles.gridCard}>
+                      <View style={styles.receiptCardHeader}>
+                        <View style={styles.receiptIconCircle}>
+                          <FileCheck2 size={20} color={SUCCESS} />
+                        </View>
+                        <View style={styles.verifiedBadge}>
+                          <Text style={styles.verifiedBadgeText}>Paid</Text>
+                        </View>
+                      </View>
+
+                      <View style={styles.cardBody}>
+                        <Text style={styles.cardTitle} numberOfLines={1}>{rec.name}</Text>
+                        <Text style={styles.receiptAmountText}>
+                          &#8377;{Number(rec.amount).toLocaleString('en-IN')}
+                        </Text>
+                        <Text style={styles.cardSubtitle} numberOfLines={1}>
+                          {rec.date ? new Date(rec.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : '-'}
+                        </Text>
+
+                        <View style={styles.cardActionsRow}>
+                          <TouchableOpacity
+                            style={[styles.actionBtn, styles.downloadActionBtn, { flex: 1 }]}
+                            onPress={() => handleDownloadReceipt(rec.paymentId, `${rec.name}.pdf`)}
+                            activeOpacity={0.7}
+                          >
+                            <Download size={13} color="#FFFFFF" />
+                            <Text style={[styles.actionBtnText, { color: '#FFFFFF' }]}>PDF</Text>
+                          </TouchableOpacity>
+                        </View>
+                      </View>
                     </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.receiptName}>{rec.name}</Text>
-                      <Text style={styles.receiptMeta}>
-                        {rec.date ? new Date(rec.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'} &bull; &#8377;{Number(rec.amount).toLocaleString('en-IN')}
-                      </Text>
-                    </View>
-                    <TouchableOpacity
-                      style={styles.downloadBtn}
-                      onPress={() => handleDownloadReceipt(rec.paymentId, `${rec.name}.pdf`)}
-                      activeOpacity={0.8}
-                    >
-                      <Download size={16} color={BLUE} />
-                      <Text style={styles.downloadBtnText}>PDF</Text>
-                    </TouchableOpacity>
-                  </View>
-                ))
+                  ))}
+                </View>
               )}
             </View>
           )}
@@ -395,13 +542,24 @@ export default function DocumentsScreen({ navigation }: any) {
           <SafeAreaView style={{ flex: 1 }}>
             <View style={styles.previewModalHeader}>
               <Text style={styles.previewModalTitle}>{previewImage?.title || 'Document Preview'}</Text>
-              <TouchableOpacity
-                onPress={() => setPreviewImage(null)}
-                style={styles.previewCloseBtn}
-                activeOpacity={0.7}
-              >
-                <X size={22} color={WHITE} />
-              </TouchableOpacity>
+              <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
+                {previewImage?.uri && (
+                  <TouchableOpacity
+                    onPress={() => handleDownloadImage(previewImage.uri, previewImage.title || 'Document')}
+                    style={styles.previewActionBtn}
+                    activeOpacity={0.7}
+                  >
+                    <Download size={18} color={WHITE} />
+                  </TouchableOpacity>
+                )}
+                <TouchableOpacity
+                  onPress={() => setPreviewImage(null)}
+                  style={styles.previewCloseBtn}
+                  activeOpacity={0.7}
+                >
+                  <X size={20} color={WHITE} />
+                </TouchableOpacity>
+              </View>
             </View>
             <View style={styles.previewImageContainer}>
               {previewImage?.uri ? (
@@ -418,7 +576,7 @@ export default function DocumentsScreen({ navigation }: any) {
         </View>
       </Modal>
 
-      {/* Download sheet */}
+      {/* Download progress sheet */}
       <DownloadProgressSheet
         visible={dlVisible}
         fileName={dlFileName}
@@ -426,7 +584,7 @@ export default function DocumentsScreen({ navigation }: any) {
         status={dlStatus}
         onClose={() => setDlVisible(false)}
       />
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -435,44 +593,24 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: BG,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: WHITE,
-    borderBottomWidth: 1,
-    borderBottomColor: BORDER,
-  },
-  backBtn: {
-    width: 40,
-    height: 40,
+  headerCountBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
     borderRadius: 12,
-    backgroundColor: BG,
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.22)',
   },
-  headerTitleWrap: {
-    alignItems: 'center',
-  },
-  headerTitle: {
-    fontSize: 17,
-    fontWeight: '800',
-    color: TEXT_DARK,
-  },
-  headerSubtitle: {
+  headerCountText: {
     fontSize: 12,
-    color: TEXT_MID,
-    marginTop: 1,
+    fontWeight: '800',
+    color: '#FFFFFF',
   },
   kycBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
     marginHorizontal: 16,
-    marginTop: 14,
-    padding: 14,
+    marginTop: 12,
+    padding: 12,
     borderRadius: 14,
     borderWidth: 1,
   },
@@ -485,9 +623,9 @@ const styles = StyleSheet.create({
     borderColor: '#FDE68A',
   },
   kycIconCircle: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -498,24 +636,24 @@ const styles = StyleSheet.create({
     backgroundColor: '#FEF3C7',
   },
   kycBannerTitle: {
-    fontSize: 13.5,
+    fontSize: 13,
     fontWeight: '800',
   },
   kycBannerSub: {
-    fontSize: 11.5,
-    marginTop: 2,
+    fontSize: 11,
+    marginTop: 1,
     fontWeight: '500',
   },
   tabsRow: {
     flexDirection: 'row',
     gap: 8,
     paddingHorizontal: 16,
-    marginTop: 14,
-    marginBottom: 6,
+    marginTop: 12,
+    marginBottom: 4,
   },
   tabBtn: {
     paddingHorizontal: 14,
-    paddingVertical: 8,
+    paddingVertical: 7,
     borderRadius: 20,
     backgroundColor: WHITE,
     borderWidth: 1,
@@ -526,7 +664,7 @@ const styles = StyleSheet.create({
     borderColor: BLUE,
   },
   tabBtnText: {
-    fontSize: 12.5,
+    fontSize: 12,
     fontWeight: '700',
     color: TEXT_MID,
   },
@@ -535,7 +673,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 16,
-    gap: 20,
+    gap: 18,
     paddingBottom: 40,
   },
   section: {
@@ -547,132 +685,122 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   sectionTitle: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: TEXT_DARK,
-  },
-  card: {
-    backgroundColor: WHITE,
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: BORDER,
-  },
-  cardHead: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 14,
-  },
-  cardTitle: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: TEXT_DARK,
-  },
-  cardDocNumber: {
-    fontSize: 12.5,
-    color: TEXT_MID,
-    marginTop: 2,
-    fontWeight: '500',
-  },
-  badge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  badgeSuccess: {
-    backgroundColor: SUCCESS_SOFT,
-  },
-  badgeAmber: {
-    backgroundColor: AMBER_SOFT,
-  },
-  badgeText: {
-    fontSize: 11,
-    fontWeight: '800',
-  },
-  docsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  docTile: {
-    width: (SCREEN_WIDTH - 32 - 32 - 12) / 2,
-    height: 120,
-    borderRadius: 12,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: BORDER,
-    backgroundColor: '#0F172A',
-  },
-  docThumb: {
-    width: '100%',
-    height: '100%',
-  },
-  docTileOverlay: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: 'rgba(0,0,0,0.65)',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 5,
-    paddingVertical: 6,
-  },
-  docTileLabel: {
-    color: WHITE,
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  noDocText: {
-    fontSize: 13,
-    color: TEXT_MUTED,
-    textAlign: 'center',
-    marginVertical: 12,
-  },
-  receiptCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    backgroundColor: WHITE,
-    padding: 14,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: BORDER,
-    marginBottom: 10,
-  },
-  receiptIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: SUCCESS_SOFT,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  receiptName: {
     fontSize: 14,
     fontWeight: '800',
     color: TEXT_DARK,
   },
-  receiptMeta: {
-    fontSize: 12,
-    color: TEXT_MID,
-    marginTop: 2,
+  // ── 2-Column Side by Side Grid ──
+  gridRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: CARD_GAP,
   },
-  downloadBtn: {
+  gridCard: {
+    width: CARD_WIDTH,
+    backgroundColor: WHITE,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: BORDER,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  cardThumbWrap: {
+    width: '100%',
+    height: 105,
+    backgroundColor: '#0F172A',
+    position: 'relative',
+  },
+  cardImage: {
+    width: '100%',
+    height: '100%',
+  },
+  docTypeBadge: {
+    position: 'absolute',
+    bottom: 6,
+    left: 6,
+    backgroundColor: 'rgba(0,0,0,0.65)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  docTypeBadgeText: {
+    color: WHITE,
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  cardBody: {
+    padding: 10,
+    gap: 4,
+  },
+  cardTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: TEXT_DARK,
+  },
+  cardSubtitle: {
+    fontSize: 11,
+    color: TEXT_MUTED,
+  },
+  cardActionsRow: {
+    flexDirection: 'row',
+    gap: 6,
+    marginTop: 6,
+  },
+  actionBtn: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 4,
+    paddingVertical: 6,
+    borderRadius: 8,
     backgroundColor: BLUE_SOFT,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
   },
-  downloadBtnText: {
-    color: BLUE,
-    fontSize: 12,
+  downloadActionBtn: {
+    backgroundColor: BLUE,
+  },
+  actionBtnText: {
+    fontSize: 11,
     fontWeight: '800',
+    color: BLUE,
+  },
+  // Receipts card inside grid
+  receiptCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 12,
+    backgroundColor: '#F0FDF4',
+    borderBottomWidth: 1,
+    borderBottomColor: '#DCFCE7',
+  },
+  receiptIconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#DCFCE7',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  verifiedBadge: {
+    backgroundColor: SUCCESS,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  verifiedBadgeText: {
+    color: WHITE,
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  receiptAmountText: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: SUCCESS,
   },
   emptyCard: {
     backgroundColor: WHITE,
@@ -682,7 +810,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: BORDER,
-    gap: 8,
+    gap: 6,
   },
   emptyCardTitle: {
     fontSize: 14,
@@ -707,14 +835,22 @@ const styles = StyleSheet.create({
   },
   previewModalTitle: {
     color: WHITE,
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '800',
+  },
+  previewActionBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.22)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   previewCloseBtn: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: 'rgba(255,255,255,0.22)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -729,3 +865,4 @@ const styles = StyleSheet.create({
     height: '100%',
   },
 });
+
