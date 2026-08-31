@@ -60,7 +60,7 @@ function Shimmer({ style, light }: { style?: any; light?: boolean }) {
 }
 
 export function TenantHomeScreen({ navigation }: any) {
-  const { user, refreshUser } = useAuth();
+  const { user, connectedHostel, refreshUser } = useAuth();
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -433,7 +433,7 @@ export function TenantHomeScreen({ navigation }: any) {
                   <View style={styles.hostelRow}>
                     <Ionicons name="location-outline" size={12} color="rgba(255,255,255,0.7)" />
                     <Text style={styles.hostelName} numberOfLines={1} ellipsizeMode="tail">
-                      {(user as any)?.hostel_name ?? "Welcome Back"}
+                      {(user as any)?.hostel_name || connectedHostel?.hostel_name || "Hostel Resident"}
                     </Text>
                   </View>
                 </View>

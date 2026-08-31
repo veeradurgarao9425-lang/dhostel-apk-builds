@@ -164,7 +164,8 @@ export const createStaff = async (req: AuthRequest, res: Response) => {
       const { hashPassword } = await import('../utils/bcrypt.js');
       const hashedPassword = await hashPassword(String(req.body.password).trim());
       const cleanPhone = phone ? String(phone).replace(/\D/g, '') : null;
-      const cleanEmail = email ? String(email).trim().toLowerCase() : null;
+      const cleanEmail = email && String(email).trim() ? String(email).trim().toLowerCase() : null;
+      const effectiveEmail = cleanEmail || (cleanPhone ? `${cleanPhone}@hostix.com` : `staff_${Date.now()}@hostix.com`);
 
       let existingUserQuery = db('users');
       if (cleanEmail && cleanPhone) {
@@ -172,7 +173,7 @@ export const createStaff = async (req: AuthRequest, res: Response) => {
       } else if (cleanEmail) {
         existingUserQuery = existingUserQuery.where('email', cleanEmail);
       } else if (cleanPhone) {
-        existingUserQuery = existingUserQuery.where('phone', cleanPhone);
+        existingUserQuery = existingUserQuery.where('phone', cleanPhone).orWhere('email', effectiveEmail);
       }
 
       const existingUser = (cleanEmail || cleanPhone) ? await existingUserQuery.first() : null;
@@ -189,10 +190,10 @@ export const createStaff = async (req: AuthRequest, res: Response) => {
           is_active: 1,
         });
       } else {
-        const username = cleanEmail || cleanPhone || `staff_${Date.now()}`;
+        const username = cleanPhone || cleanEmail || `staff_${Date.now()}`;
         const [newUserId] = await db('users').insert({
           username,
-          email: cleanEmail,
+          email: effectiveEmail,
           phone: cleanPhone,
           full_name,
           password: hashedPassword,
@@ -206,11 +207,13 @@ export const createStaff = async (req: AuthRequest, res: Response) => {
       }
     }
 
+    const cleanStaffEmail = email && String(email).trim() ? String(email).trim().toLowerCase() : null;
+
     const staffInsertData: any = {
       hostel_id: hostelId,
       full_name,
       phone,
-      email: email || null,
+      email: cleanStaffEmail,
       role: role || 'Staff',
       status: finalStatusStr,
       status_id: finalStatusId,

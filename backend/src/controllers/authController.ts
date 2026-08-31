@@ -1272,6 +1272,7 @@ export const authController = {
           'students.*', 
           'rooms.room_number', 
           'rooms.is_available as room_active',
+          'hostel_master.hostel_name',
           'hostel_master.is_active as hostel_active'
         )
         .leftJoin('rooms', 'rooms.room_id', 'students.room_id')
@@ -1358,6 +1359,7 @@ export const authController = {
             room: tenant.room_number || 'N/A',
             room_id: tenant.room_id || null,
             hostel_id: tenant.hostel_id,
+            hostel_name: tenant.hostel_name || null,
             status: Number(tenant.status),
             is_allocated: tenant.room_id != null && Number(tenant.status) === 1 && tenant.room_active !== 0
           }
@@ -1504,10 +1506,11 @@ export const authController = {
         console.error('Failed to send developer tenant registration notification:', devNotifErr);
       }
 
+      const hostel = await db('hostel_master').where({ hostel_id }).first().catch(() => null);
+
       // Dispatch Email Alert to Hostel Owner
       (async () => {
         try {
-          const hostel = await db('hostel_master').where({ hostel_id }).first();
           const owner = hostel?.owner_id ? await db('users').where({ user_id: hostel.owner_id }).first() : null;
           if (owner?.email && String(owner.email).includes('@')) {
             await sendNewJoinerOwnerAlertEmail({
@@ -1547,6 +1550,7 @@ export const authController = {
             room: 'Pending',
             room_id: null,
             hostel_id,
+            hostel_name: hostel?.hostel_name || null,
             status: 3,
             is_allocated: false
           }
@@ -1581,6 +1585,7 @@ export const authController = {
           'rooms.room_number', 
           'rooms.rent_per_bed',
           'rooms.is_available as room_active',
+          'hostel_master.hostel_name',
           'hostel_master.is_active as hostel_active'
         )
         .leftJoin('rooms', 'rooms.room_id', 'students.room_id')
@@ -1648,6 +1653,7 @@ export const authController = {
           outstanding_due: Number(dueRow?.total_balance || 0),
           next_due_date: nextDue?.due_date || null,
           hostel_id: tenant.hostel_id,
+          hostel_name: tenant.hostel_name || null,
           profile_photo_url: tenant.profile_photo_url || null,
           id_proof_front_url: tenant.id_proof_front_url || tenant.id_proof_document_url || null,
           id_proof_back_url: tenant.id_proof_back_url || null,

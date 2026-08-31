@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, View, Text, StyleSheet, TouchableOpacity, Pressable } from 'react-native';
+import { Modal, View, Text, StyleSheet, TouchableOpacity, Pressable, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Speech from 'expo-speech';
 import api from '../../../services/api';
 import { theme } from '../../../theme/tenantTheme';
@@ -23,6 +24,7 @@ interface Props {
 }
 
 export function VocabularyModal({ word, onClose, initiallySaved }: Props) {
+  const insets = useSafeAreaInsets();
   const [saved, setSaved] = useState(!!initiallySaved);
   const [saving, setSaving] = useState(false);
 
@@ -78,7 +80,7 @@ export function VocabularyModal({ word, onClose, initiallySaved }: Props) {
   return (
     <Modal visible={!!word} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose}>
-        <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
+        <Pressable style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 20) + 10 }]} onPress={(e) => e.stopPropagation()}>
           <View style={styles.handle} />
 
           <View style={styles.headerRow}>
@@ -107,43 +109,45 @@ export function VocabularyModal({ word, onClose, initiallySaved }: Props) {
             </TouchableOpacity>
           </View>
 
-          <View style={styles.infoCard}>
-            <Text style={styles.sectionLabel}>Meaning</Text>
-            {simpleMeaning ? (
-              <Text style={styles.bodyText}>{simpleMeaning}</Text>
-            ) : (
-              <Text style={styles.bodyText}>{word.meaning}</Text>
-            )}
-          </View>
-
-          {teluguMeaning ? (
-            <View style={[styles.infoCard, { backgroundColor: '#FFFBEB', borderColor: '#FEF3C7' }]}>
-              <Text style={[styles.sectionLabel, { color: '#D97706' }]}>Telugu Meaning</Text>
-              <Text style={[styles.bodyText, { color: '#B45309', fontSize: 15 }]}>{teluguMeaning}</Text>
-            </View>
-          ) : null}
-
-          {word.example_sentence ? (
+          <ScrollView style={{ maxHeight: 340 }} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 6 }}>
             <View style={styles.infoCard}>
-              <Text style={styles.sectionLabel}>Example</Text>
-              <Text style={styles.exampleText}>
-                {renderExample(word.example_sentence, word.word)}
-              </Text>
+              <Text style={styles.sectionLabel}>Meaning</Text>
+              {simpleMeaning ? (
+                <Text style={styles.bodyText}>{simpleMeaning}</Text>
+              ) : (
+                <Text style={styles.bodyText}>{word.meaning}</Text>
+              )}
             </View>
-          ) : null}
 
-          {synonymList.length > 0 ? (
-            <View style={styles.infoCard}>
-              <Text style={styles.sectionLabel}>Synonyms</Text>
-              <View style={styles.synonymsWrap}>
-                {synonymList.map((syn, idx) => (
-                  <View key={idx} style={styles.synonymChip}>
-                    <Text style={styles.synonymChipText}>{syn}</Text>
-                  </View>
-                ))}
+            {teluguMeaning ? (
+              <View style={[styles.infoCard, { backgroundColor: '#FFFBEB', borderColor: '#FEF3C7' }]}>
+                <Text style={[styles.sectionLabel, { color: '#D97706' }]}>Telugu Meaning</Text>
+                <Text style={[styles.bodyText, { color: '#B45309', fontSize: 15 }]}>{teluguMeaning}</Text>
               </View>
-            </View>
-          ) : null}
+            ) : null}
+
+            {word.example_sentence ? (
+              <View style={styles.infoCard}>
+                <Text style={styles.sectionLabel}>Example</Text>
+                <Text style={styles.exampleText}>
+                  {renderExample(word.example_sentence, word.word)}
+                </Text>
+              </View>
+            ) : null}
+
+            {synonymList.length > 0 ? (
+              <View style={styles.infoCard}>
+                <Text style={styles.sectionLabel}>Synonyms</Text>
+                <View style={styles.synonymsWrap}>
+                  {synonymList.map((syn, idx) => (
+                    <View key={idx} style={styles.synonymChip}>
+                      <Text style={styles.synonymChipText}>{syn}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            ) : null}
+          </ScrollView>
 
           <TouchableOpacity
             style={[styles.saveButton, saved && styles.saveButtonSaved]}
@@ -151,7 +155,7 @@ export function VocabularyModal({ word, onClose, initiallySaved }: Props) {
             activeOpacity={0.85}
           >
             <Text style={styles.saveButtonText}>
-              {saved ? 'Added to My Words' : '+ Add to My Words'}
+              {saved ? '✓ Added to My Words' : '+ Add to My Words'}
             </Text>
           </TouchableOpacity>
         </Pressable>
@@ -166,8 +170,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#FAF9F6', // Cozy paper color matching the story background
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
-    padding: theme.spacing.xl,
-    paddingBottom: theme.spacing['3xl'],
+    paddingHorizontal: theme.spacing.xl,
+    paddingTop: theme.spacing.xl,
+    maxHeight: '82%',
     borderWidth: 1,
     borderColor: '#E2E8F0',
   },

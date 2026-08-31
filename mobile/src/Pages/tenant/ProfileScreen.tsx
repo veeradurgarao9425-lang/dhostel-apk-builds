@@ -33,7 +33,7 @@ const TEXT_MID = '#64748B';
 const TEXT_MUTED = '#94A3B8';
 
 export default function ProfileScreen({ navigation }: any) {
-  const { user, signOut, updateTokenAndUser } = useAuth();
+  const { user, connectedHostel, signOut, updateTokenAndUser } = useAuth();
 
   const name = user?.name || user?.full_name || 'Tenant';
   const initials = name
@@ -45,7 +45,7 @@ export default function ProfileScreen({ navigation }: any) {
   const roomNumber = user?.room_number ? `Room ${user.room_number}` : 'No Room';
   const phone = user?.phone || (user as any)?.mobile || 'No phone added';
   const email = user?.email || 'No email added';
-  const hostelName = (user as any)?.hostel_name || 'My Hostel';
+  const hostelName = (user as any)?.hostel_name || connectedHostel?.hostel_name || 'My Hostel';
 
   const [avatarUri, setAvatarUri] = useState<string | null>(
     (user as any)?.avatar_url || (user as any)?.profile_image || null

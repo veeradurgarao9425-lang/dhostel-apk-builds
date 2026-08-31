@@ -69,6 +69,6 @@ try {
 }
 
 export const isFirebaseReady = () => Boolean(firebaseMessagingInstance);
-export const firebaseMessaging = firebaseMessagingInstance;
-export { firebaseApp };
+export const getFirebaseMessaging = () => firebaseMessagingInstance;
+export { firebaseMessagingInstance as firebaseMessaging, firebaseApp };
 

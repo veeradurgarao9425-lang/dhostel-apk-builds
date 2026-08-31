@@ -3,7 +3,8 @@
  * Pure Firebase Cloud Messaging (FCM) via @react-native-firebase/messaging modular API.
  * Safely guards native module access in local Expo dev environments.
  */
-import { Platform, PermissionsAndroid, NativeModules } from 'react-native';
+import { Platform, PermissionsAndroid } from 'react-native';
+import Toast from 'react-native-toast-message';
 import api from './api';
 
 const getFirebaseMessagingModule = () => {
@@ -14,12 +15,20 @@ const getFirebaseMessagingModule = () => {
   }
 };
 
+const getExpoNotificationsModule = () => {
+  try {
+    return require('expo-notifications');
+  } catch {
+    return null;
+  }
+};
+
 export const notificationService = {
   _lastRegisteredToken: null as string | null,
 
   /**
    * Request permission (Android 13+ requires runtime POST_NOTIFICATIONS),
-   * get the FCM token, and send it to our backend.
+   * get the FCM token (or Expo push token fallback), and send it to our backend.
    */
   async registerForPushNotificationsAsync(): Promise<string | null> {
     try {
@@ -36,55 +45,89 @@ export const notificationService = {
         }
       }
 
+      // Create Android Notification Channel
+      if (Platform.OS === 'android') {
+        try {
+          const Notifications = getExpoNotificationsModule();
+          if (Notifications?.setNotificationChannelAsync) {
+            await Notifications.setNotificationChannelAsync('default', {
+              name: 'Default',
+              importance: Notifications.AndroidImportance.MAX,
+              vibrationPattern: [0, 250, 250, 250],
+              lightColor: '#6D4AFF',
+              sound: 'default',
+            });
+          }
+        } catch (_) {}
+      }
+
+      let token: string | null = null;
+
+      // ── 1. Try Firebase Cloud Messaging (Primary for Native APK) ──
       const fcm = getFirebaseMessagingModule();
-      if (!fcm) {
-        return null;
-      }
-
-      let messagingInstance: any = null;
-      try {
-        if (typeof fcm === 'function') {
-          messagingInstance = fcm();
-        } else if (fcm.default && typeof fcm.default === 'function') {
-          messagingInstance = fcm.default();
-        } else if (typeof fcm.getMessaging === 'function') {
-          messagingInstance = fcm.getMessaging();
+      if (fcm) {
+        let messagingInstance: any = null;
+        try {
+          if (typeof fcm === 'function') {
+            messagingInstance = fcm();
+          } else if (fcm.default && typeof fcm.default === 'function') {
+            messagingInstance = fcm.default();
+          } else if (typeof fcm.getMessaging === 'function') {
+            messagingInstance = fcm.getMessaging();
+          }
+        } catch (nativeErr: any) {
+          console.warn('[FCM] Error initializing messaging instance:', nativeErr);
         }
-      } catch (nativeErr: any) {
-        console.warn('[FCM] Error initializing messaging instance:', nativeErr);
-        return null;
-      }
 
-      if (!messagingInstance) return null;
+        if (messagingInstance) {
+          // iOS permission
+          if (Platform.OS === 'ios' && typeof messagingInstance.requestPermission === 'function') {
+            try {
+              const authStatus = await messagingInstance.requestPermission();
+              const AuthorizationStatus = fcm.AuthorizationStatus || {};
+              const enabled =
+                authStatus === (AuthorizationStatus.AUTHORIZED ?? 1) ||
+                authStatus === (AuthorizationStatus.PROVISIONAL ?? 2);
+              if (!enabled) {
+                console.warn('[FCM] ❌ iOS notification permission denied.');
+              }
+            } catch (_) {}
+          }
 
-      // ── iOS permission ──────────────────────────────────────────────
-      if (Platform.OS === 'ios') {
-        if (typeof messagingInstance.requestPermission === 'function') {
-          const authStatus = await messagingInstance.requestPermission();
-          const AuthorizationStatus = fcm.AuthorizationStatus || {};
-          const enabled =
-            authStatus === (AuthorizationStatus.AUTHORIZED ?? 1) ||
-            authStatus === (AuthorizationStatus.PROVISIONAL ?? 2);
-          if (!enabled) {
-            console.warn('[FCM] ❌ iOS notification permission denied.');
-            return null;
+          try {
+            if (typeof messagingInstance.getToken === 'function') {
+              token = await messagingInstance.getToken();
+            } else if (typeof fcm.getToken === 'function') {
+              token = await fcm.getToken(messagingInstance);
+            }
+          } catch (tokenErr: any) {
+            console.warn('[FCM] Error obtaining FCM token:', tokenErr);
           }
         }
       }
 
-      // ── Get FCM token ───────────────────────────────────────────────
-      let token: string | null = null;
-      try {
-        if (typeof messagingInstance.getToken === 'function') {
-          token = await messagingInstance.getToken();
-        } else if (typeof fcm.getToken === 'function') {
-          token = await fcm.getToken(messagingInstance);
+      // ── 2. Fallback to Expo Push Token for Local / Expo Go Testing ──
+      if (!token) {
+        try {
+          const Notifications = getExpoNotificationsModule();
+          if (Notifications?.getExpoPushTokenAsync) {
+            const { status: existingStatus } = await Notifications.getPermissionsAsync();
+            let finalStatus = existingStatus;
+            if (existingStatus !== 'granted') {
+              const { status } = await Notifications.requestPermissionsAsync();
+              finalStatus = status;
+            }
+            if (finalStatus === 'granted') {
+              const expoTokenData = await Notifications.getExpoPushTokenAsync();
+              token = expoTokenData?.data || null;
+            }
+          }
+        } catch (expoErr: any) {
+          console.warn('[FCM/Expo] Error obtaining Expo token:', expoErr?.message || expoErr);
         }
-      } catch (tokenErr: any) {
-        console.warn('[FCM] Error obtaining token:', tokenErr);
       }
 
-      console.log('[FCM] ✅ Token obtained:', token ? token.slice(0, 30) + '...' : 'null');
+      console.log('[Notification] ✅ Token obtained:', token ? token.slice(0, 30) + '...' : 'null');
 
       if (token) {
         this._lastRegisteredToken = token;
@@ -93,13 +136,13 @@ export const notificationService = {
 
       return token;
     } catch (err: any) {
-      console.warn('[FCM] ℹ️ Push notifications registration skipped:', err?.message || err);
+      console.warn('[Notification] ℹ️ Push notifications registration skipped:', err?.message || err);
       return null;
     }
   },
 
   /**
-   * Send the FCM token to our backend so the server can push to this device.
+   * Send the push token to our backend so the server can push to this device.
    */
   async sendTokenToBackend(token: string, force = false) {
     if (!token) return;
@@ -109,9 +152,9 @@ export const notificationService = {
         platform: Platform.OS,
         device_name: Platform.OS === 'android' ? 'Android Device' : 'iOS Device',
       });
-      console.log('[FCM] ✅ Token registered with backend.');
+      console.log('[Notification] ✅ Token registered with backend.');
     } catch (err: any) {
-      console.warn('[FCM] ⚠️ Failed to send token to backend:', err?.message || err);
+      console.warn('[Notification] ⚠️ Failed to send token to backend:', err?.message || err);
     }
   },
 
@@ -133,95 +176,151 @@ export const notificationService = {
   },
 
   /**
-   * Set up Firebase foreground message handler and token refresh listener.
+   * Set up notification listeners (foreground and click / background handlers).
    * Returns a cleanup function to call on unmount.
    */
   setupNotificationListeners(navigate?: (screen: string, params?: any) => void): () => void {
     let unsubscribeForeground = () => {};
     let unsubscribeRefresh = () => {};
+    let unsubscribeExpoForeground: any = null;
+    let unsubscribeExpoResponse: any = null;
 
     try {
       const fcm = getFirebaseMessagingModule();
-      if (!fcm) return () => {};
+      if (fcm) {
+        let messagingInstance: any = null;
+        try {
+          if (typeof fcm === 'function') {
+            messagingInstance = fcm();
+          } else if (fcm.default && typeof fcm.default === 'function') {
+            messagingInstance = fcm.default();
+          } else if (typeof fcm.getMessaging === 'function') {
+            messagingInstance = fcm.getMessaging();
+          }
+        } catch (_) {}
 
-      let messagingInstance: any = null;
+        if (messagingInstance) {
+          // Foreground message handler
+          const handleForeground = (remoteMessage: any) => {
+            const title = remoteMessage.notification?.title || remoteMessage.data?.title || 'Notification';
+            const body = remoteMessage.notification?.body || remoteMessage.data?.message || '';
+            const screen = remoteMessage.data?.screen as string | undefined;
+            const params = remoteMessage.data?.params ? (typeof remoteMessage.data.params === 'string' ? JSON.parse(remoteMessage.data.params) : remoteMessage.data.params) : undefined;
+
+            console.log('[FCM] 📨 Foreground message:', title, body);
+
+            Toast.show({
+              type: 'info',
+              text1: title,
+              text2: body,
+              props: {
+                onAction: () => {
+                  if (navigate && screen) {
+                    navigate(screen, params || {});
+                  }
+                }
+              }
+            });
+          };
+
+          if (typeof messagingInstance.onMessage === 'function') {
+            unsubscribeForeground = messagingInstance.onMessage(handleForeground);
+          } else if (typeof fcm.onMessage === 'function') {
+            unsubscribeForeground = fcm.onMessage(messagingInstance, handleForeground);
+          }
+
+          // Token refresh
+          const handleTokenRefresh = (newToken: string) => {
+            console.log('[FCM] 🔄 Token refreshed, updating backend...');
+            this._lastRegisteredToken = newToken;
+            this.sendTokenToBackend(newToken).catch(() => {});
+          };
+
+          if (typeof messagingInstance.onTokenRefresh === 'function') {
+            unsubscribeRefresh = messagingInstance.onTokenRefresh(handleTokenRefresh);
+          } else if (typeof fcm.onTokenRefresh === 'function') {
+            unsubscribeRefresh = fcm.onTokenRefresh(messagingInstance, handleTokenRefresh);
+          }
+
+          // Background / quit state notification tap handler
+          const handleNotificationOpen = (remoteMessage: any) => {
+            const screen = remoteMessage.data?.screen as string | undefined;
+            let params = remoteMessage.data?.params;
+            if (typeof params === 'string') {
+              try { params = JSON.parse(params); } catch (_) {}
+            }
+            if (navigate && screen) {
+              navigate(screen, params || {});
+            }
+          };
+
+          if (typeof messagingInstance.onNotificationOpenedApp === 'function') {
+            messagingInstance.onNotificationOpenedApp(handleNotificationOpen);
+          } else if (typeof fcm.onNotificationOpenedApp === 'function') {
+            fcm.onNotificationOpenedApp(messagingInstance, handleNotificationOpen);
+          }
+
+          // Check if app was launched from a killed state via notification tap
+          const getInitial = typeof messagingInstance.getInitialNotification === 'function'
+            ? messagingInstance.getInitialNotification()
+            : (typeof fcm.getInitialNotification === 'function' ? fcm.getInitialNotification(messagingInstance) : Promise.resolve(null));
+
+          getInitial.then((remoteMessage: any) => {
+            if (remoteMessage) {
+              const screen = remoteMessage.data?.screen as string | undefined;
+              let params = remoteMessage.data?.params;
+              if (typeof params === 'string') {
+                try { params = JSON.parse(params); } catch (_) {}
+              }
+              if (navigate && screen) {
+                setTimeout(() => navigate(screen, params || {}), 500);
+              }
+            }
+          }).catch(() => {});
+        }
+      }
+
+      // Also set up Expo Notification listener if available
       try {
-        if (typeof fcm === 'function') {
-          messagingInstance = fcm();
-        } else if (fcm.default && typeof fcm.default === 'function') {
-          messagingInstance = fcm.default();
-        } else if (typeof fcm.getMessaging === 'function') {
-          messagingInstance = fcm.getMessaging();
-        }
-      } catch (_) {
-        return () => {};
-      }
+        const Notifications = getExpoNotificationsModule();
+        if (Notifications?.addNotificationReceivedListener) {
+          unsubscribeExpoForeground = Notifications.addNotificationReceivedListener((notification: any) => {
+            const title = notification.request?.content?.title || 'Notification';
+            const body = notification.request?.content?.body || '';
+            const data = notification.request?.content?.data || {};
+            Toast.show({
+              type: 'info',
+              text1: title,
+              text2: body,
+              props: {
+                onAction: () => {
+                  if (navigate && data.screen) {
+                    navigate(data.screen, data.params || {});
+                  }
+                }
+              }
+            });
+          });
 
-      if (!messagingInstance) return () => {};
-
-      // Foreground message handler
-      const handleForeground = (remoteMessage: any) => {
-        console.log('[FCM] 📨 Foreground message:', remoteMessage.notification?.title);
-        if (navigate && remoteMessage.data?.screen) {
-          navigate(String(remoteMessage.data.screen), remoteMessage.data.params || {});
-        }
-      };
-
-      if (typeof messagingInstance.onMessage === 'function') {
-        unsubscribeForeground = messagingInstance.onMessage(handleForeground);
-      } else if (typeof fcm.onMessage === 'function') {
-        unsubscribeForeground = fcm.onMessage(messagingInstance, handleForeground);
-      }
-
-      // Token refresh
-      const handleTokenRefresh = (newToken: string) => {
-        console.log('[FCM] 🔄 Token refreshed, updating backend...');
-        this._lastRegisteredToken = newToken;
-        this.sendTokenToBackend(newToken).catch(() => {});
-      };
-
-      if (typeof messagingInstance.onTokenRefresh === 'function') {
-        unsubscribeRefresh = messagingInstance.onTokenRefresh(handleTokenRefresh);
-      } else if (typeof fcm.onTokenRefresh === 'function') {
-        unsubscribeRefresh = fcm.onTokenRefresh(messagingInstance, handleTokenRefresh);
-      }
-
-      // Background / quit state notification tap handler
-      const handleNotificationOpen = (remoteMessage: any) => {
-        const screen = remoteMessage.data?.screen as string | undefined;
-        const params = remoteMessage.data?.params;
-        if (navigate && screen) {
-          navigate(screen, params || {});
-        }
-      };
-
-      if (typeof messagingInstance.onNotificationOpenedApp === 'function') {
-        messagingInstance.onNotificationOpenedApp(handleNotificationOpen);
-      } else if (typeof fcm.onNotificationOpenedApp === 'function') {
-        fcm.onNotificationOpenedApp(messagingInstance, handleNotificationOpen);
-      }
-
-      // Check if app was launched from a killed state via notification tap
-      const getInitial = typeof messagingInstance.getInitialNotification === 'function'
-        ? messagingInstance.getInitialNotification()
-        : (typeof fcm.getInitialNotification === 'function' ? fcm.getInitialNotification(messagingInstance) : Promise.resolve(null));
-
-      getInitial.then((remoteMessage: any) => {
-        if (remoteMessage) {
-          const screen = remoteMessage.data?.screen as string | undefined;
-          const params = remoteMessage.data?.params;
-          if (navigate && screen) {
-            setTimeout(() => navigate(screen, params || {}), 500);
+          if (Notifications.addNotificationResponseReceivedListener) {
+            unsubscribeExpoResponse = Notifications.addNotificationResponseReceivedListener((response: any) => {
+              const data = response.notification?.request?.content?.data || {};
+              if (navigate && data.screen) {
+                navigate(data.screen, data.params || {});
+              }
+            });
           }
         }
-      }).catch(() => {});
+      } catch (_) {}
     } catch (e) {
-      console.warn('[FCM] setupNotificationListeners error:', e);
+      console.warn('[Notification] setupNotificationListeners error:', e);
     }
 
     return () => {
       unsubscribeForeground();
       unsubscribeRefresh();
+      if (unsubscribeExpoForeground?.remove) unsubscribeExpoForeground.remove();
+      if (unsubscribeExpoResponse?.remove) unsubscribeExpoResponse.remove();
     };
   },
 };

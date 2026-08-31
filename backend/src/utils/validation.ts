@@ -31,7 +31,9 @@ export const checkHostelUniqueIdentifiers = async (
   identifiers: IdentityIdentifiers,
   exclude?: ExcludeEntity
 ): Promise<ValidationResult> => {
-  const { phone, email, id_number } = identifiers;
+  const phone = identifiers.phone?.trim() || null;
+  const email = identifiers.email?.trim() || null;
+  const id_number = identifiers.id_number?.trim() || null;
   const checks: Promise<{ isUnique: boolean; conflictField?: string; conflictEntity?: string } | null>[] = [];
 
   // 1. Phone checks (Parallel)

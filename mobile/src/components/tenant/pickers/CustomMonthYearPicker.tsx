@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Modal, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -12,6 +13,7 @@ export interface CustomMonthYearPickerProps {
 }
 
 export function CustomMonthYearPicker({ visible, onClose, onConfirm, initialDate }: CustomMonthYearPickerProps) {
+    const insets = useSafeAreaInsets();
     const primary = '#2245D4'; // Changed from brown to Blue theme
 
     const [selectedYear, setSelectedYear] = useState(initialDate ? initialDate.getFullYear() : new Date().getFullYear());
@@ -26,7 +28,7 @@ export function CustomMonthYearPicker({ visible, onClose, onConfirm, initialDate
         <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
             <View style={S.modalOverlay}>
                 <TouchableOpacity style={StyleSheet.absoluteFill} activeOpacity={1} onPress={onClose} />
-                <View style={S.container}>
+                <View style={[S.container, { paddingBottom: Math.max(insets.bottom, 16) + 8 }]}>
                     {/* Header */}
                     <View style={S.header}>
                         <TouchableOpacity onPress={onClose} style={{ padding: 4 }}>
@@ -36,7 +38,7 @@ export function CustomMonthYearPicker({ visible, onClose, onConfirm, initialDate
                         <View style={{ width: 24 }} />
                     </View>
 
-                    <ScrollView style={{ paddingHorizontal: 20 }} showsVerticalScrollIndicator={false}>
+                    <ScrollView style={{ paddingHorizontal: 20 }} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 12 }}>
                         {/* Select Year */}
                         <View style={S.sectionHeader}>
                             <TouchableOpacity onPress={() => setYearPage(p => p - 1)} style={{ padding: 4 }}>
@@ -105,14 +107,14 @@ export function CustomMonthYearPicker({ visible, onClose, onConfirm, initialDate
 const S = StyleSheet.create({
     modalOverlay: {
         flex: 1,
-        backgroundColor: 'transparent',
+        backgroundColor: 'rgba(0,0,0,0.45)',
         justifyContent: 'flex-end',
     },
     container: {
         backgroundColor: '#FFFFFF',
         borderTopLeftRadius: 24,
         borderTopRightRadius: 24,
-        height: 480,
+        maxHeight: '85%',
     },
     header: {
         flexDirection: 'row',

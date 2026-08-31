@@ -710,9 +710,6 @@ export default function ExpensesScreen({ navigation }: any) {
           const cleanAmt = isNaN(amt) ? 0 : amt;
           setBudget(cleanAmt);
           AsyncStorage.setItem('tenant_budget', cleanAmt.toString()).catch(() => {});
-          if (cleanAmt === 0) {
-            setShowBudget(true);
-          }
         }
         if (goalRes.data?.success) {
           setGoalName(goalRes.data.data.name || 'Set Goal');

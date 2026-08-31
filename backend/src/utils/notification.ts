@@ -1,6 +1,6 @@
 import db from '../config/database.js';
 import { io } from '../socket/index.js';
-import { firebaseMessaging, isFirebaseReady } from '../config/firebaseAdmin.js';
+import { getFirebaseMessaging, isFirebaseReady } from '../config/firebaseAdmin.js';
 
 // Map of notification types to DB enum values (Now VARCHAR in DB)
 export type NotificationType =
@@ -224,9 +224,10 @@ export const sendNotificationToUser = async (options: SendNotificationOptions): 
     };
 
     // 4. Dispatch via Direct Firebase Cloud Messaging (FCM)
-    if (fcmTokens.length > 0 && isFirebaseReady() && firebaseMessaging) {
+    const messaging = getFirebaseMessaging();
+    if (fcmTokens.length > 0 && isFirebaseReady() && messaging) {
       try {
-        const fcmResponse = await firebaseMessaging.sendEachForMulticast({
+        const fcmResponse = await messaging.sendEachForMulticast({
           tokens: fcmTokens,
           notification: {
             title: formattedTitle,

@@ -115,7 +115,9 @@ export default function App() {
   // change no longer re-renders this root component (and with it every provider).
 
   if (!fontsLoaded && !forceReady) {
-    return null;
+    return (
+      <View style={{ flex: 1, backgroundColor: '#5F2EEA' }} />
+    );
   }
 
   return (
