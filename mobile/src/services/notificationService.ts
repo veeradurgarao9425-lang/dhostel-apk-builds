@@ -118,8 +118,14 @@ export const notificationService = {
               finalStatus = status;
             }
             if (finalStatus === 'granted') {
-              const expoTokenData = await Notifications.getExpoPushTokenAsync();
+              // projectId is required for Expo push tokens in newer SDK versions
+              const expoTokenData = await Notifications.getExpoPushTokenAsync({
+                projectId: '7303856b-fde0-4922-baf9-c6487aa06e02',
+              });
               token = expoTokenData?.data || null;
+              console.log('[FCM/Expo] ✅ Expo Push Token obtained:', token ? token.slice(0, 40) + '...' : 'null');
+            } else {
+              console.warn('[FCM/Expo] ❌ Notification permission not granted. Status:', finalStatus);
             }
           }
         } catch (expoErr: any) {
@@ -127,7 +133,7 @@ export const notificationService = {
         }
       }
 
-      console.log('[Notification] ✅ Token obtained:', token ? token.slice(0, 30) + '...' : 'null');
+      console.log('[Notification] ✅ Final token:', token ? token.slice(0, 40) + '...' : 'null (no token)');
 
       if (token) {
         this._lastRegisteredToken = token;
