@@ -245,9 +245,33 @@ export const sendNotificationToUser = async (options: SendNotificationOptions): 
             },
           },
         });
-        console.log(`[Notification] Direct Firebase FCM dispatched to ${fcmTokens.length} device(s). Success: ${fcmResponse.successCount}, Failure: ${fcmResponse.failureCount}`);
+        console.log(`[Notification] 🚀 Direct Firebase FCM dispatched to ${fcmTokens.length} device(s). Success: ${fcmResponse.successCount}, Failure: ${fcmResponse.failureCount}`);
+
+        // Cleanup invalid/unregistered tokens automatically
+        if (fcmResponse.failureCount > 0) {
+          const deadTokens: string[] = [];
+          fcmResponse.responses.forEach((resp, idx) => {
+            if (!resp.success) {
+              const errCode = resp.error?.code;
+              console.warn(`[Notification] ⚠️ FCM send failure for token [${fcmTokens[idx].slice(0, 15)}...]: ${errCode} - ${resp.error?.message}`);
+              if (
+                errCode === 'messaging/registration-token-not-registered' ||
+                errCode === 'messaging/invalid-registration-token' ||
+                errCode === 'messaging/invalid-argument'
+              ) {
+                deadTokens.push(fcmTokens[idx]);
+              }
+            }
+          });
+          if (deadTokens.length > 0) {
+            console.log(`[Notification] 🧹 Pruning ${deadTokens.length} stale / unregistered token(s) from database...`);
+            await db('user_push_tokens').whereIn('push_token', deadTokens).del().catch((delErr) => {
+              console.error('[Notification] Error pruning dead tokens:', delErr?.message);
+            });
+          }
+        }
       } catch (fcmErr: any) {
-        console.error('[Notification] Direct Firebase FCM delivery error:', fcmErr?.message || fcmErr);
+        console.error('[Notification] ❌ Direct Firebase FCM delivery error:', fcmErr?.message || fcmErr);
       }
     }
 

@@ -16,6 +16,20 @@ const getFirebaseMessagingModule = () => {
   }
 };
 
+// Configure foreground notification presentation handler
+try {
+  const Notifications = require('expo-notifications');
+  if (Notifications && typeof Notifications.setNotificationHandler === 'function') {
+    Notifications.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldShowAlert: true,
+        shouldPlaySound: true,
+        shouldSetBadge: true,
+      }),
+    });
+  }
+} catch (_) {}
+
 // Register background message handler at module level for native Firebase
 try {
   const fcm = getFirebaseMessagingModule();
@@ -45,7 +59,7 @@ export const notificationService = {
    */
   async registerForPushNotificationsAsync(): Promise<string | null> {
     try {
-      // ── Android 13+ runtime permission ─────────────────────────────
+      // ── Android 13+ runtime permission & Notification Channel ──────
       if (Platform.OS === 'android') {
         if (Platform.Version >= 33) {
           const result = await PermissionsAndroid.request(
@@ -55,6 +69,26 @@ export const notificationService = {
             console.warn('[FCM] ❌ POST_NOTIFICATIONS permission denied by user.');
             return null;
           }
+        }
+
+        // Create high-importance notification channel for Android heads-up alerts
+        try {
+          const Notifications = require('expo-notifications');
+          if (Notifications && typeof Notifications.setNotificationChannelAsync === 'function') {
+            await Notifications.setNotificationChannelAsync('default', {
+              name: 'Hostix Alerts',
+              importance: Notifications.AndroidImportance?.MAX ?? 5,
+              vibrationPattern: [0, 250, 250, 250],
+              lightColor: '#6D4AFF',
+              enableLights: true,
+              enableVibrate: true,
+              showBadge: true,
+              sound: 'default',
+            });
+            console.log('[FCM] ✅ Android High Importance Notification Channel initialized');
+          }
+        } catch (channelErr) {
+          console.warn('[FCM] Channel setup note:', channelErr);
         }
       }
 
@@ -184,8 +218,7 @@ export const notificationService = {
             const screen = remoteMessage.data?.screen as string | undefined;
             const params = remoteMessage.data?.params ? (typeof remoteMessage.data.params === 'string' ? JSON.parse(remoteMessage.data.params) : remoteMessage.data.params) : undefined;
 
-            console.log('[FCM] 📨 Foreground message:', title, body);
-
+            // 1. Display in-app Toast banner
             Toast.show({
               type: 'info',
               text1: title,
@@ -198,6 +231,22 @@ export const notificationService = {
                 }
               }
             });
+
+            // 2. Also trigger native Android OS notification banner
+            try {
+              const Notifications = require('expo-notifications');
+              if (Notifications && typeof Notifications.scheduleNotificationAsync === 'function') {
+                Notifications.scheduleNotificationAsync({
+                  content: {
+                    title,
+                    body,
+                    sound: 'default',
+                    data: { screen, params },
+                  },
+                  trigger: null,
+                }).catch(() => {});
+              }
+            } catch (_) {}
           };
 
           if (typeof messagingInstance.onMessage === 'function') {
