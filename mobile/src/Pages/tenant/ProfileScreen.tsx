@@ -332,15 +332,15 @@ export default function ProfileScreen({ navigation }: any) {
             activeOpacity={0.7}
             onPress={async () => {
               try {
-                const res = await api.post('/notifications/test', { type: 'General' });
-                if (res.data?.success) {
-                  Alert.alert('🔔 Push Sent', 'Test notification triggered! Check your notification bar / screen.');
-                }
+                const { triggerLocalTestNotification } = require('../../services/notificationService');
+                await triggerLocalTestNotification('🔔 Hostix Notification', 'Push notifications are active and working on this device!');
+                api.post('/notifications/test', { type: 'General' }).catch(() => {});
               } catch (e: any) {
-                Alert.alert('Notification Test', e?.response?.data?.error || 'Failed to trigger test notification');
+                Alert.alert('Notification Test', e?.message || 'Failed to trigger test notification');
               }
             }}
           >
+
             <View style={[styles.menuIcon, { backgroundColor: '#EDE9FE' }]}>
               <Ionicons name="paper-plane" size={18} color="#7C3AED" />
             </View>

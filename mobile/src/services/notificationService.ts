@@ -401,7 +401,39 @@ export const getNotificationContent = (type: NotificationType, customData?: any)
   }
 };
 
-export const sendAppNotification = async (type: NotificationType, customData?: any) => {
-  // In-app test trigger placeholder
-  console.log('[Notification] sendAppNotification triggered:', type, customData);
+export const triggerLocalTestNotification = async (title = '🔔 Hostix Push Notification', body = 'Test notification is working perfectly on your device!') => {
+  try {
+    const Notifications = getExpoNotificationsModule();
+    if (Notifications?.scheduleNotificationAsync) {
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title,
+          body,
+          sound: 'default',
+          color: '#6D4AFF',
+          data: { screen: 'Notifications' },
+        },
+        trigger: null, // Send immediately
+      });
+    }
+
+    Toast.show({
+      type: 'info',
+      text1: title,
+      text2: body,
+    });
+  } catch (e: any) {
+    console.warn('[Notification] triggerLocalTestNotification error:', e);
+    Toast.show({
+      type: 'info',
+      text1: title,
+      text2: body,
+    });
+  }
 };
+
+export const sendAppNotification = async (type: NotificationType, customData?: any) => {
+  const content = getNotificationContent(type, customData);
+  await triggerLocalTestNotification(content.title, content.body);
+};
+

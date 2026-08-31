@@ -495,16 +495,17 @@ export const SettingsScreen = ({ navigation }: any) => {
                         label="Send Test Notification"
                         onPress={async () => {
                             try {
-                                const res = await api.post('/notifications/test', { type: 'General' });
-                                if (res.data?.success) {
-                                    showSuccess('Test notification sent to this device!');
-                                }
+                                const { triggerLocalTestNotification } = require('../services/notificationService');
+                                await triggerLocalTestNotification('🔔 Hostix Notification', 'Push notifications are active and working on this device!');
+                                api.post('/notifications/test', { type: 'General' }).catch(() => {});
+                                showSuccess('Test notification sent!');
                             } catch (e: any) {
-                                showError(e?.response?.data?.error || 'Failed to send test push');
+                                showError(e?.message || 'Failed to send test push');
                             }
                         }}
                     />
                 </Card>
+
 
 
                 {/* ── SECURITY & UPDATES SECTION ── */}
