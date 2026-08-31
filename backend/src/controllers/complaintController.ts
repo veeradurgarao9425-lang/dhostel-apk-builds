@@ -58,14 +58,26 @@ export const createComplaint = async (req: AuthRequest, res: Response) => {
       await sendNotificationToHostelOwner(
         hostel_id,
         'Complaint',
-        'New Maintenance Complaint',
+        'New Maintenance Complaint 🔧',
         `${studentName}${bedInfo} raised a new complaint: ${title}`,
         'Medium',
         { complaint_id }
       );
+
+      // Also send instant push confirmation to the tenant
+      await sendNotificationToStudent(
+        student_id,
+        'Complaint',
+        'Complaint Registered 🔧',
+        `Your complaint "${title}" has been submitted and the owner/staff have been notified.`,
+        'Medium',
+        { complaint_id },
+        { screen: 'Complaints', referenceType: 'complaint', referenceId: complaint_id }
+      );
     } catch (err) {
-      console.error('Failed to notify owner about new complaint:', err);
+      console.error('Failed to notify owner/student about new complaint:', err);
     }
+
 
     res.status(201).json({ success: true, message: 'Complaint raised successfully', complaint_id });
   } catch (error: any) {

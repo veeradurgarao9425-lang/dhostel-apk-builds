@@ -2,6 +2,8 @@ import { Response } from 'express';
 import db from '../config/database.js';
 import { AuthRequest } from '../middleware/auth.js';
 import { getAuthenticatedStudentId } from '../utils/scope.js';
+import { sendNotificationToStudent } from '../utils/notification.js';
+import { io } from '../socket/index.js';
 
 export const getTenantExpenses = async (req: AuthRequest, res: Response) => {
   try {
@@ -38,12 +40,13 @@ export const createTenantExpense = async (req: AuthRequest, res: Response) => {
 
     // Ensure the date is formatted as YYYY-MM-DD to avoid MySQL strict mode parsing errors with full ISO 8601 strings
     const formattedDate = typeof date === 'string' ? date.split('T')[0] : date;
+    const parsedAmount = parseFloat(amount);
 
     const student_id = await getAuthenticatedStudentId(user) || user.user_id;
     const [expense_id] = await db('tenant_expenses').insert({
       student_id,
       title,
-      amount: parseFloat(amount),
+      amount: parsedAmount,
       category,
       date: formattedDate,
       payment_mode: payment_mode || 'Cash',
@@ -53,12 +56,72 @@ export const createTenantExpense = async (req: AuthRequest, res: Response) => {
 
     const newExpense = await db('tenant_expenses').where('expense_id', expense_id).first();
 
+    // Trigger push notification to tenant
+    try {
+      if (student_id) {
+        if (io) {
+          io.to(`tenant_${student_id}`).emit('expense_added', { expense_id, title, amount: parsedAmount, category });
+          io.to(`tenant_${student_id}`).emit('REFRESH_NOTIFICATIONS');
+        }
+
+        // 1. Send confirmation notification
+        await sendNotificationToStudent(
+          student_id,
+          'Expense Alert',
+          'Expense Logged 💸',
+          `₹${parsedAmount} spent on ${category} (${title}) has been recorded.`,
+          'Low',
+          { expense_id, category, amount: parsedAmount },
+          { screen: 'Expenses', referenceType: 'expense', referenceId: expense_id }
+        );
+
+        // 2. Check if this pushes them past their monthly budget
+        const budgetRow = await db('tenant_budgets').where('student_id', student_id).first().catch(() => null);
+        if (budgetRow && Number(budgetRow.amount) > 0) {
+          const budgetAmount = Number(budgetRow.amount);
+          const currentMonthStart = new Date().toISOString().slice(0, 7) + '-01';
+          const totalSpentRes = await db('tenant_expenses')
+            .where('student_id', student_id)
+            .andWhere('date', '>=', currentMonthStart)
+            .sum('amount as total')
+            .first()
+            .catch(() => null);
+
+          const totalSpent = Number(totalSpentRes?.total || 0);
+          if (totalSpent >= budgetAmount) {
+            await sendNotificationToStudent(
+              student_id,
+              'Budget Alert',
+              '⚠️ Budget Exceeded!',
+              `You have spent ₹${totalSpent} this month, exceeding your budget of ₹${budgetAmount}.`,
+              'High',
+              { totalSpent, budgetAmount },
+              { screen: 'Expenses' }
+            );
+          } else if (totalSpent >= budgetAmount * 0.8) {
+            await sendNotificationToStudent(
+              student_id,
+              'Budget Alert',
+              '⚠️ 80% Budget Reached',
+              `You have spent ₹${totalSpent} (${Math.round((totalSpent / budgetAmount) * 100)}%) of your ₹${budgetAmount} budget.`,
+              'Medium',
+              { totalSpent, budgetAmount },
+              { screen: 'Expenses' }
+            );
+          }
+        }
+      }
+    } catch (notifErr) {
+      console.warn('Tenant expense notification notice:', notifErr);
+    }
+
     return res.status(201).json({ success: true, data: newExpense, message: 'Expense added successfully' });
   } catch (error: any) {
     console.error('Error adding tenant expense:', error);
     return res.status(500).json({ success: false, error: 'Failed to add expense.' });
   }
 };
+
 
 const ensureBudgetsTable = async () => {
   try {

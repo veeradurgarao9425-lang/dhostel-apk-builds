@@ -36,10 +36,21 @@ export const createLeaveRequest = async (req: AuthRequest, res: Response) => {
     await sendNotificationToHostelOwner(
       hostel_id,
       'Leave',
-      'New Leave Request',
+      'New Leave Request 📅',
       `${studentName} has requested leave from ${start_date} to ${end_date}.`,
       'Medium',
       { leave_id }
+    );
+
+    // Also send instant push confirmation to the tenant
+    await sendNotificationToStudent(
+      student_id,
+      'Leave',
+      'Leave Request Submitted 📅',
+      `Your leave request from ${start_date} to ${end_date} has been submitted for approval.`,
+      'Medium',
+      { leave_id },
+      { screen: 'Leaves', referenceType: 'leave', referenceId: leave_id }
     );
 
     res.status(201).json({ success: true, message: 'Leave request submitted', leave_id });
@@ -75,13 +86,21 @@ export const getHostelLeaves = async (req: AuthRequest, res: Response) => {
     // Strict multi-hostel owner isolation
     const hasAccess = await verifyHostelAccess(user, hostelId);
     if (!hasAccess) {
-      return res.status(403).json({ success: false, error: 'Access denied. You do not own this hostel.' });
+      return res.status(403).json({ success: false, error: 'Access denied.' });
     }
 
     const leaves = await db('leave_requests')
       .join('students', 'leave_requests.student_id', '=', 'students.student_id')
+      .leftJoin('rooms', 'students.room_id', '=', 'rooms.room_id')
       .where('leave_requests.hostel_id', hostelId)
-      .select('leave_requests.*', 'students.first_name', 'students.last_name', 'students.phone')
+      .select(
+        'leave_requests.*',
+        'students.first_name',
+        'students.last_name',
+        'students.phone',
+        'students.bed_id',
+        'rooms.room_number'
+      )
       .orderBy('leave_requests.created_at', 'desc');
 
     res.status(200).json({ success: true, leaves });
@@ -97,17 +116,17 @@ export const updateLeaveStatus = async (req: AuthRequest, res: Response) => {
     const { status } = req.body;
     const user = req.user;
 
-    if (!['Approved', 'Rejected'].includes(status)) {
+    if (!status || !['Approved', 'Rejected'].includes(status)) {
       return res.status(400).json({ success: false, message: 'Invalid status' });
     }
 
     const leave = await db('leave_requests').where('leave_id', leaveId).first();
-    if (!leave) return res.status(404).json({ success: false, message: 'Not found' });
+    if (!leave) return res.status(404).json({ success: false, message: 'Leave request not found' });
 
     // Strict multi-hostel owner isolation
     const hasAccess = await verifyHostelAccess(user, leave.hostel_id);
     if (!hasAccess) {
-      return res.status(403).json({ success: false, error: 'Access denied. You do not have permission for this hostel.' });
+      return res.status(403).json({ success: false, error: 'Access denied.' });
     }
 
     await db('leave_requests').where('leave_id', leaveId).update({ status });
@@ -115,13 +134,14 @@ export const updateLeaveStatus = async (req: AuthRequest, res: Response) => {
     await sendNotificationToStudent(
       leave.student_id,
       'Leave',
-      'Leave Request Update',
-      `Your leave request has been ${status}.`,
+      'Leave Request Update 📅',
+      `Your leave request has been ${status.toLowerCase()}.`,
       'Medium',
-      { leave_id: leave.leave_id }
+      { leave_id: leave.leave_id },
+      { screen: 'Leaves', referenceType: 'leave', referenceId: leave.leave_id }
     );
 
-    res.status(200).json({ success: true, message: 'Leave status updated' });
+    res.status(200).json({ success: true, message: `Leave request ${status.toLowerCase()}` });
   } catch (error: any) {
     console.error('Error updating leave status:', error);
     res.status(500).json({ success: false, message: 'Internal Server Error' });
@@ -161,10 +181,21 @@ export const createVisitorRequest = async (req: AuthRequest, res: Response) => {
     await sendNotificationToHostelOwner(
       hostel_id,
       'Visitor',
-      'New Visitor Request',
+      'New Visitor Request 👤',
       `${studentName} requested a visitor pass for ${visitor_name} on ${visit_date}.`,
       'Medium',
       { visitor_id }
+    );
+
+    // Also send instant push confirmation to the tenant
+    await sendNotificationToStudent(
+      student_id,
+      'Visitor',
+      'Visitor Request Submitted 👤',
+      `Your visitor request for ${visitor_name} on ${visit_date} has been submitted for approval.`,
+      'Medium',
+      { visitor_id },
+      { screen: 'Visitors', referenceType: 'visitor', referenceId: visitor_id }
     );
 
     res.status(201).json({ success: true, message: 'Visitor request submitted', visitor_id });

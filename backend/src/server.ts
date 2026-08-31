@@ -63,6 +63,7 @@ import { checkHostelUniqueIdentifiers } from './utils/validation.js';
 import { processFileUpload } from './utils/fileUpload.js';
 import { sanitizeInputMiddleware, developerLoginLimiter } from './middleware/security.js';
 import { publicGuestSignup } from './controllers/guestController.js';
+import bcrypt from 'bcryptjs';
 
 
 // Start Background Jobs
@@ -78,8 +79,67 @@ startDailyExcelReportsJob();
 startTenantFriendlyRemindersJob();
 startDatabaseBackupJob();
 
+// Auto-ensure demo@test.com exists so Play Store demo login always works
+(async () => {
+  try {
+    const existingDemo = await db('users').where({ email: 'demo@test.com' }).first().catch(() => null);
+    if (!existingDemo) {
+      const hashedPassword = await bcrypt.hash('Demo123', 10);
+
+      // Get or create a demo hostel
+      let hostelId: number;
+      const existingHostel = await db('hostel_master').first().catch(() => null);
+      if (existingHostel) {
+        hostelId = existingHostel.hostel_id;
+      } else {
+        const [newHostelId] = await db('hostel_master').insert({
+          hostel_name: 'Hostix Demo Hostel',
+          address: 'Plot 42, Silicon Valley Road, Madhapur',
+          city: 'Hyderabad',
+          state: 'Telangana',
+          pincode: '500081',
+          contact_number: '9876543210',
+          total_floors: 4,
+          admission_fee: 1000.00,
+          hostel_code: 'DEMO01',
+          is_active: 1,
+        });
+        hostelId = newHostelId;
+      }
+
+      const [userId] = await db('users').insert({
+        full_name: 'Hostix Demo Owner',
+        email: 'demo@test.com',
+        username: 'demo',
+        phone: '9876543210',
+        password: hashedPassword,
+        password_hash: hashedPassword,
+        role: 'OWNER',
+        role_id: 2,
+        hostel_id: hostelId,
+        is_active: 1,
+      });
+
+      await db('hostel_master').where({ hostel_id: hostelId }).update({ owner_id: userId }).catch(() => {});
+      console.log('✅ [Demo] Created demo@test.com / Demo123 (userId:', userId, ', hostelId:', hostelId, ')');
+    } else {
+      // Ensure password is always Demo123 (in case it was changed)
+      const hashedPassword = await bcrypt.hash('Demo123', 10);
+      await db('users').where({ email: 'demo@test.com' }).update({
+        password: hashedPassword,
+        password_hash: hashedPassword,
+        is_active: 1,
+      }).catch(() => {});
+      console.log('✅ [Demo] demo@test.com already exists, password reset to Demo123');
+    }
+  } catch (demoErr: any) {
+    console.warn('[Demo] Could not ensure demo user:', demoErr?.message || demoErr);
+  }
+})();
+
 
 const app = express();
+
 
 // Trust the first hop (Nginx/reverse proxy in front of this process).
 // Without this, express-rate-limit keys every request off the proxy's IP

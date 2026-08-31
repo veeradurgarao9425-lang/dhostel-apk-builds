@@ -489,7 +489,23 @@ export const SettingsScreen = ({ navigation }: any) => {
                         value={notifications}
                         onPress={() => setNotifications(!notifications)}
                     />
+                    <View style={[styles.divider, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]} />
+                    <SettingRow
+                        icon={<Smartphone size={20} color={theme.primary} />}
+                        label="Send Test Notification"
+                        onPress={async () => {
+                            try {
+                                const res = await api.post('/notifications/test', { type: 'General' });
+                                if (res.data?.success) {
+                                    showSuccess('Test notification sent to this device!');
+                                }
+                            } catch (e: any) {
+                                showError(e?.response?.data?.error || 'Failed to send test push');
+                            }
+                        }}
+                    />
                 </Card>
+
 
                 {/* ── SECURITY & UPDATES SECTION ── */}
                 <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>{t('settings.securityUpdates', 'Security & Info')}</Text>

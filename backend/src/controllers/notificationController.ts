@@ -225,3 +225,56 @@ export const markAllAsRead = async (req: AuthRequest, res: Response) => {
     });
   }
 };
+
+// ── Test notification endpoint — fires a real push to the logged-in user ──────
+import { sendNotificationToUser } from '../utils/notification.js';
+
+export const sendTestNotification = async (req: AuthRequest, res: Response) => {
+  try {
+    const user = req.user;
+    if (!user || !user.user_id) {
+      return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const type = (req.body?.type as string) || 'General';
+
+    const notificationMap: Record<string, { title: string; message: string }> = {
+      General:   { title: '🔔 Test Notification', message: 'This is a test push notification from Hostix!' },
+      Payment:   { title: '✅ Payment Received', message: '₹3,250 payment received successfully for Room 101.' },
+      Expense:   { title: '💸 Expense Added', message: 'New expense of ₹450 was added for Groceries.' },
+      DueReminder: { title: '📅 Rent Due Tomorrow', message: '₹4,250 rent is due tomorrow. Please pay on time.' },
+      Notice:    { title: '📢 New Notice Posted', message: 'Important notice: Mess timings have been updated.' },
+      Maintenance: { title: '🔧 Maintenance Alert', message: 'Water supply will be off from 10 AM to 2 PM today.' },
+    };
+
+    const { title, message } = notificationMap[type] || notificationMap['General'];
+
+    const isTenant = user.role_id === 3;
+    let studentId: any = null;
+    if (isTenant) {
+      try {
+        studentId = await getAuthenticatedStudentId(user) || null;
+      } catch (_) {}
+    }
+
+    await sendNotificationToUser({
+      userId: user.user_id,
+      studentId,
+      hostelId: user.hostel_id || null,
+      type: 'General',
+      title,
+      message,
+      priority: 'High',
+      screen: 'Notifications',
+    });
+
+    return res.json({
+      success: true,
+      message: `Test notification "${type}" sent to user ${user.user_id}`,
+    });
+  } catch (error: any) {
+    console.error('Send test notification error:', error);
+    return res.status(500).json({ success: false, error: error?.message || 'Failed to send test notification' });
+  }
+};
+

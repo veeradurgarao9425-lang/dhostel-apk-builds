@@ -330,6 +330,32 @@ export default function ProfileScreen({ navigation }: any) {
           <TouchableOpacity
             style={styles.menuItem}
             activeOpacity={0.7}
+            onPress={async () => {
+              try {
+                const res = await api.post('/notifications/test', { type: 'General' });
+                if (res.data?.success) {
+                  Alert.alert('🔔 Push Sent', 'Test notification triggered! Check your notification bar / screen.');
+                }
+              } catch (e: any) {
+                Alert.alert('Notification Test', e?.response?.data?.error || 'Failed to trigger test notification');
+              }
+            }}
+          >
+            <View style={[styles.menuIcon, { backgroundColor: '#EDE9FE' }]}>
+              <Ionicons name="paper-plane" size={18} color="#7C3AED" />
+            </View>
+            <View style={styles.menuContent}>
+              <Text style={[styles.menuTitle, { color: '#7C3AED', fontWeight: '700' }]}>Test Push Notification</Text>
+              <Text style={styles.menuSub}>Verify push notifications arrive on this device</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={TEXT_MUTED} />
+          </TouchableOpacity>
+
+          <View style={styles.menuDivider} />
+
+          <TouchableOpacity
+            style={styles.menuItem}
+            activeOpacity={0.7}
             onPress={() => navigation.navigate('Settings')}
           >
             <View style={[styles.menuIcon, { backgroundColor: '#F1F5F9' }]}>
@@ -342,6 +368,7 @@ export default function ProfileScreen({ navigation }: any) {
             <Ionicons name="chevron-forward" size={18} color={TEXT_MUTED} />
           </TouchableOpacity>
         </View>
+
 
         {/* ── Logout Button ── */}
         <TouchableOpacity
