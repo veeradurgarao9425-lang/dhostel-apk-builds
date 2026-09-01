@@ -754,16 +754,16 @@ const ProfileScreen = ({ navigation }: any) => {
                 </View>
             </Modal>
 
-            {/* ─── EDIT PROFILE MODAL (FIXED KEYBOARD AVOIDING & SCROLL) ─── */}
+            {/* ── EDIT PROFILE MODAL (CENTERED CLEAN CARD) ── */}
             <Modal
-                animationType="slide"
+                animationType="fade"
                 transparent={true}
                 visible={editModalVisible}
                 onRequestClose={() => setEditModalVisible(false)}
             >
                 <KeyboardAvoidingView
                     behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-                    style={styles.modalOverlay}
+                    style={[styles.modalOverlay, { justifyContent: 'center', paddingHorizontal: 20, backgroundColor: 'rgba(0, 0, 0, 0.55)' }]}
                 >
                     <TouchableOpacity
                         style={StyleSheet.absoluteFillObject}
@@ -773,69 +773,76 @@ const ProfileScreen = ({ navigation }: any) => {
                             setEditModalVisible(false);
                         }}
                     />
-                    <View style={[styles.modalSheet, { backgroundColor: theme.cardBg, maxHeight: '90%', paddingBottom: Math.max(insets.bottom + 16, 24) }]}>
-                        <View style={styles.modalHeader}>
-                            <Text style={[styles.modalTitle, { color: theme.textPrimary }]}>{t('profile.editProfile', 'Edit Profile')}</Text>
+                    <View style={{
+                        backgroundColor: theme.cardBg,
+                        borderRadius: 24,
+                        padding: 22,
+                        width: '100%',
+                        maxWidth: 400,
+                        borderWidth: 1,
+                        borderColor: isDark ? '#334155' : '#E2E8F0',
+                        shadowColor: '#000',
+                        shadowOffset: { width: 0, height: 10 },
+                        shadowOpacity: 0.15,
+                        shadowRadius: 20,
+                        elevation: 10,
+                    }}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: isDark ? '#334155' : '#F1F5F9' }}>
+                            <Text style={{ fontSize: 18, fontWeight: '800', color: theme.textPrimary }}>{t('profile.editProfile', 'Edit Profile')}</Text>
                             <TouchableOpacity
-                                style={styles.modalCloseBtn}
+                                style={{ padding: 4 }}
                                 onPress={() => setEditModalVisible(false)}
                             >
                                 <Ionicons name="close" size={22} color={theme.textPrimary} />
                             </TouchableOpacity>
                         </View>
 
-                        <ScrollView
-                            showsVerticalScrollIndicator={false}
-                            keyboardShouldPersistTaps="handled"
-                            contentContainerStyle={{ paddingHorizontal: 4, paddingBottom: 24 }}
-                        >
-                            <View style={styles.inputGroup}>
-                                <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>{t('profile.fullName', 'Full Name')}</Text>
-                                <TextInput
-                                    style={[styles.modalInput, { color: theme.textPrimary, borderColor: isDark ? '#334155' : '#E2E8F0', backgroundColor: isDark ? '#1E293B' : '#FFF' }]}
-                                    value={editForm.full_name}
-                                    onChangeText={(val) => setEditForm(p => ({ ...p, full_name: val }))}
-                                    placeholder="Full Name"
-                                    placeholderTextColor={isDark ? '#64748B' : '#94A3B8'}
-                                />
-                            </View>
+                        <View style={styles.inputGroup}>
+                            <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>{t('profile.fullName', 'Full Name')}</Text>
+                            <TextInput
+                                style={[styles.modalInput, { color: theme.textPrimary, borderColor: isDark ? '#334155' : '#E2E8F0', backgroundColor: isDark ? '#1E293B' : '#FFF' }]}
+                                value={editForm.full_name}
+                                onChangeText={(val) => setEditForm(p => ({ ...p, full_name: val }))}
+                                placeholder="Full Name"
+                                placeholderTextColor={isDark ? '#64748B' : '#94A3B8'}
+                            />
+                        </View>
 
-                            <View style={styles.inputGroup}>
-                                <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>{t('profile.email', 'Email Address')}</Text>
-                                <TextInput
-                                    style={[styles.modalInput, { color: isDark ? '#64748B' : '#94A3B8', borderColor: isDark ? '#334155' : '#E2E8F0', backgroundColor: isDark ? '#0F172A' : '#F8FAFC' }]}
-                                    value={editForm.email}
-                                    placeholder="Email Address"
-                                    placeholderTextColor={isDark ? '#64748B' : '#94A3B8'}
-                                    editable={false}
-                                />
-                            </View>
+                        <View style={styles.inputGroup}>
+                            <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>{t('profile.email', 'Email Address')}</Text>
+                            <TextInput
+                                style={[styles.modalInput, { color: isDark ? '#64748B' : '#94A3B8', borderColor: isDark ? '#334155' : '#E2E8F0', backgroundColor: isDark ? '#0F172A' : '#F8FAFC' }]}
+                                value={editForm.email}
+                                placeholder="Email Address"
+                                placeholderTextColor={isDark ? '#64748B' : '#94A3B8'}
+                                editable={false}
+                            />
+                        </View>
 
-                            <View style={styles.inputGroup}>
-                                <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>{t('profile.phone', 'Phone Number')}</Text>
-                                <TextInput
-                                    style={[styles.modalInput, { color: theme.textPrimary, borderColor: isDark ? '#334155' : '#E2E8F0', backgroundColor: isDark ? '#1E293B' : '#FFF' }]}
-                                    value={editForm.phone}
-                                    onChangeText={(val) => setEditForm(p => ({ ...p, phone: val }))}
-                                    placeholder="Phone Number"
-                                    placeholderTextColor={isDark ? '#64748B' : '#94A3B8'}
-                                    keyboardType="phone-pad"
-                                    maxLength={10}
-                                />
-                            </View>
+                        <View style={styles.inputGroup}>
+                            <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>{t('profile.phone', 'Phone Number')}</Text>
+                            <TextInput
+                                style={[styles.modalInput, { color: theme.textPrimary, borderColor: isDark ? '#334155' : '#E2E8F0', backgroundColor: isDark ? '#1E293B' : '#FFF' }]}
+                                value={editForm.phone}
+                                onChangeText={(val) => setEditForm(p => ({ ...p, phone: val }))}
+                                placeholder="Phone Number"
+                                placeholderTextColor={isDark ? '#64748B' : '#94A3B8'}
+                                keyboardType="phone-pad"
+                                maxLength={10}
+                            />
+                        </View>
 
-                            {savingProfile ? (
-                                <ActivityIndicator size="large" color={theme.primary} style={{ marginTop: 20 }} />
-                            ) : (
-                                <TouchableOpacity
-                                    style={[styles.saveBtn, { backgroundColor: theme.primary, marginBottom: 12 }]}
-                                    onPress={handleSaveProfile}
-                                    activeOpacity={0.8}
-                                >
-                                    <Text style={styles.saveBtnText}>{t('common.save', 'Save Changes')}</Text>
-                                </TouchableOpacity>
-                            )}
-                        </ScrollView>
+                        {savingProfile ? (
+                            <ActivityIndicator size="large" color={theme.primary} style={{ marginTop: 10 }} />
+                        ) : (
+                            <TouchableOpacity
+                                style={[styles.saveBtn, { backgroundColor: theme.primary, marginTop: 10 }]}
+                                onPress={handleSaveProfile}
+                                activeOpacity={0.8}
+                            >
+                                <Text style={styles.saveBtnText}>{t('common.save', 'Save Changes')}</Text>
+                            </TouchableOpacity>
+                        )}
                     </View>
                 </KeyboardAvoidingView>
             </Modal>

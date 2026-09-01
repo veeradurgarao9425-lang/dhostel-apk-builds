@@ -687,12 +687,18 @@ export const verifyPaymentProof = async (req: AuthRequest, res: Response) => {
       await sendNotificationToStudent(
         payment.student_id,
         'Payment Proof',
-        status === 'Verified' ? 'Payment Verified' : 'Payment Rejected',
+        status === 'Verified' ? 'Payment Verified ✅' : 'Payment Rejected ❌',
         status === 'Verified'
-          ? `Your payment of ₹${payment.amount} has been verified.`
-          : `Your payment proof of ₹${payment.amount} was rejected. Please check and resubmit.`,
-        'Medium',
-        { payment_id: paymentId }
+          ? `Your payment of ₹${payment.amount} has been verified successfully.`
+          : `Your payment proof of ₹${payment.amount} was rejected. Tap to review and resubmit.`,
+        status === 'Verified' ? 'Medium' : 'High',
+        { payment_id: paymentId, status },
+        {
+          screen: 'PaymentReceipt',
+          params: { paymentId, studentId: payment.student_id },
+          referenceType: 'payment_proof',
+          referenceId: paymentId
+        }
       );
     } catch (err) {
       console.error('Failed to notify tenant of payment verification:', err);

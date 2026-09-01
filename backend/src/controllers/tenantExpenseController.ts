@@ -275,6 +275,28 @@ export const updateTenantBudget = async (req: AuthRequest, res: Response) => {
     }
 
     const updated = await db('tenant_budgets').where('student_id', student_id).first().catch(() => null);
+
+    // Send confirmation push notification to tenant
+    try {
+      if (student_id) {
+        if (io) {
+          io.to(`tenant_${student_id}`).emit('budget_updated', { amount: parseFloat(amount) });
+          io.to(`tenant_${student_id}`).emit('REFRESH_NOTIFICATIONS');
+        }
+        await sendNotificationToStudent(
+          student_id,
+          'Budget Alert',
+          'Monthly Budget Set 🎯',
+          `Your monthly budget of ₹${parseFloat(amount).toLocaleString('en-IN')} has been set. We will alert you at 80% and 100% spending.`,
+          'Medium',
+          { budgetAmount: parseFloat(amount) },
+          { screen: 'Expenses' }
+        );
+      }
+    } catch (notifErr) {
+      console.warn('Budget notification error:', notifErr);
+    }
+
     return res.json({ success: true, data: updated || { amount: parseFloat(amount) }, message: 'Tenant budget updated successfully' });
   } catch (error: any) {
     console.error('Error updating tenant budget:', error);

@@ -178,10 +178,16 @@ export const updateComplaintStatus = async (req: AuthRequest, res: Response) => 
       await sendNotificationToStudent(
         complaint.student_id,
         'Complaint',
-        'Complaint Update',
-        `Your complaint "${complaint.title}" is now ${status}.`,
-        'Medium',
-        { complaint_id: complaint.complaint_id }
+        `Complaint ${status === 'Resolved' ? 'Resolved ✅' : status === 'In Progress' ? 'In Progress 🔧' : 'Updated'}`,
+        `Your complaint "${complaint.title}" has been updated to "${status}". Tap to view.`,
+        status === 'Resolved' ? 'High' : 'Medium',
+        { complaint_id: complaint.complaint_id, status },
+        {
+          screen: 'Complaints',
+          params: { complaintId: complaint.complaint_id },
+          referenceType: 'complaint',
+          referenceId: complaint.complaint_id
+        }
       );
     } catch (err) {
       console.error('Failed to notify student about complaint update:', err);

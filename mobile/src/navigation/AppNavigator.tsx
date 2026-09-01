@@ -253,6 +253,20 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
                             onRouteChange(route.name);
                         }
                     }
+
+                    // Check and navigate to any pending notification target
+                    const pending = notificationService.consumePendingRoute();
+                    if (pending && pending.screen) {
+                        setTimeout(() => {
+                            try {
+                                if (navigationRef.isReady()) {
+                                    (navigationRef as any).navigate(pending.screen, pending.params || {});
+                                }
+                            } catch (e) {
+                                console.warn('[Navigation] Failed to navigate to pending notification route:', e);
+                            }
+                        }, 500);
+                    }
                 }}
                 onStateChange={() => {
                     const route = navigationRef.current?.getCurrentRoute();

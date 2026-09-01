@@ -1013,8 +1013,20 @@ export default function PendingPaymentsScreen() {
             // Compute dynamic live tab counts from students
             const overdueCount = pending.filter(s => s.isOverdue && s.dueAmount > 0).length;
             const overdueAmount = pending.filter(s => s.isOverdue && s.dueAmount > 0).reduce((sum, s) => sum + s.dueAmount, 0);
-            const next7Count = pending.filter(s => !s.isOverdue && s.dueAmount > 0 && s.paidAmount === 0).length;
-            const next7Amount = pending.filter(s => !s.isOverdue && s.dueAmount > 0 && s.paidAmount === 0).reduce((sum, s) => sum + s.dueAmount, 0);
+            
+            const next7Count = pending.filter(s => {
+                const d = new Date(s.rawDueDate || s.dueDate || new Date());
+                d.setHours(0, 0, 0, 0);
+                const diff = Math.floor((d.getTime() - now.getTime()) / 86400000);
+                return !s.isOverdue && s.dueAmount > 0 && diff >= 0 && diff <= 7;
+            }).length;
+            const next7Amount = pending.filter(s => {
+                const d = new Date(s.rawDueDate || s.dueDate || new Date());
+                d.setHours(0, 0, 0, 0);
+                const diff = Math.floor((d.getTime() - now.getTime()) / 86400000);
+                return !s.isOverdue && s.dueAmount > 0 && diff >= 0 && diff <= 7;
+            }).reduce((sum, s) => sum + s.dueAmount, 0);
+
             const partialCount = pending.filter(s => s.paidAmount > 0 && s.dueAmount > 0 && !s.isOverdue).length;
             const fullyPaidCount = pending.filter(s => s.dueAmount <= 0 && s.paidAmount > 0).length;
 
@@ -1173,9 +1185,9 @@ export default function PendingPaymentsScreen() {
             if (activeFilters.room !== 'Unallocated' && activeFilters.room !== 'Has Room' && t.room_number !== activeFilters.room) return false;
         }
 
-        // 4. Date Filter
+        // 4. Date Filter (Skip general date presets when looking specifically at Next 7 Days or Overdue tabs unless Custom Range is used)
         const rawDate = t.rawDueDate || (t as any).due_date || t.dueDate || new Date().toISOString();
-        if (activeFilters.datePreset !== 'All Time') {
+        if (activeFilters.datePreset !== 'All Time' && (activeFilters.datePreset === 'Custom Date Range' || (activeTab !== 'Next 7 Days' && activeTab !== 'Overdue'))) {
             const dueDateObj = new Date(rawDate);
             dueDateObj.setHours(0, 0, 0, 0);
 
@@ -1235,18 +1247,16 @@ export default function PendingPaymentsScreen() {
         now.setHours(0, 0, 0, 0);
         const dueObj = new Date(rawDate);
         dueObj.setHours(0, 0, 0, 0);
-        dueObj.setHours(0, 0, 0, 0);
         const diffDays = Math.floor((dueObj.getTime() - now.getTime()) / 86400000);
 
         if (activeTab === 'Overdue') {
-            // `isOverdue` only means the due date has passed (or carry-forward
             // exists) — it stays true after the money is collected. Without the
             // balance check a settled record kept showing under Overdue *and*
             // Fully Paid at the same time. Once the balance is cleared the
             // record belongs to Fully Paid only.
             if (!t.isOverdue || t.dueAmount <= 0) return false;
         } else if (activeTab === 'Next 7 Days') {
-            if (t.isOverdue || diffDays < 0 || diffDays > 7 || t.paidAmount > 0) return false;
+            if (t.isOverdue || diffDays < 0 || diffDays > 7 || t.dueAmount <= 0) return false;
         } else if (activeTab === 'Partially Paid') {
             if (t.paidAmount <= 0 || t.dueAmount <= 0 || t.isOverdue) return false;
         } else if (activeTab === 'Fully Paid') {
@@ -1498,7 +1508,7 @@ export default function PendingPaymentsScreen() {
                                 const isPaid = t.status === 'Fully Paid' || t.status === 'paid' || (t as any).fee_status === 'Fully Paid';
                                 if (due <= 0 || isPaid) return false;
                                 if (activeTab === 'Overdue') return t.isOverdue;
-                                if (activeTab === 'Next 7 Days') return !t.isOverdue && due > 0 && t.paidAmount === 0;
+                                if (activeTab === 'Next 7 Days') return !t.isOverdue && due > 0;
                                 if (activeTab === 'Partially Paid') return t.paidAmount > 0 && due > 0 && !t.isOverdue;
                                 return true;
                             }).length;

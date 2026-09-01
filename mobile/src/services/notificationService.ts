@@ -52,6 +52,19 @@ try {
 
 export const notificationService = {
   _lastRegisteredToken: null as string | null,
+  _pendingNotificationRoute: null as { screen: string; params?: any } | null,
+
+  setPendingRoute(screen: string, params?: any) {
+    if (screen) {
+      this._pendingNotificationRoute = { screen, params };
+    }
+  },
+
+  consumePendingRoute(): { screen: string; params?: any } | null {
+    const route = this._pendingNotificationRoute;
+    this._pendingNotificationRoute = null;
+    return route;
+  },
 
   /**
    * Request permission (Android 13+ requires runtime POST_NOTIFICATIONS),
@@ -137,7 +150,7 @@ export const notificationService = {
         }
       }
 
-      console.log('[FCM] ✅ Native Firebase FCM token:', token ? token.slice(0, 35) + '...' : 'null (available in standalone APK)');
+      console.log('[Notification] ✅ Native FCM token:', token ? token.slice(0, 35) + '...' : 'null (available in standalone APK)');
 
       if (token) {
         this._lastRegisteredToken = token;
@@ -162,11 +175,8 @@ export const notificationService = {
         push_token: token,
         platform: Platform.OS,
         device_name: Platform.OS === 'android' ? 'Android Device' : 'iOS Device',
-      });
-      console.log('[Notification] ✅ Token registered with backend.');
-    } catch (err: any) {
-      console.warn('[Notification] ⚠️ Failed to send token to backend:', err?.message || err);
-    }
+      }).catch(() => {});
+    } catch (_) {}
   },
 
   /**
@@ -262,8 +272,11 @@ export const notificationService = {
             if (typeof params === 'string') {
               try { params = JSON.parse(params); } catch (_) {}
             }
-            if (navigate && screen) {
-              navigate(screen, params || {});
+            if (screen) {
+              this.setPendingRoute(screen, params || {});
+              if (navigate) {
+                navigate(screen, params || {});
+              }
             }
           };
 
@@ -286,8 +299,11 @@ export const notificationService = {
               if (typeof params === 'string') {
                 try { params = JSON.parse(params); } catch (_) {}
               }
-              if (navigate && screen) {
-                setTimeout(() => navigate(screen, params || {}), 800);
+              if (screen) {
+                this.setPendingRoute(screen, params || {});
+                if (navigate) {
+                  setTimeout(() => navigate(screen, params || {}), 600);
+                }
               }
             }
           }).catch(() => {});
@@ -305,8 +321,11 @@ export const notificationService = {
             if (typeof params === 'string') {
               try { params = JSON.parse(params); } catch (_) {}
             }
-            if (navigate && screen) {
-              navigate(screen, params || {});
+            if (screen) {
+              this.setPendingRoute(screen, params || {});
+              if (navigate) {
+                navigate(screen, params || {});
+              }
             }
           });
           unsubscribeExpoResponse = () => {

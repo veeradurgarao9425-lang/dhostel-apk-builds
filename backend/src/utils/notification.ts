@@ -251,6 +251,7 @@ export const sendNotificationToUser = async (options: SendNotificationOptions): 
             notification: {
               channelId: 'default',
               sound: 'default',
+              icon: 'notification_icon',
               color: color || '#6D4AFF',
               defaultVibrateTimings: true,
               priority: 'high',
@@ -276,18 +277,18 @@ export const sendNotificationToUser = async (options: SendNotificationOptions): 
             }
           });
           if (deadTokens.length > 0) {
-            console.log(`[Notification] 🧹 Pruning ${deadTokens.length} stale / unregistered token(s) from database...`);
+            console.log(`[FCM] 🧹 Pruning ${deadTokens.length} stale / unregistered token(s) from database...`);
             await db('user_push_tokens').whereIn('push_token', deadTokens).del().catch((delErr) => {
-              console.error('[Notification] Error pruning dead tokens:', delErr?.message);
+              console.error('[FCM] Error pruning dead tokens:', delErr?.message);
             });
           }
         }
       } catch (fcmErr: any) {
-        console.error('[Notification] ❌ Direct Firebase FCM delivery error:', fcmErr?.message || fcmErr);
+        console.error('[FCM] ❌ Direct Firebase FCM delivery error:', fcmErr?.message || fcmErr);
       }
     }
 
-    // 5. Dispatch via Expo Push Service (for Expo tokens)
+    // 5. Dispatch via Expo Push Service (for Expo Go development tokens)
     if (expoTokens.length > 0) {
       try {
         const messages = expoTokens.map((to: string) => ({
@@ -310,7 +311,7 @@ export const sendNotificationToUser = async (options: SendNotificationOptions): 
           },
           body: JSON.stringify(messages),
         });
-        console.log(`[Notification] Expo Push dispatched to ${expoTokens.length} device(s).`);
+        console.log(`[Notification] Expo Push dispatched to ${expoTokens.length} Expo Go device(s).`);
       } catch (expoErr: any) {
         console.error('[Notification] Expo push delivery error:', expoErr?.message || expoErr);
       }

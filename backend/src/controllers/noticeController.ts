@@ -87,10 +87,16 @@ export const createNotice = async (req: AuthRequest, res: Response) => {
     sendNotificationToAllHostelStudents(
       hostel_id,
       resolvedType,
-      title,
+      `📢 Notice: ${title}`,
       content,
       resolvedType === 'Important' ? 'High' : 'Medium',
-      { id: notice_id }
+      { id: notice_id },
+      {
+        screen: 'NoticeDetails',
+        params: { noticeId: notice_id },
+        referenceType: 'notice',
+        referenceId: notice_id
+      }
     ).catch(err => console.error('Failed to send notice to students:', err));
   } catch (error: any) {
     console.error('Create notice error:', error);

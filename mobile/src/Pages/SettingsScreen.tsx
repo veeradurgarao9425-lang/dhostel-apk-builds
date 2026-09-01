@@ -3,16 +3,18 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, TextInput
 import * as Clipboard from 'expo-clipboard';
 import { AppHeader } from '../components/AppHeader';
 import { Card } from '../components/Card';
-import { Bell, Shield, ChevronRight, ChevronDown, Lock, Eye, EyeOff, MessageSquare, RefreshCw, CheckCircle2, Smartphone, Copy, QrCode, KeyRound } from 'lucide-react-native';
+import { Bell, Shield, ChevronRight, ChevronDown, Lock, Eye, EyeOff, MessageSquare, RefreshCw, CheckCircle2, Smartphone, Copy, QrCode, KeyRound, Fingerprint } from 'lucide-react-native';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useToast } from '../context/ToastContext';
 import { useTranslation } from 'react-i18next';
+import { useAppLock } from '../components/security/AppLockGate';
 import api from '../services/api';
 
 export const SettingsScreen = ({ navigation }: any) => {
     const { theme, isDark, fontSize } = useTheme();
     const { t } = useTranslation();
     const { showError, showSuccess, showApiError } = useToast();
+    const { isAppLockEnabled, setAppLock } = useAppLock();
 
     // Local state for toggles
     const [notifications, setNotifications] = useState(true);
@@ -482,6 +484,21 @@ export const SettingsScreen = ({ navigation }: any) => {
                 <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>{t('settings.appPreferences', 'Preferences')}</Text>
 
                 <Card style={[styles.card, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : 'transparent', borderWidth: isDark ? 1 : 0 }]}>
+                    <SettingRow
+                        icon={<Fingerprint size={20} color={theme.primary} />}
+                        label="App Lock (Biometric / PIN)"
+                        type="switch"
+                        value={isAppLockEnabled}
+                        onPress={async () => {
+                            const success = await setAppLock(!isAppLockEnabled);
+                            if (success) {
+                                showSuccess(!isAppLockEnabled ? 'App Lock Enabled 🔒' : 'App Lock Disabled');
+                            } else {
+                                showError('Biometric authentication failed or canceled');
+                            }
+                        }}
+                    />
+                    <View style={[styles.divider, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]} />
                     <SettingRow
                         icon={<Bell size={20} color={theme.primary} />}
                         label={t('settings.pushNotifications', 'Push Notifications')}

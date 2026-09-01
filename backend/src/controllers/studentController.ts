@@ -1273,8 +1273,11 @@ export const allocateRoom = async (req: AuthRequest, res: Response) => {
     sendNotificationToStudent(
       parseInt(studentId),
       'System Alert',
-      'Room Allocated!',
-      `You have been assigned to room ${room.room_number}. You now have full access to the hostel app.`
+      'Room Allocated! 🏠',
+      `You have been assigned to room ${room.room_number}. You now have full access to your hostel resident portal.`,
+      'High',
+      { room_id, room_number: room.room_number },
+      { screen: 'TenantHome', referenceType: 'room_allocation', referenceId: room_id }
     ).catch(err => console.error('Failed to send room allocation notification:', err));
 
     // Send Room Allocation Confirmation Email to Tenant
@@ -1583,6 +1586,25 @@ export const vacateSettlement = async (req: AuthRequest, res: Response) => {
       // We could optionally clear their Pending rent dues here, or leave them as unpaid bad debt.
       // We will leave them so history is maintained, but the deposit offset the owner's loss.
     });
+
+    // Send push notification & real-time Socket event to tenant
+    try {
+      if (io) {
+        io.to(`tenant_${studentId}`).emit('TENANT_VACATED', { studentId, status: 0 });
+        io.to(`tenant_${studentId}`).emit('REFRESH_USER_STATUS', { studentId, status: 0 });
+      }
+      await sendNotificationToStudent(
+        parseInt(studentId),
+        'System Alert',
+        'Vacate & Settlement Completed 📦',
+        'Your checkout settlement has been processed successfully. Best wishes for your journey ahead!',
+        'High',
+        { studentId, status: 0 },
+        { screen: 'TenantHome', referenceType: 'vacate_settlement', referenceId: studentId }
+      );
+    } catch (notifErr) {
+      console.error('Failed to send vacate settlement notification:', notifErr);
+    }
 
     res.json({
       success: true,

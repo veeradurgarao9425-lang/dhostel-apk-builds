@@ -7,6 +7,14 @@ import { getFirebaseMessaging, isFirebaseReady } from '../src/config/firebaseAdm
 async function main() {
   console.log('=== Checking Database Push Tokens ===');
   try {
+    const deletedCount = await db('user_push_tokens')
+      .where('push_token', 'like', 'Expo%')
+      .orWhere('push_token', 'like', 'ExponentPushToken%')
+      .del();
+    if (deletedCount > 0) {
+      console.log(`Pruned ${deletedCount} legacy Expo token(s) from database.`);
+    }
+
     const tokens = await db('user_push_tokens').select('*').orderBy('updated_at', 'desc').limit(20);
     console.log(`Found ${tokens.length} token record(s) in user_push_tokens:`);
     tokens.forEach((t, i) => {

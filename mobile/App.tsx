@@ -13,7 +13,13 @@ import { CustomToast, ToastVariant } from './src/components/ui/CustomToast';
 import { OfflineBanner } from './src/components/OfflineBanner';
 import { useFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold, Inter_800ExtraBold, Inter_900Black } from '@expo-google-fonts/inter';
 import * as SplashScreen from 'expo-splash-screen';
-import { Text, TextInput } from 'react-native';
+import { Text, TextInput, LogBox } from 'react-native';
+
+LogBox.ignoreLogs([
+  'expo-notifications: Android Push notifications',
+  'Push notifications (remote notifications)',
+  'warnOfExpoGoPushUsage',
+]);
 
 import { notificationService } from './src/services/notificationService';
 
@@ -27,6 +33,7 @@ import { SupportModeBanner } from './src/components/SupportModeBanner';
 import { RefreshProvider } from './contexts/RefreshContext';
 import { ConfirmationProvider } from './contexts/ConfirmationContext';
 import { SocketProvider } from './src/context/SocketContext';
+import { AppLockGate } from './src/components/security/AppLockGate';
 
 const ThemedToast = () => {
   const { theme, isDark } = useTheme();
@@ -133,9 +140,11 @@ export default function App() {
                 <ToastProvider>
                   <SupportModeBanner />
                   <OfflineBanner />
-                  <NetworkManager>
-                    <AppNavigator />
-                  </NetworkManager>
+                  <AppLockGate>
+                    <NetworkManager>
+                      <AppNavigator />
+                    </NetworkManager>
+                  </AppLockGate>
                   <AssistantGate />
                   <ThemedToast />
                 </ToastProvider>
