@@ -16,40 +16,7 @@ const getFirebaseMessagingModule = () => {
   }
 };
 
-// Configure foreground notification presentation handler
-try {
-  const Notifications = require('expo-notifications');
-  if (Notifications && typeof Notifications.setNotificationHandler === 'function') {
-    Notifications.setNotificationHandler({
-      handleNotification: async () => ({
-        shouldShowAlert: true,
-        shouldPlaySound: true,
-        shouldSetBadge: true,
-      }),
-    });
-  }
-} catch (_) {}
-
-// Register background message handler at module level for native Firebase
-try {
-  const fcm = getFirebaseMessagingModule();
-  if (fcm) {
-    let messagingInstance: any = null;
-    if (typeof fcm === 'function') {
-      messagingInstance = fcm();
-    } else if (fcm.default && typeof fcm.default === 'function') {
-      messagingInstance = fcm.default();
-    }
-    if (messagingInstance && typeof messagingInstance.setBackgroundMessageHandler === 'function') {
-      messagingInstance.setBackgroundMessageHandler(async (remoteMessage: any) => {
-        console.log('[FCM] 📩 Background Message handled outside app:', remoteMessage?.notification?.title || remoteMessage?.data?.title);
-      });
-    }
-  }
-} catch (bgErr) {
-  console.warn('[FCM] Background handler registration skipped in dev:', bgErr);
-}
-
+// Foreground notification presentation handler is configured in index / App
 export const notificationService = {
   _lastRegisteredToken: null as string | null,
   _pendingNotificationRoute: null as { screen: string; params?: any } | null,

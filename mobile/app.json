@@ -33,6 +33,8 @@
         "CAMERA",
         "READ_MEDIA_IMAGES",
         "POST_NOTIFICATIONS",
+        "USE_BIOMETRIC",
+        "USE_FINGERPRINT",
         "VIBRATE"
       ]
     },

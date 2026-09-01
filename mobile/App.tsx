@@ -23,8 +23,6 @@ LogBox.ignoreLogs([
 
 import { notificationService } from './src/services/notificationService';
 
-SplashScreen.preventAutoHideAsync().catch(() => {});
-
 import './src/i18n';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import { AuthProvider } from './contexts/AuthContext';
@@ -33,7 +31,6 @@ import { SupportModeBanner } from './src/components/SupportModeBanner';
 import { RefreshProvider } from './contexts/RefreshContext';
 import { ConfirmationProvider } from './contexts/ConfirmationContext';
 import { SocketProvider } from './src/context/SocketContext';
-import { AppLockGate } from './src/components/security/AppLockGate';
 
 const ThemedToast = () => {
   const { theme, isDark } = useTheme();
@@ -80,9 +77,6 @@ export default function App() {
   const [forceReady, setForceReady] = React.useState(false);
 
   React.useEffect(() => {
-    // Register push notification token on app launch
-    notificationService.registerForPushNotificationsAsync().catch(() => {});
-
     // Safety fallback: Unfreeze and show UI within 1200ms max even if font network stalls
     const timeout = setTimeout(() => {
       setForceReady(true);
@@ -92,6 +86,11 @@ export default function App() {
     if (fontsLoaded) {
       clearTimeout(timeout);
       SplashScreen.hideAsync().catch(() => {});
+
+      // Register push notification token safely after UI is visible
+      setTimeout(() => {
+        notificationService.registerForPushNotificationsAsync().catch(() => {});
+      }, 600);
       
       // Global font override
       try {
@@ -140,11 +139,9 @@ export default function App() {
                 <ToastProvider>
                   <SupportModeBanner />
                   <OfflineBanner />
-                  <AppLockGate>
-                    <NetworkManager>
-                      <AppNavigator />
-                    </NetworkManager>
-                  </AppLockGate>
+                  <NetworkManager>
+                    <AppNavigator />
+                  </NetworkManager>
                   <AssistantGate />
                   <ThemedToast />
                 </ToastProvider>
