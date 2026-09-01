@@ -23,7 +23,7 @@ LogBox.ignoreLogs([
 
 import { notificationService } from './src/services/notificationService';
 
-SplashScreen.preventAutoHideAsync();
+SplashScreen.preventAutoHideAsync().catch(() => {});
 
 import './src/i18n';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
