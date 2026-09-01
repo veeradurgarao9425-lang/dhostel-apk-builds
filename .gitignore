@@ -62,3 +62,8 @@ qr_signup_*
 restore_qr.js
 server_test.js
 
+# Android build artifacts
+*.apk
+*.aab
+
+

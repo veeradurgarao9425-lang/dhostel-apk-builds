@@ -8,6 +8,7 @@ import { kickUserFromRoomChat } from '../socket/index.js';
 import { checkHostelUniqueIdentifiers } from '../utils/validation.js';
 import { resolveScopedHostelId, resolveOwnerHostelId, canAccessHostel, getAuthenticatedStudent } from '../utils/scope.js';
 import { notifyStudentActivated } from '../services/developerNotificationService.js';
+import { io } from '../socket/index.js';
 
 // Helper function to convert ISO datetime string to date-only format (YYYY-MM-DD)
 const convertToDateOnly = (dateValue: any): string | null => {
@@ -993,6 +994,19 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
               referenceId: finalRoomId,
             }
           ).catch((err) => console.error('Failed to send room allocation notification to student:', err));
+
+          // Real-time Socket Event to auto-transition tenant app
+          try {
+            if (io) {
+              const approvalPayload = { studentId: Number(studentId), roomNumber, is_allocated: 1, room_id: finalRoomId };
+              io.to(`tenant_${studentId}`).emit('STUDENT_APPROVED', approvalPayload);
+              io.to(`tenant_${studentId}`).emit('REFRESH_USER_STATUS', approvalPayload);
+              io.to(`user_${studentId}`).emit('STUDENT_APPROVED', approvalPayload);
+              io.to(`user_${studentId}`).emit('REFRESH_USER_STATUS', approvalPayload);
+            }
+          } catch (socErr) {
+            console.error('Socket emission error for student approval:', socErr);
+          }
 
           // Notify Developer
           try {

@@ -128,33 +128,45 @@ export const sendNotificationToUser = async (options: SendNotificationOptions): 
     }
 
     // 2. Fetch push tokens for this user/student (cross-resolve student_id <-> user_id)
-    let userTokens: any[] = [];
     let resolvedUserId = userId;
     let resolvedStudentId = studentId;
 
     if (studentId && !resolvedUserId) {
-      const studentRecord = await db('students').where({ student_id: studentId }).select('user_id').first().catch(() => null);
-      if (studentRecord?.user_id) {
-        resolvedUserId = studentRecord.user_id;
-      }
+      const studentRecord = await db('students')
+        .where({ student_id: studentId })
+        .orWhere({ user_id: studentId })
+        .select('user_id', 'student_id')
+        .first()
+        .catch(() => null);
+      if (studentRecord?.user_id) resolvedUserId = studentRecord.user_id;
+      if (studentRecord?.student_id) resolvedStudentId = studentRecord.student_id;
     } else if (userId && !resolvedStudentId) {
-      const studentRecord = await db('students').where({ user_id: userId }).select('student_id').first().catch(() => null);
-      if (studentRecord?.student_id) {
-        resolvedStudentId = studentRecord.student_id;
-      }
+      const studentRecord = await db('students')
+        .where({ user_id: userId })
+        .orWhere({ student_id: userId })
+        .select('student_id', 'user_id')
+        .first()
+        .catch(() => null);
+      if (studentRecord?.student_id) resolvedStudentId = studentRecord.student_id;
+      if (studentRecord?.user_id) resolvedUserId = studentRecord.user_id;
     }
 
-    userTokens = await db('user_push_tokens')
-      .where(function() {
-        if (resolvedUserId && resolvedStudentId) {
-          this.where('user_id', resolvedUserId).orWhere('student_id', resolvedStudentId).orWhere('user_id', resolvedStudentId);
-        } else if (resolvedUserId) {
-          this.where('user_id', resolvedUserId);
-        } else if (resolvedStudentId) {
-          this.where('student_id', resolvedStudentId).orWhere('user_id', resolvedStudentId);
-        }
-      })
-      .select('push_token');
+    const candidateIds = Array.from(
+      new Set(
+        [userId, studentId, resolvedUserId, resolvedStudentId]
+          .filter((id): id is number => id !== undefined && id !== null && !isNaN(Number(id)))
+          .map(Number)
+      )
+    );
+
+    let userTokens: any[] = [];
+    if (candidateIds.length > 0) {
+      userTokens = await db('user_push_tokens')
+        .whereIn('user_id', candidateIds)
+        .orWhereIn('student_id', candidateIds)
+        .select('push_token')
+        .catch(() => []);
+    }
 
     if (!userTokens || userTokens.length === 0) {
       console.log(`[Notification] No push tokens found in DB for User:${userId ?? '-'} / Student:${studentId ?? '-'} (resolved User:${resolvedUserId ?? '-'}). Push delivery skipped.`);
@@ -344,10 +356,27 @@ export const sendNotificationToStudent = async (
   extras?: Pick<SendNotificationOptions, 'screen' | 'params' | 'referenceType' | 'referenceId' | 'deepLink' | 'metadata' | 'deduplicateKey'>
 ): Promise<void> => {
   try {
-    const student = await db('students').where({ student_id: studentId }).select('hostel_id').first();
-    if (!student) return;
+    const student = await db('students')
+      .where({ student_id: studentId })
+      .orWhere({ user_id: studentId })
+      .select('hostel_id', 'student_id', 'user_id')
+      .first()
+      .catch(() => null);
+
+    const actualStudentId = student?.student_id || studentId;
+    const actualUserId = student?.user_id || (Number(studentId) || null);
+    const actualHostelId = student?.hostel_id || null;
+
     await sendNotificationToUser({
-      studentId, hostelId: student.hostel_id, type, title, message, priority, data, ...(extras || {}),
+      userId: actualUserId,
+      studentId: actualStudentId,
+      hostelId: actualHostelId,
+      type,
+      title,
+      message,
+      priority,
+      data,
+      ...(extras || {}),
     });
   } catch (err) {
     console.error(`[Notification] Error sending to student:`, err);

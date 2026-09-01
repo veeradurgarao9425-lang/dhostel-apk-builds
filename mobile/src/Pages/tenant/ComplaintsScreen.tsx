@@ -228,6 +228,7 @@ function ComplaintDetailView({ complaint, onClose }: { complaint: any; onClose: 
 }
 
 function StepperForm({ visible, onClose, onSubmit, hostelId }: { visible: boolean; onClose: () => void; onSubmit: () => void; hostelId?: number }) {
+  const insets = useSafeAreaInsets();
   const { showError, showSuccess } = useToast();
   const [priority, setPriority] = useState('Medium');
   const [category, setCategory] = useState('Maintenance');
@@ -451,7 +452,7 @@ function StepperForm({ visible, onClose, onSubmit, hostelId }: { visible: boolea
           </ScrollView>
 
           {/* Bottom Action Footer with Reset & Submit */}
-          <View style={s.formFooter}>
+          <View style={[s.formFooter, { paddingBottom: Math.max(insets.bottom, 16) + 6 }]}>
             <TouchableOpacity 
               style={s.btnReset} 
               onPress={handleReset}

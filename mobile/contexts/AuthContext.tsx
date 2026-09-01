@@ -190,8 +190,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setHostels([]);
     });
 
+    const refreshUserSub = DeviceEventEmitter.addListener('REFRESH_USER', () => {
+      refreshUser();
+    });
+
     return () => {
       authSub.remove();
+      refreshUserSub.remove();
     };
   }, []);
 

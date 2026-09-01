@@ -218,21 +218,7 @@ export const notificationService = {
             const screen = remoteMessage.data?.screen as string | undefined;
             const params = remoteMessage.data?.params ? (typeof remoteMessage.data.params === 'string' ? JSON.parse(remoteMessage.data.params) : remoteMessage.data.params) : undefined;
 
-            // 1. Display in-app Toast banner
-            Toast.show({
-              type: 'info',
-              text1: title,
-              text2: body,
-              props: {
-                onAction: () => {
-                  if (navigate && screen) {
-                    navigate(screen, params || {});
-                  }
-                }
-              }
-            });
-
-            // 2. Also trigger native Android OS notification banner
+            // Trigger native Android OS notification banner (No double Toast)
             try {
               const Notifications = require('expo-notifications');
               if (Notifications && typeof Notifications.scheduleNotificationAsync === 'function') {
@@ -270,6 +256,7 @@ export const notificationService = {
 
           // Background / quit state notification tap handler
           const handleNotificationOpen = (remoteMessage: any) => {
+            console.log('[FCM] 📲 Notification clicked in background:', remoteMessage);
             const screen = remoteMessage.data?.screen as string | undefined;
             let params = remoteMessage.data?.params;
             if (typeof params === 'string') {
@@ -293,18 +280,40 @@ export const notificationService = {
 
           getInitial.then((remoteMessage: any) => {
             if (remoteMessage) {
+              console.log('[FCM] 🚀 App launched from notification cold start:', remoteMessage);
               const screen = remoteMessage.data?.screen as string | undefined;
               let params = remoteMessage.data?.params;
               if (typeof params === 'string') {
                 try { params = JSON.parse(params); } catch (_) {}
               }
               if (navigate && screen) {
-                setTimeout(() => navigate(screen, params || {}), 500);
+                setTimeout(() => navigate(screen, params || {}), 800);
               }
             }
           }).catch(() => {});
         }
       }
+
+      // Expo notifications response listener (for foreground-triggered local alerts)
+      try {
+        const Notifications = require('expo-notifications');
+        if (Notifications && typeof Notifications.addNotificationResponseReceivedListener === 'function') {
+          const sub = Notifications.addNotificationResponseReceivedListener((response: any) => {
+            const data = response?.notification?.request?.content?.data;
+            const screen = data?.screen as string | undefined;
+            let params = data?.params;
+            if (typeof params === 'string') {
+              try { params = JSON.parse(params); } catch (_) {}
+            }
+            if (navigate && screen) {
+              navigate(screen, params || {});
+            }
+          });
+          unsubscribeExpoResponse = () => {
+            if (sub && typeof sub.remove === 'function') sub.remove();
+          };
+        }
+      } catch (_) {}
     } catch (e) {
       console.warn('[FCM] setupNotificationListeners error:', e);
     }
@@ -312,6 +321,7 @@ export const notificationService = {
     return () => {
       unsubscribeForeground();
       unsubscribeRefresh();
+      if (unsubscribeExpoResponse) unsubscribeExpoResponse();
     };
   },
 
