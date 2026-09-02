@@ -8,7 +8,6 @@ import { ChevronRight, ArrowLeft } from 'lucide-react-native';
 
 import { colors, radius, spacing, shadow } from '../../theme/tenantTheme';
 import { notificationService } from '../../services/notificationService';
-import { useAppLock } from '../../components/security/AppLockGate';
 
 const NOTIFICATIONS_ENABLED_KEY = 'tenant_notifications_enabled';
 
@@ -75,7 +74,6 @@ function SectionLabel({ label }: { label: string }) {
 // ── Main Screen ───────────────────────────────────────────────────────────────
 export default function SettingsScreen({ navigation }: any) {
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
-  const { isAppLockEnabled, setAppLock } = useAppLock();
 
   useEffect(() => {
     AsyncStorage.getItem(NOTIFICATIONS_ENABLED_KEY).then(v => {
@@ -115,13 +113,6 @@ export default function SettingsScreen({ navigation }: any) {
         {/* ── Preferences ──────────────────────────────────────────────────── */}
         <SectionLabel label="Preferences" />
         <View style={styles.card}>
-          <ToggleRow
-            label="App Lock (Biometric / PIN)"
-            value={isAppLockEnabled}
-            onValueChange={async (val) => {
-              await setAppLock(val);
-            }}
-          />
           <ToggleRow
             label="Notifications"
             value={notificationsEnabled}
