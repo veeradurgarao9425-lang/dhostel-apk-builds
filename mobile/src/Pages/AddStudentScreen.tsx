@@ -375,7 +375,7 @@ const DocumentUploadBox = ({ label, uri, onCapture, onRemove, isFront, error }: 
                 setPermError({ visible: true, title: 'Permission Required', message: 'Media library permission is needed to upload documents. Please enable it in your device settings.' });
                 return;
             }
-            const r = await ImagePicker.launchImageLibraryAsync({ quality: 0.6 });
+            const r = await ImagePicker.launchImageLibraryAsync({ quality: 0.5 });
             if (!r.canceled && r.assets && r.assets.length > 0) {
                 onCapture(r.assets[0].uri);
             }
@@ -391,27 +391,57 @@ const DocumentUploadBox = ({ label, uri, onCapture, onRemove, isFront, error }: 
             <View style={[
                 styles.docUploadBox, 
                 { 
-                    backgroundColor: isDark ? '#1E293B' : '#F9FAFB', 
-                    borderColor: error ? '#EF4444' : uri ? '#10B981' : (isDark ? '#334155' : '#E2E8F0'), 
+                    backgroundColor: uri 
+                        ? (isDark ? '#052E16' : '#F0FDF4') 
+                        : (isDark ? '#1E293B' : '#F9FAFB'), 
+                    borderColor: error 
+                        ? '#EF4444' 
+                        : uri 
+                            ? '#10B981' 
+                            : (isDark ? '#334155' : '#E2E8F0'), 
                     borderStyle: uri ? 'solid' : 'dashed',
+                    height: uri ? 90 : 155,
                 }
             ]}>
                 {uri ? (
-                    <View style={styles.docPreviewContainer}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', height: '100%', paddingHorizontal: 4 }}>
                         <TouchableOpacity 
-                            style={{ flex: 1, width: '100%', height: '100%' }} 
-                            onPress={() => setZoomVisible(true)} 
-                            activeOpacity={0.85}
+                            onPress={() => setZoomVisible(true)}
+                            activeOpacity={0.8}
+                            style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}
                         >
-                            <Image source={{ uri }} style={styles.docPreviewImage} resizeMode="cover" />
+                            <Image 
+                                source={{ uri }} 
+                                style={{ width: 68, height: 68, borderRadius: 10, borderWidth: 1, borderColor: '#10B981' }} 
+                                resizeMode="cover" 
+                            />
+                            <View style={{ flex: 1 }}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                                    <CheckCircle size={14} color="#10B981" />
+                                    <Text style={{ fontSize: 13, fontWeight: '700', color: isDark ? '#FFF' : '#0F172A' }}>{label}</Text>
+                                </View>
+                                <Text style={{ fontSize: 11, color: isDark ? '#A7F3D0' : '#15803D', fontWeight: '600', marginTop: 2 }}>Uploaded</Text>
+                                <Text style={{ fontSize: 10, color: theme.textSecondary, marginTop: 2 }}>Tap thumbnail to zoom</Text>
+                            </View>
                         </TouchableOpacity>
-                        <TouchableOpacity style={styles.docRemoveBtn} onPress={onRemove} activeOpacity={0.8}>
-                            <X size={13} color="#FFF" />
-                        </TouchableOpacity>
-                        <TouchableOpacity style={[styles.docRetakeRow, { backgroundColor: 'rgba(0,0,0,0.65)' }]} onPress={() => setPickerVisible(true)} activeOpacity={0.8}>
-                            <Camera size={11} color="#FFF" />
-                            <Text style={{ fontSize: 10, color: '#FFF', fontWeight: '700', marginLeft: 4 }}>Retake</Text>
-                        </TouchableOpacity>
+                        
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                            <TouchableOpacity 
+                                style={{ backgroundColor: isDark ? '#334155' : '#E2E8F0', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, flexDirection: 'row', alignItems: 'center', gap: 4 }} 
+                                onPress={() => setPickerVisible(true)}
+                                activeOpacity={0.7}
+                            >
+                                <Camera size={12} color={theme.textPrimary} />
+                                <Text style={{ fontSize: 11, color: theme.textPrimary, fontWeight: '600' }}>Retake</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity 
+                                style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: '#FEE2E2', alignItems: 'center', justifyContent: 'center' }} 
+                                onPress={onRemove}
+                                activeOpacity={0.7}
+                            >
+                                <X size={14} color="#EF4444" />
+                            </TouchableOpacity>
+                        </View>
                     </View>
                 ) : (
                     <View style={{ flex: 1, justifyContent: 'space-between' }}>
@@ -441,22 +471,22 @@ const DocumentUploadBox = ({ label, uri, onCapture, onRemove, isFront, error }: 
                             </View>
                         </View>
 
-                        <View style={{ marginTop: 4 }}>
-                            <Text style={[styles.docBoxTitle, { color: error ? '#EF4444' : (isDark ? '#F1F5F9' : '#1E293B') }]} numberOfLines={1}>{label}</Text>
-                            <Text style={styles.docBoxSubtitle}>JPG, PNG · Max 5MB</Text>
+                        <View style={{ marginTop: 6 }}>
+                            <Text style={[styles.docBoxTitle, { color: error ? '#EF4444' : (isDark ? '#F1F5F9' : '#1E293B') }]}>{label}</Text>
+                            <Text style={styles.docBoxSubtitle}>JPG, PNG or PDF · Max 5MB</Text>
                         </View>
 
                         <TouchableOpacity
-                            style={[styles.docUploadBtn, { borderColor: error ? '#EF4444' : theme.primary }]}
+                            style={[styles.docUploadBtn, { borderColor: error ? '#EF4444' : theme.primary, marginTop: 6 }]}
                             onPress={() => setPickerVisible(true)}
                             activeOpacity={0.7}
                         >
-                            <Upload size={11} color={error ? '#EF4444' : theme.primary} />
-                            <Text style={[styles.docUploadBtnText, { color: error ? '#EF4444' : theme.primary }]}>Upload</Text>
+                            <Upload size={12} color={error ? '#EF4444' : theme.primary} />
+                            <Text style={[styles.docUploadBtnText, { color: error ? '#EF4444' : theme.primary }]}>Upload {label}</Text>
                         </TouchableOpacity>
                     </View>
                 )}
-                {error && <Text style={{ color: '#EF4444', fontSize: 9, marginTop: 4, fontWeight: '600', textAlign: 'center' }}>{error}</Text>}
+                {error && <Text style={{ color: '#EF4444', fontSize: 10, marginTop: 4, fontWeight: '600', textAlign: 'center' }}>{error}</Text>}
             </View>
 
             {/* Zoom Modal */}
@@ -2257,27 +2287,26 @@ const styles = StyleSheet.create({
         marginTop: 2,
     },
     idUploadBoxesRow: {
-        flexDirection: 'row',
+        flexDirection: 'column',
         gap: 12,
-        marginTop: 6,
     },
     docUploadBox: {
         flex: 1,
         borderWidth: 1.5,
-        borderRadius: 14,
-        padding: 10,
-        height: 145,
+        borderStyle: 'dashed',
+        borderRadius: 12,
+        padding: 12,
+        height: 165,
     },
     docPreviewContainer: {
         flex: 1,
         position: 'relative',
-        borderRadius: 10,
+        borderRadius: 8,
         overflow: 'hidden',
     },
     docPreviewImage: {
         width: '100%',
         height: '100%',
-        borderRadius: 10,
     },
     docRemoveBtn: {
         position: 'absolute',
@@ -2286,20 +2315,19 @@ const styles = StyleSheet.create({
         width: 22,
         height: 22,
         borderRadius: 11,
-        backgroundColor: 'rgba(0,0,0,0.65)',
+        backgroundColor: 'rgba(0,0,0,0.6)',
         alignItems: 'center',
         justifyContent: 'center',
     },
     docRetakeRow: {
         position: 'absolute',
         bottom: 6,
-        left: 6,
         right: 6,
-        paddingVertical: 4,
-        borderRadius: 6,
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'center',
+        borderRadius: 8,
+        paddingHorizontal: 7,
+        paddingVertical: 4,
     },
     docBoxTopRow: {
         flexDirection: 'row',

@@ -179,7 +179,7 @@ const OwnerTabNavigator = () => (
     </Tab.Navigator>
 );
 
-// ── Tab Navigator (Tenant) ───────────────────────────────────────────────────
+// ── Tab Navigator (Tenant) — 4 tabs ──────────────────────────────────────────
 const TenantTabNavigator = () => (
     <Tab.Navigator
         tabBar={props => <TenantBottomTabNavigator {...props} />}
@@ -189,12 +189,8 @@ const TenantTabNavigator = () => (
         <Tab.Screen name="Dues" component={DuesScreen} />
         <Tab.Screen name="Expenses" component={ExpensesScreen} />
         <Tab.Screen name="Notices" component={TenantNoticesScreen} />
-        <Tab.Screen name="GrowthSavedStories" component={GrowthSavedStoriesScreen} />
-        <Tab.Screen name="GrowthVocabularyList" component={GrowthVocabularyListScreen} />
-        <Tab.Screen name="GrowthStats" component={GrowthStatsScreen} />
     </Tab.Navigator>
 );
-
 
 // ── Tab Navigator (Developer Master Admin) — 5 tabs ───────────────────────────
 const DeveloperTabNavigator = () => (
@@ -252,20 +248,6 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
                         if (onRouteChange) {
                             onRouteChange(route.name);
                         }
-                    }
-
-                    // Check and navigate to any pending notification target
-                    const pending = notificationService.consumePendingRoute();
-                    if (pending && pending.screen) {
-                        setTimeout(() => {
-                            try {
-                                if (navigationRef.isReady()) {
-                                    (navigationRef as any).navigate(pending.screen, pending.params || {});
-                                }
-                            } catch (e) {
-                                console.warn('[Navigation] Failed to navigate to pending notification route:', e);
-                            }
-                        }, 500);
                     }
                 }}
                 onStateChange={() => {

@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, TextInput
 import * as Clipboard from 'expo-clipboard';
 import { AppHeader } from '../components/AppHeader';
 import { Card } from '../components/Card';
-import { Bell, Shield, ChevronRight, ChevronDown, Lock, Eye, EyeOff, MessageSquare, RefreshCw, CheckCircle2, Smartphone, Copy, QrCode, KeyRound, Fingerprint } from 'lucide-react-native';
+import { Bell, Shield, ChevronRight, ChevronDown, Lock, Eye, EyeOff, MessageSquare, RefreshCw, CheckCircle2, Smartphone, Copy, QrCode, KeyRound } from 'lucide-react-native';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useToast } from '../context/ToastContext';
 import { useTranslation } from 'react-i18next';
@@ -489,25 +489,7 @@ export const SettingsScreen = ({ navigation }: any) => {
                         value={notifications}
                         onPress={() => setNotifications(!notifications)}
                     />
-                    <View style={[styles.divider, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]} />
-                    <SettingRow
-                        icon={<Smartphone size={20} color={theme.primary} />}
-                        label="Send Test Notification"
-                        onPress={async () => {
-                            try {
-                                const res = await api.post('/notifications/test', { type: 'General' });
-                                if (res.data?.success) {
-                                    showSuccess('Firebase notification sent to your device!');
-                                }
-                            } catch (e: any) {
-                                showError(e?.response?.data?.error || e?.message || 'Failed to send test push');
-                            }
-                        }}
-                    />
                 </Card>
-
-
-
 
                 {/* ── SECURITY & UPDATES SECTION ── */}
                 <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>{t('settings.securityUpdates', 'Security & Info')}</Text>

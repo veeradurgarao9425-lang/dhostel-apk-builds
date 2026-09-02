@@ -330,34 +330,6 @@ export default function ProfileScreen({ navigation }: any) {
           <TouchableOpacity
             style={styles.menuItem}
             activeOpacity={0.7}
-            onPress={async () => {
-              try {
-                const res = await api.post('/notifications/test', { type: 'General' });
-                if (res.data?.success) {
-                  Alert.alert('🔔 Firebase Push Sent', 'Firebase notification sent to your device via backend FCM!');
-                }
-              } catch (e: any) {
-                Alert.alert('Firebase Push', e?.response?.data?.error || e?.message || 'Failed to trigger notification');
-              }
-            }}
-          >
-
-
-            <View style={[styles.menuIcon, { backgroundColor: '#EDE9FE' }]}>
-              <Ionicons name="paper-plane" size={18} color="#7C3AED" />
-            </View>
-            <View style={styles.menuContent}>
-              <Text style={[styles.menuTitle, { color: '#7C3AED', fontWeight: '700' }]}>Test Push Notification</Text>
-              <Text style={styles.menuSub}>Verify push notifications arrive on this device</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={TEXT_MUTED} />
-          </TouchableOpacity>
-
-          <View style={styles.menuDivider} />
-
-          <TouchableOpacity
-            style={styles.menuItem}
-            activeOpacity={0.7}
             onPress={() => navigation.navigate('Settings')}
           >
             <View style={[styles.menuIcon, { backgroundColor: '#F1F5F9' }]}>
@@ -370,7 +342,6 @@ export default function ProfileScreen({ navigation }: any) {
             <Ionicons name="chevron-forward" size={18} color={TEXT_MUTED} />
           </TouchableOpacity>
         </View>
-
 
         {/* ── Logout Button ── */}
         <TouchableOpacity
@@ -415,62 +386,56 @@ export default function ProfileScreen({ navigation }: any) {
       {/* ── Edit Profile Modal ── */}
       <Modal visible={showEdit} transparent animationType="fade" onRequestClose={() => setShowEdit(false)}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalBackdrop}>
-          <ScrollView
-            contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', paddingHorizontal: 20, paddingVertical: 40 }}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-          >
-            <View style={styles.modalBox}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Edit Profile</Text>
-                <TouchableOpacity onPress={() => setShowEdit(false)} hitSlop={8}>
-                  <Ionicons name="close" size={22} color={TEXT_MID} />
-                </TouchableOpacity>
-              </View>
-
-              <Text style={styles.inputLabel}>Full Name</Text>
-              <TextInput
-                style={styles.input}
-                value={editName}
-                onChangeText={setEditName}
-                placeholder="Your full name"
-                placeholderTextColor={TEXT_MUTED}
-              />
-
-              <Text style={styles.inputLabel}>Phone Number</Text>
-              <TextInput
-                style={styles.input}
-                value={editPhone}
-                onChangeText={setEditPhone}
-                placeholder="10-digit phone number"
-                placeholderTextColor={TEXT_MUTED}
-                keyboardType="phone-pad"
-                maxLength={10}
-              />
-
-              <View style={styles.modalActions}>
-                <TouchableOpacity
-                  style={styles.cancelBtn}
-                  onPress={() => setShowEdit(false)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.cancelBtnText}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.saveBtn}
-                  onPress={saveProfile}
-                  disabled={editSaving}
-                  activeOpacity={0.8}
-                >
-                  {editSaving ? (
-                    <ActivityIndicator color={WHITE} size="small" />
-                  ) : (
-                    <Text style={styles.saveBtnText}>Save Changes</Text>
-                  )}
-                </TouchableOpacity>
-              </View>
+          <View style={styles.modalBox}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Edit Profile</Text>
+              <TouchableOpacity onPress={() => setShowEdit(false)} hitSlop={8}>
+                <Ionicons name="close" size={22} color={TEXT_MID} />
+              </TouchableOpacity>
             </View>
-          </ScrollView>
+
+            <Text style={styles.inputLabel}>Full Name</Text>
+            <TextInput
+              style={styles.input}
+              value={editName}
+              onChangeText={setEditName}
+              placeholder="Your full name"
+              placeholderTextColor={TEXT_MUTED}
+            />
+
+            <Text style={styles.inputLabel}>Phone Number</Text>
+            <TextInput
+              style={styles.input}
+              value={editPhone}
+              onChangeText={setEditPhone}
+              placeholder="10-digit phone number"
+              placeholderTextColor={TEXT_MUTED}
+              keyboardType="phone-pad"
+              maxLength={10}
+            />
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={styles.cancelBtn}
+                onPress={() => setShowEdit(false)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.cancelBtnText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.saveBtn}
+                onPress={saveProfile}
+                disabled={editSaving}
+                activeOpacity={0.8}
+              >
+                {editSaving ? (
+                  <ActivityIndicator color={WHITE} size="small" />
+                ) : (
+                  <Text style={styles.saveBtnText}>Save Changes</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
         </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>

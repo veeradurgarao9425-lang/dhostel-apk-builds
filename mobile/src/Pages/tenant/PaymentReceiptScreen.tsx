@@ -8,8 +8,6 @@ import { CheckCircle, Share2, Mail, Printer, Download, ChevronUp, FileText, Mess
 import { formatCurrency } from '../../utils/format';
 import { useAuth } from '../../../contexts/AuthContext';
 import { downloadAndSaveFile } from '../../utils/fileDownloader';
-import { generateReceiptHtml } from '../../utils/receiptHtml';
-
 
 export default function PaymentReceiptScreen({ route, navigation }: any) {
   const { user, connectedHostel } = useAuth();
@@ -36,37 +34,171 @@ export default function PaymentReceiptScreen({ route, navigation }: any) {
   const dateStr     = new Date(paidDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' });
   const timeStr     = new Date(paidDate).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
 
-  const getPdfHtml = () => {
-    const u = user as any;
-    const ch = connectedHostel as any;
-    const studentName = `${u?.first_name || ''} ${u?.last_name || ''}`.trim() || u?.name || u?.full_name || 'Tenant';
-    return generateReceiptHtml({
-      documentTitle: 'RENT RECEIPT',
-      hostelName,
-      hostelAddress: ch?.hostel_address || ch?.address || undefined,
-      ownerName: ch?.owner_name || undefined,
-      ownerContact: ch?.owner_phone || ch?.phone || undefined,
-      payerLabel: 'Paid By (Student)',
-      payerName: studentName,
-      payerContact: u?.phone || undefined,
-      roomNo: u?.room_number || 'N/A',
-      isStaff: false,
-      receiptNo: transactionId,
-      transactionTime: `${timeStr} • ${dateStr}`,
-      paymentMode,
-      transactionId,
-      periodLabel: feeMonthStr,
-      amountPaid: parseFloat(String(amount || 0)),
-      duesAmount: parseFloat(String(fee?.total_due ?? fee?.monthly_rent ?? amount)),
-      netBalance: parseFloat(String(fee?.balance ?? 0)),
-      recordedBy: ch?.owner_name || undefined,
-    });
-  };
+  const htmlContent = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:#F1F5F9;display:flex;justify-content:center;padding:24px;min-height:100vh}
+    .wrap{width:100%;max-width:540px;background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 16px 48px rgba(0,0,0,0.13)}
 
+    /* header */
+    .hdr{background:linear-gradient(135deg,#2245D4 0%,#3B5CFF 100%);padding:28px 24px 24px;position:relative;overflow:hidden}
+    .hdr::before{content:'';position:absolute;top:-50px;right:-50px;width:180px;height:180px;background:rgba(255,255,255,0.08);border-radius:50%}
+    .hdr-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+    .brand{display:flex;align-items:center;gap:10px}
+    .brand-logo{width:40px;height:40px;background:#fff;border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:900;color:#2245D4;font-size:14px}
+    .brand-name{font-size:12px;font-weight:800;color:#fff;letter-spacing:1.5px;text-transform:uppercase}
+    .brand-sub{font-size:10px;color:rgba(255,255,255,0.75);margin-top:2px}
+    .status-pill{background:#fff;color:${accentDark};font-size:10px;font-weight:800;padding:4px 12px;border-radius:20px;letter-spacing:1.5px}
+    .amt-label{font-size:10px;font-weight:700;color:rgba(255,255,255,0.8);letter-spacing:2px;text-transform:uppercase;margin-bottom:4px}
+    .amt-big{font-size:40px;font-weight:900;color:#fff;letter-spacing:-1px;line-height:1}
+    .amt-sub{font-size:12px;color:rgba(255,255,255,0.8);margin-top:6px}
+
+    /* hostel strip */
+    .strip{background:${accent}15;border-top:1px solid ${accent}30;border-bottom:1px solid ${accent}30;padding:12px 24px;display:flex;align-items:center;justify-content:space-between}
+    .strip-left{display:flex;align-items:center;gap:12px}
+    .avatar{width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,#2245D4,#3B5CFF);display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:900}
+    .hn{font-size:13px;font-weight:800;color:#0F172A}
+    .hl{font-size:10px;color:#64748B;margin-top:1px}
+    .chip{display:flex;align-items:center;gap:6px;padding:5px 10px;border-radius:20px;background:${accent}20;border:1px solid ${accent}40}
+    .chip-dot{width:6px;height:6px;border-radius:50%;background:${accent}}
+    .chip-txt{font-size:10px;font-weight:800;color:${accentDark}}
+
+    /* body */
+    .body{padding:20px 24px}
+    .sec-title{font-size:9px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:2px;margin-bottom:12px}
+
+    /* grid */
+    .grid{border:1.5px solid #E2E8F0;border-radius:14px;overflow:hidden;display:grid;grid-template-columns:1fr 1fr;margin-bottom:16px}
+    .cell{padding:12px 14px;border-bottom:1px solid #E2E8F0;border-right:1px solid #E2E8F0}
+    .cell:nth-child(even){border-right:none}
+    .cell:nth-last-child(-n+2){border-bottom:none}
+    .cell.full{grid-column:1/-1;border-right:none}
+    .cl{font-size:9px;color:#94A3B8;font-weight:700;text-transform:uppercase;letter-spacing:.8px;margin-bottom:3px}
+    .cv{font-size:12px;font-weight:700;color:#1E293B}
+
+    /* mode */
+    .mode-row{display:flex;align-items:center;gap:10px;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:12px;padding:10px 14px;margin-bottom:16px}
+    .mode-ico{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,#2245D4,#3B5CFF);display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:900}
+    .mode-lbl{font-size:9px;color:#94A3B8;font-weight:700;letter-spacing:.5px;text-transform:uppercase}
+    .mode-val{font-size:13px;font-weight:800;color:#1E293B}
+    .mode-amt{margin-left:auto;background:${accent}20;padding:5px 10px;border-radius:20px;font-size:12px;font-weight:800;color:${accentDark}}
+
+    /* dashed */
+    .dash{border:none;border-top:2px dashed #E2E8F0;margin:16px 0;position:relative}
+
+    /* summary */
+    .summ{background:#F8FAFC;border:1.5px solid #E2E8F0;border-radius:14px;padding:14px 16px;margin-bottom:16px}
+    .srow{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+    .srow:last-child{margin-bottom:0}
+    .slbl{font-size:12px;color:#64748B}
+    .sval{font-size:12px;font-weight:700;color:#1E293B}
+    .stotal{display:flex;justify-content:space-between;align-items:center;border-top:1.5px solid #E2E8F0;padding-top:12px;margin-top:4px}
+    .stotal-lbl{font-size:13px;font-weight:800;color:#0F172A}
+    .stotal-val{font-size:22px;font-weight:900;color:${accent}}
+
+    /* footer */
+    .foot{background:#F8FAFC;border-top:1.5px solid #E2E8F0;padding:14px 24px;text-align:center}
+    .foot-brand{font-size:11px;font-weight:800;color:#2245D4;letter-spacing:1.5px;text-transform:uppercase}
+    .foot-note{font-size:9px;color:#94A3B8;margin-top:3px}
+    .foot-gen{font-size:9px;color:#CBD5E1;margin-top:6px}
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="hdr">
+    <div class="hdr-top">
+      <div class="brand">
+        <div class="brand-logo">H•</div>
+        <div>
+          <div class="brand-name">HOSTIX</div>
+          <div class="brand-sub">PG Management OS</div>
+        </div>
+      </div>
+      <div class="status-pill">${isPaid ? '✓' : '!'} ${statusLabel}</div>
+    </div>
+    <div class="amt-label">Total Amount</div>
+    <div class="amt-big">₹${Number(amount || 0).toLocaleString('en-IN')}</div>
+    <div class="amt-sub">${dateStr} at ${timeStr}</div>
+  </div>
+
+  <div class="strip">
+    <div class="strip-left">
+      <div class="avatar">${hostelInitials}</div>
+      <div>
+        <div class="hn">${hostelName}</div>
+        <div class="hl">Accommodation Provider</div>
+      </div>
+    </div>
+    <div class="chip">
+      <div class="chip-dot"></div>
+      <span class="chip-txt">${statusLabel}</span>
+    </div>
+  </div>
+
+  <div class="body">
+    <div class="sec-title">Invoice Details</div>
+    <div class="grid">
+      <div class="cell">
+        <div class="cl">Tenant Name</div>
+        <div class="cv">${user?.name || 'Tenant'}</div>
+      </div>
+      <div class="cell">
+        <div class="cl">Fee Month</div>
+        <div class="cv">${feeMonthStr}</div>
+      </div>
+      <div class="cell">
+        <div class="cl">Room / Bed</div>
+        <div class="cv">Room ${user?.room_number || 'N/A'}${user?.bed_number ? ` · Bed ${user.bed_number}` : ''}</div>
+      </div>
+      <div class="cell">
+        <div class="cl">Receipt No</div>
+        <div class="cv">${transactionId}</div>
+      </div>
+      <div class="cell full">
+        <div class="cl">Transaction / Reference ID</div>
+        <div class="cv" style="color:#6366F1">${transactionId}</div>
+      </div>
+    </div>
+
+    <div class="mode-row">
+      <div class="mode-ico">${(paymentMode[0] || 'P').toUpperCase()}</div>
+      <div>
+        <div class="mode-lbl">Payment Mode</div>
+        <div class="mode-val">${paymentMode}</div>
+      </div>
+      <div class="mode-amt">₹${Number(amount || 0).toLocaleString('en-IN')}</div>
+    </div>
+
+    <hr class="dash"/>
+
+    <div class="summ">
+      <div class="srow"><span class="slbl">Rent Amount</span><span class="sval">₹${Number(amount || 0).toLocaleString('en-IN')}</span></div>
+      <div class="srow"><span class="slbl">Other Charges</span><span class="sval">₹0</span></div>
+      <div class="stotal">
+        <span class="stotal-lbl">Total Paid</span>
+        <span class="stotal-val">₹${Number(amount || 0).toLocaleString('en-IN')}</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="foot">
+    <div class="foot-brand">HOSTIX • PG OS</div>
+    <div class="foot-note">System-generated receipt · No signature required</div>
+    <div class="foot-gen">Generated on ${generatedAt}</div>
+  </div>
+
+</div>
+</body>
+</html>`;
 
   const handleShare = async () => {
     try {
-      const { uri } = await Print.printToFileAsync({ html: getPdfHtml() });
+      const { uri } = await Print.printToFileAsync({ html: htmlContent });
       if (await Sharing.isAvailableAsync()) {
         await Sharing.shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf', dialogTitle: 'Share Receipt' });
       } else {
@@ -79,7 +211,7 @@ export default function PaymentReceiptScreen({ route, navigation }: any) {
 
   const handleDownload = async () => {
     try {
-      const { uri } = await Print.printToFileAsync({ html: getPdfHtml() });
+      const { uri } = await Print.printToFileAsync({ html: htmlContent });
       const filename = `receipt_${transactionId.replace(/[^a-zA-Z0-9-_]/g, '_')}.pdf`;
       await downloadAndSaveFile(uri, filename, 'application/pdf', true);
     } catch (error) {
@@ -87,8 +219,6 @@ export default function PaymentReceiptScreen({ route, navigation }: any) {
       Alert.alert('Error', 'Failed to save PDF');
     }
   };
-
-
 
   return (
     <View style={styles.safeArea}>

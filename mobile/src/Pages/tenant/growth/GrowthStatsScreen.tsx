@@ -1,8 +1,7 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
 import api from '../../../services/api';
 import { theme } from '../../../theme/tenantTheme';
@@ -22,8 +21,6 @@ interface Stats {
   yearlyProgress: number;
 }
 
-import AppHeader from '../../../components/tenant/ui/AppHeader';
-
 export function GrowthStatsScreen({ navigation }: any) {
   const [data, setData] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -39,25 +36,14 @@ export function GrowthStatsScreen({ navigation }: any) {
   );
 
   return (
-    <View style={styles.screen}>
-      <StatusBar barStyle="light-content" backgroundColor={theme.colors.primary} />
-
-      {/* Standard Unified AppHeader */}
-      <AppHeader
-        title="Your Progress"
-        subtitle={data ? `Level ${data.currentLevel || 1} · 🔥 ${data.currentStreak || 0}d streak` : 'Your reading achievements'}
-        showBack={false}
-        rightComponent={
-          data?.currentLevel ? (
-            <View style={styles.levelBadge}>
-              <Ionicons name="trophy" size={13} color="#FEF08A" style={{ marginRight: 4 }} />
-              <Text style={styles.levelBadgeText}>Lvl {data.currentLevel}</Text>
-            </View>
-          ) : null
-        }
-      />
-
-
+    <SafeAreaView style={styles.screen} edges={['top']}>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={12}>
+          <Ionicons name="chevron-back" size={24} color={theme.colors.text} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Your Progress</Text>
+        <View style={{ width: 24 }} />
+      </View>
 
       {loading || !data ? (
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -88,15 +74,15 @@ export function GrowthStatsScreen({ navigation }: any) {
           </View>
         </ScrollView>
       )}
-    </View>
+    </SafeAreaView>
   );
 }
 
 function StatTile({ icon, value, label, color }: { icon: any; value: string | number; label: string; color: string }) {
   return (
     <View style={styles.tile}>
-      <View style={[styles.tileIcon, { backgroundColor: `${color}18` }]}>
-        <Ionicons name={icon} size={18} color={color} />
+      <View style={[styles.tileIcon, { backgroundColor: color + '22' }]}>
+        <Ionicons name={icon} size={20} color={color} />
       </View>
       <Text style={styles.tileValue}>{value}</Text>
       <Text style={styles.tileLabel}>{label}</Text>
@@ -121,50 +107,12 @@ function ProgressRow({ label, current, target, color }: { label: string; current
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: theme.colors.bg },
-  gradientHeader: {
-    paddingBottom: 16,
-    paddingHorizontal: 16,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
+  header: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: theme.spacing.lg, paddingVertical: theme.spacing.md,
   },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingTop: 8,
-  },
-  backBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    letterSpacing: -0.3,
-  },
-  headerSub: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.85)',
-    marginTop: 2,
-  },
-  levelBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 14,
-    backgroundColor: 'rgba(255,255,255,0.22)',
-  },
-  levelBadgeText: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: '#FFFFFF',
-  },
-  content: { padding: theme.spacing.lg, paddingBottom: 85 },
+  headerTitle: { ...theme.text.sectionTitle },
+  content: { padding: theme.spacing.lg, paddingBottom: theme.spacing['4xl'] },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.md },
   tile: {
     width: '31%',

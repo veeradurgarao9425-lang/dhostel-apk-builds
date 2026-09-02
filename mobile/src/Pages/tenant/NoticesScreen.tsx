@@ -164,27 +164,7 @@ export default function NoticesScreen({ navigation }: any) {
             renderItem={({ item: notice }) => {
               const meta = categoryMeta[notice.category] || categoryMeta.General;
               return (
-                <TouchableOpacity
-                  activeOpacity={0.8}
-                  style={styles.noticeCard}
-                  onPress={() => navigation.navigate('NoticeDetails', {
-                    notice: {
-                      ...notice,
-                      notice_id: notice.id,
-                      title: notice.title,
-                      content: notice.body,
-                      notice_type: notice.category,
-                      created_at: notice.date,
-                      image_url: notice.image_url,
-                    },
-                    categoryConfig: {
-                      category_name: notice.category,
-                      emoji: notice.category === 'Important' ? '🚨' : notice.category === 'Maintenance' ? '🔧' : notice.category === 'Food' ? '🍽️' : '📢',
-                      color: meta.iconColor,
-                    },
-                    isAdmin: false,
-                  })}
-                >
+                <TouchableOpacity activeOpacity={0.85} style={styles.noticeCard}>
                   <View style={styles.cardContent}>
                     <View style={[styles.iconWrap, { backgroundColor: meta.iconBg }]}>
                       <Ionicons name={meta.icon as any} size={22} color={meta.iconColor} />
@@ -208,17 +188,11 @@ export default function NoticesScreen({ navigation }: any) {
                           style={styles.noticeImage}
                         />
                       )}
-
-                      <View style={styles.cardFoot}>
-                        <Text style={styles.cardFootText}>View Details</Text>
-                        <Ionicons name="chevron-forward" size={14} color={theme.colors.primary} />
-                      </View>
                     </View>
                   </View>
                 </TouchableOpacity>
               );
             }}
-
           />
         )}
       </View>
@@ -357,20 +331,4 @@ const styles = StyleSheet.create({
     marginTop: 8,
     resizeMode: 'cover',
   },
-  cardFoot: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-    gap: 4,
-    marginTop: 8,
-    paddingTop: 6,
-    borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
-  },
-  cardFootText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: theme.colors.primary,
-  },
 });
-

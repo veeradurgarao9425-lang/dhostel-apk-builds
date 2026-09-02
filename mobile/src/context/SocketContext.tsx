@@ -36,20 +36,11 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
       });
 
       const refresh = () => DeviceEventEmitter.emit('REFRESH_NOTIFICATIONS');
-      const refreshUserSession = () => {
-        DeviceEventEmitter.emit('REFRESH_NOTIFICATIONS');
-        DeviceEventEmitter.emit('REFRESH_USER');
-      };
 
       socket.on('new_payment', refresh);
       socket.on('payment_proof_uploaded', refresh);
       socket.on('new_complaint', refresh);
       socket.on('REFRESH_NOTIFICATIONS', refresh);
-      socket.on('new_notification', refresh);
-      socket.on('STUDENT_APPROVED', refreshUserSession);
-      socket.on('REFRESH_USER_STATUS', refreshUserSession);
-      socket.on('PAYMENT_VERIFIED', refreshUserSession);
-      socket.on('PAYMENT_APPROVED', refreshUserSession);
     };
 
     connect();
