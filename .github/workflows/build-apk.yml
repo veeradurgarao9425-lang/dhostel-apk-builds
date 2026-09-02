@@ -84,6 +84,27 @@ jobs:
         working-directory: mobile
         run: npx expo prebuild --platform android --clean
 
+      - name: Patch AndroidManifest to resolve Firebase metadata merge conflicts
+        working-directory: mobile
+        run: |
+          node -e '
+            const fs = require("fs");
+            const path = "android/app/src/main/AndroidManifest.xml";
+            if (fs.existsSync(path)) {
+              let xml = fs.readFileSync(path, "utf8");
+              if (!xml.includes("xmlns:tools")) {
+                xml = xml.replace("<manifest", "<manifest xmlns:tools=\"http://schemas.android.com/tools\"");
+              }
+              xml = xml.replace(/tools:replace="[^"]*"/g, "");
+              xml = xml.replace(/android:name="com.google.firebase.messaging.default_notification_color" android:resource="[^"]*"/g, "$& tools:replace=\"android:resource\"");
+              xml = xml.replace(/android:name="com.google.firebase.messaging.default_notification_icon" android:resource="[^"]*"/g, "$& tools:replace=\"android:resource\"");
+              xml = xml.replace(/android:name="expo.modules.notifications.default_notification_color" android:resource="[^"]*"/g, "$& tools:replace=\"android:resource\"");
+              xml = xml.replace(/android:name="expo.modules.notifications.default_notification_icon" android:resource="[^"]*"/g, "$& tools:replace=\"android:resource\"");
+              fs.writeFileSync(path, xml);
+              console.log("Successfully patched AndroidManifest.xml with tools:replace");
+            }
+          '
+
       - name: Grant execute permission to gradlew
         working-directory: mobile/android
         run: chmod +x gradlew
