@@ -2,21 +2,21 @@ import React, { useEffect } from 'react';
 import { io, Socket } from 'socket.io-client';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { DeviceEventEmitter, AppState, AppStateStatus } from 'react-native';
+import Toast from 'react-native-toast-message';
 import { useAuth } from '../../contexts/AuthContext';
 
 const envUrl = process.env.EXPO_PUBLIC_API_URL as string | undefined;
 const BASE_URL = (envUrl && !envUrl.includes('192.168.')) ? envUrl : 'https://dark-dew-bf62.veeradurgarao840.workers.dev/api';
 const SOCKET_URL = (envUrl && !envUrl.includes('192.168.')) ? envUrl.replace('/api', '') : 'https://api.143-244-131-69.sslip.io';
 
-/**
- * The owner app never opened a socket connection before — new_payment,
- * payment_proof_uploaded, and new_complaint were emitted by the backend to
- * hostel_${id} but nobody was listening. The server auto-joins the socket
- * to hostel_${hostel_id} from the JWT (see backend/src/socket/index.ts), so
- * this just needs to connect and bridge events onto the same
- * DeviceEventEmitter channel ('REFRESH_NOTIFICATIONS') that
- * useNotifications.ts already listens on for push-driven refresh.
- */
+const getExpoNotifications = () => {
+  try {
+    return require('expo-notifications');
+  } catch {
+    return null;
+  }
+};
+
 export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
   const { user } = useAuth();
 
@@ -35,12 +35,42 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
         reconnectionDelay: 1000,
       });
 
-      const refresh = () => DeviceEventEmitter.emit('REFRESH_NOTIFICATIONS');
+      const handleEvent = (payload?: any, defaultTitle = 'Hostix Alert 🔔', defaultMessage = '') => {
+        DeviceEventEmitter.emit('REFRESH_NOTIFICATIONS', payload);
 
-      socket.on('new_payment', refresh);
-      socket.on('payment_proof_uploaded', refresh);
-      socket.on('new_complaint', refresh);
-      socket.on('REFRESH_NOTIFICATIONS', refresh);
+        const title = payload?.title || defaultTitle;
+        const message = payload?.message || payload?.body || defaultMessage;
+
+        if (title || message) {
+          Toast.show({
+            type: 'info',
+            text1: title,
+            text2: message,
+          });
+
+          try {
+            const Notifications = getExpoNotifications();
+            if (Notifications && typeof Notifications.scheduleNotificationAsync === 'function') {
+              Notifications.scheduleNotificationAsync({
+                content: {
+                  title,
+                  body: message,
+                  sound: 'default',
+                  data: payload || {},
+                },
+                trigger: null,
+              }).catch(() => {});
+            }
+          } catch (_) {}
+        }
+      };
+
+      socket.on('new_notification', (p) => handleEvent(p, 'New Notification 🔔'));
+      socket.on('new_payment', (p) => handleEvent(p, 'Payment Recorded ✅', `Payment of ₹${p?.amount || ''} received.`));
+      socket.on('payment_recorded', (p) => handleEvent(p, 'Payment Received ✅', `Rent payment of ₹${p?.amount || ''} was recorded.`));
+      socket.on('payment_proof_uploaded', (p) => handleEvent(p, 'Payment Proof Uploaded 📄', 'A tenant submitted payment proof for verification.'));
+      socket.on('new_complaint', (p) => handleEvent(p, 'New Complaint Registered 🔧', 'A new maintenance request has been submitted.'));
+      socket.on('REFRESH_NOTIFICATIONS', (p) => handleEvent(p, 'Hostix Update 🔔'));
     };
 
     connect();

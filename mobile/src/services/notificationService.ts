@@ -23,6 +23,19 @@ const getExpoNotificationsModule = () => {
   }
 };
 
+try {
+  const Notifications = getExpoNotificationsModule();
+  if (Notifications && typeof Notifications.setNotificationHandler === 'function') {
+    Notifications.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldShowAlert: true,
+        shouldPlaySound: true,
+        shouldSetBadge: true,
+      }),
+    });
+  }
+} catch (_) {}
+
 export const notificationService = {
   _lastRegisteredToken: null as string | null,
 
@@ -51,11 +64,14 @@ export const notificationService = {
           const Notifications = getExpoNotificationsModule();
           if (Notifications?.setNotificationChannelAsync) {
             await Notifications.setNotificationChannelAsync('default', {
-              name: 'Default',
+              name: 'Hostix Alerts',
               importance: Notifications.AndroidImportance.MAX,
               vibrationPattern: [0, 250, 250, 250],
               lightColor: '#6D4AFF',
               sound: 'default',
+              enableLights: true,
+              enableVibrate: true,
+              showBadge: true,
             });
           }
         } catch (_) {}
@@ -175,6 +191,19 @@ export const notificationService = {
     } catch (err) {}
   },
 
+  async sendTestNotification(title?: string, message?: string, data?: any): Promise<boolean> {
+    try {
+      const res = await api.post('/notifications/test', {
+        title: title || 'Test Push Notification',
+        message: message || 'This is a live native push notification from Hostix!',
+        data: data || { screen: 'Notifications' },
+      });
+      return !!res.data?.success;
+    } catch {
+      return false;
+    }
+  },
+
   /**
    * Set up notification listeners (foreground and click / background handlers).
    * Returns a cleanup function to call on unmount.
@@ -205,10 +234,30 @@ export const notificationService = {
             const title = remoteMessage.notification?.title || remoteMessage.data?.title || 'Notification';
             const body = remoteMessage.notification?.body || remoteMessage.data?.message || '';
             const screen = remoteMessage.data?.screen as string | undefined;
-            const params = remoteMessage.data?.params ? (typeof remoteMessage.data.params === 'string' ? JSON.parse(remoteMessage.data.params) : remoteMessage.data.params) : undefined;
+            let params = remoteMessage.data?.params;
+            if (typeof params === 'string') {
+              try { params = JSON.parse(params); } catch (_) {}
+            }
 
             console.log('[FCM] 📨 Foreground message:', title, body);
 
+            // 1. Post native Android OS status bar heads-up alert banner
+            try {
+              const Notifications = getExpoNotificationsModule();
+              if (Notifications && typeof Notifications.scheduleNotificationAsync === 'function') {
+                Notifications.scheduleNotificationAsync({
+                  content: {
+                    title,
+                    body,
+                    sound: 'default',
+                    data: { screen, params },
+                  },
+                  trigger: null,
+                }).catch(() => {});
+              }
+            } catch (_) {}
+
+            // 2. Also show in-app Toast with action
             Toast.show({
               type: 'info',
               text1: title,

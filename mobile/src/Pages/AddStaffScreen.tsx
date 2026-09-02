@@ -1115,208 +1115,6 @@ export default function AddStaffScreen() {
                     </View>
                 </View>
 
-                {/* Mobile App Login Credentials */}
-                <View style={styles.formCard}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                            <KeyRound size={20} color={theme.primary} />
-                            <Text style={styles.sectionTitle}>Hostix App Access</Text>
-                        </View>
-                        <Switch
-                            value={canLogin}
-                            onValueChange={setCanLogin}
-                            trackColor={{ false: '#CBD5E1', true: theme.primary }}
-                            thumbColor="#FFFFFF"
-                        />
-                    </View>
-
-                    <Text style={styles.fieldHint}>
-                        Allow this staff member to log in to the Hostix mobile app with their mobile number or email.
-                    </Text>
-
-                    {canLogin && (
-                        <View style={{ marginTop: 14, gap: 14 }}>
-                            <View style={styles.inputGroup}>
-                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                                    <Text style={styles.inputLabel}>
-                                        {isEdit ? "Set New Password (optional)" : "Staff Login Password *"}
-                                    </Text>
-                                    <TouchableOpacity
-                                        onPress={generateSecurePassword}
-                                        style={styles.generateBtn}
-                                        activeOpacity={0.7}
-                                    >
-                                        <Sparkles size={13} color={theme.primary} />
-                                        <Text style={[styles.generateBtnText, { color: theme.primary }]}>Auto-Generate</Text>
-                                    </TouchableOpacity>
-                                </View>
-                                <View style={[styles.inputContainer, errors.loginPassword && styles.inputError]}>
-                                    <Lock size={18} color={errors.loginPassword ? '#EF4444' : theme.primary} style={styles.inputIcon} />
-                                    <TextInput
-                                        style={[styles.input, { paddingRight: 40 }]}
-                                        placeholder={isEdit ? "Leave blank to keep existing password" : "Enter minimum 6 characters"}
-                                        placeholderTextColor="#A0AEC0"
-                                        secureTextEntry={!passwordVisible}
-                                        value={loginPassword}
-                                        onChangeText={t => {
-                                            setLoginPassword(t);
-                                            if (errors.loginPassword) {
-                                                setErrors(p => {
-                                                    const c = { ...p };
-                                                    delete c.loginPassword;
-                                                    return c;
-                                                });
-                                            }
-                                        }}
-                                    />
-                                    <TouchableOpacity
-                                        onPress={() => setPasswordVisible(!passwordVisible)}
-                                        style={styles.eyeBtn}
-                                        activeOpacity={0.7}
-                                    >
-                                        {passwordVisible ? <EyeOff size={18} color="#64748B" /> : <Eye size={18} color="#64748B" />}
-                                    </TouchableOpacity>
-                                </View>
-                                {errors.loginPassword && <Text style={styles.errorText}>{errors.loginPassword}</Text>}
-                            </View>
-
-                            <View style={[styles.securityNoticeBox, { backgroundColor: '#F0FDF4', borderColor: '#BBF7D0' }]}>
-                                <Shield size={16} color="#16A34A" style={{ marginTop: 2 }} />
-                                <View style={{ flex: 1 }}>
-                                    <Text style={[styles.securityNoticeTitle, { color: '#166534' }]}>
-                                        Hostel Isolation Guaranteed
-                                    </Text>
-                                    <Text style={[styles.securityNoticeText, { color: '#15803D' }]}>
-                                        When this staff logs in, they will strictly only access {availableHostels.find(h => h.hostel_id === selectedHostelId)?.hostel_name || 'the selected hostel'}. They cannot view or manage your other hostels.
-                                    </Text>
-                                </View>
-                            </View>
-                        </View>
-                    )}
-                </View>
-
-                {/* Module Privileges Matrix */}
-                {canLogin && (
-                    <View style={styles.formCard}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                                <Sliders size={20} color={theme.primary} />
-                                <Text style={styles.sectionTitle}>Module Privileges</Text>
-                            </View>
-                            <TouchableOpacity
-                                onPress={() => applyPreset('warden')}
-                                style={[styles.presetQuickBtn, { backgroundColor: theme.primary + '15' }]}
-                            >
-                                <Text style={[styles.presetQuickText, { color: theme.primary }]}>Quick Presets</Text>
-                            </TouchableOpacity>
-                        </View>
-
-                        <Text style={styles.fieldHint}>
-                            Choose what parts of the hostel management app this team member is allowed to see or modify.
-                        </Text>
-
-                        {/* Presets Row */}
-                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.presetsRow}>
-                            <TouchableOpacity
-                                style={[styles.presetPill, { borderColor: theme.primary }]}
-                                onPress={() => applyPreset('warden')}
-                                activeOpacity={0.7}
-                            >
-                                <Text style={[styles.presetPillText, { color: theme.primary }]}>🛡️ Full Warden</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                style={styles.presetPill}
-                                onPress={() => applyPreset('supervisor')}
-                                activeOpacity={0.7}
-                            >
-                                <Text style={styles.presetPillText}>👁️ View Only</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                style={styles.presetPill}
-                                onPress={() => applyPreset('cook')}
-                                activeOpacity={0.7}
-                            >
-                                <Text style={styles.presetPillText}>🍽️ Kitchen / Mess</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                style={[styles.presetPill, { borderColor: '#E2E8F0' }]}
-                                onPress={() => applyPreset('reset')}
-                                activeOpacity={0.7}
-                            >
-                                <Text style={[styles.presetPillText, { color: '#94A3B8' }]}>✕ Clear All</Text>
-                            </TouchableOpacity>
-                        </ScrollView>
-
-                        {/* Permission Modules List */}
-                        <View style={{ gap: 10, marginTop: 12 }}>
-                            {MODULE_CONFIG.map((mod) => {
-                                const currentVal = (permissions as any)[mod.key] || 'none';
-                                return (
-                                    <View
-                                        key={mod.key}
-                                        style={[
-                                            styles.modulePermissionCard,
-                                            { backgroundColor: '#F8FAFC' }
-                                        ]}
-                                    >
-                                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
-                                                <Text style={{ fontSize: 18 }}>{mod.icon}</Text>
-                                                <View style={{ flex: 1 }}>
-                                                    <Text style={[styles.moduleTitle, { color: theme.textPrimary }]}>{mod.label}</Text>
-                                                    <Text style={styles.moduleDesc} numberOfLines={1}>{mod.desc}</Text>
-                                                </View>
-                                            </View>
-                                        </View>
-
-                                        {/* Segmented Controller */}
-                                        <View style={styles.segmentedToggle}>
-                                            {mod.options.map((opt) => {
-                                                const isOptSelected = currentVal === opt.id;
-                                                return (
-                                                    <TouchableOpacity
-                                                        key={opt.id}
-                                                        style={[
-                                                            styles.segmentedOption,
-                                                            isOptSelected && [
-                                                                styles.segmentedOptionActive,
-                                                                {
-                                                                    backgroundColor:
-                                                                        opt.id === 'manage'
-                                                                            ? '#10B981'
-                                                                            : opt.id === 'view'
-                                                                            ? '#3B82F6'
-                                                                            : '#64748B'
-                                                                }
-                                                            ]
-                                                        ]}
-                                                        onPress={() => {
-                                                            setPermissions(prev => ({
-                                                                ...prev,
-                                                                [mod.key]: opt.id
-                                                            }));
-                                                        }}
-                                                        activeOpacity={0.8}
-                                                    >
-                                                        <Text
-                                                            style={[
-                                                                styles.segmentedOptionText,
-                                                                isOptSelected && styles.segmentedOptionTextActive
-                                                            ]}
-                                                        >
-                                                            {opt.label}
-                                                        </Text>
-                                                    </TouchableOpacity>
-                                                );
-                                            })}
-                                        </View>
-                                    </View>
-                                );
-                            })}
-                        </View>
-                    </View>
-                )}
-
                 {/* Identity Verification */}
                 <View style={styles.formCard}>
                     <Text style={styles.sectionTitle}>🪪 Verification Documents</Text>
@@ -1516,27 +1314,27 @@ const styles = StyleSheet.create({
     // Role selector
     chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
     chip: { 
-        paddingHorizontal: 14, 
-        paddingVertical: 8, 
-        borderRadius: 18, 
+        paddingHorizontal: 11, 
+        paddingVertical: 6, 
+        borderRadius: 8, 
         borderWidth: 1, 
         borderColor: '#E2E8F0', 
         backgroundColor: '#FFF' 
     },
-    chipText: { fontSize: 12, fontWeight: '700', color: '#64748B' },
+    chipText: { fontSize: 12, fontWeight: '600', color: '#64748B' },
 
     // Status
     statusRow: { flexDirection: 'row', gap: 8 },
     statusChip: { 
         flex: 1, 
-        paddingVertical: 8, 
-        borderRadius: 10, 
+        paddingVertical: 6, 
+        borderRadius: 8, 
         borderWidth: 1, 
         borderColor: '#E2E8F0', 
         backgroundColor: '#FFF', 
         alignItems: 'center' 
     },
-    statusChipText: { fontSize: 12, fontWeight: '800', color: '#64748B' },
+    statusChipText: { fontSize: 12, fontWeight: '700', color: '#64748B' },
 
     // Date
     dateField: { 

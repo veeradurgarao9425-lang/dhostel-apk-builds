@@ -218,21 +218,20 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
     const navigationKey = `${user?.user_id || (user as any)?.id || 'guest'}_${user?.role || 'none'}_${user?.is_allocated ? 'alloc' : 'pending'}_${user?.hostel_id || 'none'}`;
 
     useEffect(() => {
+        // Setup listeners for foreground notifications, heads-up status bar alerts, and clicks
+        const unsubscribe = notificationService.setupNotificationListeners((screen, params) => {
+            if (navigationRef.isReady && navigationRef.isReady()) {
+                (navigationRef as any).navigate(screen, params);
+            }
+        });
+
         if (user) {
-            // Register for push notifications and send token to backend
-            notificationService.registerForPushNotificationsAsync();
-
-            // Setup listeners for foreground notifications and clicks
-            const unsubscribe = notificationService.setupNotificationListeners((screen, params) => {
-                if (navigationRef.isReady()) {
-                    (navigationRef as any).navigate(screen, params);
-                }
-            });
-
-            return () => {
-                unsubscribe();
-            };
+            notificationService.registerForPushNotificationsAsync().catch(() => {});
         }
+
+        return () => {
+            unsubscribe();
+        };
     }, [user?.user_id || (user as any)?.id]);
 
     return (
