@@ -1011,8 +1011,6 @@ export default function PendingPaymentsScreen() {
             });
 
             // Compute dynamic live tab counts from students
-            const now = new Date();
-            now.setHours(0, 0, 0, 0);
             const overdueCount = pending.filter(s => s.isOverdue && s.dueAmount > 0).length;
             const overdueAmount = pending.filter(s => s.isOverdue && s.dueAmount > 0).reduce((sum, s) => sum + s.dueAmount, 0);
             const next7Count = pending.filter(s => {

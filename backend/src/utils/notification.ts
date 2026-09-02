@@ -251,7 +251,7 @@ export const sendNotificationToUser = async (options: SendNotificationOptions): 
             notification: {
               channelId: 'default',
               sound: 'default',
-              icon: 'notification_icon',
+              icon: 'ic_launcher',
               color: color || '#6D4AFF',
               defaultVibrateTimings: true,
               priority: 'high',

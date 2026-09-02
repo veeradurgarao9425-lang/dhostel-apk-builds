@@ -60,6 +60,8 @@ const ThemedToast = () => {
   return <Toast config={toastConfig} position="top" topOffset={50} />;
 };
 
+import { notificationService } from './src/services/notificationService';
+
 export default function App() {
   const [fontsLoaded] = useFonts({
     Inter_400Regular,
@@ -82,6 +84,11 @@ export default function App() {
     if (fontsLoaded) {
       clearTimeout(timeout);
       try { SplashScreen.hideAsync().catch(() => {}); } catch (_) {}
+
+      // Register push notifications safely after UI is rendered
+      setTimeout(() => {
+        notificationService.registerForPushNotificationsAsync().catch(() => {});
+      }, 500);
     }
 
     return () => clearTimeout(timeout);
