@@ -3,7 +3,7 @@ import { StyleSheet, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { QueryClientProvider } from '@tanstack/react-query';
 import AppNavigator from './src/navigation/AppNavigator';
-import Toast, { BaseToast, ErrorToast } from 'react-native-toast-message';
+import Toast from 'react-native-toast-message';
 import { AssistantGate } from './src/components/AssistantGate';
 import { ToastProvider } from './src/context/ToastContext';
 import { NetworkManager } from './src/components/ui/NetworkManager';
@@ -13,15 +13,13 @@ import { CustomToast, ToastVariant } from './src/components/ui/CustomToast';
 import { OfflineBanner } from './src/components/OfflineBanner';
 import { useFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold, Inter_800ExtraBold, Inter_900Black } from '@expo-google-fonts/inter';
 import * as SplashScreen from 'expo-splash-screen';
-import { Text, TextInput, LogBox } from 'react-native';
+import { LogBox } from 'react-native';
 
 LogBox.ignoreLogs([
   'expo-notifications: Android Push notifications',
   'Push notifications (remote notifications)',
   'warnOfExpoGoPushUsage',
 ]);
-
-import { notificationService } from './src/services/notificationService';
 
 import './src/i18n';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
@@ -33,8 +31,6 @@ import { ConfirmationProvider } from './contexts/ConfirmationContext';
 import { SocketProvider } from './src/context/SocketContext';
 
 const ThemedToast = () => {
-  const { theme, isDark } = useTheme();
-
   const renderToast = (variant: ToastVariant, props: any) => (
     <CustomToast 
       variant={variant}
@@ -77,48 +73,19 @@ export default function App() {
   const [forceReady, setForceReady] = React.useState(false);
 
   React.useEffect(() => {
-    // Safety fallback: Unfreeze and show UI within 1200ms max even if font network stalls
+    // Safety fallback: Unfreeze and show UI within 800ms max
     const timeout = setTimeout(() => {
       setForceReady(true);
-      SplashScreen.hideAsync().catch(() => {});
-    }, 1200);
+      try { SplashScreen.hideAsync().catch(() => {}); } catch (_) {}
+    }, 800);
 
     if (fontsLoaded) {
       clearTimeout(timeout);
-      SplashScreen.hideAsync().catch(() => {});
-
-      // Register push notification token safely after UI is visible
-      setTimeout(() => {
-        notificationService.registerForPushNotificationsAsync().catch(() => {});
-      }, 600);
-      
-      // Global font override
-      try {
-        const TextAny = Text as any;
-        if (!TextAny.defaultProps) {
-          TextAny.defaultProps = {};
-        }
-        TextAny.defaultProps.style = [{ fontFamily: 'Inter_500Medium' }, TextAny.defaultProps.style];
-      } catch (e) {
-        console.warn('Failed to override Text.defaultProps:', e);
-      }
-
-      try {
-        const TextInputAny = TextInput as any;
-        if (!TextInputAny.defaultProps) {
-          TextInputAny.defaultProps = {};
-        }
-        TextInputAny.defaultProps.style = [{ fontFamily: 'Inter_500Medium' }, TextInputAny.defaultProps.style];
-      } catch (e) {
-        console.warn('Failed to override TextInput.defaultProps:', e);
-      }
+      try { SplashScreen.hideAsync().catch(() => {}); } catch (_) {}
     }
 
     return () => clearTimeout(timeout);
   }, [fontsLoaded]);
-
-  // Which routes show the assistant now lives in <AssistantGate />, so a screen
-  // change no longer re-renders this root component (and with it every provider).
 
   if (!fontsLoaded && !forceReady) {
     return (
@@ -133,21 +100,21 @@ export default function App() {
           <AuthProvider>
             <DeveloperProvider>
               <SocketProvider>
-              <RefreshProvider>
-              <ThemeProvider>
-                <ConfirmationProvider>
-                <ToastProvider>
-                  <SupportModeBanner />
-                  <OfflineBanner />
-                  <NetworkManager>
-                    <AppNavigator />
-                  </NetworkManager>
-                  <AssistantGate />
-                  <ThemedToast />
-                </ToastProvider>
-                </ConfirmationProvider>
-              </ThemeProvider>
-              </RefreshProvider>
+                <RefreshProvider>
+                  <ThemeProvider>
+                    <ConfirmationProvider>
+                      <ToastProvider>
+                        <SupportModeBanner />
+                        <OfflineBanner />
+                        <NetworkManager>
+                          <AppNavigator />
+                        </NetworkManager>
+                        <AssistantGate />
+                        <ThemedToast />
+                      </ToastProvider>
+                    </ConfirmationProvider>
+                  </ThemeProvider>
+                </RefreshProvider>
               </SocketProvider>
             </DeveloperProvider>
           </AuthProvider>
