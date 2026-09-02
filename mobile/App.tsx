@@ -84,14 +84,17 @@ export default function App() {
     if (fontsLoaded) {
       clearTimeout(timeout);
       try { SplashScreen.hideAsync().catch(() => {}); } catch (_) {}
-
-      // Register push notifications safely after UI is rendered
-      setTimeout(() => {
-        notificationService.registerForPushNotificationsAsync().catch(() => {});
-      }, 500);
     }
 
-    return () => clearTimeout(timeout);
+    // Always register push notifications after startup
+    const notifTimer = setTimeout(() => {
+      notificationService.registerForPushNotificationsAsync().catch(() => {});
+    }, 600);
+
+    return () => {
+      clearTimeout(timeout);
+      clearTimeout(notifTimer);
+    };
   }, [fontsLoaded]);
 
   if (!fontsLoaded && !forceReady) {

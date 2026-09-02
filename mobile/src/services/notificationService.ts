@@ -47,15 +47,13 @@ export const notificationService = {
     try {
       // ── Android 13+ runtime permission ─────────────────────────────
       if (Platform.OS === 'android') {
-        if (Platform.Version >= 33) {
-          const result = await PermissionsAndroid.request(
-            PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS,
-          );
-          if (result !== PermissionsAndroid.RESULTS.GRANTED) {
-            console.warn('[FCM] ❌ POST_NOTIFICATIONS permission denied.');
-            return null;
+        try {
+          if (Platform.Version >= 33) {
+            await PermissionsAndroid.request(
+              PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS,
+            );
           }
-        }
+        } catch (_) {}
       }
 
       // Create Android Notification Channel
@@ -250,6 +248,7 @@ export const notificationService = {
                     title,
                     body,
                     sound: 'default',
+                    channelId: 'default',
                     data: { screen, params },
                   },
                   trigger: null,

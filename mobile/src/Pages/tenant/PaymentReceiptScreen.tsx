@@ -21,10 +21,25 @@ export default function PaymentReceiptScreen({ route, navigation }: any) {
   const hostelName = connectedHostel?.hostel_name || 'MY HOSTEL PG';
   const hostelEmail = 'admin@hostel.com';
   const hostelInitials = hostelName.substring(0, 2).toUpperCase();
-  const paidDate = fee?.payments?.[0]?.payment_date || fee?.due_date || new Date().toISOString();
-  const paymentMode = fee?.payments?.[0]?.payment_mode?.toUpperCase() || 'ONLINE';
-  const amount = isPaid ? fee?.paid_amount : (fee?.balance > 0 ? fee.balance : fee?.total_due);
-  const transactionId = fee?.payments?.[0]?.transaction_id || `REC-${fee?.fee_id || '302'}`;
+  const paidDate = fee?.payment_date || fee?.payments?.[0]?.payment_date || fee?.due_date || fee?.created_at || new Date().toISOString();
+  const paymentMode = String(fee?.payment_mode || fee?.payments?.[0]?.payment_mode || 'ONLINE').toUpperCase();
+  
+  // Resolve accurate payment amount
+  const resolvedAmount = Number(
+    fee?.amount !== undefined && fee?.amount !== null && Number(fee.amount) > 0
+      ? fee.amount
+      : fee?.paid_amount !== undefined && fee?.paid_amount !== null && Number(fee.paid_amount) > 0
+      ? fee.paid_amount
+      : fee?.payments?.[0]?.amount !== undefined && fee?.payments?.[0]?.amount !== null && Number(fee.payments[0].amount) > 0
+      ? fee.payments[0].amount
+      : fee?.total_due !== undefined && fee?.total_due !== null && Number(fee.total_due) > 0
+      ? fee.total_due
+      : fee?.balance !== undefined && fee?.balance !== null
+      ? fee.balance
+      : 0
+  );
+  const amount = resolvedAmount;
+  const transactionId = fee?.receipt_number || fee?.transaction_id || fee?.payments?.[0]?.transaction_id || fee?.payments?.[0]?.receipt_number || `REC-${fee?.payment_id || fee?.fee_id || '302'}`;
   const feeMonthStr = fee?.fee_month ? new Date(fee.fee_month).toLocaleString('en-US', { month: 'short', year: 'numeric' }) : 'N/A';
 
   const accent      = isPaid ? '#10B981' : '#F59E0B';
