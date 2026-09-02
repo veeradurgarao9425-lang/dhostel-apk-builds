@@ -241,7 +241,7 @@ export const notificationService = {
 
             console.log('[FCM] 📨 Foreground message:', title, body);
 
-            // 1. Post native Android OS status bar heads-up alert banner
+            // Post native Android OS status bar heads-up alert banner
             try {
               const Notifications = getExpoNotificationsModule();
               if (Notifications && typeof Notifications.scheduleNotificationAsync === 'function') {
@@ -256,20 +256,6 @@ export const notificationService = {
                 }).catch(() => {});
               }
             } catch (_) {}
-
-            // 2. Also show in-app Toast with action
-            Toast.show({
-              type: 'info',
-              text1: title,
-              text2: body,
-              props: {
-                onAction: () => {
-                  if (navigate && screen) {
-                    navigate(screen, params || {});
-                  }
-                }
-              }
-            });
           };
 
           if (typeof messagingInstance.onMessage === 'function') {
@@ -334,21 +320,7 @@ export const notificationService = {
         const Notifications = getExpoNotificationsModule();
         if (Notifications?.addNotificationReceivedListener) {
           unsubscribeExpoForeground = Notifications.addNotificationReceivedListener((notification: any) => {
-            const title = notification.request?.content?.title || 'Notification';
-            const body = notification.request?.content?.body || '';
-            const data = notification.request?.content?.data || {};
-            Toast.show({
-              type: 'info',
-              text1: title,
-              text2: body,
-              props: {
-                onAction: () => {
-                  if (navigate && data.screen) {
-                    navigate(data.screen, data.params || {});
-                  }
-                }
-              }
-            });
+            // Notification is already delivered natively by system
           });
 
           if (Notifications.addNotificationResponseReceivedListener) {

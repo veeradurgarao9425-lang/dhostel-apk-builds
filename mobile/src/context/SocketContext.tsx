@@ -42,12 +42,6 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
         const message = payload?.message || payload?.body || defaultMessage;
 
         if (title || message) {
-          Toast.show({
-            type: 'info',
-            text1: title,
-            text2: message,
-          });
-
           try {
             const Notifications = getExpoNotifications();
             if (Notifications && typeof Notifications.scheduleNotificationAsync === 'function') {
