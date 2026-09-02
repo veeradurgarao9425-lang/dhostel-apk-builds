@@ -404,9 +404,27 @@ export default function StudentsScreen({ navigation, route }: any) {
             setActiveTab('Unallocated');
             navigation.setParams({ filterUnallocated: undefined });
         }
-        if (route?.params?.filter) {
-            setActiveTab(route.params.filter);
-            navigation.setParams({ filter: undefined });
+        const rawTab = route?.params?.filter || route?.params?.tab || route?.params?.initialTab;
+        if (rawTab) {
+            const lower = String(rawTab).toLowerCase();
+            if (lower === 'qrregister' || lower === 'pending' || lower === 'registration' || lower === 'registrations') {
+                setActiveTab('QRRegister');
+            } else if (lower === 'unallocated') {
+                setActiveTab('Unallocated');
+            } else if (lower === 'admissionpending' || lower === 'admission_pending') {
+                setActiveTab('AdmissionPending');
+            } else if (lower === 'prebooked' || lower === 'prebooking') {
+                setActiveTab('PreBooked');
+            } else if (lower === 'inactive' || lower === 'vacated') {
+                setActiveTab('Inactive');
+            } else if (lower === 'all') {
+                setActiveTab('All');
+            } else if (lower === 'active') {
+                setActiveTab('Active');
+            } else {
+                setActiveTab(rawTab as any);
+            }
+            navigation.setParams({ filter: undefined, tab: undefined, initialTab: undefined });
         }
         if (route?.params?.startDate && route?.params?.endDate) {
             setStartDateFilter(route.params.startDate);

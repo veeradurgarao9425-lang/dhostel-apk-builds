@@ -113,10 +113,14 @@ export const sendNotificationToUser = async (options: SendNotificationOptions): 
         if (userId) {
           io.to(`user_${userId}`).emit('REFRESH_NOTIFICATIONS', payload);
           io.to(`user_${userId}`).emit('new_notification', payload);
+          io.to(`tenant_${userId}`).emit('REFRESH_NOTIFICATIONS', payload);
+          io.to(`tenant_${userId}`).emit('new_notification', payload);
         }
         if (studentId) {
           io.to(`tenant_${studentId}`).emit('REFRESH_NOTIFICATIONS', payload);
           io.to(`tenant_${studentId}`).emit('new_notification', payload);
+          io.to(`user_${studentId}`).emit('REFRESH_NOTIFICATIONS', payload);
+          io.to(`user_${studentId}`).emit('new_notification', payload);
         }
         if (hostelId) {
           io.to(`hostel_${hostelId}`).emit('REFRESH_NOTIFICATIONS', payload);
@@ -397,10 +401,22 @@ export const sendNotificationToAllHostelStudents = async (
   extras?: Pick<SendNotificationOptions, 'screen' | 'params' | 'referenceType' | 'referenceId' | 'deepLink' | 'metadata'>
 ): Promise<void> => {
   try {
-    const students = await db('students').where({ hostel_id: hostelId, status: 1 }).select('student_id');
+    const students = await db('students')
+      .where('hostel_id', hostelId)
+      .whereIn('status', [1, 3, '1', '3', 'Active', 'Pending'])
+      .select('student_id', 'user_id')
+      .catch(() => []);
     for (const student of students) {
       await sendNotificationToUser({
-        studentId: student.student_id, hostelId, type, title, message, priority, data, ...(extras || {}),
+        studentId: student.student_id,
+        userId: student.user_id || null,
+        hostelId,
+        type,
+        title,
+        message,
+        priority,
+        data,
+        ...(extras || {}),
       });
     }
   } catch (err) {

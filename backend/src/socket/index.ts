@@ -43,38 +43,39 @@ export const setupSocket = (httpServer: HttpServer) => {
         process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-in-production'
       );
 
-      // Verify the tenant is still active and has a room
+      // Verify the tenant profile if role_id === 3
       if (decoded.role_id === 3) {
         const tenant = await db('students')
-          .select('students.student_id', 'students.room_id', 'students.status', 'rooms.is_available')
-          .leftJoin('rooms', 'rooms.room_id', 'students.room_id')
+          .select('students.student_id', 'students.user_id', 'students.room_id', 'students.status', 'students.hostel_id')
           .where('students.student_id', decoded.user_id)
-          .first();
-
-        if (!tenant) return next(new Error('User not found'));
-        if (Number(tenant.status) !== 1) return next(new Error('Account inactive'));
-        if (!tenant.room_id) return next(new Error('No room assigned'));
-        // We do NOT check tenant.is_available === 0 because is_available=0 simply means the room is fully occupied!
+          .orWhere('students.user_id', decoded.user_id)
+          .first()
+          .catch(() => null);
 
         socket.data.user = {
           ...decoded,
-          room_id: tenant.room_id
+          student_id: tenant?.student_id || decoded.user_id,
+          user_id: tenant?.user_id || decoded.user_id,
+          room_id: tenant?.room_id || null,
+          hostel_id: tenant?.hostel_id || decoded.hostel_id || null,
         };
       } else {
-        // Admin or Owner connecting (maybe for moderation later)
+        // Admin, Owner, or Staff connecting
         socket.data.user = decoded;
       }
       
       next();
     } catch (err) {
+      console.warn('[Socket Auth] Authentication error:', err);
       next(new Error('Authentication error'));
     }
   });
 
   io.on('connection', (socket: Socket) => {
-    const user = socket.data.user as SocketUser;
-    
-    // Auto-join room for tenants
+    const user = socket.data.user as any;
+    if (!user) return;
+
+    // Join room chat if room is assigned
     if (user.role_id === 3 && user.room_id) {
       const roomKey = `room_${user.room_id}`;
       socket.join(roomKey);
@@ -83,28 +84,26 @@ export const setupSocket = (httpServer: HttpServer) => {
       socket.to(roomKey).emit('user_online', { userId: user.user_id });
     }
 
-    // Join hostel room for both Owner and Tenant to receive hostel-wide notifications (e.g. complaints, rent updates)
+    // Join hostel room for hostel-wide notifications (notices, mess menu, etc.)
     if (user.hostel_id) {
       socket.join(`hostel_${user.hostel_id}`);
-    } else if (user.role_id === 2) {
-      // Owner might have multiple hostels, let's join all hostels they own
+    } else if (user.role_id === 2 && user.user_id) {
+      // Owner might have multiple hostels, join all hostels they own
       db('hostel_master').where('owner_id', user.user_id).select('hostel_id')
         .then(hostels => {
           hostels.forEach(h => socket.join(`hostel_${h.hostel_id}`));
         })
-        .catch(console.error);
+        .catch(() => {});
     }
 
-    // Also let all users join their personal room for direct notifications
+    // Join personal user and tenant rooms
     if (user.user_id) {
       socket.join(`user_${user.user_id}`);
-      if (user.role_id === 3) {
-        socket.join(`tenant_${user.user_id}`);
-      }
-    }
-
-    if (user.role_id === 3) {
       socket.join(`tenant_${user.user_id}`);
+    }
+    if (user.student_id && user.student_id !== user.user_id) {
+      socket.join(`user_${user.student_id}`);
+      socket.join(`tenant_${user.student_id}`);
     }
 
     // Typing Indicators

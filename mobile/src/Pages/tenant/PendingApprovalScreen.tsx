@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
   StyleSheet,
   Text,
@@ -9,6 +9,7 @@ import {
   Dimensions,
   RefreshControl,
   Image,
+  DeviceEventEmitter,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import {
@@ -45,6 +46,31 @@ export default function PendingApprovalScreen({ navigation }: any) {
   const firstName = (user?.name || "Tenant").split(" ")[0];
   const [refreshing, setRefreshing] = useState(false);
   const isRejected = Number(user?.status) === 4;
+
+  useEffect(() => {
+    // Live socket events broadcasted to this tenant device
+    const sub1 = DeviceEventEmitter.addListener('STUDENT_APPROVED', () => {
+      refreshUser().catch(() => {});
+    });
+    const sub2 = DeviceEventEmitter.addListener('REFRESH_USER_STATUS', () => {
+      refreshUser().catch(() => {});
+    });
+    const sub3 = DeviceEventEmitter.addListener('REFRESH_NOTIFICATIONS', () => {
+      refreshUser().catch(() => {});
+    });
+
+    // Auto-polling heartbeat every 4 seconds while on PendingApprovalScreen
+    const interval = setInterval(() => {
+      refreshUser().catch(() => {});
+    }, 4000);
+
+    return () => {
+      sub1.remove();
+      sub2.remove();
+      sub3.remove();
+      clearInterval(interval);
+    };
+  }, [refreshUser]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);

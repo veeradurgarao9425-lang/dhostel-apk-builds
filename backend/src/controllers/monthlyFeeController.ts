@@ -1111,16 +1111,32 @@ export const recordPayment = async (req: AuthRequest, res: Response) => {
       console.log('[recordPayment] Payment ID:', paymentId);
       console.log('[recordPayment] Updated values - paid_amount:', newTotalPaid, 'balance:', newBalance, 'status:', newFeeStatus);
 
-      // Trigger push and in-app notification to owner
+      // Trigger push and in-app notification to owner & tenant
       if (io) {
+        const studentFullName = `${student.first_name} ${student.last_name || ''}`.trim();
         io.to(`hostel_${hostel_id}`).emit('new_payment', {
           payment_id: paymentId,
           amount,
-          studentName: `${student.first_name} ${student.last_name || ''}`.trim(),
+          studentName: studentFullName,
           student_id,
           fee_month: paidFeeMonth,
           created_at: new Date()
         });
+        io.to(`tenant_${student_id}`).emit('payment_recorded', {
+          payment_id: paymentId,
+          amount,
+          fee_month: paidFeeMonth,
+          created_at: new Date()
+        });
+        io.to(`tenant_${student_id}`).emit('REFRESH_NOTIFICATIONS');
+        io.to(`user_${student_id}`).emit('payment_recorded', {
+          payment_id: paymentId,
+          amount,
+          fee_month: paidFeeMonth,
+          created_at: new Date()
+        });
+        io.to(`user_${student_id}`).emit('REFRESH_NOTIFICATIONS');
+        io.to(`hostel_${hostel_id}`).emit('REFRESH_NOTIFICATIONS');
       }
       const studentFullName = `${student.first_name} ${student.last_name || ''}`.trim();
       sendNotificationToHostelOwner(

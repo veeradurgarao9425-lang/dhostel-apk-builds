@@ -1003,6 +1003,12 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
               io.to(`tenant_${studentId}`).emit('REFRESH_USER_STATUS', approvalPayload);
               io.to(`user_${studentId}`).emit('STUDENT_APPROVED', approvalPayload);
               io.to(`user_${studentId}`).emit('REFRESH_USER_STATUS', approvalPayload);
+              if (updatedStudent?.user_id) {
+                io.to(`tenant_${updatedStudent.user_id}`).emit('STUDENT_APPROVED', approvalPayload);
+                io.to(`tenant_${updatedStudent.user_id}`).emit('REFRESH_USER_STATUS', approvalPayload);
+                io.to(`user_${updatedStudent.user_id}`).emit('STUDENT_APPROVED', approvalPayload);
+                io.to(`user_${updatedStudent.user_id}`).emit('REFRESH_USER_STATUS', approvalPayload);
+              }
             }
           } catch (socErr) {
             console.error('Socket emission error for student approval:', socErr);
