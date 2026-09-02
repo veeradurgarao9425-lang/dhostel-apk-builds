@@ -3,6 +3,7 @@ import db from '../config/database.js';
 import { AuthRequest } from '../middleware/auth.js';
 import { resolveScopedHostelId, resolveOwnerHostelId } from '../utils/scope.js';
 import { processFileUpload } from '../utils/fileUpload.js';
+import { sendNotificationToHostelOwner } from '../utils/notification.js';
 
 // Get all expenses
 export const getExpenses = async (req: AuthRequest, res: Response) => {
@@ -487,6 +488,16 @@ export const createExpense = async (req: AuthRequest, res: Response) => {
     } catch (_) {}
 
     const [expense_id] = await db('expenses').insert(expenseInsertData);
+
+    // Notify hostel owner
+    sendNotificationToHostelOwner(
+      hostel_id,
+      'Expense Alert',
+      'Expense Recorded 💸',
+      `Expense of ₹${parsedAmount} was recorded for ${vendor_name || 'Hostel'}.`,
+      'Low',
+      { expense_id }
+    ).catch(() => {});
 
     res.status(201).json({
       success: true,

@@ -1453,7 +1453,7 @@ export const submitVacateNotice = async (req: AuthRequest, res: Response) => {
       sendNotificationToHostelOwner(
         student.hostel_id,
         'General',
-        formattedDate ? 'Vacate Notice Received' : 'Vacate Notice Cancelled',
+        formattedDate ? 'Vacate Notice Received 📅' : 'Vacate Notice Cancelled',
         formattedDate
           ? `${name} has given notice to vacate on ${formattedDate}.${reason ? ` Reason: ${reason}` : ''}`
           : `${name} has cancelled their vacate notice.`,
@@ -1466,6 +1466,22 @@ export const submitVacateNotice = async (req: AuthRequest, res: Response) => {
           referenceId: student.student_id,
         }
       ).catch(err => console.error('Failed to send vacate-notice owner notification:', err));
+
+      sendNotificationToStudent(
+        student.student_id,
+        'General',
+        formattedDate ? 'Vacate Notice Submitted 📅' : 'Vacate Notice Cancelled',
+        formattedDate
+          ? `Your notice to vacate on ${formattedDate} has been recorded.`
+          : 'Your vacate notice was cancelled.',
+        'Medium',
+        { student_id: student.student_id },
+        {
+          screen: 'TenantHome',
+          referenceType: 'student',
+          referenceId: student.student_id,
+        }
+      ).catch(() => {});
     }
 
     return res.json({

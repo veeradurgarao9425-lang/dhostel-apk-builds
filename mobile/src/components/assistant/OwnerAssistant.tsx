@@ -43,6 +43,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import * as Clipboard from 'expo-clipboard';
 import { useAuth } from '../../../contexts/AuthContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import * as RootNavigation from '../../navigation/navigationRef';
 import { useKeyboardInset } from '../../hooks/useKeyboardInset';
@@ -294,6 +295,7 @@ export const OwnerAssistant: React.FC<{ currentRoute?: string | null }> = ({ cur
   const [isAddMenuOpen, setIsAddMenuOpen] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
   const [isKeyboardActive, setIsKeyboardActive] = useState(false);
+  const [isClearConfirmOpen, setIsClearConfirmOpen] = useState(false);
 
   // Staff role and permission gating
   const isStaff = user?.role === 'STAFF' || user?.role_id === 4;
@@ -560,17 +562,43 @@ export const OwnerAssistant: React.FC<{ currentRoute?: string | null }> = ({ cur
 
 
 
+  const isHistoryLoadedRef = useRef(false);
+
+  // Load persistent chat history from AsyncStorage on mount
+  useEffect(() => {
+    if (!user?.user_id) return;
+    const storageKey = `owner_assistant_chat_history_${user.user_id}`;
+    AsyncStorage.getItem(storageKey).then(saved => {
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setMessages(parsed);
+            isHistoryLoadedRef.current = true;
+            return;
+          }
+        } catch (_) {}
+      }
+      setMessages(getInitialWelcomeMsgs());
+      isHistoryLoadedRef.current = true;
+    }).catch(() => {
+      setMessages(getInitialWelcomeMsgs());
+      isHistoryLoadedRef.current = true;
+    });
+  }, [user?.user_id, getInitialWelcomeMsgs]);
+
+  // Persist messages whenever they change
+  useEffect(() => {
+    if (!user?.user_id || !isHistoryLoadedRef.current || messages.length === 0) return;
+    const storageKey = `owner_assistant_chat_history_${user.user_id}`;
+    AsyncStorage.setItem(storageKey, JSON.stringify(messages)).catch(() => {});
+  }, [user?.user_id, messages]);
+
   useEffect(() => {
     if (isOpen && user?.role !== 'TENANT') {
       if (user?.role?.toUpperCase() === 'OWNER') {
         loadSnap();
       }
-      setMessages(prev => {
-        if (prev.length === 0) {
-          return getInitialWelcomeMsgs();
-        }
-        return prev;
-      });
     }
   }, [isOpen]);
 
@@ -1841,10 +1869,17 @@ export const OwnerAssistant: React.FC<{ currentRoute?: string | null }> = ({ cur
   }, [handleIntent]);
 
   // ── Reset ──────────────────────────────────────────────────────────────
-  const handleReset = () => {
+  // ── Clear Chat History ──────────────────────────────────────────────────
+  const handleClearHistory = async () => {
+    if (user?.user_id) {
+      const storageKey = `owner_assistant_chat_history_${user.user_id}`;
+      await AsyncStorage.removeItem(storageKey).catch(() => {});
+    }
     setMessages(getInitialWelcomeMsgs());
     setInputText('');
+    setIsClearConfirmOpen(false);
     loadSnap();
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
   };
 
   // Only owners (exclude tenants)
@@ -1923,8 +1958,12 @@ export const OwnerAssistant: React.FC<{ currentRoute?: string | null }> = ({ cur
 
               {/* Action buttons — side by side */}
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <TouchableOpacity style={s.headerActionBtn} onPress={handleReset}>
-                  <Ionicons name="refresh-outline" size={16} color="#DDD6FE" />
+                <TouchableOpacity
+                  style={s.headerActionBtn}
+                  onPress={() => setIsClearConfirmOpen(true)}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="trash-outline" size={16} color="#DDD6FE" />
                 </TouchableOpacity>
                 <TouchableOpacity style={s.headerActionBtn} onPress={() => setIsOpen(false)}>
                   <Ionicons name="close" size={18} color="#FFF" />
@@ -2252,6 +2291,45 @@ export const OwnerAssistant: React.FC<{ currentRoute?: string | null }> = ({ cur
           </View>
 
         </SafeAreaView>
+      </Modal>
+
+      {/* Clear Chat Confirmation Modal */}
+      <Modal
+        visible={isClearConfirmOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setIsClearConfirmOpen(false)}
+      >
+        <Pressable
+          style={s.confirmModalBackdrop}
+          onPress={() => setIsClearConfirmOpen(false)}
+        >
+          <Pressable style={s.confirmModalCard} onPress={e => e.stopPropagation()}>
+            <View style={s.confirmIconCircle}>
+              <Ionicons name="trash-outline" size={26} color="#EF4444" />
+            </View>
+            <Text style={s.confirmTitle}>Clear Chat History?</Text>
+            <Text style={s.confirmMessage}>
+              Are you sure you want to clear your conversation history? All previous searches and charts will be removed.
+            </Text>
+            <View style={s.confirmActionsRow}>
+              <TouchableOpacity
+                style={s.confirmCancelBtn}
+                onPress={() => setIsClearConfirmOpen(false)}
+                activeOpacity={0.7}
+              >
+                <Text style={s.confirmCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={s.confirmDeleteBtn}
+                onPress={handleClearHistory}
+                activeOpacity={0.7}
+              >
+                <Text style={s.confirmDeleteText}>Clear History</Text>
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Pressable>
       </Modal>
     </>
   );
@@ -2874,6 +2952,82 @@ const s = StyleSheet.create({
     fontWeight: '800',
     color: '#6D28D9',
     letterSpacing: 1.4,
+  },
+
+  /* Clear Chat Confirmation Modal */
+  confirmModalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.65)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  confirmModalCard: {
+    width: '100%',
+    maxWidth: 340,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 22,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  confirmIconCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#FEE2E2',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 14,
+  },
+  confirmTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#0F172A',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  confirmMessage: {
+    fontSize: 13,
+    color: '#64748B',
+    textAlign: 'center',
+    lineHeight: 19,
+    marginBottom: 20,
+  },
+  confirmActionsRow: {
+    flexDirection: 'row',
+    gap: 10,
+    width: '100%',
+  },
+  confirmCancelBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  confirmCancelText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#475569',
+  },
+  confirmDeleteBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: '#EF4444',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  confirmDeleteText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
 });
 

@@ -4,6 +4,7 @@ import { AuthRequest } from '../middleware/auth.js';
 import { checkHostelUniqueIdentifiers } from '../utils/validation.js';
 import { resolveScopedHostelId, resolveOwnerHostelId, canAccessHostel } from '../utils/scope.js';
 import { processFileUpload } from '../utils/fileUpload.js';
+import { sendNotificationToHostelOwner } from '../utils/notification.js';
 
 // Get all staff (Owner sees only their hostel staff)
 export const getStaff = async (req: AuthRequest, res: Response) => {
@@ -243,6 +244,16 @@ export const createStaff = async (req: AuthRequest, res: Response) => {
     } catch (_) {}
 
     const [staff_id] = await db('staff').insert(staffInsertData);
+
+    // Notify hostel owner
+    sendNotificationToHostelOwner(
+      hostelId,
+      'General',
+      'Staff Added 👥',
+      `${full_name} was registered as ${role || 'Staff'}.`,
+      'Low',
+      { staff_id }
+    ).catch(() => {});
 
     res.status(201).json({
       success: true,
