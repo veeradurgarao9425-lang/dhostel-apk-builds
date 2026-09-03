@@ -12,6 +12,7 @@
       "esnext"
     ],
     "moduleResolution": "bundler",
+    "esModuleInterop": true,
     "noEmit": true,
     "skipLibCheck": true,
     "target": "esnext"
