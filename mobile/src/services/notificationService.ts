@@ -28,36 +28,16 @@ import {
 } from './notifeeChannels';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// ── Lazy Module Loaders ──────────────────────────────────────────────────────
+// ── Firebase Cloud Messaging Native Loader ──────────────────────────────────
 const getFirebaseMessagingModule = () => {
   try {
-    return require('@react-native-firebase/messaging');
-  } catch {
+    const messaging = require('@react-native-firebase/messaging');
+    return typeof messaging === 'function' ? messaging() : (messaging.default ? messaging.default() : null);
+  } catch (err) {
+    console.error('[FCM] Native Firebase module error:', err);
     return null;
   }
 };
-
-const getExpoNotificationsModule = () => {
-  try {
-    return require('expo-notifications');
-  } catch {
-    return null;
-  }
-};
-
-// Configure Expo fallback notification handler
-try {
-  const Notifications = getExpoNotificationsModule();
-  if (Notifications && typeof Notifications.setNotificationHandler === 'function') {
-    Notifications.setNotificationHandler({
-      handleNotification: async () => ({
-        shouldShowAlert: true,
-        shouldPlaySound: true,
-        shouldSetBadge: true,
-      }),
-    });
-  }
-} catch (_) {}
 
 // In-memory counter for grouped notifications
 const groupCounts: Record<string, number> = {};
@@ -75,7 +55,7 @@ export const notificationService = {
   },
 
   /**
-   * Request permission, initialize channels, get FCM/Expo token, and register with backend.
+   * Request permission, initialize channels, get native FCM token, and register with backend.
    */
   async registerForPushNotificationsAsync(): Promise<string | null> {
     try {
@@ -100,71 +80,42 @@ export const notificationService = {
 
       let token: string | null = null;
 
-      // 3. Obtain Firebase Messaging token
+      // 3. Obtain Pure Native Firebase Cloud Messaging token
       const fcm = getFirebaseMessagingModule();
       if (fcm) {
-        let messagingInstance: any = null;
-        try {
-          if (typeof fcm === 'function') {
-            messagingInstance = fcm();
-          } else if (fcm.default && typeof fcm.default === 'function') {
-            messagingInstance = fcm.default();
-          } else if (typeof fcm.getMessaging === 'function') {
-            messagingInstance = fcm.getMessaging();
-          }
-        } catch (nativeErr: any) {
-          console.warn('[FCM] Error initializing messaging:', nativeErr);
-        }
-
-        if (messagingInstance) {
-          if (Platform.OS === 'ios' && typeof messagingInstance.requestPermission === 'function') {
-            try {
-              await messagingInstance.requestPermission();
-            } catch (_) {}
-          }
-
+        if (Platform.OS === 'ios' && typeof fcm.requestPermission === 'function') {
           try {
-            if (typeof messagingInstance.getToken === 'function') {
-              token = await messagingInstance.getToken();
-            } else if (typeof fcm.getToken === 'function') {
-              token = await fcm.getToken(messagingInstance);
-            }
-          } catch (tokenErr: any) {
-            console.warn('[FCM] Error obtaining FCM token:', tokenErr);
-          }
+            await fcm.requestPermission();
+          } catch (_) {}
         }
-      }
 
-      // 4. Fallback to Expo Push Token if FCM is not available
-      if (!token) {
         try {
-          const Notifications = getExpoNotificationsModule();
-          if (Notifications?.getExpoPushTokenAsync) {
-            const { status: existingStatus } = await Notifications.getPermissionsAsync();
-            let finalStatus = existingStatus;
-            if (existingStatus !== 'granted') {
-              const { status } = await Notifications.requestPermissionsAsync();
-              finalStatus = status;
-            }
-            if (finalStatus === 'granted') {
-              const expoTokenData = await Notifications.getExpoPushTokenAsync();
-              token = expoTokenData?.data || null;
-            }
+          if (typeof fcm.getToken === 'function') {
+            token = await fcm.getToken();
           }
-        } catch (expoErr: any) {
-          console.warn('[FCM/Expo] Fallback token notice:', expoErr?.message || expoErr);
+        } catch (tokenErr: any) {
+          console.error('[FCM] ❌ Error obtaining native FCM token:', tokenErr);
+        }
+
+        // Keep backend token synchronized on token refresh
+        if (typeof fcm.onTokenRefresh === 'function') {
+          fcm.onTokenRefresh((newToken: string) => {
+            console.log('[FCM] 🔄 Native token refreshed, updating backend:', newToken);
+            this._lastRegisteredToken = newToken;
+            this.sendTokenToBackend(newToken).catch(() => {});
+          });
         }
       }
 
       if (token) {
         this._lastRegisteredToken = token;
         await this.sendTokenToBackend(token);
-        console.log('[Notification] ✅ Push token registered successfully.');
+        console.log('[FCM] ✅ Native Firebase FCM token registered successfully.');
       }
 
       return token;
     } catch (err: any) {
-      console.warn('[Notification] Push registration skipped:', err?.message || err);
+      console.warn('[FCM] Push registration error:', err?.message || err);
       return null;
     }
   },
