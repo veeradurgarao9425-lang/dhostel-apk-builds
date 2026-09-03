@@ -17,26 +17,16 @@ notifee.onBackgroundEvent(async ({ type, detail }) => {
   }
 });
 
-import messaging from '@react-native-firebase/messaging';
-
 // ── Firebase Cloud Messaging Background Message Handler ───────────────────────
 // Android OS automatically displays notifications when remoteMessage.notification is present.
-// We only manually display for data-only messages to prevent duplicate notifications.
-messaging().setBackgroundMessageHandler(async (remoteMessage: any) => {
-  console.log('[FCM] 📨 Background message received:', remoteMessage?.messageId);
-  if (!remoteMessage?.notification && (remoteMessage?.data?.title || remoteMessage?.data?.message)) {
-    const title = remoteMessage.data?.title || 'Hostix Alert 🔔';
-    const body = remoteMessage.data?.message || remoteMessage.data?.body || '';
-    const data = remoteMessage.data || {};
-    await notificationService.displayRichNotification({
-      id: remoteMessage.messageId,
-      title,
-      body,
-      category: data.category || data.type,
-      data,
-      largeIconUrl: data.imageUrl,
+try {
+  const messagingModule = require('@react-native-firebase/messaging');
+  const fcm = typeof messagingModule === 'function' ? messagingModule() : (messagingModule.default ? messagingModule.default() : null);
+  if (fcm && typeof fcm.setBackgroundMessageHandler === 'function') {
+    fcm.setBackgroundMessageHandler(async (remoteMessage: any) => {
+      console.log('[FCM] 📨 Background message received:', remoteMessage?.messageId);
     });
   }
-});
+} catch (_) {}
 
 registerRootComponent(App);
