@@ -5,7 +5,8 @@ import { navigate } from '../navigation/navigationRef';
 
 // ─── Base URL ─────────────────────────────────────────────────────────────────
 // Fast Cloudflare Edge Worker connected to DigitalOcean
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://dark-dew-bf62.veeradurgarao840.workers.dev/api';
+const FALLBACK_URL = 'https://dark-dew-bf62.veeradurgarao840.workers.dev/api';
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL || FALLBACK_URL;
 
 // ─── Axios Instance ───────────────────────────────────────────────────────────
 export const api = axios.create({
@@ -82,6 +83,14 @@ api.interceptors.response.use(
     // Ignore logging for intentionally canceled requests (e.g. AbortController on tab switch) or health pre-warming
     if (axios.isCancel(error) || error?.message === 'canceled' || error?.name === 'CanceledError' || error?.config?.url?.includes('/health')) {
       return Promise.reject(error);
+    }
+
+    // Automatic HTTPS Failover: If unencrypted HTTP (or cellular port 8081 block) fails, retry once via Cloudflare HTTPS
+    const cfg = error?.config as any;
+    if ((error.message === 'Network Error' || !error.response) && cfg && !cfg._retriedHttps && FALLBACK_URL) {
+      cfg._retriedHttps = true;
+      cfg.baseURL = FALLBACK_URL;
+      return api.request(cfg);
     }
 
     const status = error?.response?.status;

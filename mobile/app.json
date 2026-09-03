@@ -34,7 +34,8 @@
         "READ_MEDIA_IMAGES",
         "POST_NOTIFICATIONS",
         "VIBRATE"
-      ]
+      ],
+      "usesCleartextTraffic": true
     },
     "web": {
       "favicon": "./assets/HostixNew.png"

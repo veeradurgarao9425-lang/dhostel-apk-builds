@@ -95,6 +95,9 @@ jobs:
               if (!xml.includes("xmlns:tools")) {
                 xml = xml.replace("<manifest", "<manifest xmlns:tools=\"http://schemas.android.com/tools\"");
               }
+              if (!xml.includes("android:usesCleartextTraffic")) {
+                xml = xml.replace("<application", "<application android:usesCleartextTraffic=\"true\"");
+              }
               xml = xml.replace(/tools:replace="[^"]*"/g, "");
               xml = xml.replace(/android:name="com.google.firebase.messaging.default_notification_color" android:resource="[^"]*"/g, "$& tools:replace=\"android:resource\"");
               xml = xml.replace(/android:name="com.google.firebase.messaging.default_notification_icon" android:resource="[^"]*"/g, "$& tools:replace=\"android:resource\"");
