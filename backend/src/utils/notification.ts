@@ -274,7 +274,8 @@ export const sendNotificationToUser = async (options: SendNotificationOptions): 
               if (
                 errCode === 'messaging/registration-token-not-registered' ||
                 errCode === 'messaging/invalid-registration-token' ||
-                errCode === 'messaging/invalid-argument'
+                errCode === 'messaging/invalid-argument' ||
+                errCode === 'messaging/mismatched-credential'
               ) {
                 deadTokens.push(fcmTokens[idx]);
               }
