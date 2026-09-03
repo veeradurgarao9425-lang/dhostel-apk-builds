@@ -17,26 +17,26 @@ notifee.onBackgroundEvent(async ({ type, detail }) => {
   }
 });
 
+import messaging from '@react-native-firebase/messaging';
+
 // ── Firebase Cloud Messaging Background Message Handler ───────────────────────
-try {
-  const messaging = require('@react-native-firebase/messaging');
-  const fcm = typeof messaging === 'function' ? messaging() : (messaging.default ? messaging.default() : null);
-  if (fcm && typeof fcm.setBackgroundMessageHandler === 'function') {
-    fcm.setBackgroundMessageHandler(async (remoteMessage: any) => {
-      console.log('[FCM] Background message received:', remoteMessage.messageId);
-      const title = remoteMessage.notification?.title || remoteMessage.data?.title || 'Alert 🔔';
-      const body = remoteMessage.notification?.body || remoteMessage.data?.message || '';
-      const data = remoteMessage.data || {};
-      await notificationService.displayRichNotification({
-        id: remoteMessage.messageId,
-        title,
-        body,
-        category: data.category || data.type,
-        data,
-        largeIconUrl: remoteMessage.notification?.android?.imageUrl || data.imageUrl,
-      });
+// Android OS automatically displays notifications when remoteMessage.notification is present.
+// We only manually display for data-only messages to prevent duplicate notifications.
+messaging().setBackgroundMessageHandler(async (remoteMessage: any) => {
+  console.log('[FCM] 📨 Background message received:', remoteMessage?.messageId);
+  if (!remoteMessage?.notification && (remoteMessage?.data?.title || remoteMessage?.data?.message)) {
+    const title = remoteMessage.data?.title || 'Hostix Alert 🔔';
+    const body = remoteMessage.data?.message || remoteMessage.data?.body || '';
+    const data = remoteMessage.data || {};
+    await notificationService.displayRichNotification({
+      id: remoteMessage.messageId,
+      title,
+      body,
+      category: data.category || data.type,
+      data,
+      largeIconUrl: data.imageUrl,
     });
   }
-} catch (_) {}
+});
 
 registerRootComponent(App);

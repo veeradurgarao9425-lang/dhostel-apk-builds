@@ -34,29 +34,8 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
         defaultMessage = '',
         category = 'dues',
       ) => {
-        const title = payload?.title || defaultTitle;
-        const message = payload?.message || payload?.body || defaultMessage;
-        const cat = payload?.category || payload?.type || category;
-
-        // 1. Refresh in-app badges and lists
+        // Refresh in-app badges, lists, and unread counters
         DeviceEventEmitter.emit('REFRESH_NOTIFICATIONS', payload);
-
-        // 2. Real-time floating in-app banner
-        DeviceEventEmitter.emit('IN_APP_NOTIFICATION', {
-          title,
-          message,
-          category: cat,
-          data: payload,
-        });
-
-        // 3. Native system notification via Notifee
-        notificationService.displayRichNotification({
-          id: payload?.id ? `socket_${payload.id}` : undefined,
-          title,
-          body: message,
-          category: cat,
-          data: payload,
-        }).catch(() => {});
       };
 
       // Dues & Payments

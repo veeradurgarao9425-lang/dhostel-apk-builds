@@ -521,8 +521,7 @@ export const notificationService = {
             try { data.params = JSON.parse(data.params); } catch (_) {}
           }
 
-          // Emit real-time notification event to app
-          DeviceEventEmitter.emit('IN_APP_NOTIFICATION', { title, body, data });
+          // Refresh in-app badge count and notification center lists
           DeviceEventEmitter.emit('REFRESH_NOTIFICATIONS');
 
           // Render system notification via Notifee
