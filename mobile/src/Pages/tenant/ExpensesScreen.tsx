@@ -30,6 +30,7 @@ import { useToast } from '../../../contexts/ToastContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import AppHeader from '../../components/tenant/ui/AppHeader';
 import { TenantHeaderNotification } from '../../components/tenant/TenantHeaderNotification';
+import { notifyBudgetSet } from '../../hooks/useTenantNotifications';
 
 const { width } = Dimensions.get('window');
 
@@ -838,6 +839,7 @@ export default function ExpensesScreen({ navigation }: any) {
         try {
           await AsyncStorage.setItem('tenant_budget', val.toString());
           await api.post('/tenant-expenses/budget', { amount: val });
+          notifyBudgetSet(val);
         } catch (e) {
           console.error('Failed to save budget', e);
         }

@@ -1,32 +1,73 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View, ScrollView, ActivityIndicator, RefreshControl, DeviceEventEmitter } from 'react-native';
-import { ArrowLeft, Wallet, Megaphone, Wrench, BellRing, Filter } from 'lucide-react-native';
+import {
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  ScrollView,
+  ActivityIndicator,
+  RefreshControl,
+  DeviceEventEmitter,
+} from 'react-native';
+import {
+  ArrowLeft,
+  Wallet,
+  Megaphone,
+  Wrench,
+  BellRing,
+  KeyRound,
+  UserCheck,
+  Receipt,
+  Compass,
+  CheckCheck,
+  Filter,
+} from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 
 import { Phase3EmptyState, Phase3ErrorState } from '../../components/tenant/UIComponents';
 import { useToast } from '../../../contexts/ToastContext';
 import api from '../../services/api';
+import { notificationService } from '../../services/notificationService';
 
-const BLUE = "#2245D4";
-const BLUE_SOFT = "#EEF2FF";
-const WHITE = "#FFFFFF";
-const TEXT_DARK = "#1A1A1A";
-const TEXT_MID = "#666666";
+// ── Stayvix Theme Tokens ─────────────────────────────────────────────────────
+const RUST = '#C2410C';
+const RUST_DARK = '#9A3412';
+const RUST_SOFT = '#FFEDD5';
+const BROWN = '#78350F';
+const BROWN_DARK = '#451A03';
+const CREAM = '#FFFDF8';
+const CREAM_ALT = '#FFFBEB';
+const BORDER = '#FDE68A';
+const TEXT_MUTED = '#92400E';
 
-const TABS = ['All', 'Announcements', 'Payments', 'Others'];
+const TABS = [
+  'All',
+  'Dues',
+  'Notices',
+  'Complaints',
+  'Gate Pass',
+  'Account',
+  'Expenses',
+  'Growth',
+];
 
 const typeMeta: Record<string, { icon: any; tint: string; soft: string }> = {
-  'due': { icon: Wallet, tint: '#E11D48', soft: '#FFE4E6' },
-  'payment': { icon: Wallet, tint: '#10B981', soft: '#D1FAE5' },
-  'notice': { icon: Megaphone, tint: BLUE, soft: BLUE_SOFT },
-  'complaint': { icon: Wrench, tint: '#F59E0B', soft: '#FEF3C7' },
-  'system': { icon: BellRing, tint: TEXT_MID, soft: '#F1F5F9' },
+  due: { icon: Wallet, tint: '#B45309', soft: '#FEF3C7' },
+  payment: { icon: Wallet, tint: '#15803D', soft: '#DCFCE7' },
+  notice: { icon: Megaphone, tint: '#C2410C', soft: '#FFEDD5' },
+  complaint: { icon: Wrench, tint: '#B45309', soft: '#FEF3C7' },
+  gate_pass: { icon: KeyRound, tint: '#0284C7', soft: '#E0F2FE' },
+  account: { icon: UserCheck, tint: '#7C3AED', soft: '#EDE9FE' },
+  expense: { icon: Receipt, tint: '#0D9488', soft: '#CCFBF1' },
+  growth: { icon: Compass, tint: '#D97706', soft: '#FEF3C7' },
+  system: { icon: BellRing, tint: '#92400E', soft: '#FFFBEB' },
 };
 
 export default function NotificationsScreen({ navigation }: any) {
   const [items, setItems] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState('All');
+  const [unreadOnly, setUnreadOnly] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -42,13 +83,26 @@ export default function NotificationsScreen({ navigation }: any) {
         const formatted = res.data.data.map((n: any) => {
           let parsedParams = null;
           try {
-            if (n.params) parsedParams = typeof n.params === 'string' ? JSON.parse(n.params) : n.params;
+            if (n.params) {
+              parsedParams = typeof n.params === 'string' ? JSON.parse(n.params) : n.params;
+            }
           } catch {}
+
+          let cat = (n.notification_type || n.type || '').toLowerCase();
+          const title = (n.title || '').toLowerCase();
+          if (title.includes('due') || title.includes('payment') || title.includes('rent')) cat = 'due';
+          else if (title.includes('notice') || title.includes('broadcast') || title.includes('mess')) cat = 'notice';
+          else if (title.includes('complaint') || title.includes('maintenance')) cat = 'complaint';
+          else if (title.includes('gate') || title.includes('pass')) cat = 'gate_pass';
+          else if (title.includes('room') || title.includes('allocat') || title.includes('account')) cat = 'account';
+          else if (title.includes('expense') || title.includes('spend')) cat = 'expense';
+          else if (title.includes('growth') || title.includes('story')) cat = 'growth';
+
           return {
             id: n.notification_id,
             title: n.title,
             body: n.message,
-            type: n.notification_type || 'system',
+            type: cat || 'system',
             date: n.created_at,
             read: !!n.is_read,
             screen: n.screen,
@@ -66,13 +120,14 @@ export default function NotificationsScreen({ navigation }: any) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [showError]);
 
-  useFocusEffect(useCallback(() => {
-    fetchNotifications();
-  }, [fetchNotifications]));
+  useFocusEffect(
+    useCallback(() => {
+      fetchNotifications();
+    }, [fetchNotifications]),
+  );
 
-  // Refresh live when a push notification arrives while this screen is mounted
   useEffect(() => {
     const sub = DeviceEventEmitter.addListener('REFRESH_NOTIFICATIONS', fetchNotifications);
     return () => sub.remove();
@@ -88,60 +143,41 @@ export default function NotificationsScreen({ navigation }: any) {
     try {
       setItems((prev) => prev.map((i) => ({ ...i, read: true })));
       await api.put('/notifications/read-all');
-    } catch (err) {
-      // silently ignore — optimistic update already applied
-    }
+      DeviceEventEmitter.emit('REFRESH_NOTIFICATIONS');
+    } catch (_) {}
   };
 
   const markOneRead = async (id: string | number) => {
-    setItems((prev) => prev.map((i) => i.id === id ? { ...i, read: true } : i));
+    setItems((prev) => prev.map((i) => (i.id === id ? { ...i, read: true } : i)));
     try {
       await api.put(`/notifications/${id}/read`);
-    } catch (_) {
-      // silently ignore
-    }
+      DeviceEventEmitter.emit('REFRESH_NOTIFICATIONS');
+    } catch (_) {}
   };
 
   const handleItemPress = (item: any) => {
     markOneRead(item.id);
-
-    // 1. Direct screen payload if present
-    if (item.screen) {
-      try {
-        navigation.navigate(item.screen, item.params);
-        return;
-      } catch (navErr) {
-        console.warn('Navigation error for screen:', item.screen, navErr);
-      }
-    }
-
-    // 2. Intelligent fallback based on type/title
-    const title = (item.title || '').toLowerCase();
-    const type = (item.type || '').toLowerCase();
-
-    if (type.includes('due') || type.includes('payment') || title.includes('rent') || title.includes('due') || title.includes('fee')) {
-      navigation.navigate('RentPayment', item.params || { feeId: item.referenceId });
-    } else if (type.includes('expense') || type.includes('budget') || title.includes('expense') || title.includes('spend') || title.includes('budget')) {
-      navigation.navigate('Expenses');
-    } else if (type.includes('notice') || title.includes('notice') || title.includes('announcement')) {
-      navigation.navigate('Notices');
-    } else if (type.includes('complaint') || title.includes('complaint')) {
-      navigation.navigate('Complaints');
-    } else if (type.includes('admission') || title.includes('room') || title.includes('allocated')) {
-      navigation.navigate('TenantHome');
+    const { screen, params } = notificationService.resolveDeepLink(item, 'TENANT');
+    if (screen) {
+      navigation.navigate(screen, params);
     }
   };
 
-  const filteredItems = items.filter(item => {
+  const filteredItems = items.filter((item) => {
+    if (unreadOnly && item.read) return false;
     if (activeTab === 'All') return true;
-    if (activeTab === 'Announcements') return item.type === 'notice' || item.type === 'system';
-    if (activeTab === 'Payments') return item.type === 'due' || item.type === 'payment';
-    if (activeTab === 'Others') return item.type === 'complaint';
+    if (activeTab === 'Dues') return item.type === 'due' || item.type === 'payment';
+    if (activeTab === 'Notices') return item.type === 'notice' || item.type === 'system';
+    if (activeTab === 'Complaints') return item.type === 'complaint';
+    if (activeTab === 'Gate Pass') return item.type === 'gate_pass';
+    if (activeTab === 'Account') return item.type === 'account';
+    if (activeTab === 'Expenses') return item.type === 'expense';
+    if (activeTab === 'Growth') return item.type === 'growth';
     return true;
   });
 
   const groupedItems = filteredItems.reduce((acc, item) => {
-    let groupName = "Earlier";
+    let groupName = 'Earlier';
     if (item.date) {
       const itemDate = new Date(item.date);
       const today = new Date();
@@ -152,238 +188,352 @@ export default function NotificationsScreen({ navigation }: any) {
       const todayStr = today.toISOString().split('T')[0];
       const yestStr = yest.toISOString().split('T')[0];
 
-      if (itemDateStr === todayStr) groupName = "Today";
-      else if (itemDateStr === yestStr) groupName = "Yesterday";
-      else groupName = itemDate.toLocaleDateString("en-GB", { day: 'numeric', month: 'short' });
+      if (itemDateStr === todayStr) groupName = 'Today';
+      else if (itemDateStr === yestStr) groupName = 'Yesterday';
+      else groupName = itemDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
     }
 
     if (!acc[groupName]) acc[groupName] = [];
     acc[groupName].push(item);
     return acc;
-  }, {} as Record<string, any[]>) as Record<string, any[]>;
+  }, {} as Record<string, any[]>);
 
   const formatTime = (dateStr: string) => {
     try {
-      if (dateStr.length <= 10) return "Yesterday";
-      return new Date(dateStr).toLocaleTimeString("en-US", { hour: '2-digit', minute: '2-digit' });
+      if (dateStr.length <= 10) return 'Yesterday';
+      return new Date(dateStr).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
     } catch {
-      return "09:00 AM";
+      return '09:00 AM';
     }
   };
 
-  const unreadCount = items.filter(i => !i.read).length;
-
-  const renderContent = () => {
-    if (loading) {
-      return (
-        <View style={{ alignItems: 'center', paddingTop: 80 }}>
-          <ActivityIndicator size="large" color={BLUE} />
-        </View>
-      );
-    }
-
-    if (error) {
-      return (
-        <View style={{ marginTop: 40 }}>
-          <Phase3ErrorState variant="server" onAction={fetchNotifications} />
-        </View>
-      );
-    }
-
-    if (Object.keys(groupedItems).length === 0) {
-      return (
-        <View style={{ marginTop: 60 }}>
-          <Phase3EmptyState variant="notices" />
-        </View>
-      );
-    }
-
-    return Object.entries(groupedItems).map(([groupDate, groupData]) => (
-      <View key={groupDate} style={styles.groupContainer}>
-        <Text style={styles.groupTitle}>{groupDate}</Text>
-        <View style={styles.groupList}>
-          {(groupData as any[]).map((n: any, idx: number) => {
-            const meta = typeMeta[n.type] || typeMeta['system'];
-            const Icon = meta.icon;
-            const displayTime = n.time || formatTime(n.date);
-
-            return (
-              <TouchableOpacity
-                key={n.id}
-                style={[styles.card, idx !== groupData.length - 1 && styles.cardBorder]}
-                onPress={() => handleItemPress(n)}
-                activeOpacity={0.7}
-              >
-                <View style={[styles.iconWrap, { backgroundColor: meta.soft }]}>
-                  <Icon size={20} color={meta.tint} />
-                </View>
-                <View style={styles.cardContent}>
-                  <View style={styles.cardHeader}>
-                    <Text style={styles.title} numberOfLines={1}>{n.title}</Text>
-                    <Text style={styles.time}>{displayTime}</Text>
-                  </View>
-                  <View style={styles.cardBodyRow}>
-                    <Text style={styles.body}>{n.body}</Text>
-                    {!n.read && <View style={styles.unreadDot} />}
-                  </View>
-                </View>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-      </View>
-    ));
-  };
+  const unreadCount = items.filter((i) => !i.read).length;
 
   return (
-    <View style={styles.safe}>
-      {/* Header Section */}
-      <View style={styles.headerSection}>
-        <SafeAreaView edges={['top']} style={{ backgroundColor: BLUE }}>
-          <View style={styles.header}>
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={10} style={styles.backBtn}>
-                <ArrowLeft size={24} color={WHITE} strokeWidth={2.5} />
-              </TouchableOpacity>
-              <View>
-                <Text style={styles.headerTitle}>Notifications</Text>
-                <Text style={styles.headerSub}>You have {unreadCount} unread</Text>
-              </View>
+    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
+      {/* Top App Header */}
+      <View style={styles.header}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.backBtn}
+          activeOpacity={0.7}
+        >
+          <ArrowLeft size={22} color={BROWN_DARK} />
+        </TouchableOpacity>
+
+        <View style={styles.headerTitleWrap}>
+          <Text style={styles.headerTitle}>Notifications</Text>
+          {unreadCount > 0 && (
+            <View style={styles.unreadBadge}>
+              <Text style={styles.unreadBadgeText}>{unreadCount} new</Text>
             </View>
-            <TouchableOpacity style={styles.filterBtn}>
-              <Filter size={20} color={WHITE} strokeWidth={2.5} />
-            </TouchableOpacity>
-          </View>
-        </SafeAreaView>
+          )}
+        </View>
+
+        {unreadCount > 0 ? (
+          <TouchableOpacity
+            onPress={markAllRead}
+            style={styles.markAllBtn}
+            activeOpacity={0.7}
+          >
+            <CheckCheck size={16} color={RUST} />
+            <Text style={styles.markAllText}>Read All</Text>
+          </TouchableOpacity>
+        ) : (
+          <View style={{ width: 60 }} />
+        )}
       </View>
 
-      {/* Tabs */}
-      <View style={styles.tabContainer}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabScroll}>
-          {TABS.map(tab => {
+      {/* Category Tabs & Filter Chips */}
+      <View style={styles.tabsContainer}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.tabsScroll}
+        >
+          <TouchableOpacity
+            onPress={() => setUnreadOnly(!unreadOnly)}
+            style={[styles.unreadToggle, unreadOnly && styles.unreadToggleActive]}
+            activeOpacity={0.7}
+          >
+            <Filter size={12} color={unreadOnly ? '#FFFFFF' : RUST} />
+            <Text
+              style={[
+                styles.unreadToggleText,
+                unreadOnly && styles.unreadToggleTextActive,
+              ]}
+            >
+              Unread
+            </Text>
+          </TouchableOpacity>
+
+          {TABS.map((tab) => {
             const isActive = activeTab === tab;
             return (
               <TouchableOpacity
                 key={tab}
-                style={[styles.tab, isActive && styles.tabActive]}
+                style={[styles.tabBtn, isActive && styles.tabBtnActive]}
                 onPress={() => setActiveTab(tab)}
+                activeOpacity={0.7}
               >
-                <Text style={[styles.tabText, isActive && styles.tabTextActive]}>{tab}</Text>
+                <Text style={[styles.tabText, isActive && styles.tabTextActive]}>
+                  {tab}
+                </Text>
               </TouchableOpacity>
             );
           })}
         </ScrollView>
       </View>
 
-      {/* Content */}
+      {/* Notifications List */}
       <ScrollView
         style={styles.content}
-        contentContainerStyle={{ paddingBottom: 100 }}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[BLUE]} tintColor={BLUE} />}
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={RUST}
+            colors={[RUST]}
+          />
+        }
       >
-        {renderContent()}
-      </ScrollView>
+        {loading ? (
+          <View style={styles.centerBox}>
+            <ActivityIndicator size="large" color={RUST} />
+          </View>
+        ) : error ? (
+          <View style={{ marginTop: 40 }}>
+            <Phase3ErrorState variant="server" onAction={fetchNotifications} />
+          </View>
+        ) : Object.keys(groupedItems).length === 0 ? (
+          <View style={{ marginTop: 60 }}>
+            <Phase3EmptyState variant="notices" />
+          </View>
+        ) : (
+          Object.entries(groupedItems).map(([groupDate, groupData]) => {
+            const itemsInGroup = groupData as any[];
+            return (
+              <View key={groupDate} style={styles.groupContainer}>
+                <Text style={styles.groupTitle}>{groupDate}</Text>
+                <View style={styles.groupList}>
+                  {itemsInGroup.map((n: any, idx: number) => {
+                    const meta = typeMeta[n.type] || typeMeta['system'];
+                    const Icon = meta.icon;
+                    const displayTime = n.time || formatTime(n.date);
 
-      {!loading && !error && Object.keys(groupedItems).length > 0 && (
-        <View style={styles.footer}>
-          <TouchableOpacity style={styles.markReadBtn} onPress={markAllRead}>
-            <Text style={styles.markReadText}>Mark all as read</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-    </View>
+                    return (
+                      <TouchableOpacity
+                        key={n.id}
+                        style={[
+                          styles.card,
+                          !n.read && styles.unreadCard,
+                          idx !== itemsInGroup.length - 1 && styles.cardBorder,
+                        ]}
+                        onPress={() => handleItemPress(n)}
+                        activeOpacity={0.7}
+                      >
+                      <View
+                        style={[
+                          styles.iconWrap,
+                          { backgroundColor: meta.soft },
+                        ]}
+                      >
+                        <Icon size={20} color={meta.tint} />
+                      </View>
+                      <View style={styles.cardContent}>
+                        <View style={styles.cardHeader}>
+                          <Text
+                            style={[
+                              styles.title,
+                              !n.read && styles.unreadTitle,
+                            ]}
+                            numberOfLines={1}
+                          >
+                            {n.title}
+                          </Text>
+                          <Text style={styles.time}>{displayTime}</Text>
+                        </View>
+                        <View style={styles.cardBodyRow}>
+                          <Text style={styles.body} numberOfLines={2}>
+                            {n.body}
+                          </Text>
+                          {!n.read && <View style={styles.unreadDot} />}
+                        </View>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+          );
+        })
+        )}
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#FAF9F6' },
-  headerSection: {
-    backgroundColor: BLUE,
+  safeArea: {
+    flex: 1,
+    backgroundColor: CREAM,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: BORDER,
   },
-  backBtn: { width: 32 },
-  filterBtn: { width: 32, alignItems: 'flex-end' },
-  headerTitle: { fontSize: 18, fontWeight: '800', color: WHITE },
-  headerSub: { fontSize: 13, color: 'rgba(255,255,255,0.8)', marginTop: 2 },
-  
-  // Tabs
-  tabContainer: {
-    marginTop: 16,
-    marginBottom: 8,
+  backBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: CREAM_ALT,
+    borderWidth: 1,
+    borderColor: BORDER,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  tabScroll: {
-    paddingHorizontal: 20,
+  headerTitleWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 8,
   },
-  tab: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: 'transparent',
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: BROWN_DARK,
+    letterSpacing: -0.3,
   },
-  tabActive: {
-    backgroundColor: BLUE,
+  unreadBadge: {
+    backgroundColor: RUST,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 12,
+  },
+  unreadBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  markAllBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+  },
+  markAllText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: RUST,
+  },
+  tabsContainer: {
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: BORDER,
+    backgroundColor: CREAM,
+  },
+  tabsScroll: {
+    paddingHorizontal: 16,
+    gap: 8,
+  },
+  unreadToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 18,
+    backgroundColor: CREAM_ALT,
+    borderWidth: 1,
+    borderColor: RUST,
+  },
+  unreadToggleActive: {
+    backgroundColor: RUST,
+  },
+  unreadToggleText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: RUST,
+  },
+  unreadToggleTextActive: {
+    color: '#FFFFFF',
+  },
+  tabBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 18,
+    backgroundColor: CREAM_ALT,
+    borderWidth: 1,
+    borderColor: BORDER,
+  },
+  tabBtnActive: {
+    backgroundColor: RUST,
+    borderColor: RUST,
   },
   tabText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: TEXT_MID,
+    fontSize: 12,
+    fontWeight: '600',
+    color: BROWN,
   },
   tabTextActive: {
-    color: '#FFF',
+    color: '#FFFFFF',
   },
-
-  // Groups
   content: {
     flex: 1,
-    paddingHorizontal: 20,
+  },
+  scrollContent: {
+    padding: 16,
+    paddingBottom: 40,
+  },
+  centerBox: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 80,
   },
   groupContainer: {
-    marginTop: 16,
+    marginBottom: 20,
   },
   groupTitle: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: TEXT_DARK,
-    marginBottom: 12,
+    fontSize: 12,
+    fontWeight: '700',
+    color: TEXT_MUTED,
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+    marginBottom: 8,
+    paddingLeft: 4,
   },
   groupList: {
-    backgroundColor: '#FFF',
+    backgroundColor: '#FFFFFF',
     borderRadius: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
     borderWidth: 1,
-    borderColor: '#F1F5F9',
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.03,
-    shadowRadius: 8,
-    elevation: 2,
+    borderColor: BORDER,
+    overflow: 'hidden',
   },
-
-  // Cards
   card: {
     flexDirection: 'row',
+    padding: 14,
     alignItems: 'flex-start',
-    paddingVertical: 16,
-    gap: 12,
+  },
+  unreadCard: {
+    backgroundColor: '#FFFDF5',
   },
   cardBorder: {
     borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+    borderBottomColor: '#FEF3C7',
   },
   iconWrap: {
-    width: 44,
-    height: 44,
+    width: 40,
+    height: 40,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
+    marginRight: 12,
   },
   cardContent: {
     flex: 1,
@@ -392,60 +542,38 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: 3,
   },
   title: {
     fontSize: 14,
-    fontWeight: '800',
-    color: TEXT_DARK,
+    fontWeight: '600',
+    color: BROWN_DARK,
     flex: 1,
     marginRight: 8,
   },
+  unreadTitle: {
+    fontWeight: '700',
+  },
   time: {
     fontSize: 11,
-    fontWeight: '600',
-    color: TEXT_MID,
+    color: TEXT_MUTED,
   },
   cardBodyRow: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    gap: 12,
   },
   body: {
-    fontSize: 13,
-    color: TEXT_MID,
-    lineHeight: 18,
+    fontSize: 12,
+    lineHeight: 16,
+    color: BROWN,
     flex: 1,
-    fontWeight: '500',
   },
   unreadDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#E11D48',
-    marginTop: 6,
-  },
-
-  // Footer
-  footer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: '#FAF9F6',
-    paddingVertical: 16,
-    alignItems: 'center',
-    borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
-  },
-  markReadBtn: {
-    paddingVertical: 8,
-    paddingHorizontal: 20,
-  },
-  markReadText: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: '#A0522D', // Using brown for this link as seen in the image
+    backgroundColor: RUST,
+    marginLeft: 8,
   },
 });

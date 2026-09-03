@@ -10,6 +10,7 @@ import { useAuth } from '../../../contexts/AuthContext';
 import { useToast } from '../../../contexts/ToastContext';
 import api from '../../services/api';
 import { AppHeader, SkeletonListRow, EmptyState } from '../../components/tenant/ui';
+import { notifyComplaintRaised } from '../../hooks/useTenantNotifications';
 import { LinearGradient } from 'expo-linear-gradient';
 import { getResolvedImageUrl, appendImageFileToFormData } from '../../utils/imageHelper';
 
@@ -228,7 +229,7 @@ function ComplaintDetailView({ complaint, onClose }: { complaint: any; onClose: 
 }
 
 function StepperForm({ visible, onClose, onSubmit, hostelId }: { visible: boolean; onClose: () => void; onSubmit: () => void; hostelId?: number }) {
-  const { showError, showSuccess } = useToast();
+  const { showError } = useToast();
   const [priority, setPriority] = useState('Medium');
   const [category, setCategory] = useState('Maintenance');
   const [title, setTitle] = useState('');
@@ -327,7 +328,7 @@ function StepperForm({ visible, onClose, onSubmit, hostelId }: { visible: boolea
         appendImageFileToFormData(formData, 'images', uri, `complaint-${i}.jpg`);
       });
       await api.post('/complaints/tenant', formData);
-      showSuccess('Complaint submitted successfully!');
+      notifyComplaintRaised(title);
       onSubmit();
       onClose();
     } catch (e) {

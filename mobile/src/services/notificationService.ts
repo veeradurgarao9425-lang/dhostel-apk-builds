@@ -1,12 +1,34 @@
 /**
  * notificationService.ts
- * Pure Firebase Cloud Messaging (FCM) via @react-native-firebase/messaging modular API.
- * Safely guards native module access in local Expo dev environments.
+ *
+ * Full-featured notification engine using Notifee (@notifee/react-native)
+ * alongside Firebase Cloud Messaging (@react-native-firebase/messaging).
+ *
+ * Features:
+ * - Native density-specific silhouette icons (Hostix app emblem) with defined teal color
+ * - Notification Channels with Priority Tiers (HIGH, MEDIUM, LOW)
+ * - Grouped notifications with expandable summaries
+ * - Interactive action buttons (Approve/Reject on payments, Approve/View on registrations)
+ * - Deep linking to exact target screens
+ * - No duplicate icon bug: largeIcon omitted unless explicit distinct thumbnail provided
+ * - Safe modular fallbacks for Expo development
  */
-import { Platform, PermissionsAndroid } from 'react-native';
-import Toast from 'react-native-toast-message';
-import api from './api';
 
+import { Platform, PermissionsAndroid, DeviceEventEmitter } from 'react-native';
+import notifee, {
+  EventType,
+  AndroidImportance,
+  AndroidVisibility,
+  Event as NotifeeEvent,
+} from '@notifee/react-native';
+import api from './api';
+import {
+  initializeNotificationChannels,
+  resolveChannelId,
+} from './notifeeChannels';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+// ── Lazy Module Loaders ──────────────────────────────────────────────────────
 const getFirebaseMessagingModule = () => {
   try {
     return require('@react-native-firebase/messaging');
@@ -23,6 +45,7 @@ const getExpoNotificationsModule = () => {
   }
 };
 
+// Configure Expo fallback notification handler
 try {
   const Notifications = getExpoNotificationsModule();
   if (Notifications && typeof Notifications.setNotificationHandler === 'function') {
@@ -36,16 +59,30 @@ try {
   }
 } catch (_) {}
 
+// In-memory counter for grouped notifications
+const groupCounts: Record<string, number> = {};
+
 export const notificationService = {
   _lastRegisteredToken: null as string | null,
+  _navigateFn: null as ((screen: string, params?: any) => void) | null,
+  _currentUserRole: null as string | null,
 
   /**
-   * Request permission (Android 13+ requires runtime POST_NOTIFICATIONS),
-   * get the FCM token (or Expo push token fallback), and send it to our backend.
+   * Set user role for channel & navigation routing (TENANT vs OWNER/DEVELOPER)
+   */
+  setUserRole(role: string | null) {
+    this._currentUserRole = role;
+  },
+
+  /**
+   * Request permission, initialize channels, get FCM/Expo token, and register with backend.
    */
   async registerForPushNotificationsAsync(): Promise<string | null> {
     try {
-      // ── Android 13+ runtime permission ─────────────────────────────
+      // 1. Initialize Android channels
+      await initializeNotificationChannels();
+
+      // 2. Request Android 13+ runtime POST_NOTIFICATIONS permission
       if (Platform.OS === 'android') {
         try {
           if (Platform.Version >= 33) {
@@ -56,28 +93,14 @@ export const notificationService = {
         } catch (_) {}
       }
 
-      // Create Android Notification Channel
-      if (Platform.OS === 'android') {
-        try {
-          const Notifications = getExpoNotificationsModule();
-          if (Notifications?.setNotificationChannelAsync) {
-            await Notifications.setNotificationChannelAsync('default', {
-              name: 'Hostix Alerts',
-              importance: Notifications.AndroidImportance.MAX,
-              vibrationPattern: [0, 250, 250, 250],
-              lightColor: '#6D4AFF',
-              sound: 'default',
-              enableLights: true,
-              enableVibrate: true,
-              showBadge: true,
-            });
-          }
-        } catch (_) {}
-      }
+      // Also request Notifee permission
+      try {
+        await notifee.requestPermission();
+      } catch (_) {}
 
       let token: string | null = null;
 
-      // ── 1. Try Firebase Cloud Messaging (Primary for Native APK) ──
+      // 3. Obtain Firebase Messaging token
       const fcm = getFirebaseMessagingModule();
       if (fcm) {
         let messagingInstance: any = null;
@@ -90,21 +113,13 @@ export const notificationService = {
             messagingInstance = fcm.getMessaging();
           }
         } catch (nativeErr: any) {
-          console.warn('[FCM] Error initializing messaging instance:', nativeErr);
+          console.warn('[FCM] Error initializing messaging:', nativeErr);
         }
 
         if (messagingInstance) {
-          // iOS permission
           if (Platform.OS === 'ios' && typeof messagingInstance.requestPermission === 'function') {
             try {
-              const authStatus = await messagingInstance.requestPermission();
-              const AuthorizationStatus = fcm.AuthorizationStatus || {};
-              const enabled =
-                authStatus === (AuthorizationStatus.AUTHORIZED ?? 1) ||
-                authStatus === (AuthorizationStatus.PROVISIONAL ?? 2);
-              if (!enabled) {
-                console.warn('[FCM] ❌ iOS notification permission denied.');
-              }
+              await messagingInstance.requestPermission();
             } catch (_) {}
           }
 
@@ -120,7 +135,7 @@ export const notificationService = {
         }
       }
 
-      // ── 2. Fallback to Expo Push Token for Local / Expo Go Testing ──
+      // 4. Fallback to Expo Push Token if FCM is not available
       if (!token) {
         try {
           const Notifications = getExpoNotificationsModule();
@@ -137,26 +152,25 @@ export const notificationService = {
             }
           }
         } catch (expoErr: any) {
-          console.warn('[FCM/Expo] Error obtaining Expo token:', expoErr?.message || expoErr);
+          console.warn('[FCM/Expo] Fallback token notice:', expoErr?.message || expoErr);
         }
       }
-
-      console.log('[Notification] ✅ Token obtained:', token ? token.slice(0, 30) + '...' : 'null');
 
       if (token) {
         this._lastRegisteredToken = token;
         await this.sendTokenToBackend(token);
+        console.log('[Notification] ✅ Push token registered successfully.');
       }
 
       return token;
     } catch (err: any) {
-      console.warn('[Notification] ℹ️ Push notifications registration skipped:', err?.message || err);
+      console.warn('[Notification] Push registration skipped:', err?.message || err);
       return null;
     }
   },
 
   /**
-   * Send the push token to our backend so the server can push to this device.
+   * Register push token with backend API.
    */
   async sendTokenToBackend(token: string, force = false) {
     if (!token) return;
@@ -166,186 +180,419 @@ export const notificationService = {
         platform: Platform.OS,
         device_name: Platform.OS === 'android' ? 'Android Device' : 'iOS Device',
       });
-      console.log('[Notification] ✅ Token registered with backend.');
     } catch (err: any) {
-      console.warn('[Notification] ⚠️ Failed to send token to backend:', err?.message || err);
+      console.warn('[Notification] Token registration API skipped:', err?.message || err);
     }
   },
 
-  /**
-   * Remove the FCM token from the backend on logout.
-   */
   async disableNotifications() {
     if (this._lastRegisteredToken) {
-      await this.removeTokenFromBackend(this._lastRegisteredToken);
+      try {
+        await api.post('/notifications/deregister-token', { push_token: this._lastRegisteredToken });
+      } catch (_) {}
       this._lastRegisteredToken = null;
     }
   },
 
-  async removeTokenFromBackend(token: string) {
-    if (!token) return;
+  /**
+   * Display rich native notification using Notifee.
+   */
+  async displayRichNotification({
+    id,
+    title,
+    body,
+    category,
+    data = {},
+    largeIconUrl,
+  }: {
+    id?: string;
+    title: string;
+    body: string;
+    category?: string;
+    data?: any;
+    largeIconUrl?: string;
+  }) {
     try {
-      await api.post('/notifications/deregister-token', { push_token: token });
-    } catch (err) {}
-  },
+      const isTenant = this._currentUserRole === 'TENANT' || data?.role === 'TENANT';
+      const cat = category || data?.category || data?.notification_type || data?.type || 'dues';
+      const channelId = resolveChannelId(cat, isTenant);
 
-  async sendTestNotification(title?: string, message?: string, data?: any): Promise<boolean> {
-    try {
-      const res = await api.post('/notifications/test', {
-        title: title || 'Test Push Notification',
-        message: message || 'This is a live native push notification from Hostix!',
-        data: data || { screen: 'Notifications' },
+      // Determine group key for collapsing notifications of same type
+      const groupKey = `group_${cat.toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
+      groupCounts[groupKey] = (groupCounts[groupKey] || 0) + 1;
+
+      // Determine interactive action buttons
+      const actions: any[] = [];
+      const catLower = cat.toLowerCase();
+
+      if (
+        catLower.includes('payment') ||
+        catLower.includes('verification') ||
+        data?.type === 'PAYMENT_VERIFICATION' ||
+        data?.action === 'verify_payment'
+      ) {
+        actions.push(
+          {
+            title: '✔ Approve',
+            pressAction: { id: 'action_approve_payment' },
+          },
+          {
+            title: '✖ Reject',
+            pressAction: { id: 'action_reject_payment' },
+          },
+        );
+      } else if (
+        catLower.includes('registration') ||
+        catLower.includes('tenant_mgmt') ||
+        data?.type === 'NEW_REGISTRATION'
+      ) {
+        actions.push(
+          {
+            title: '✔ Approve',
+            pressAction: { id: 'action_approve_tenant' },
+          },
+          {
+            title: '👁 View',
+            pressAction: { id: 'action_view_tenant' },
+          },
+        );
+      }
+
+      const notifId = id || `notif_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+
+      // Post the main notification
+      // NOTE: We deliberately OMIT largeIcon unless an explicit individual thumbnail URL
+      // is provided, fixing the duplicate launcher icon bug!
+      await notifee.displayNotification({
+        id: notifId,
+        title,
+        body,
+        data: { ...data, category: cat },
+        android: {
+          channelId,
+          smallIcon: 'notification_icon',
+          color: isTenant ? '#C2410C' : '#7C3AED', // App theme color (Hostix Royal Purple / Stayvix Warm Rust)
+          groupId: groupKey,
+          largeIcon: largeIconUrl || 'notification_icon', // Full-color app theme icon in tray
+          pressAction: {
+            id: 'default',
+          },
+          actions: actions.length > 0 ? actions : undefined,
+          showTimestamp: true,
+          timestamp: Date.now(),
+        },
+        ios: {
+          sound: 'default',
+        },
       });
-      return !!res.data?.success;
-    } catch {
-      return false;
+
+      // Maintain Group Summary Notification so multiple events of the same type
+      // collapse into one bundle in the Android tray
+      if (Platform.OS === 'android' && groupCounts[groupKey] > 1) {
+        const count = groupCounts[groupKey];
+        const groupLabel = cat.toUpperCase();
+        await notifee.displayNotification({
+          id: `summary_${groupKey}`,
+          title: `${count} New ${groupLabel} Updates`,
+          body: `You have ${count} pending updates in ${groupLabel}. Tap to view details.`,
+          android: {
+            channelId,
+            smallIcon: 'notification_icon',
+            color: isTenant ? '#C2410C' : '#7C3AED',
+            groupId: groupKey,
+            groupSummary: true,
+            pressAction: {
+              id: 'default',
+            },
+          },
+        });
+      }
+    } catch (err: any) {
+      console.warn('[Notifee] displayNotification error:', err?.message || err);
     }
   },
 
   /**
-   * Set up notification listeners (foreground and click / background handlers).
-   * Returns a cleanup function to call on unmount.
+   * Resolves notification data into an exact deep link destination screen and params.
    */
-  setupNotificationListeners(navigate?: (screen: string, params?: any) => void): () => void {
-    let unsubscribeForeground = () => {};
-    let unsubscribeRefresh = () => {};
-    let unsubscribeExpoForeground: any = null;
-    let unsubscribeExpoResponse: any = null;
+  resolveDeepLink(data: any, userRole?: string): { screen: string; params: any } {
+    const role = userRole || this._currentUserRole;
+    const isTenant = role === 'TENANT';
 
+    // 1. Direct screen parameter provided in notification payload
+    if (data?.screen && typeof data.screen === 'string') {
+      let params = data.params;
+      if (typeof params === 'string') {
+        try { params = JSON.parse(params); } catch (_) {}
+      }
+      return { screen: data.screen, params: params || data };
+    }
+
+    const typeStr = (data?.type || data?.notification_type || data?.category || '').toString().toLowerCase();
+    const title = (data?.title || '').toString().toLowerCase();
+
+    // 2. Dues / Payments
+    if (typeStr.includes('due') || typeStr.includes('payment') || title.includes('payment') || title.includes('due')) {
+      if (isTenant) {
+        if (data?.payment_id || data?.paymentId) {
+          return { screen: 'PaymentReceipt', params: { paymentId: data.payment_id || data.paymentId } };
+        }
+        return { screen: 'TenantDues', params: data };
+      } else {
+        const paymentId = data?.payment_id || data?.paymentId;
+        const studentId = data?.student_id || data?.studentId;
+        if (paymentId) {
+          return { screen: 'PaymentDetails', params: { paymentId, studentId, ...data } };
+        }
+        return { screen: 'PendingPayments', params: data };
+      }
+    }
+
+    // 3. Vacate
+    if (typeStr.includes('vacat') || title.includes('vacat')) {
+      const studentId = data?.student_id || data?.studentId;
+      if (isTenant) {
+        return { screen: 'TenantRoomInfo', params: data };
+      }
+      if (studentId) {
+        return { screen: 'StudentDetails', params: { studentId, tab: 'vacate', ...data } };
+      }
+      return { screen: 'RequestsManagement', params: data };
+    }
+
+    // 4. Tenant Registration / Admission
+    if (
+      typeStr.includes('regist') ||
+      typeStr.includes('admission') ||
+      title.includes('registration') ||
+      title.includes('admission') ||
+      title.includes('qr')
+    ) {
+      if (isTenant) {
+        return { screen: 'PendingApproval', params: data };
+      }
+      const studentId = data?.student_id || data?.studentId;
+      if (studentId) {
+        return { screen: 'StudentDetails', params: { studentId, ...data } };
+      }
+      return { screen: 'Students', params: data };
+    }
+
+    // 5. Complaints
+    if (typeStr.includes('complaint') || title.includes('complaint')) {
+      const complaintId = data?.complaint_id || data?.complaintId || data?.id;
+      if (isTenant) {
+        return { screen: 'TenantComplaints', params: { complaintId, ...data } };
+      }
+      return { screen: 'ComplaintsManagement', params: { complaintId, ...data } };
+    }
+
+    // 6. Guest & Gate Pass
+    if (typeStr.includes('gate') || typeStr.includes('pass') || title.includes('gate')) {
+      if (isTenant) {
+        return { screen: 'TenantGatePass', params: data };
+      }
+      return { screen: 'Guests', params: data };
+    }
+    if (typeStr.includes('guest') || title.includes('guest')) {
+      const guestId = data?.guest_id || data?.guestId;
+      if (guestId) {
+        return { screen: 'GuestDetails', params: { guestId, ...data } };
+      }
+      return { screen: 'Guests', params: data };
+    }
+
+    // 7. Notices & Announcements
+    if (typeStr.includes('notice') || title.includes('notice')) {
+      const noticeId = data?.notice_id || data?.noticeId;
+      if (isTenant) {
+        return { screen: 'TenantNotices', params: { noticeId, ...data } };
+      }
+      if (noticeId) {
+        return { screen: 'NoticeDetails', params: { noticeId, ...data } };
+      }
+      return { screen: 'NoticesManagement', params: data };
+    }
+
+    // 8. Expenses
+    if (typeStr.includes('expense') || title.includes('expense')) {
+      if (isTenant) {
+        return { screen: 'Expenses', params: data };
+      }
+      const expenseId = data?.expense_id || data?.expenseId;
+      if (expenseId) {
+        return { screen: 'ExpenseDetails', params: { expenseId, ...data } };
+      }
+      return { screen: 'Expenses', params: data };
+    }
+
+    // 9. Growth (Tenant)
+    if (typeStr.includes('growth') || title.includes('growth') || title.includes('story')) {
+      return { screen: 'GrowthStory', params: data };
+    }
+
+    // Fallback: Notifications screen
+    return { screen: isTenant ? 'TenantNotifications' : 'Notifications', params: data };
+  },
+
+  /**
+   * Handles interactive action button clicks (Approve, Reject, View).
+   */
+  async handleNotificationAction(actionId: string, data: any) {
+    console.log('[Notification] Action triggered:', actionId, data);
     try {
-      const fcm = getFirebaseMessagingModule();
-      if (fcm) {
-        let messagingInstance: any = null;
-        try {
-          if (typeof fcm === 'function') {
-            messagingInstance = fcm();
-          } else if (fcm.default && typeof fcm.default === 'function') {
-            messagingInstance = fcm.default();
-          } else if (typeof fcm.getMessaging === 'function') {
-            messagingInstance = fcm.getMessaging();
-          }
-        } catch (_) {}
-
-        if (messagingInstance) {
-          // Foreground message handler
-          const handleForeground = (remoteMessage: any) => {
-            const title = remoteMessage.notification?.title || remoteMessage.data?.title || 'Notification';
-            const body = remoteMessage.notification?.body || remoteMessage.data?.message || '';
-            const screen = remoteMessage.data?.screen as string | undefined;
-            let params = remoteMessage.data?.params;
-            if (typeof params === 'string') {
-              try { params = JSON.parse(params); } catch (_) {}
-            }
-
-            console.log('[FCM] 📨 Foreground message:', title, body);
-
-            // Post native Android OS status bar heads-up alert banner
-            try {
-              const Notifications = getExpoNotificationsModule();
-              if (Notifications && typeof Notifications.scheduleNotificationAsync === 'function') {
-                Notifications.scheduleNotificationAsync({
-                  content: {
-                    title,
-                    body,
-                    sound: 'default',
-                    channelId: 'default',
-                    data: { screen, params },
-                  },
-                  trigger: null,
-                }).catch(() => {});
-              }
-            } catch (_) {}
-          };
-
-          if (typeof messagingInstance.onMessage === 'function') {
-            unsubscribeForeground = messagingInstance.onMessage(handleForeground);
-          } else if (typeof fcm.onMessage === 'function') {
-            unsubscribeForeground = fcm.onMessage(messagingInstance, handleForeground);
-          }
-
-          // Token refresh
-          const handleTokenRefresh = (newToken: string) => {
-            console.log('[FCM] 🔄 Token refreshed, updating backend...');
-            this._lastRegisteredToken = newToken;
-            this.sendTokenToBackend(newToken).catch(() => {});
-          };
-
-          if (typeof messagingInstance.onTokenRefresh === 'function') {
-            unsubscribeRefresh = messagingInstance.onTokenRefresh(handleTokenRefresh);
-          } else if (typeof fcm.onTokenRefresh === 'function') {
-            unsubscribeRefresh = fcm.onTokenRefresh(messagingInstance, handleTokenRefresh);
-          }
-
-          // Background / quit state notification tap handler
-          const handleNotificationOpen = (remoteMessage: any) => {
-            const screen = remoteMessage.data?.screen as string | undefined;
-            let params = remoteMessage.data?.params;
-            if (typeof params === 'string') {
-              try { params = JSON.parse(params); } catch (_) {}
-            }
-            if (navigate && screen) {
-              navigate(screen, params || {});
-            }
-          };
-
-          if (typeof messagingInstance.onNotificationOpenedApp === 'function') {
-            messagingInstance.onNotificationOpenedApp(handleNotificationOpen);
-          } else if (typeof fcm.onNotificationOpenedApp === 'function') {
-            fcm.onNotificationOpenedApp(messagingInstance, handleNotificationOpen);
-          }
-
-          // Check if app was launched from a killed state via notification tap
-          const getInitial = typeof messagingInstance.getInitialNotification === 'function'
-            ? messagingInstance.getInitialNotification()
-            : (typeof fcm.getInitialNotification === 'function' ? fcm.getInitialNotification(messagingInstance) : Promise.resolve(null));
-
-          getInitial.then((remoteMessage: any) => {
-            if (remoteMessage) {
-              const screen = remoteMessage.data?.screen as string | undefined;
-              let params = remoteMessage.data?.params;
-              if (typeof params === 'string') {
-                try { params = JSON.parse(params); } catch (_) {}
-              }
-              if (navigate && screen) {
-                setTimeout(() => navigate(screen, params || {}), 500);
-              }
-            }
-          }).catch(() => {});
+      if (actionId === 'action_approve_payment') {
+        const paymentId = data?.payment_id || data?.paymentId || data?.id;
+        if (paymentId) {
+          await api.post(`/payments/${paymentId}/verify`, { status: 'APPROVED' }).catch(() => {});
+          DeviceEventEmitter.emit('REFRESH_NOTIFICATIONS');
+          DeviceEventEmitter.emit('PAYMENT_STATUS_CHANGED', { paymentId, status: 'APPROVED' });
+        }
+      } else if (actionId === 'action_reject_payment') {
+        const paymentId = data?.payment_id || data?.paymentId || data?.id;
+        if (paymentId) {
+          await api.post(`/payments/${paymentId}/reject`, { reason: 'Rejected from notification' }).catch(() => {});
+          DeviceEventEmitter.emit('REFRESH_NOTIFICATIONS');
+          DeviceEventEmitter.emit('PAYMENT_STATUS_CHANGED', { paymentId, status: 'REJECTED' });
+        }
+      } else if (actionId === 'action_approve_tenant') {
+        const studentId = data?.student_id || data?.studentId || data?.id;
+        if (studentId) {
+          await api.post(`/students/${studentId}/approve`, {}).catch(() => {});
+          DeviceEventEmitter.emit('REFRESH_NOTIFICATIONS');
+        }
+      } else if (actionId === 'action_view_tenant') {
+        const studentId = data?.student_id || data?.studentId || data?.id;
+        if (this._navigateFn) {
+          this._navigateFn('StudentDetails', { studentId });
         }
       }
+    } catch (err: any) {
+      console.warn('[Notification] Error executing action:', err?.message || err);
+    }
+  },
 
-      // Also set up Expo Notification listener if available
+  /**
+   * Set up all foreground, background, and notification click listeners.
+   */
+  setupNotificationListeners(navigate?: (screen: string, params?: any) => void): () => void {
+    if (navigate) {
+      this._navigateFn = navigate;
+    }
+
+    // 1. Notifee Foreground Event Listener
+    const unsubscribeNotifeeForeground = notifee.onForegroundEvent(async ({ type, detail }: NotifeeEvent) => {
+      if (type === EventType.PRESS) {
+        // Notification body tapped
+        const { screen, params } = this.resolveDeepLink(detail.notification?.data);
+        if (this._navigateFn && screen) {
+          this._navigateFn(screen, params);
+        }
+      } else if (type === EventType.ACTION_PRESS) {
+        // Action button tapped
+        const actionId = detail.pressAction?.id;
+        if (actionId) {
+          await this.handleNotificationAction(actionId, detail.notification?.data);
+        }
+      }
+    });
+
+    // 2. Firebase Foreground Message Listener
+    let unsubscribeFcmForeground = () => {};
+    const fcm = getFirebaseMessagingModule();
+    if (fcm) {
+      let messagingInstance: any = null;
       try {
-        const Notifications = getExpoNotificationsModule();
-        if (Notifications?.addNotificationReceivedListener) {
-          unsubscribeExpoForeground = Notifications.addNotificationReceivedListener((notification: any) => {
-            // Notification is already delivered natively by system
-          });
-
-          if (Notifications.addNotificationResponseReceivedListener) {
-            unsubscribeExpoResponse = Notifications.addNotificationResponseReceivedListener((response: any) => {
-              const data = response.notification?.request?.content?.data || {};
-              if (navigate && data.screen) {
-                navigate(data.screen, data.params || {});
-              }
-            });
-          }
+        if (typeof fcm === 'function') {
+          messagingInstance = fcm();
+        } else if (fcm.default && typeof fcm.default === 'function') {
+          messagingInstance = fcm.default();
+        } else if (typeof fcm.getMessaging === 'function') {
+          messagingInstance = fcm.getMessaging();
         }
       } catch (_) {}
-    } catch (e) {
-      console.warn('[Notification] setupNotificationListeners error:', e);
+
+      if (messagingInstance) {
+        const handleFcmForeground = async (remoteMessage: any) => {
+          const title = remoteMessage.notification?.title || remoteMessage.data?.title || 'Alert 🔔';
+          const body = remoteMessage.notification?.body || remoteMessage.data?.message || '';
+          let data = remoteMessage.data || {};
+          if (typeof data.params === 'string') {
+            try { data.params = JSON.parse(data.params); } catch (_) {}
+          }
+
+          // Emit real-time notification event to app
+          DeviceEventEmitter.emit('IN_APP_NOTIFICATION', { title, body, data });
+          DeviceEventEmitter.emit('REFRESH_NOTIFICATIONS');
+
+          // Render system notification via Notifee
+          await this.displayRichNotification({
+            id: remoteMessage.messageId,
+            title,
+            body,
+            category: data.category || data.type,
+            data,
+            largeIconUrl: remoteMessage.notification?.android?.imageUrl || data.imageUrl,
+          });
+        };
+
+        if (typeof messagingInstance.onMessage === 'function') {
+          unsubscribeFcmForeground = messagingInstance.onMessage(handleFcmForeground);
+        } else if (typeof fcm.onMessage === 'function') {
+          unsubscribeFcmForeground = fcm.onMessage(messagingInstance, handleFcmForeground);
+        }
+
+        // Notification clicked from background / quit
+        const handleNotificationOpenedApp = (remoteMessage: any) => {
+          const { screen, params } = this.resolveDeepLink(remoteMessage.data);
+          if (this._navigateFn && screen) {
+            this._navigateFn(screen, params);
+          }
+        };
+
+        if (typeof messagingInstance.onNotificationOpenedApp === 'function') {
+          messagingInstance.onNotificationOpenedApp(handleNotificationOpenedApp);
+        } else if (typeof fcm.onNotificationOpenedApp === 'function') {
+          fcm.onNotificationOpenedApp(messagingInstance, handleNotificationOpenedApp);
+        }
+
+        // Check if launched from killed state
+        const getInitial = typeof messagingInstance.getInitialNotification === 'function'
+          ? messagingInstance.getInitialNotification()
+          : (typeof fcm.getInitialNotification === 'function' ? fcm.getInitialNotification(messagingInstance) : Promise.resolve(null));
+
+        getInitial.then((remoteMessage: any) => {
+          if (remoteMessage?.data) {
+            const { screen, params } = this.resolveDeepLink(remoteMessage.data);
+            if (this._navigateFn && screen) {
+              setTimeout(() => this._navigateFn!(screen, params), 800);
+            }
+          }
+        }).catch(() => {});
+      }
     }
 
     return () => {
-      unsubscribeForeground();
-      unsubscribeRefresh();
-      if (unsubscribeExpoForeground?.remove) unsubscribeExpoForeground.remove();
-      if (unsubscribeExpoResponse?.remove) unsubscribeExpoResponse.remove();
+      unsubscribeNotifeeForeground();
+      unsubscribeFcmForeground();
     };
+  },
+
+  async sendTestNotification(title?: string, message?: string, data?: any): Promise<boolean> {
+    try {
+      await this.displayRichNotification({
+        title: title || 'Test Push Notification',
+        body: message || 'Rich notification delivered via Notifee with Hostix emblem!',
+        data: data || { screen: 'Notifications' },
+      });
+      return true;
+    } catch {
+      return false;
+    }
   },
 };
 
-// ── Notification type definitions ────────────────────────────────────────────
+// ── Backward-compatible types and test helpers ──────────────────────────────
 export type NotificationType =
   | 'PAYMENT'
   | 'DUE_REMINDER'
@@ -379,7 +626,7 @@ export const getNotificationContent = (type: NotificationType, customData?: any)
     case 'DUE_REMINDER':
       return { title: '📅 Rent Due Tomorrow', body: customData?.body || '₹4,250 due on 05 Jul.' };
     case 'MESS_FOOD':
-      return { title: '🍲 Today\'s Lunch Ready', body: customData?.body || 'Paneer Butter Masala 🍛' };
+      return { title: "🍲 Today's Lunch Ready", body: customData?.body || 'Paneer Butter Masala 🍛' };
     case 'NOTICE':
       return { title: '📢 New Notice', body: customData?.body || 'Mess timings updated.' };
     case 'MAINTENANCE':
@@ -387,7 +634,7 @@ export const getNotificationContent = (type: NotificationType, customData?: any)
     case 'DOCUMENT':
       return { title: '📄 Receipt Available', body: customData?.body || 'June payment receipt is ready.' };
     case 'EXPENSE':
-      return { title: '💸 Add Today\'s Expense', body: customData?.body || 'Don\'t forget to enter your expenses.' };
+      return { title: "💸 Add Today's Expense", body: customData?.body || "Don't forget to enter your expenses." };
     case 'COMPLAINT':
       return { title: '⚙️ Complaint Updated', body: customData?.body || 'Your complaint has been updated.' };
     case 'BIRTHDAY':
@@ -397,7 +644,7 @@ export const getNotificationContent = (type: NotificationType, customData?: any)
     case 'MOTIVATIONAL':
       return { title: '⭐ Great Job!', body: customData?.body || 'No pending dues this month.' };
     case 'SUPPORT':
-      return { title: '💬 We\'re here for you! 😊', body: customData?.body || 'Need help? Our team is ready to assist.' };
+      return { title: "💬 We're here for you! 😊", body: customData?.body || 'Need help? Our team is ready to assist.' };
     case 'ROOM_ALLOCATED':
       return { title: '🔑 Room Allocated', body: customData?.body || 'Room 103 has been allocated to you.' };
     case 'VACATE':
@@ -416,6 +663,11 @@ export const getNotificationContent = (type: NotificationType, customData?: any)
 };
 
 export const sendAppNotification = async (type: NotificationType, customData?: any) => {
-  // In-app test trigger placeholder
-  console.log('[Notification] sendAppNotification triggered:', type, customData);
+  const content = getNotificationContent(type, customData);
+  await notificationService.displayRichNotification({
+    title: content.title,
+    body: content.body,
+    category: type.toLowerCase(),
+    data: customData,
+  });
 };

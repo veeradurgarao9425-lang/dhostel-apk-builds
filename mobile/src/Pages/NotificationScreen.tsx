@@ -11,6 +11,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { AnimatedGlowIcon } from '../components/ui/AnimatedGlowIcon';
 import DateTimePickerModal from "react-native-modal-datetime-picker";
+import { notificationService } from '../services/notificationService';
 
 // Helper function to format timestamp into friendly relative time
 const formatRelativeTime = (dateStr: string) => {
@@ -60,7 +61,9 @@ export const NotificationScreen = () => {
     const { theme, isDark } = useTheme();
 
     // Notification filtering states
-    const [selectedCategory, setSelectedCategory] = useState<'all' | 'payment' | 'admission' | 'room' | 'other'>('all');
+    const [selectedCategory, setSelectedCategory] = useState<
+        'all' | 'dues' | 'tenant_mgmt' | 'vacate' | 'complaints' | 'guest' | 'staff' | 'expenses' | 'reports'
+    >('all');
     const [filterDate, setFilterDate] = useState<string | null>(null);
     const [showDatePicker, setShowDatePicker] = useState(false);
  
@@ -280,21 +283,27 @@ export const NotificationScreen = () => {
     // Filter notifications list
     const filteredNotifications = notifications.filter(n => {
         const titleLower = (n.title || '').toLowerCase();
-        
+        const data = n.data || {};
+        const cat = (data.category || data.notification_type || data.type || '').toString().toLowerCase();
+
         // Category match
         let matchesCategory = true;
-        if (selectedCategory === 'payment') {
-            matchesCategory = titleLower.includes('payment') || titleLower.includes('collect') || n.type === 'success';
-        } else if (selectedCategory === 'admission') {
-            const isRoom = titleLower.includes('room') || titleLower.includes('assign');
-            matchesCategory = !isRoom && (titleLower.includes('admission') || titleLower.includes('tenant') || n.type === 'info');
-        } else if (selectedCategory === 'room') {
-            matchesCategory = titleLower.includes('room') || titleLower.includes('assign');
-        } else if (selectedCategory === 'other') {
-            const isPayment = titleLower.includes('payment') || titleLower.includes('collect') || n.type === 'success';
-            const isRoom = titleLower.includes('room') || titleLower.includes('assign');
-            const isAdmission = !isRoom && (titleLower.includes('admission') || titleLower.includes('tenant') || n.type === 'info');
-            matchesCategory = !isPayment && !isAdmission && !isRoom;
+        if (selectedCategory === 'dues') {
+            matchesCategory = titleLower.includes('payment') || titleLower.includes('due') || titleLower.includes('rent') || titleLower.includes('collect') || cat.includes('due') || cat.includes('payment') || n.type === 'success';
+        } else if (selectedCategory === 'tenant_mgmt') {
+            matchesCategory = titleLower.includes('admission') || titleLower.includes('registration') || titleLower.includes('student') || titleLower.includes('tenant') || cat.includes('regist') || n.type === 'info';
+        } else if (selectedCategory === 'vacate') {
+            matchesCategory = titleLower.includes('vacat') || cat.includes('vacat');
+        } else if (selectedCategory === 'complaints') {
+            matchesCategory = titleLower.includes('complaint') || titleLower.includes('maint') || cat.includes('complaint');
+        } else if (selectedCategory === 'guest') {
+            matchesCategory = titleLower.includes('guest') || titleLower.includes('visitor') || cat.includes('guest');
+        } else if (selectedCategory === 'staff') {
+            matchesCategory = titleLower.includes('staff') || titleLower.includes('salary') || cat.includes('staff');
+        } else if (selectedCategory === 'expenses') {
+            matchesCategory = titleLower.includes('expense') || cat.includes('expense');
+        } else if (selectedCategory === 'reports') {
+            matchesCategory = titleLower.includes('report') || titleLower.includes('summary') || cat.includes('report');
         }
 
         // Date match
@@ -349,26 +358,34 @@ export const NotificationScreen = () => {
             <View style={[styles.filterBar, { backgroundColor: isDark ? '#1E293B' : '#FFFFFF', borderBottomColor: isDark ? '#334155' : '#F1F5F9' }]}>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryScroll}>
                     <View style={styles.categoryContainer}>
-                        {(['all', 'payment', 'admission', 'room', 'other'] as const).map((cat) => {
-                            const isSelected = selectedCategory === cat;
-                            const label = cat.charAt(0).toUpperCase() + cat.slice(1) + 's';
-                            const displayLabel = cat === 'all' ? 'All' : cat === 'other' ? 'System' : label;
+                        {([
+                            { id: 'all', label: 'All' },
+                            { id: 'dues', label: 'Dues' },
+                            { id: 'tenant_mgmt', label: 'Tenant Mgmt' },
+                            { id: 'vacate', label: 'Vacate' },
+                            { id: 'complaints', label: 'Complaints' },
+                            { id: 'guest', label: 'Guest' },
+                            { id: 'staff', label: 'Staff' },
+                            { id: 'expenses', label: 'Expenses' },
+                            { id: 'reports', label: 'Reports' },
+                        ] as const).map((cat) => {
+                            const isSelected = selectedCategory === cat.id;
                             return (
                                 <TouchableOpacity
-                                    key={cat}
+                                    key={cat.id}
                                     style={[
                                         styles.categoryChip,
                                         { backgroundColor: isDark ? '#0F172A' : '#F1F5F9' },
                                         isSelected && { backgroundColor: theme.primary }
                                     ]}
-                                    onPress={() => setSelectedCategory(cat)}
+                                    onPress={() => setSelectedCategory(cat.id as any)}
                                 >
                                     <Text style={[
                                         styles.categoryChipText,
                                         { color: isDark ? '#94A3B8' : '#64748B' },
                                         isSelected && { color: '#FFFFFF', fontWeight: '700' }
                                     ]}>
-                                        {displayLabel}
+                                        {cat.label}
                                     </Text>
                                 </TouchableOpacity>
                             );

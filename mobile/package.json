@@ -9,13 +9,14 @@
     "web": "expo start --web",
     "test": "node --test --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON \"src/**/__tests__/*.test.ts\"",
     "typecheck": "tsc --noEmit",
-    "build-apk": "git commit --allow-empty -m \"Trigger APK Build [build]\" && git push origin main && git push build-repo main",
-    "build-apk:secondary": "git commit --allow-empty -m \"Trigger APK Build [build]\" && git push build-repo main"
+    "build-apk": "git commit --allow-empty -m \"Trigger APK Build [build]\" && git push origin main && git push builds main",
+    "build-apk:secondary": "git commit --allow-empty -m \"Trigger APK Build [build]\" && git push builds main"
   },
   "dependencies": {
     "@expo-google-fonts/inter": "^0.4.2",
     "@expo/metro-runtime": "~6.1.2",
     "@expo/vector-icons": "^15.0.3",
+    "@notifee/react-native": "^9.1.8",
     "@react-native-async-storage/async-storage": "^2.2.0",
     "@react-native-community/datetimepicker": "^8.4.4",
     "@react-native-community/netinfo": "11.4.1",

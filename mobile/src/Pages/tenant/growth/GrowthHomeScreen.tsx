@@ -17,6 +17,7 @@ import api from '../../../services/api';
 import { useAuth } from '../../../../contexts/AuthContext';
 import { theme } from '../../../theme/tenantTheme';
 import { GrowthHomeSkeleton } from '../../../components/tenant/growth/GrowthSkeletons';
+import { notifyGrowthProgress } from '../../../hooks/useTenantNotifications';
 
 const TAB_BAR_HEIGHT = 64;
 
@@ -105,7 +106,12 @@ export function GrowthHomeScreen({
         api.get('/growth/dashboard'),
         api.get('/growth/paths'),
       ]);
-      if (dashRes.data?.success) setData(dashRes.data.data);
+      if (dashRes.data?.success) {
+        setData(dashRes.data.data);
+        // Fire streak milestone notification from real API data
+        const streak = dashRes.data.data?.currentStreak ?? 0;
+        if (streak > 0) notifyGrowthProgress(streak);
+      }
       if (pathsRes.data?.success) setPaths(pathsRes.data.data);
     } catch {
       // silent

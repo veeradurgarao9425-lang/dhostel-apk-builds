@@ -11,6 +11,7 @@ import { useAuth } from '../../../contexts/AuthContext';
 import { useToast } from '../../../contexts/ToastContext';
 import { AppHeader, EmptyState, SkeletonListRow, LoaderOverlay } from '../../components/tenant/ui';
 import DateTimePickerModal from "react-native-modal-datetime-picker";
+import { notifyGatePassSubmitted } from '../../hooks/useTenantNotifications';
 
 const BLUE      = '#2245D4';
 const BLUE_SOFT = '#EEF2FF';
@@ -139,6 +140,7 @@ export default function GatePassScreen({ navigation }: any) {
       setEndDate('');
       await fetchLeaveRequests();
       setStatus('pending');
+      notifyGatePassSubmitted();
     } catch {
       showError('Failed to submit gate pass request.');
     } finally {

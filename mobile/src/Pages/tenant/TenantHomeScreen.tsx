@@ -26,6 +26,7 @@ import { RecentActivity } from "../../components/tenant/RecentActivity";
 import { QuickTips } from "../../components/tenant/QuickTips";
 import { GrowthHomeScreen } from "./growth/GrowthHomeScreen";
 import { TenantHeaderNotification } from "../../components/tenant/TenantHeaderNotification";
+import { useTenantNotifications } from "../../hooks/useTenantNotifications";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -85,6 +86,14 @@ export function TenantHomeScreen({ navigation }: any) {
       enterAnims.map(a => Animated.spring(a, { toValue: 1, tension: 50, friction: 8, useNativeDriver: true }))
     ).start();
   }, []);
+
+  // ── Daily welcome / budget / expense reminder notifications ──────────────────
+  useTenantNotifications({
+    userName: user?.name || user?.full_name,
+    budget,
+    spent,
+  });
+
 
   useEffect(() => {
     if (budget > 0) {

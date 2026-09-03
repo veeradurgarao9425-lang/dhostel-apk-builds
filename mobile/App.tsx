@@ -29,6 +29,7 @@ import { SupportModeBanner } from './src/components/SupportModeBanner';
 import { RefreshProvider } from './contexts/RefreshContext';
 import { ConfirmationProvider } from './contexts/ConfirmationContext';
 import { SocketProvider } from './src/context/SocketContext';
+import { InAppNotificationProvider } from './src/context/InAppContext';
 
 const ThemedToast = () => {
   const renderToast = (variant: ToastVariant, props: any) => (
@@ -114,13 +115,15 @@ export default function App() {
                   <ThemeProvider>
                     <ConfirmationProvider>
                       <ToastProvider>
-                        <SupportModeBanner />
-                        <OfflineBanner />
-                        <NetworkManager>
-                          <AppNavigator />
-                        </NetworkManager>
-                        <AssistantGate />
-                        <ThemedToast />
+                        <InAppNotificationProvider>
+                          <SupportModeBanner />
+                          <OfflineBanner />
+                          <NetworkManager>
+                            <AppNavigator />
+                          </NetworkManager>
+                          <AssistantGate />
+                          <ThemedToast />
+                        </InAppNotificationProvider>
                       </ToastProvider>
                     </ConfirmationProvider>
                   </ThemeProvider>

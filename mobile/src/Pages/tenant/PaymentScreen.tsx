@@ -36,6 +36,7 @@ import { useAuth } from '../../../contexts/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { appendImageFileToFormData } from '../../utils/imageHelper';
 import api from '../../services/api';
+import { notifyPaymentSubmitted } from '../../hooks/useTenantNotifications';
 import { PaymentSkeleton } from '../../components/tenant/UIComponents';
 import { OfflineBanner } from '../../components/tenant/NetworkComponents';
 import { AppHeader } from '../../components/tenant/ui';
@@ -192,7 +193,7 @@ export default function PaymentScreen({ navigation }: any) {
       if (response.data.success) {
         setUploadProgress(100);
         setUploadStatus('done');
-        showSuccess('Payment proof submitted! Awaiting owner verification.');
+        notifyPaymentSubmitted(Number(amount));
         await refreshUser();
         setTimeout(() => navigation.goBack(), 1200);
       } else {

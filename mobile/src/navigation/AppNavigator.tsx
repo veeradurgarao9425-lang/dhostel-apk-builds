@@ -78,6 +78,7 @@ import LoginScreen from '../Pages/LoginScreen';
 import ForgotPasswordScreen from '../Pages/ForgotPasswordScreen';
 import RegisterScreen from '../Pages/RegisterScreen';
 import NotificationScreen from '../Pages/NotificationScreen';
+import TenantNotificationsScreen from '../Pages/tenant/NotificationsScreen';
 import StudentDetailsScreen from '../Pages/StudentDetailsScreen';
 import AddStudentScreen from '../Pages/AddStudentScreen';
 import RoomDetailsScreen from '../Pages/RoomDetailsScreen';
@@ -218,6 +219,7 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
     const navigationKey = `${user?.user_id || (user as any)?.id || 'guest'}_${user?.role || 'none'}_${user?.is_allocated ? 'alloc' : 'pending'}_${user?.hostel_id || 'none'}`;
 
     useEffect(() => {
+        notificationService.setUserRole(user?.role || null);
         // Setup listeners for foreground notifications, heads-up status bar alerts, and clicks
         const unsubscribe = notificationService.setupNotificationListeners((screen, params) => {
             if (navigationRef.isReady && navigationRef.isReady()) {
@@ -232,7 +234,7 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
         return () => {
             unsubscribe();
         };
-    }, [user?.user_id || (user as any)?.id]);
+    }, [user?.user_id || (user as any)?.id, user?.role]);
 
     return (
         <>
@@ -295,8 +297,13 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
                         }
                     />
 
-                    {/* Notifications */}
-                    <Stack.Screen name="Notifications" component={NotificationScreen} />
+                    {/* Notifications — role-aware: tenant gets their screen, owner gets the owner screen */}
+                    <Stack.Screen
+                        name="Notifications"
+                        component={user?.role === 'TENANT' ? TenantNotificationsScreen : NotificationScreen}
+                    />
+                    {/* Explicit tenant notification route — always opens the tenant screen */}
+                    <Stack.Screen name="TenantNotifications" component={TenantNotificationsScreen} />
 
                     {/* Students */}
                     <Stack.Screen name="Students" component={StudentsScreen} />

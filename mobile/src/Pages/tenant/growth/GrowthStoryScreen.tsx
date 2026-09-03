@@ -22,6 +22,7 @@ import api from '../../../services/api';
 import { VocabularyModal, VocabWord } from '../../../components/tenant/growth/VocabularyModal';
 import { GrowthStorySkeleton } from '../../../components/tenant/growth/GrowthSkeletons';
 import { GrowthCelebrationModal } from '../../../components/tenant/growth/GrowthCelebrationModal';
+import { notifyGrowthMilestoneCompleted } from '../../../hooks/useTenantNotifications';
 
 interface Sentence {
   order: number;
@@ -228,6 +229,9 @@ export function GrowthStoryScreen({ navigation, route }: any) {
       if (res.data?.success) {
         setCompleteResult(res.data.data);
         setShowCelebration(true);
+        // Fire Growth Journey milestone notification with real XP + title data
+        const xpEarned = res.data.data?.xpEarned ?? data?.xpReward;
+        notifyGrowthMilestoneCompleted(xpEarned, data?.story?.title ?? data?.title);
       } else {
         Alert.alert('Error', 'Failed to complete the lesson. Please try again.');
       }

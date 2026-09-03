@@ -7,6 +7,7 @@ import {
 import api from '../../services/api';
 import { useToast } from '../../../contexts/ToastContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { notifyExpenseAdded, notifyBudgetThreshold } from '../../hooks/useTenantNotifications';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import {
@@ -212,6 +213,7 @@ export default function AddExpenseScreen({ navigation, route }: any) {
         date: localDateStr,
         payment_mode: payMethod,
       });
+      notifyExpenseAdded(Number(amount), category);
       setShowSuccess(true);
       checkBudgetThreshold().catch(() => {});
     } catch (err: any) {
@@ -241,12 +243,11 @@ export default function AddExpenseScreen({ navigation, route }: any) {
       .reduce((sum, e) => sum + Number(e.amount || 0), 0);
 
     const pct = Math.round((monthTotal / budget) * 100);
-    if (pct >= 100) {
-      showWarning(`You've exceeded this month's ₹${budget} budget (₹${monthTotal} spent).`, 'Budget Exceeded');
-    } else if (pct >= 80) {
-      showWarning(`You've used ${pct}% of this month's ₹${budget} budget.`, 'Budget Alert');
+    if (pct >= 80) {
+      notifyBudgetThreshold(pct, budget, monthTotal);
     }
   };
+
 
   const handleSaveBudgetAndExpense = async () => {
     const bAmt = Number(budgetInput);

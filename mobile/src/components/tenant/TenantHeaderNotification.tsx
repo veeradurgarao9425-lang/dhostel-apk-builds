@@ -21,7 +21,7 @@ export const TenantHeaderNotification: React.FC<TenantHeaderNotificationProps> =
   return (
     <TouchableOpacity
       style={[styles.headerIconBtn, buttonStyle]}
-      onPress={() => nav.navigate('Notifications')}
+      onPress={() => nav.navigate('TenantNotifications')}
       activeOpacity={0.8}
       accessibilityLabel="Notifications"
       accessibilityRole="button"
