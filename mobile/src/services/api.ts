@@ -4,9 +4,8 @@ import { getSecureItem, multiRemoveSecureItems } from './secureStore';
 import { navigate } from '../navigation/navigationRef';
 
 // ─── Base URL ─────────────────────────────────────────────────────────────────
-// Fast Cloudflare Edge Worker connected to DigitalOcean
-const FALLBACK_URL = 'https://dark-dew-bf62.veeradurgarao840.workers.dev/api';
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL || FALLBACK_URL;
+// Fast Cloudflare Edge Worker connected to DigitalOcean (Port 443 HTTPS)
+const BASE_URL = 'https://dark-dew-bf62.veeradurgarao840.workers.dev/api';
 
 // ─── Axios Instance ───────────────────────────────────────────────────────────
 export const api = axios.create({
@@ -85,13 +84,6 @@ api.interceptors.response.use(
       return Promise.reject(error);
     }
 
-    // Automatic HTTPS Failover: If unencrypted HTTP (or cellular port 8081 block) fails, retry once via Cloudflare HTTPS
-    const cfg = error?.config as any;
-    if ((error.message === 'Network Error' || !error.response) && cfg && !cfg._retriedHttps && FALLBACK_URL) {
-      cfg._retriedHttps = true;
-      cfg.baseURL = FALLBACK_URL;
-      return api.request(cfg);
-    }
 
     const status = error?.response?.status;
     if (__DEV__) {
