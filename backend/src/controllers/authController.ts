@@ -160,9 +160,8 @@ export const authController = {
         type: 'General',
         title: 'Welcome to Hostix! 🚀',
         message: `Hi ${user.full_name || 'Owner'}, welcome back to your Hostix property portal.`,
-        priority: 'Low',
+        priority: 'High',
         screen: 'Home',
-        deduplicateKey: `welcome_owner_login_${user.user_id}_${new Date().toISOString().split('T')[0]}`,
       }).catch((err) => console.error('[OwnerLogin] Notification error:', err));
 
       // Fetch staff permissions if role_id is 4 (Staff)

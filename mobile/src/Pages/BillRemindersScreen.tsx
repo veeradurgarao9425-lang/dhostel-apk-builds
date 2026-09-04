@@ -56,12 +56,17 @@ export default function BillRemindersScreen() {
                         const total = sf(f.total_amount || f.total_due || f.monthly_rent || 0);
                         const paid = sf(f.amount_paid || f.paid_amount || 0);
                         const due = total - paid;
-                        const dueDateObj = f.due_date ? new Date(f.due_date) : new Date();
-                        const isOverdue = dueDateObj.getTime() < now.getTime();
-                        
-                        const next7 = new Date(now);
-                        next7.setDate(now.getDate() + 7);
-                        const isNext7Days = dueDateObj.getTime() >= now.getTime() && dueDateObj.getTime() <= next7.getTime();
+                        let dueDateObj: Date;
+                        if (typeof f.due_date === 'string' && /^\d{4}-\d{2}-\d{2}/.test(f.due_date)) {
+                            const [dy, dm, dd] = f.due_date.substring(0, 10).split('-').map(Number);
+                            dueDateObj = new Date(dy, dm - 1, dd);
+                        } else {
+                            dueDateObj = f.due_date ? new Date(f.due_date) : new Date();
+                        }
+                        dueDateObj.setHours(0, 0, 0, 0);
+                        const diff = Math.round((dueDateObj.getTime() - now.getTime()) / 86400000);
+                        const isOverdue = diff < 0;
+                        const isNext7Days = diff >= 0 && diff <= 7;
 
                         // Format due date to DD-MM-YYYY
                         const formattedDueDate = f.due_date 

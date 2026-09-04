@@ -14,6 +14,7 @@
  * - Safe modular fallbacks for Expo development
  */
 
+import '@react-native-firebase/app';
 import { Platform, PermissionsAndroid, DeviceEventEmitter } from 'react-native';
 import notifee, {
   EventType,
@@ -21,6 +22,7 @@ import notifee, {
   AndroidVisibility,
   Event as NotifeeEvent,
 } from '@notifee/react-native';
+import Toast from 'react-native-toast-message';
 import api from './api';
 import {
   initializeNotificationChannels,
@@ -29,10 +31,16 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // ── Firebase Cloud Messaging Native Loader ──────────────────────────────────
-const getFirebaseMessagingModule = () => {
+const getFirebaseMessagingInstance = () => {
   try {
-    const messaging = require('@react-native-firebase/messaging');
-    return typeof messaging === 'function' ? messaging() : (messaging.default ? messaging.default() : null);
+    const messagingModule = require('@react-native-firebase/messaging');
+    if (typeof messagingModule.getMessaging === 'function') {
+      return messagingModule.getMessaging();
+    }
+    if (typeof messagingModule === 'function') {
+      return messagingModule();
+    }
+    return null;
   } catch (err) {
     console.error('[FCM] Native Firebase module error:', err);
     return null;
@@ -66,9 +74,18 @@ export const notificationService = {
       if (Platform.OS === 'android') {
         try {
           if (Platform.Version >= 33) {
-            await PermissionsAndroid.request(
-              PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS,
-            );
+            const hasPermission = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS);
+            if (!hasPermission) {
+              await PermissionsAndroid.request(
+                PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS,
+                {
+                  title: 'Notification Permission',
+                  message: 'Hostix needs permission to send you real-time rent alerts, payments, and admission notifications.',
+                  buttonPositive: 'Allow',
+                  buttonNegative: 'Deny',
+                }
+              );
+            }
           }
         } catch (_) {}
       }
@@ -81,36 +98,69 @@ export const notificationService = {
       let token: string | null = null;
 
       // 3. Obtain Pure Native Firebase Cloud Messaging token
-      const fcm = getFirebaseMessagingModule();
-      if (fcm) {
-        if (Platform.OS === 'ios' && typeof fcm.requestPermission === 'function') {
+      try {
+        const messagingModule = require('@react-native-firebase/messaging');
+        const fcm = typeof messagingModule.getMessaging === 'function'
+          ? messagingModule.getMessaging()
+          : (typeof messagingModule === 'function' ? messagingModule() : null);
+
+        if (Platform.OS === 'ios' && fcm) {
           try {
-            await fcm.requestPermission();
+            if (typeof messagingModule.requestPermission === 'function') {
+              await messagingModule.requestPermission(fcm);
+            } else if (typeof fcm.requestPermission === 'function') {
+              await fcm.requestPermission();
+            }
           } catch (_) {}
         }
 
-        try {
-          if (typeof fcm.getToken === 'function') {
+        if (fcm) {
+          if (typeof messagingModule.getToken === 'function') {
+            token = await messagingModule.getToken(fcm);
+          } else if (typeof fcm.getToken === 'function') {
             token = await fcm.getToken();
           }
-        } catch (tokenErr: any) {
-          console.error('[FCM] ❌ Error obtaining native FCM token:', tokenErr);
-        }
 
-        // Keep backend token synchronized on token refresh
-        if (typeof fcm.onTokenRefresh === 'function') {
-          fcm.onTokenRefresh((newToken: string) => {
+          if (token) {
+            console.log('[FCM] 🔑 Obtained native FCM token:', token.substring(0, 16) + '...');
+          }
+
+          // Keep backend token synchronized on token refresh
+          const onRefresh = (newToken: string) => {
             console.log('[FCM] 🔄 Native token refreshed, updating backend:', newToken);
             this._lastRegisteredToken = newToken;
-            this.sendTokenToBackend(newToken).catch(() => {});
-          });
+            this.sendTokenToBackend(newToken, true).catch(() => {});
+          };
+
+          if (typeof messagingModule.onTokenRefresh === 'function') {
+            messagingModule.onTokenRefresh(fcm, onRefresh);
+          } else if (typeof fcm.onTokenRefresh === 'function') {
+            fcm.onTokenRefresh(onRefresh);
+          }
         }
+      } catch (tokenErr: any) {
+        console.error('[FCM] ❌ Error obtaining native FCM token:', tokenErr);
+        try {
+          Toast.show({
+            type: 'error',
+            text1: 'FCM Token Error',
+            text2: String(tokenErr?.message || tokenErr).substring(0, 80),
+          });
+        } catch (_) {}
       }
 
       if (token) {
         this._lastRegisteredToken = token;
-        await this.sendTokenToBackend(token);
+        await this.sendTokenToBackend(token, true);
         console.log('[FCM] ✅ Native Firebase FCM token registered successfully.');
+        try {
+          Toast.show({
+            type: 'success',
+            text1: 'Notifications Enabled ✅',
+            text2: 'Real-time alerts connected to device',
+            visibilityTime: 3500,
+          });
+        } catch (_) {}
       }
 
       return token;
@@ -131,6 +181,7 @@ export const notificationService = {
         platform: Platform.OS,
         device_name: Platform.OS === 'android' ? 'Android Device' : 'iOS Device',
       });
+      console.log('[FCM] ✅ Token successfully sent and registered in backend database.');
     } catch (err: any) {
       console.warn('[Notification] Token registration API skipped:', err?.message || err);
     }
@@ -450,76 +501,67 @@ export const notificationService = {
 
     // 2. Firebase Foreground Message Listener
     let unsubscribeFcmForeground = () => {};
-    const fcm = getFirebaseMessagingModule();
-    if (fcm) {
-      let messagingInstance: any = null;
-      try {
-        if (typeof fcm === 'function') {
-          messagingInstance = fcm();
-        } else if (fcm.default && typeof fcm.default === 'function') {
-          messagingInstance = fcm.default();
-        } else if (typeof fcm.getMessaging === 'function') {
-          messagingInstance = fcm.getMessaging();
-        }
-      } catch (_) {}
+    const fcm = getFirebaseMessagingInstance();
+    const messagingModule = (() => {
+      try { return require('@react-native-firebase/messaging'); } catch { return null; }
+    })();
 
-      if (messagingInstance) {
-        const handleFcmForeground = async (remoteMessage: any) => {
-          const title = remoteMessage.notification?.title || remoteMessage.data?.title || 'Alert 🔔';
-          const body = remoteMessage.notification?.body || remoteMessage.data?.message || '';
-          let data = remoteMessage.data || {};
-          if (typeof data.params === 'string') {
-            try { data.params = JSON.parse(data.params); } catch (_) {}
-          }
-
-          // Refresh in-app badge count and notification center lists
-          DeviceEventEmitter.emit('REFRESH_NOTIFICATIONS');
-
-          // Render system notification via Notifee
-          await this.displayRichNotification({
-            id: remoteMessage.messageId,
-            title,
-            body,
-            category: data.category || data.type,
-            data,
-            largeIconUrl: remoteMessage.notification?.android?.imageUrl || data.imageUrl,
-          });
-        };
-
-        if (typeof messagingInstance.onMessage === 'function') {
-          unsubscribeFcmForeground = messagingInstance.onMessage(handleFcmForeground);
-        } else if (typeof fcm.onMessage === 'function') {
-          unsubscribeFcmForeground = fcm.onMessage(messagingInstance, handleFcmForeground);
+    if (fcm || messagingModule) {
+      const handleFcmForeground = async (remoteMessage: any) => {
+        const title = remoteMessage.notification?.title || remoteMessage.data?.title || 'Alert 🔔';
+        const body = remoteMessage.notification?.body || remoteMessage.data?.message || '';
+        let data = remoteMessage.data || {};
+        if (typeof data.params === 'string') {
+          try { data.params = JSON.parse(data.params); } catch (_) {}
         }
 
-        // Notification clicked from background / quit
-        const handleNotificationOpenedApp = (remoteMessage: any) => {
+        // Refresh in-app badge count and notification center lists
+        DeviceEventEmitter.emit('REFRESH_NOTIFICATIONS');
+
+        // Render system notification via Notifee
+        await this.displayRichNotification({
+          id: remoteMessage.messageId,
+          title,
+          body,
+          category: data.category || data.type,
+          data,
+          largeIconUrl: remoteMessage.notification?.android?.imageUrl || data.imageUrl,
+        });
+      };
+
+      if (fcm && typeof fcm.onMessage === 'function') {
+        unsubscribeFcmForeground = fcm.onMessage(handleFcmForeground);
+      } else if (messagingModule && typeof messagingModule.onMessage === 'function') {
+        unsubscribeFcmForeground = messagingModule.onMessage(fcm, handleFcmForeground);
+      }
+
+      // Notification clicked from background / quit
+      const handleNotificationOpenedApp = (remoteMessage: any) => {
+        const { screen, params } = this.resolveDeepLink(remoteMessage.data);
+        if (this._navigateFn && screen) {
+          this._navigateFn(screen, params);
+        }
+      };
+
+      if (fcm && typeof fcm.onNotificationOpenedApp === 'function') {
+        fcm.onNotificationOpenedApp(handleNotificationOpenedApp);
+      } else if (messagingModule && typeof messagingModule.onNotificationOpenedApp === 'function') {
+        messagingModule.onNotificationOpenedApp(fcm, handleNotificationOpenedApp);
+      }
+
+      // Check if launched from killed state
+      const getInitial = (fcm && typeof fcm.getInitialNotification === 'function')
+        ? fcm.getInitialNotification()
+        : (messagingModule && typeof messagingModule.getInitialNotification === 'function' ? messagingModule.getInitialNotification(fcm) : Promise.resolve(null));
+
+      getInitial.then((remoteMessage: any) => {
+        if (remoteMessage?.data) {
           const { screen, params } = this.resolveDeepLink(remoteMessage.data);
           if (this._navigateFn && screen) {
-            this._navigateFn(screen, params);
+            setTimeout(() => this._navigateFn!(screen, params), 800);
           }
-        };
-
-        if (typeof messagingInstance.onNotificationOpenedApp === 'function') {
-          messagingInstance.onNotificationOpenedApp(handleNotificationOpenedApp);
-        } else if (typeof fcm.onNotificationOpenedApp === 'function') {
-          fcm.onNotificationOpenedApp(messagingInstance, handleNotificationOpenedApp);
         }
-
-        // Check if launched from killed state
-        const getInitial = typeof messagingInstance.getInitialNotification === 'function'
-          ? messagingInstance.getInitialNotification()
-          : (typeof fcm.getInitialNotification === 'function' ? fcm.getInitialNotification(messagingInstance) : Promise.resolve(null));
-
-        getInitial.then((remoteMessage: any) => {
-          if (remoteMessage?.data) {
-            const { screen, params } = this.resolveDeepLink(remoteMessage.data);
-            if (this._navigateFn && screen) {
-              setTimeout(() => this._navigateFn!(screen, params), 800);
-            }
-          }
-        }).catch(() => {});
-      }
+      }).catch(() => {});
     }
 
     return () => {

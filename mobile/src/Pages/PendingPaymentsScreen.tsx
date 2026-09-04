@@ -948,12 +948,24 @@ export default function PendingPaymentsScreen() {
                 const carryForward = sf(f.carry_forward || 0);
                 const monthlyRent = sf(f.monthly_rent || f.fee_monthly_rent || f.student_monthly_rent || 0);
 
-                const dueDateObj = f.due_date ? new Date(f.due_date) : new Date();
+                const parseDueDate = (dateVal: any): Date => {
+                    if (!dateVal) return new Date();
+                    if (dateVal instanceof Date) return dateVal;
+                    const ds = String(dateVal).trim();
+                    if (/^\d{4}-\d{2}-\d{2}/.test(ds)) {
+                        const [y, m, d] = ds.substring(0, 10).split('-').map(Number);
+                        return new Date(y, m - 1, d);
+                    }
+                    const parsed = new Date(ds);
+                    return isNaN(parsed.getTime()) ? new Date() : parsed;
+                };
+
+                const dueDateObj = parseDueDate(f.due_date);
                 dueDateObj.setHours(0, 0, 0, 0);
-                const diffDays = Math.floor((now.getTime() - dueDateObj.getTime()) / 86400000);
+                const diffDays = Math.round((now.getTime() - dueDateObj.getTime()) / 86400000);
 
                 const dueMonth = f.fee_month || f.month || '';
-                const dueDateStr = f.due_date ? new Date(f.due_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : '';
+                const dueDateStr = f.due_date ? parseDueDate(f.due_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : '';
                 const effectiveCarryForward = Math.max(0, carryForward - paid);
 
                 // Student is overdue if due date passed OR if they have unpaid carry forward from past months!
@@ -1010,19 +1022,31 @@ export default function PendingPaymentsScreen() {
                 return s;
             });
 
+            const parseDateHelper = (dateVal: any): Date => {
+                if (!dateVal) return new Date();
+                if (dateVal instanceof Date) return dateVal;
+                const ds = String(dateVal).trim();
+                if (/^\d{4}-\d{2}-\d{2}/.test(ds)) {
+                    const [y, m, d] = ds.substring(0, 10).split('-').map(Number);
+                    return new Date(y, m - 1, d);
+                }
+                const parsed = new Date(ds);
+                return isNaN(parsed.getTime()) ? new Date() : parsed;
+            };
+
             // Compute dynamic live tab counts from students
             const overdueCount = pending.filter(s => s.isOverdue && s.dueAmount > 0).length;
             const overdueAmount = pending.filter(s => s.isOverdue && s.dueAmount > 0).reduce((sum, s) => sum + s.dueAmount, 0);
             const next7Count = pending.filter(s => {
-                const d = new Date(s.rawDueDate || s.dueDate || new Date());
+                const d = parseDateHelper(s.rawDueDate);
                 d.setHours(0, 0, 0, 0);
-                const diff = Math.floor((d.getTime() - now.getTime()) / 86400000);
+                const diff = Math.round((d.getTime() - now.getTime()) / 86400000);
                 return !s.isOverdue && s.dueAmount > 0 && diff >= 0 && diff <= 7;
             }).length;
             const next7Amount = pending.filter(s => {
-                const d = new Date(s.rawDueDate || s.dueDate || new Date());
+                const d = parseDateHelper(s.rawDueDate);
                 d.setHours(0, 0, 0, 0);
-                const diff = Math.floor((d.getTime() - now.getTime()) / 86400000);
+                const diff = Math.round((d.getTime() - now.getTime()) / 86400000);
                 return !s.isOverdue && s.dueAmount > 0 && diff >= 0 && diff <= 7;
             }).reduce((sum, s) => sum + s.dueAmount, 0);
             const partialCount = pending.filter(s => s.paidAmount > 0 && s.dueAmount > 0 && !s.isOverdue).length;
@@ -1243,9 +1267,15 @@ export default function PendingPaymentsScreen() {
         // 5. Tab Filter
         const now = new Date();
         now.setHours(0, 0, 0, 0);
-        const dueObj = new Date(rawDate);
+        let dueObj: Date;
+        if (typeof rawDate === 'string' && /^\d{4}-\d{2}-\d{2}/.test(rawDate)) {
+            const [y, m, d] = rawDate.substring(0, 10).split('-').map(Number);
+            dueObj = new Date(y, m - 1, d);
+        } else {
+            dueObj = new Date(rawDate);
+        }
         dueObj.setHours(0, 0, 0, 0);
-        const diffDays = Math.floor((dueObj.getTime() - now.getTime()) / 86400000);
+        const diffDays = Math.round((dueObj.getTime() - now.getTime()) / 86400000);
 
         if (activeTab === 'Overdue') {
             if (!t.isOverdue || t.dueAmount <= 0) return false;

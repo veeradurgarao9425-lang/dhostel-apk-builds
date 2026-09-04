@@ -600,11 +600,11 @@ export const getMonthlyFeesSummary = async (req: AuthRequest, res: Response) => 
         tab_counts.partial_count++;
       }
 
-      if (isOverdue) {
+      if (isOverdue && balance > 0) {
         tab_counts.overdue++;
         tab_counts.overdue_amount += balance;
-      } else {
-        const diffForward = Math.floor((fDueDate.getTime() - todayDate.getTime()) / 86400000);
+      } else if (!isOverdue && balance > 0 && f.fee_status !== 'Fully Paid') {
+        const diffForward = Math.round((fDueDate.getTime() - todayDate.getTime()) / 86400000);
         if (diffForward >= 0 && diffForward <= 7) {
           tab_counts.next_7_days++;
           tab_counts.next_7_days_amount += balance;

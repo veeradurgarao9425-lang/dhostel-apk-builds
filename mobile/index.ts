@@ -1,3 +1,4 @@
+import '@react-native-firebase/app';
 import { registerRootComponent } from 'expo';
 import notifee, { EventType } from '@notifee/react-native';
 import App from './App';
@@ -20,13 +21,16 @@ notifee.onBackgroundEvent(async ({ type, detail }) => {
 // ── Firebase Cloud Messaging Background Message Handler ───────────────────────
 // Android OS automatically displays notifications when remoteMessage.notification is present.
 try {
-  const messagingModule = require('@react-native-firebase/messaging');
-  const fcm = typeof messagingModule === 'function' ? messagingModule() : (messagingModule.default ? messagingModule.default() : null);
-  if (fcm && typeof fcm.setBackgroundMessageHandler === 'function') {
-    fcm.setBackgroundMessageHandler(async (remoteMessage: any) => {
+  const { getMessaging, setBackgroundMessageHandler } = require('@react-native-firebase/messaging');
+  const messagingInstance = getMessaging();
+  if (typeof setBackgroundMessageHandler === 'function') {
+    setBackgroundMessageHandler(messagingInstance, async (remoteMessage: any) => {
       console.log('[FCM] 📨 Background message received:', remoteMessage?.messageId);
     });
   }
-} catch (_) {}
+} catch (e) {
+  console.warn('[FCM] Error setting background message handler:', e);
+}
 
 registerRootComponent(App);
+

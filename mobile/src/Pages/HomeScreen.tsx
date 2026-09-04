@@ -295,22 +295,38 @@ export default function HomeScreen() {
                     if (balance <= 0) {
                         collectionStats.paidCount++;
                     } else {
-                        const due = f.due_date ? new Date(f.due_date) : new Date();
+                        let due: Date;
+                        if (typeof f.due_date === 'string' && /^\d{4}-\d{2}-\d{2}/.test(f.due_date)) {
+                            const [dy, dm, dd] = f.due_date.substring(0, 10).split('-').map(Number);
+                            due = new Date(dy, dm - 1, dd);
+                        } else {
+                            due = f.due_date ? new Date(f.due_date) : new Date();
+                        }
                         due.setHours(0, 0, 0, 0);
-                        const diffDays = Math.floor((due.getTime() - now.getTime()) / 86400000);
-                        if (diffDays < 0) { collectionStats.overdueCount++; collectionStats.overdueAmount += balance; }
-                        else if (diffDays === 0) { collectionStats.dueTodayCount++; }
-                        else if (diffDays > 0 && diffDays <= 7) { collectionStats.dueThisWeekCount++; }
+                        const diffDays = Math.round((due.getTime() - now.getTime()) / 86400000);
+                        if (diffDays < 0) {
+                            collectionStats.overdueCount++;
+                            collectionStats.overdueAmount += balance;
+                        } else {
+                            if (diffDays === 0) collectionStats.dueTodayCount++;
+                            if (diffDays >= 0 && diffDays <= 7) collectionStats.dueThisWeekCount++;
+                        }
                     }
                 });
                 const studentMap = new Map<number, any>();
                 fees
                     .filter(f => (f.balance || 0) > 0 && !['paid', 'fully paid'].includes((f.fee_status || '').toLowerCase()))
                     .forEach(f => {
-                        const due = f.due_date ? new Date(f.due_date) : new Date();
+                        let due: Date;
+                        if (typeof f.due_date === 'string' && /^\d{4}-\d{2}-\d{2}/.test(f.due_date)) {
+                            const [dy, dm, dd] = f.due_date.substring(0, 10).split('-').map(Number);
+                            due = new Date(dy, dm - 1, dd);
+                        } else {
+                            due = f.due_date ? new Date(f.due_date) : new Date();
+                        }
                         due.setHours(0, 0, 0, 0);
                         const now2 = new Date(); now2.setHours(0, 0, 0, 0);
-                        const diffDays = Math.floor((now2.getTime() - due.getTime()) / 86400000);
+                        const diffDays = Math.round((now2.getTime() - due.getTime()) / 86400000);
                         const id = f.student_id;
                         if (!studentMap.has(id)) {
                             studentMap.set(id, { id, name: `${f.first_name || ''} ${f.last_name || ''}`.trim(), room_number: f.room_number, phone: f.phone, amount: 0, isOverdue: false, daysLate: 0, daysLeft: 9999 });
