@@ -177,17 +177,18 @@ export const sendNotificationToUser = async (options: SendNotificationOptions): 
       return;
     }
 
-    // Extract unique native Firebase FCM tokens only (Expo Go removed completely)
-    const fcmTokens = Array.from(new Set(userTokens.map((t: any) => String(t.push_token || '').trim())))
-      .filter((token: string) => 
-        Boolean(token) && 
-        !token.startsWith('ExponentPushToken[') && 
-        !token.startsWith('ExpoPushToken[') && 
-        token.length > 20
-      );
+    // Extract unique tokens and separate into Expo tokens & Native Firebase FCM tokens
+    const rawTokens = Array.from(new Set(userTokens.map((t: any) => String(t.push_token || '').trim()))).filter(Boolean);
+    
+    const expoTokens = rawTokens.filter((token: string) => 
+      token.startsWith('ExponentPushToken[') || token.startsWith('ExpoPushToken[')
+    );
+    const fcmTokens = rawTokens.filter((token: string) => 
+      !token.startsWith('ExponentPushToken[') && !token.startsWith('ExpoPushToken[') && token.length > 20
+    );
 
-    if (fcmTokens.length === 0) {
-      console.log(`[Notification] No native Firebase FCM tokens found for User:${userId ?? '-'} / Student:${studentId ?? '-'}. Push delivery skipped.`);
+    if (expoTokens.length === 0 && fcmTokens.length === 0) {
+      console.log(`[Notification] No valid push tokens found among registered tokens:`, rawTokens);
       return;
     }
 
@@ -273,8 +274,7 @@ export const sendNotificationToUser = async (options: SendNotificationOptions): 
               if (
                 errCode === 'messaging/registration-token-not-registered' ||
                 errCode === 'messaging/invalid-registration-token' ||
-                errCode === 'messaging/invalid-argument' ||
-                errCode === 'messaging/mismatched-credential'
+                errCode === 'messaging/invalid-argument'
               ) {
                 deadTokens.push(fcmTokens[idx]);
               }
@@ -292,7 +292,34 @@ export const sendNotificationToUser = async (options: SendNotificationOptions): 
       }
     }
 
+    // 5. Dispatch via Expo Push Service (for Expo Go development tokens)
+    if (expoTokens.length > 0) {
+      try {
+        const messages = expoTokens.map((to: string) => ({
+          to,
+          sound: 'default',
+          title: formattedTitle,
+          body: message,
+          data: stringifiedData,
+          channelId: 'default',
+          priority: 'high',
+          color: color || '#6D4AFF',
+        }));
 
+        await fetch('https://exp.host/--/api/v2/push/send', {
+          method: 'POST',
+          headers: {
+            'Accept': 'application/json',
+            'Accept-encoding': 'gzip, deflate',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(messages),
+        });
+        console.log(`[Notification] Expo Push dispatched to ${expoTokens.length} Expo Go device(s).`);
+      } catch (expoErr: any) {
+        console.error('[Notification] Expo push delivery error:', expoErr?.message || expoErr);
+      }
+    }
   } catch (error) {
     console.error('[Notification] Error in sendNotificationToUser:', error);
   }

@@ -13,8 +13,8 @@ export const registerToken = async (req: AuthRequest, res: Response) => {
       return res.status(401).json({ success: false, error: 'Unauthorized' });
     }
 
-    if (!push_token || push_token.startsWith('ExponentPushToken[') || push_token.startsWith('ExpoPushToken[')) {
-      return res.status(400).json({ success: false, error: 'Only native Firebase FCM tokens are supported' });
+    if (!push_token) {
+      return res.status(400).json({ success: false, error: 'push_token is required' });
     }
 
     // Tenants (role_id 3) store both student_id and user_id; owners/staff store user_id

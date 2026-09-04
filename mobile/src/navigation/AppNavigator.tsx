@@ -219,7 +219,6 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
     const navigationKey = `${user?.user_id || (user as any)?.id || 'guest'}_${user?.role || 'none'}_${user?.is_allocated ? 'alloc' : 'pending'}_${user?.hostel_id || 'none'}`;
 
     useEffect(() => {
-        notificationService.setUserRole(user?.role || null);
         // Setup listeners for foreground notifications, heads-up status bar alerts, and clicks
         const unsubscribe = notificationService.setupNotificationListeners((screen, params) => {
             if (navigationRef.isReady && navigationRef.isReady()) {
