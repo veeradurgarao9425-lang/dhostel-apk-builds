@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import api from '../services/api';
+import { getLocalReadIds, saveLocalReadIds } from '../Pages/tenant/NotificationsScreen';
 
 export type Notification = {
     id: string | number;
@@ -41,8 +42,10 @@ export const useNotifications = () => {
 
         try {
             setLoading(true);
-            inflightNotifsPromise = api.get('/notifications?limit=30');
-            const response = await inflightNotifsPromise;
+            const [response, localReadSet] = await Promise.all([
+                api.get('/notifications?limit=30'),
+                getLocalReadIds(),
+            ]);
 
             if (response.data.success) {
                 const dbNotifs = response.data.data;
@@ -79,6 +82,8 @@ export const useNotifications = () => {
                         } catch {}
                     }
 
+                    const isRead = item.is_read === 1 || item.is_read === true || localReadSet.has(String(item.notification_id));
+
                     return {
                         id: item.notification_id,
                         type,
@@ -86,7 +91,7 @@ export const useNotifications = () => {
                         body: item.message || '',
                         time: new Date(item.created_at).toLocaleString(),
                         date: item.created_at,
-                        read: item.is_read === 1,
+                        read: isRead,
                         data: {
                             ...item,
                             ...extraData,
@@ -141,31 +146,36 @@ export const useNotifications = () => {
             setNotifications(updated);
             setUnreadCount(unread);
 
+            await saveLocalReadIds([id]);
+
             // Sync with backend
-            await api.put(`/notifications/${id}/read`);
+            api.put(`/notifications/${id}/read`).catch(() => {});
             require('react-native').DeviceEventEmitter.emit('REFRESH_NOTIFICATIONS');
         } catch (error) {
             console.error(`Error marking notification ${id} as read:`, error);
-            // Revert changes on error by refetching
-            fetchNotifications(true);
         }
     };
 
     const markAllAsRead = async () => {
       try {
           // Optimistic UI update
+          const allIds = globalNotifsCache.map(n => n.id);
           const updated = globalNotifsCache.map(n => ({ ...n, read: true }));
           globalNotifsCache = updated;
           globalUnreadCount = 0;
           setNotifications(updated);
           setUnreadCount(0);
 
+          await saveLocalReadIds(allIds);
+
           // Sync with backend
-          await api.put('/notifications/read-all');
+          api.put('/notifications/read-all').catch(() => {});
+          allIds.forEach(id => {
+            api.put(`/notifications/${id}/read`).catch(() => {});
+          });
           require('react-native').DeviceEventEmitter.emit('REFRESH_NOTIFICATIONS');
       } catch (error) {
           console.error('Error marking all notifications as read:', error);
-          fetchNotifications(true);
       }
     };
 

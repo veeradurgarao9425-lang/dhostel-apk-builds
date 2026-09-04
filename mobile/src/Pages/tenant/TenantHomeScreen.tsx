@@ -184,10 +184,13 @@ export function TenantHomeScreen({ navigation }: any) {
     { id: "splits", name: "Bill Splits", icon: "people" as const, nav: "Splits", bg: "#ECFDF5", color: "#10B981" },
     { id: "complaints", name: "Complaints", icon: "chatbubbles" as const, nav: "Complaints", bg: "#FEF2F2", color: "#EF4444" },
     { id: "room", name: "My Room", icon: "bed" as const, nav: "RoomInfo", bg: "#FEF3C7", color: "#D97706" },
-    { id: "visitor", name: "Visitor Pass", icon: "person-add" as const, nav: "VisitorPass", bg: "#E0E7FF", color: "#6366F1" },
-    { id: "gatepass", name: "Gate Pass", icon: "qr-code" as const, nav: "GatePass", bg: "#ECFDF5", color: "#10B981" },
-    { id: "documents", name: "Documents", icon: "document-text" as const, nav: "Documents", bg: "#FEF2F2", color: "#EF4444" },
-    { id: "notes", name: "My Notes", icon: "create" as const, nav: "Notes", bg: "#FEF3C7", color: "#D97706" },
+    // Temporarily hidden — no direct connection to owner yet
+    // { id: "visitor", name: "Visitor Pass", icon: "person-add" as const, nav: "VisitorPass", bg: "#E0E7FF", color: "#6366F1" },
+    // { id: "gatepass", name: "Gate Pass", icon: "qr-code" as const, nav: "GatePass", bg: "#ECFDF5", color: "#10B981" },
+    { id: "vacate", name: "Vacate Room", icon: "exit" as const, nav: "VacateNotice", bg: "#FEE2E2", color: "#EF4444" },
+    { id: "feedback", name: "Feedback", icon: "star" as const, nav: "Rating", bg: "#FEF3C7", color: "#D97706" },
+    { id: "documents", name: "Documents", icon: "document-text" as const, nav: "Documents", bg: "#EDE9FE", color: "#8B5CF6" },
+    { id: "notes", name: "My Notes", icon: "create" as const, nav: "Notes", bg: "#ECFDF5", color: "#10B981" },
   ];
 
   const fetchUnreadNotifCount = useCallback(async () => {

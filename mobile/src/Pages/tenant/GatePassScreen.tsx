@@ -1,7 +1,8 @@
 import React, { useState, useCallback } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet,
-  ScrollView, StatusBar, Modal, TextInput, ActivityIndicator
+  ScrollView, StatusBar, Modal, TextInput, ActivityIndicator,
+  Platform, LayoutAnimation, UIManager
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
@@ -24,6 +25,10 @@ const SUCCESS   = '#22C55E';
 const SUCCESS_BG= '#DCFCE7';
 const WARN      = '#F59E0B';
 const WARN_BG   = '#FEF3C7';
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 // Mock Pass Status
 // 'none' | 'pending' | 'approved'

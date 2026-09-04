@@ -174,7 +174,7 @@ export const FAQ_DATA_EN: FAQItem[] = [
     question: '✋ How do I request a late pass or room change?',
     answer: 'You can submit requests to your hostel owner directly from the app.\n\nGo to the "Requests" screen and select the type of request (Late Pass, Room Change, etc.). The owner will approve or reject it.',
     keywords: ['late pass', 'room change', 'request pass', 'permission'],
-    routePath: 'VisitorPass', routeLabel: 'Submit Request'
+    routePath: 'Complaints', routeLabel: 'Submit Request'
   },
   {
     id: 'tenant-menu', category: 'dashboard', role: 'tenant',

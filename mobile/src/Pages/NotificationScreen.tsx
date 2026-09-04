@@ -125,7 +125,7 @@ export const NotificationScreen = () => {
         const title = (notif.title || '').toLowerCase();
         const type = notif.type;
         const notifType = (data.type || data.notification_type || '').toString().toUpperCase();
-        const isTenant = user?.role_id === 3 || user?.role === 'TENANT';
+        const isTenant = user?.role_id === 3 || user?.role === 'TENANT' || user?.role === 'tenant' || user?.role === 'student' || (user as any)?.is_tenant;
 
         try {
             // ── TENANT routing ────────────────────────────────────────────────
@@ -136,7 +136,28 @@ export const NotificationScreen = () => {
                     if (typeof params === 'string') {
                         try { params = JSON.parse(params); } catch {}
                     }
-                    navigation.navigate(data.screen, params || {});
+                    const SAFE_MAP: Record<string, string> = {
+                        Payments: 'Dues',
+                        PendingPayments: 'Dues',
+                        PendingTab: 'Dues',
+                        TenantTransactions: 'Dues',
+                        Visitors: 'VisitorPass',
+                        Leaves: 'GatePass',
+                        Students: 'TenantHome',
+                        StudentDetails: 'TenantHome',
+                        Reports: 'Dues',
+                        Home: 'TenantHome',
+                        Dashboard: 'TenantHome',
+                        Hostels: 'TenantHome',
+                        HostelDetails: 'TenantHome',
+                        Subscription: 'TenantHome',
+                        AddStaff: 'TenantHome',
+                        NoticesManagement: 'Notices',
+                        ComplaintsManagement: 'Complaints',
+                        RequestsManagement: 'GatePass',
+                    };
+                    const targetScreen = SAFE_MAP[data.screen] || data.screen;
+                    navigation.navigate(targetScreen, params || {});
                     return;
                 }
                 // 2. Title-based fallback for tenant

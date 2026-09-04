@@ -7,10 +7,11 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useFocusEffect } from '@react-navigation/native';
 import {
   FileCheck2, Receipt, IdCard, Download, ArrowLeft,
-  ShieldCheck, ShieldAlert, Eye, X, User,
+  ShieldCheck, ShieldAlert, Eye, X, User, FileText,
 } from 'lucide-react-native';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
+import * as FileSystem from 'expo-file-system/legacy';
 
 import { useToast } from '../../../contexts/ToastContext';
 import { Phase3ErrorState, DocumentsSkeleton } from '../../components/tenant/UIComponents';
@@ -169,6 +170,36 @@ export default function DocumentsScreen({ navigation }: any) {
     }
   };
 
+  const handleDownloadDoc = async (rawUrl: string, fileName: string) => {
+    try {
+      const resolved = getResolvedImageUrl(rawUrl) || rawUrl;
+      if (!resolved) {
+        showError('Document URL is not available.');
+        return;
+      }
+      showSuccess('Preparing document download...');
+      const cleanName = fileName.replace(/[^a-zA-Z0-9._-]/g, '_');
+      const destUri = `${FileSystem.cacheDirectory || FileSystem.documentDirectory}${cleanName}`;
+      const result = await FileSystem.downloadAsync(resolved, destUri);
+      if (result.status === 200) {
+        if (await Sharing.isAvailableAsync()) {
+          await Sharing.shareAsync(result.uri, {
+            mimeType: 'image/jpeg',
+            dialogTitle: `Download / Save ${fileName}`,
+          });
+          showSuccess('Document ready to save / share!');
+        } else {
+          showSuccess('Document saved successfully!');
+        }
+      } else {
+        throw new Error('Download failed from server');
+      }
+    } catch (e: any) {
+      console.error('Download error:', e);
+      showError('Could not download document.');
+    }
+  };
+
   const hasAadhaarFront = !!(profile?.id_proof_front_url || profile?.id_proof_document_url);
   const hasAadhaarBack = !!profile?.id_proof_back_url;
   const hasPhoto = !!profile?.profile_photo_url;
@@ -266,78 +297,103 @@ export default function DocumentsScreen({ navigation }: any) {
                   </View>
                 </View>
 
-                {/* Thumbnails Row */}
-                <View style={styles.docsGrid}>
-                  {/* Front Side */}
-                  {hasAadhaarFront && (
-                    <TouchableOpacity
-                      style={styles.docTile}
-                      activeOpacity={0.85}
-                      onPress={() => {
-                        const raw = profile.id_proof_front_url || profile.id_proof_document_url;
-                        setPreviewImage({ uri: getResolvedImageUrl(raw) || raw, title: 'ID Proof (Front Side)' });
-                      }}
-                    >
-                      <Image
-                        source={{ uri: getResolvedImageUrl(profile.id_proof_front_url || profile.id_proof_document_url) || '' }}
-                        style={styles.docThumb}
-                        resizeMode="cover"
-                      />
-                      <View style={styles.docTileOverlay}>
-                        <Eye size={14} color={WHITE} />
-                        <Text style={styles.docTileLabel}>Front Side</Text>
-                      </View>
-                    </TouchableOpacity>
-                  )}
+                {/* 2x2 Documents Grid */}
+                {(() => {
+                  const kycList = [
+                    {
+                      id: 'front',
+                      title: 'ID Proof (Front)',
+                      subtitle: profile?.id_proof_type_name || 'Front Side',
+                      rawUrl: profile?.id_proof_front_url || profile?.id_proof_document_url,
+                      Icon: IdCard,
+                    },
+                    {
+                      id: 'back',
+                      title: 'ID Proof (Back)',
+                      subtitle: profile?.id_proof_type_name || 'Back Side',
+                      rawUrl: profile?.id_proof_back_url,
+                      Icon: IdCard,
+                    },
+                    {
+                      id: 'photo',
+                      title: 'Passport Photo',
+                      subtitle: 'Profile Picture',
+                      rawUrl: profile?.profile_photo_url,
+                      Icon: User,
+                    },
+                    {
+                      id: 'agreement',
+                      title: 'Hostel Agreement',
+                      subtitle: 'Terms & Rules',
+                      rawUrl: profile?.police_verification_url || profile?.agreement_url || null,
+                      Icon: FileText,
+                    },
+                  ];
 
-                  {/* Back Side */}
-                  {hasAadhaarBack && (
-                    <TouchableOpacity
-                      style={styles.docTile}
-                      activeOpacity={0.85}
-                      onPress={() => {
-                        const raw = profile.id_proof_back_url;
-                        setPreviewImage({ uri: getResolvedImageUrl(raw) || raw, title: 'ID Proof (Back Side)' });
-                      }}
-                    >
-                      <Image
-                        source={{ uri: getResolvedImageUrl(profile.id_proof_back_url) || '' }}
-                        style={styles.docThumb}
-                        resizeMode="cover"
-                      />
-                      <View style={styles.docTileOverlay}>
-                        <Eye size={14} color={WHITE} />
-                        <Text style={styles.docTileLabel}>Back Side</Text>
-                      </View>
-                    </TouchableOpacity>
-                  )}
+                  return (
+                    <View style={styles.docsGrid}>
+                      {kycList.map((doc) => {
+                        const hasDoc = !!doc.rawUrl;
+                        const resolved = hasDoc ? (getResolvedImageUrl(doc.rawUrl) || doc.rawUrl) : null;
+                        const DocIcon = doc.Icon;
 
-                  {/* Profile Photo */}
-                  {hasPhoto && (
-                    <TouchableOpacity
-                      style={styles.docTile}
-                      activeOpacity={0.85}
-                      onPress={() => {
-                        const raw = profile.profile_photo_url;
-                        setPreviewImage({ uri: getResolvedImageUrl(raw) || raw, title: 'Passport / Profile Photo' });
-                      }}
-                    >
-                      <Image
-                        source={{ uri: getResolvedImageUrl(profile.profile_photo_url) || '' }}
-                        style={styles.docThumb}
-                        resizeMode="cover"
-                      />
-                      <View style={styles.docTileOverlay}>
-                        <User size={14} color={WHITE} />
-                        <Text style={styles.docTileLabel}>Passport Photo</Text>
-                      </View>
-                    </TouchableOpacity>
-                  )}
-                </View>
+                        return (
+                          <View key={doc.id} style={styles.docTileCard}>
+                            {hasDoc ? (
+                              <View style={styles.docTileInner}>
+                                <TouchableOpacity
+                                  style={styles.docImageWrap}
+                                  activeOpacity={0.85}
+                                  onPress={() => setPreviewImage({ uri: resolved!, title: doc.title })}
+                                >
+                                  <Image
+                                    source={{ uri: resolved! }}
+                                    style={styles.docThumb}
+                                    resizeMode="cover"
+                                  />
+                                  <View style={styles.docTileOverlay}>
+                                    <Text style={styles.docTileLabel} numberOfLines={1}>{doc.title}</Text>
+                                  </View>
+                                </TouchableOpacity>
 
-                {!hasAadhaarFront && !hasAadhaarBack && !hasPhoto && (
-                  <Text style={styles.noDocText}>No KYC photo documents uploaded yet.</Text>
-                )}
+                                {/* Action Buttons Row */}
+                                <View style={styles.docTileBottomBar}>
+                                  <TouchableOpacity
+                                    style={styles.docActionBtn}
+                                    onPress={() => setPreviewImage({ uri: resolved!, title: doc.title })}
+                                    activeOpacity={0.7}
+                                  >
+                                    <Eye size={13} color={BLUE} />
+                                    <Text style={styles.docActionTxt}>View</Text>
+                                  </TouchableOpacity>
+
+                                  <View style={styles.docActionSep} />
+
+                                  <TouchableOpacity
+                                    style={styles.docActionBtn}
+                                    onPress={() => handleDownloadDoc(doc.rawUrl!, `${doc.title}.jpg`)}
+                                    activeOpacity={0.7}
+                                  >
+                                    <Download size={13} color={SUCCESS} />
+                                    <Text style={[styles.docActionTxt, { color: SUCCESS }]}>Download</Text>
+                                  </TouchableOpacity>
+                                </View>
+                              </View>
+                            ) : (
+                              <View style={styles.docTileEmpty}>
+                                <View style={styles.docTileEmptyIcon}>
+                                  <DocIcon size={24} color={TEXT_MUTED} />
+                                </View>
+                                <Text style={styles.docTileEmptyTitle} numberOfLines={1}>{doc.title}</Text>
+                                <Text style={styles.docTileEmptySub}>Not uploaded</Text>
+                              </View>
+                            )}
+                          </View>
+                        );
+                      })}
+                    </View>
+                  );
+                })()}
               </View>
             </View>
           )}
@@ -395,13 +451,24 @@ export default function DocumentsScreen({ navigation }: any) {
           <SafeAreaView style={{ flex: 1 }}>
             <View style={styles.previewModalHeader}>
               <Text style={styles.previewModalTitle}>{previewImage?.title || 'Document Preview'}</Text>
-              <TouchableOpacity
-                onPress={() => setPreviewImage(null)}
-                style={styles.previewCloseBtn}
-                activeOpacity={0.7}
-              >
-                <X size={22} color={WHITE} />
-              </TouchableOpacity>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                {previewImage?.uri && (
+                  <TouchableOpacity
+                    onPress={() => handleDownloadDoc(previewImage.uri, `${previewImage.title || 'document'}.jpg`)}
+                    style={styles.previewCloseBtn}
+                    activeOpacity={0.7}
+                  >
+                    <Download size={20} color={WHITE} />
+                  </TouchableOpacity>
+                )}
+                <TouchableOpacity
+                  onPress={() => setPreviewImage(null)}
+                  style={styles.previewCloseBtn}
+                  activeOpacity={0.7}
+                >
+                  <X size={22} color={WHITE} />
+                </TouchableOpacity>
+              </View>
             </View>
             <View style={styles.previewImageContainer}>
               {previewImage?.uri ? (
@@ -595,14 +662,27 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 12,
   },
-  docTile: {
+  docTileCard: {
     width: (SCREEN_WIDTH - 32 - 32 - 12) / 2,
-    height: 120,
-    borderRadius: 12,
+    borderRadius: 14,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: BORDER,
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  docTileInner: {
+    width: '100%',
+  },
+  docImageWrap: {
+    width: '100%',
+    height: 100,
     backgroundColor: '#0F172A',
+    position: 'relative',
   },
   docThumb: {
     width: '100%',
@@ -613,23 +693,70 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: 'rgba(0,0,0,0.65)',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 5,
-    paddingVertical: 6,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
   },
   docTileLabel: {
     color: WHITE,
     fontSize: 11,
     fontWeight: '700',
   },
-  noDocText: {
-    fontSize: 13,
-    color: TEXT_MUTED,
+  docTileBottomBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    paddingVertical: 7,
+    backgroundColor: '#F8FAFC',
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+  },
+  docActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  docActionTxt: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: BLUE,
+  },
+  docActionSep: {
+    width: 1,
+    height: 14,
+    backgroundColor: '#E2E8F0',
+  },
+  docTileEmpty: {
+    width: '100%',
+    height: 136,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 12,
+    backgroundColor: '#F8FAFC',
+    borderStyle: 'dashed',
+  },
+  docTileEmptyIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  docTileEmptyTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: TEXT_DARK,
     textAlign: 'center',
-    marginVertical: 12,
+    marginBottom: 2,
+  },
+  docTileEmptySub: {
+    fontSize: 10.5,
+    color: TEXT_MUTED,
+    fontWeight: '600',
   },
   receiptCard: {
     flexDirection: 'row',

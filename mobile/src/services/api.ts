@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { DeviceEventEmitter } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getSecureItem, multiRemoveSecureItems } from './secureStore';
 import { navigate } from '../navigation/navigationRef';
 
@@ -101,9 +102,23 @@ api.interceptors.response.use(
       try {
         const isDevEndpoint = error.config?.url?.startsWith('/developer');
         DeviceEventEmitter.emit('UNAUTHORIZED_SESSION');
+        const storedUser = await AsyncStorage.getItem('user').catch(() => null);
+        let isTenant = false;
+        try {
+          if (storedUser) {
+            const u = JSON.parse(storedUser);
+            isTenant = u?.role_id === 3 || u?.role === 'TENANT' || u?.role === 'tenant' || u?.role === 'student' || u?.is_tenant;
+          }
+        } catch (_) {}
+
         if (isDevEndpoint) {
           setCachedToken(null, true);
           await multiRemoveSecureItems(['developer_token']);
+          navigate('RoleSelect');
+        } else if (isTenant) {
+          setCachedToken(null);
+          await multiRemoveSecureItems(['token', 'user']);
+          delete api.defaults.headers.common['Authorization'];
           navigate('RoleSelect');
         } else {
           setCachedToken(null);

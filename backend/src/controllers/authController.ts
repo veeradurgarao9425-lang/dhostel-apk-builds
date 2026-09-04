@@ -1667,6 +1667,8 @@ export const authController = {
           guardian_name: tenant.guardian_name || null,
           guardian_phone: tenant.guardian_phone || null,
           admission_date: tenant.admission_date || null,
+          vacate_notice_date: tenant.vacate_notice_date || null,
+          vacate_notice_reason: tenant.vacate_notice_reason || null,
         },
       });
     } catch (error) {

@@ -372,6 +372,37 @@ export const sendNotificationToStudent = async (
     const actualUserId = student?.user_id || (Number(studentId) || null);
     const actualHostelId = student?.hostel_id || null;
 
+    const TENANT_SAFE_SCREENS: Record<string, string> = {
+      Payments: 'Dues',
+      PendingPayments: 'Dues',
+      PendingTab: 'Dues',
+      TenantTransactions: 'Dues',
+      Visitors: 'VisitorPass',
+      Leaves: 'GatePass',
+      Students: 'TenantHome',
+      StudentDetails: 'TenantHome',
+      Reports: 'Dues',
+      Home: 'TenantHome',
+      Dashboard: 'TenantHome',
+      Hostels: 'TenantHome',
+      HostelDetails: 'TenantHome',
+      Subscription: 'TenantHome',
+      AddStaff: 'TenantHome',
+    };
+
+    const sanitizedExtras = { ...(extras || {}) };
+    if (sanitizedExtras.screen && TENANT_SAFE_SCREENS[sanitizedExtras.screen]) {
+      sanitizedExtras.screen = TENANT_SAFE_SCREENS[sanitizedExtras.screen];
+    } else if (!sanitizedExtras.screen) {
+      const t = String(type || '').toLowerCase();
+      if (t.includes('complaint')) sanitizedExtras.screen = 'Complaints';
+      else if (t.includes('visitor')) sanitizedExtras.screen = 'VisitorPass';
+      else if (t.includes('gate') || t.includes('leave')) sanitizedExtras.screen = 'GatePass';
+      else if (t.includes('pay') || t.includes('due') || t.includes('fee')) sanitizedExtras.screen = 'Dues';
+      else if (t.includes('notice')) sanitizedExtras.screen = 'Notices';
+      else sanitizedExtras.screen = 'TenantHome';
+    }
+
     await sendNotificationToUser({
       userId: actualUserId,
       studentId: actualStudentId,
@@ -381,7 +412,7 @@ export const sendNotificationToStudent = async (
       message,
       priority,
       data,
-      ...(extras || {}),
+      ...sanitizedExtras,
     });
   } catch (err) {
     console.error(`[Notification] Error sending to student:`, err);

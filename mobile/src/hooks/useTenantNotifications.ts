@@ -23,6 +23,7 @@ import { useEffect, useCallback, useRef } from 'react';
 import { DeviceEventEmitter } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Toast from 'react-native-toast-message';
+import { notificationService } from '../services/notificationService';
 
 // ── Storage keys for daily-guard ──────────────────────────────────────────────
 const KEY_WELCOME  = 'tenant_welcome_date';
@@ -61,12 +62,11 @@ function emitRefresh() {
 
 
 // ── Low-level toast helper (wraps react-native-toast-message directly) ─────────
-// Uses the same pattern as ToastContext.tsx internally.
 function showToast(
   type: 'success' | 'error' | 'warning' | 'info',
   title: string,
   message: string,
-  duration = 3200,
+  duration = 3500,
 ) {
   Toast.show({
     type,
@@ -88,11 +88,10 @@ function showToast(
  */
 export function notifyPaymentSubmitted(amount?: number) {
   const amtStr = amount ? `₹${amount.toLocaleString('en-IN')} ` : '';
-  showToast(
-    'success',
-    '✅ Payment Submitted',
-    `${amtStr}Payment proof submitted! Awaiting owner verification.`,
-  );
+  const title = '✅ Payment Submitted';
+  const body = `${amtStr}Payment proof submitted! Awaiting owner verification.`;
+  showToast('success', title, body);
+  notificationService.triggerLocalNotification(title, body, { screen: 'Dues', referenceType: 'payment' }).catch(() => {});
   emitRefresh();
 }
 
@@ -100,13 +99,12 @@ export function notifyPaymentSubmitted(amount?: number) {
  * Call after a complaint is successfully raised.
  */
 export function notifyComplaintRaised(title?: string) {
-  showToast(
-    'info',
-    '🔧 Complaint Raised',
-    title
-      ? `"${title}" submitted. We'll get back to you soon.`
-      : "Complaint submitted! We'll get back to you soon.",
-  );
+  const notifTitle = '🔧 Complaint Raised';
+  const notifBody = title
+    ? `"${title}" submitted. We'll get back to you soon.`
+    : "Complaint submitted! We'll get back to you soon.";
+  showToast('info', notifTitle, notifBody);
+  notificationService.triggerLocalNotification(notifTitle, notifBody, { screen: 'Complaints', referenceType: 'complaint' }).catch(() => {});
   emitRefresh();
 }
 
@@ -115,11 +113,10 @@ export function notifyComplaintRaised(title?: string) {
  */
 export function notifyExpenseAdded(amount: number, category?: string) {
   const catStr = category ? ` to ${category}` : '';
-  showToast(
-    'success',
-    '🎯 Expense Added',
-    `₹${amount.toLocaleString('en-IN')}${catStr} added to your tracker!`,
-  );
+  const title = '🎯 Expense Added';
+  const body = `₹${amount.toLocaleString('en-IN')}${catStr} added to your tracker!`;
+  showToast('success', title, body);
+  notificationService.triggerLocalNotification(title, body, { screen: 'Expenses', referenceType: 'expense' }).catch(() => {});
   emitRefresh();
 }
 
@@ -127,11 +124,10 @@ export function notifyExpenseAdded(amount: number, category?: string) {
  * Call after a budget is successfully set/updated.
  */
 export function notifyBudgetSet(amount: number) {
-  showToast(
-    'success',
-    '💰 Budget Set',
-    `Monthly budget of ₹${amount.toLocaleString('en-IN')} saved!`,
-  );
+  const title = '💰 Budget Set';
+  const body = `Monthly budget of ₹${amount.toLocaleString('en-IN')} saved!`;
+  showToast('success', title, body);
+  notificationService.triggerLocalNotification(title, body, { screen: 'Expenses', referenceType: 'expense' }).catch(() => {});
   emitRefresh();
 }
 
@@ -143,19 +139,15 @@ export function notifyBudgetSet(amount: number) {
  */
 export function notifyBudgetThreshold(pct: number, budget: number, spent: number) {
   if (pct >= 100) {
-    showToast(
-      'error',
-      '🚨 Budget Exceeded!',
-      `You've exceeded your ₹${budget.toLocaleString('en-IN')} budget. ₹${spent.toLocaleString('en-IN')} spent.`,
-      5000,
-    );
+    const title = '🚨 Budget Exceeded!';
+    const body = `You've exceeded your ₹${budget.toLocaleString('en-IN')} budget. ₹${spent.toLocaleString('en-IN')} spent.`;
+    showToast('error', title, body, 5000);
+    notificationService.triggerLocalNotification(title, body, { screen: 'Expenses', referenceType: 'expense' }).catch(() => {});
   } else if (pct >= 80) {
-    showToast(
-      'warning',
-      '⚠️ Budget Warning',
-      `You've used ${pct}% of your ₹${budget.toLocaleString('en-IN')} monthly budget.`,
-      4500,
-    );
+    const title = '⚠️ Budget Warning';
+    const body = `You've used ${pct}% of your ₹${budget.toLocaleString('en-IN')} monthly budget.`;
+    showToast('warning', title, body, 4500);
+    notificationService.triggerLocalNotification(title, body, { screen: 'Expenses', referenceType: 'expense' }).catch(() => {});
   }
   emitRefresh();
 }
@@ -164,11 +156,23 @@ export function notifyBudgetThreshold(pct: number, budget: number, spent: number
  * Call after gate pass is successfully submitted.
  */
 export function notifyGatePassSubmitted() {
-  showToast(
-    'info',
-    '🎟️ Gate Pass Submitted',
-    'Your gate pass request has been submitted. Awaiting approval.',
-  );
+  const title = '🎟️ Gate Pass Submitted';
+  const body = 'Your gate pass request has been submitted. Awaiting approval.';
+  showToast('info', title, body);
+  notificationService.triggerLocalNotification(title, body, { screen: 'GatePass', referenceType: 'leave' }).catch(() => {});
+  emitRefresh();
+}
+
+/**
+ * Call after visitor pass is successfully submitted.
+ */
+export function notifyVisitorPassSubmitted(visitorName?: string) {
+  const title = '👥 Visitor Pass Submitted';
+  const body = visitorName
+    ? `Visitor pass for ${visitorName} has been submitted for approval.`
+    : 'Your visitor pass request has been submitted. Awaiting approval.';
+  showToast('info', title, body);
+  notificationService.triggerLocalNotification(title, body, { screen: 'VisitorPass', referenceType: 'visitor' }).catch(() => {});
   emitRefresh();
 }
 
@@ -176,11 +180,10 @@ export function notifyGatePassSubmitted() {
  * Call when gate pass is approved.
  */
 export function notifyGatePassApproved() {
-  showToast(
-    'success',
-    '✅ Gate Pass Approved',
-    "Your gate pass has been approved! You're good to go.",
-  );
+  const title = '✅ Gate Pass Approved';
+  const body = "Your gate pass has been approved! You're good to go.";
+  showToast('success', title, body);
+  notificationService.triggerLocalNotification(title, body, { screen: 'GatePass', referenceType: 'leave' }).catch(() => {});
   emitRefresh();
 }
 
@@ -188,12 +191,10 @@ export function notifyGatePassApproved() {
  * Call when gate pass is rejected.
  */
 export function notifyGatePassRejected() {
-  showToast(
-    'error',
-    '❌ Gate Pass Rejected',
-    'Your gate pass request was rejected. Please check the details.',
-    5000,
-  );
+  const title = '❌ Gate Pass Rejected';
+  const body = 'Your gate pass request was rejected. Please check the details.';
+  showToast('error', title, body, 5000);
+  notificationService.triggerLocalNotification(title, body, { screen: 'GatePass', referenceType: 'leave' }).catch(() => {});
   emitRefresh();
 }
 
@@ -203,12 +204,10 @@ export function notifyGatePassRejected() {
 export function notifyGrowthMilestoneCompleted(xpEarned?: number, levelTitle?: string) {
   const xpStr = xpEarned ? ` (+${xpEarned} XP)` : '';
   const titleStr = levelTitle ? `"${levelTitle}"` : 'a level';
-  showToast(
-    'success',
-    '🎉 Milestone Completed!',
-    `Great job! You completed ${titleStr}${xpStr}. Keep going!`,
-    4500,
-  );
+  const title = '🎉 Milestone Completed!';
+  const body = `Great job! You completed ${titleStr}${xpStr}. Keep going!`;
+  showToast('success', title, body, 4500);
+  notificationService.triggerLocalNotification(title, body, { screen: 'GrowthHome', referenceType: 'growth' }).catch(() => {});
   emitRefresh();
 }
 
@@ -216,11 +215,10 @@ export function notifyGrowthMilestoneCompleted(xpEarned?: number, levelTitle?: s
  * Call when a new Growth Journey milestone/level becomes available.
  */
 export function notifyGrowthNewMilestone() {
-  showToast(
-    'info',
-    '🚀 New Milestone Available',
-    'A new Growth Journey level is ready for you!',
-  );
+  const title = '🚀 New Milestone Available';
+  const body = 'A new Growth Journey level is ready for you!';
+  showToast('info', title, body);
+  notificationService.triggerLocalNotification(title, body, { screen: 'GrowthHome', referenceType: 'growth' }).catch(() => {});
   emitRefresh();
 }
 
@@ -229,12 +227,10 @@ export function notifyGrowthNewMilestone() {
  */
 export function notifyGrowthProgress(streak: number) {
   if (streak > 0 && streak % 5 === 0) {
-    showToast(
-      'success',
-      '🔥 Streak Milestone!',
-      `Amazing! You're on a ${streak}-day learning streak. Keep it up!`,
-      4000,
-    );
+    const title = '🔥 Streak Milestone!';
+    const body = `Amazing! You're on a ${streak}-day learning streak. Keep it up!`;
+    showToast('success', title, body, 4000);
+    notificationService.triggerLocalNotification(title, body, { screen: 'GrowthHome', referenceType: 'growth' }).catch(() => {});
     emitRefresh();
   }
 }
@@ -268,22 +264,7 @@ export function useTenantNotifications({
       ? userName.split(' ')[0]
       : 'there';
 
-    // ── 1. Welcome back (once/day) ────────────────────────────────────────────
-    const showWelcome = await shouldShowToday(KEY_WELCOME);
-    if (showWelcome) {
-      // Small delay so the screen has time to render
-      setTimeout(() => {
-        showToast(
-          'info',
-          `👋 Welcome back, ${firstName}!`,
-          'Ready for another productive day? Let\'s go!',
-          4000,
-        );
-      }, 1200);
-      await markShownToday(KEY_WELCOME);
-    }
-
-    // ── 2. Budget notification (once/day, only when budget is set) ────────────
+    // ── 1. Budget notification (once/day, only when budget is set) ────────────
     if (budget > 0) {
       const showBudget = await shouldShowToday(KEY_BUDGET);
       if (showBudget) {

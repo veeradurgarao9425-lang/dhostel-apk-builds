@@ -1,8 +1,9 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View, ScrollView, ActivityIndicator, RefreshControl, DeviceEventEmitter } from 'react-native';
-import { ArrowLeft, Wallet, Megaphone, Wrench, BellRing, Filter } from 'lucide-react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ArrowLeft, Wallet, Megaphone, Wrench, BellRing, Filter, CheckCheck } from 'lucide-react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { Phase3EmptyState, Phase3ErrorState } from '../../components/tenant/UIComponents';
 import { useToast } from '../../../contexts/ToastContext';
@@ -16,6 +17,122 @@ const TEXT_MID = "#666666";
 
 const TABS = ['All', 'Announcements', 'Payments', 'Others'];
 
+const READ_IDS_KEY = 'tenant_read_notification_ids_v2';
+
+export async function getLocalReadIds(): Promise<Set<string>> {
+  try {
+    const raw = await AsyncStorage.getItem(READ_IDS_KEY);
+    if (!raw) return new Set();
+    const arr = JSON.parse(raw);
+    return new Set(Array.isArray(arr) ? arr.map(String) : []);
+  } catch {
+    return new Set();
+  }
+}
+
+export async function saveLocalReadIds(ids: (string | number)[]): Promise<void> {
+  try {
+    const current = await getLocalReadIds();
+    ids.forEach((id) => {
+      if (id !== undefined && id !== null) current.add(String(id));
+    });
+    const arr = Array.from(current).slice(-500);
+    await AsyncStorage.setItem(READ_IDS_KEY, JSON.stringify(arr));
+  } catch {}
+}
+
+const TENANT_ROUTE_MAP: Record<string, string> = {
+  // Tenant direct routes
+  TenantHome: 'TenantHome',
+  TenantHomeScreen: 'TenantHome',
+  Main: 'TenantHome',
+  Dues: 'Dues',
+  TenantDues: 'Dues',
+  RentPayment: 'RentPayment',
+  PaymentReceipt: 'PaymentReceipt',
+  Expenses: 'Expenses',
+  TenantExpenses: 'Expenses',
+  Complaints: 'Complaints',
+  TenantComplaints: 'Complaints',
+  VisitorPass: 'VisitorPass',
+  TenantVisitorPass: 'VisitorPass',
+  GatePass: 'GatePass',
+  TenantGatePass: 'GatePass',
+  Notices: 'Notices',
+  TenantNotices: 'Notices',
+  NoticeDetails: 'Notices',
+  TenantDocuments: 'TenantDocuments',
+  Documents: 'TenantDocuments',
+  TenantNotes: 'Notes',
+  Notes: 'Notes',
+  RoomInfo: 'RoomInfo',
+  TenantRoomInfo: 'RoomInfo',
+  MessMenu: 'FullMenu',
+  FullMenu: 'FullMenu',
+  Feedback: 'Feedback',
+  Splits: 'Splits',
+  TenantSplits: 'Splits',
+  HelpScreen: 'HelpScreen',
+  Profile: 'Profile',
+  Settings: 'Settings',
+  PrivacyPolicy: 'PrivacyPolicy',
+
+  // Owner screens safely mapped to Tenant equivalents
+  Payments: 'Dues',
+  PendingPayments: 'Dues',
+  PendingTab: 'Dues',
+  OverviewTab: 'Dues',
+  Overview: 'TenantHome',
+  FeeManagement: 'Dues',
+  Receipt: 'PaymentReceipt',
+  DownloadReceipts: 'PaymentReceipt',
+  PaymentDetails: 'PaymentReceipt',
+  PaymentVerification: 'Dues',
+  CollectedPayments: 'Dues',
+  AllTransactions: 'Dues',
+  TenantTransactions: 'Dues',
+  Income: 'TenantHome',
+  IncomeDetails: 'TenantHome',
+  AddIncome: 'TenantHome',
+  Visitors: 'VisitorPass',
+  Guests: 'VisitorPass',
+  GuestDetails: 'VisitorPass',
+  AddGuest: 'VisitorPass',
+  Leaves: 'GatePass',
+  Students: 'TenantHome',
+  StudentDetails: 'TenantHome',
+  AddStudent: 'TenantHome',
+  Rooms: 'RoomInfo',
+  RoomDetails: 'RoomInfo',
+  AddRoom: 'RoomInfo',
+  BulkRoomSetup: 'RoomInfo',
+  BulkDelete: 'TenantHome',
+  Reports: 'Dues',
+  Home: 'TenantHome',
+  Dashboard: 'TenantHome',
+  Hostels: 'TenantHome',
+  HostelDetails: 'TenantHome',
+  AddHostel: 'TenantHome',
+  Staff: 'TenantHome',
+  StaffDetails: 'TenantHome',
+  StaffPayments: 'TenantHome',
+  AddStaff: 'TenantHome',
+  AddTeamMember: 'TenantHome',
+  Subscription: 'TenantHome',
+  PremiumSubscription: 'TenantHome',
+  Reminders: 'Dues',
+  BillReminders: 'Dues',
+  ComplaintsManagement: 'Complaints',
+  RequestsManagement: 'GatePass',
+  MessMenuManagement: 'FullMenu',
+  NoticesManagement: 'Notices',
+  AddNotice: 'Notices',
+  RatingsManagement: 'Feedback',
+  DocumentsHub: 'TenantDocuments',
+  PreBooking: 'TenantHome',
+  QRSignup: 'TenantHome',
+};
+
 const typeMeta: Record<string, { icon: any; tint: string; soft: string }> = {
   'due': { icon: Wallet, tint: '#E11D48', soft: '#FFE4E6' },
   'payment': { icon: Wallet, tint: '#10B981', soft: '#D1FAE5' },
@@ -25,32 +142,37 @@ const typeMeta: Record<string, { icon: any; tint: string; soft: string }> = {
 };
 
 export default function NotificationsScreen({ navigation }: any) {
+  const insets = useSafeAreaInsets();
   const [items, setItems] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState('All');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const { showError } = useToast();
+  const { showError, showSuccess } = useToast();
 
   const fetchNotifications = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await api.get('/notifications');
+      const [res, localReadSet] = await Promise.all([
+        api.get('/notifications'),
+        getLocalReadIds(),
+      ]);
       if (res.data.success) {
         const formatted = res.data.data.map((n: any) => {
           let parsedParams = null;
           try {
             if (n.params) parsedParams = typeof n.params === 'string' ? JSON.parse(n.params) : n.params;
           } catch {}
+          const isRead = !!n.is_read || localReadSet.has(String(n.notification_id));
           return {
             id: n.notification_id,
             title: n.title,
             body: n.message,
             type: n.notification_type || 'system',
             date: n.created_at,
-            read: !!n.is_read,
+            read: isRead,
             screen: n.screen,
             params: parsedParams,
             referenceType: n.reference_type,
@@ -86,8 +208,15 @@ export default function NotificationsScreen({ navigation }: any) {
 
   const markAllRead = async () => {
     try {
+      const allIds = items.map((i) => i.id);
       setItems((prev) => prev.map((i) => ({ ...i, read: true })));
-      await api.put('/notifications/read-all');
+      await saveLocalReadIds(allIds);
+      api.put('/notifications/read-all').catch(() => {});
+      allIds.forEach(id => {
+        api.put(`/notifications/${id}/read`).catch(() => {});
+      });
+      DeviceEventEmitter.emit('REFRESH_NOTIFICATIONS');
+      showSuccess('All notifications marked as read');
     } catch (err) {
       // silently ignore — optimistic update already applied
     }
@@ -95,39 +224,51 @@ export default function NotificationsScreen({ navigation }: any) {
 
   const markOneRead = async (id: string | number) => {
     setItems((prev) => prev.map((i) => i.id === id ? { ...i, read: true } : i));
+    await saveLocalReadIds([id]);
     try {
       await api.put(`/notifications/${id}/read`);
     } catch (_) {
       // silently ignore
     }
+    DeviceEventEmitter.emit('REFRESH_NOTIFICATIONS');
   };
 
   const handleItemPress = (item: any) => {
     markOneRead(item.id);
 
-    // 1. Direct screen payload if present
+    // 1. Direct screen payload if present — strictly sanitized against owner screens
     if (item.screen) {
+      const targetScreen = TENANT_ROUTE_MAP[item.screen] || 'TenantHome';
       try {
-        navigation.navigate(item.screen, item.params);
+        navigation.navigate(targetScreen, item.params);
         return;
       } catch (navErr) {
-        console.warn('Navigation error for screen:', item.screen, navErr);
+        console.warn('Navigation error for screen:', targetScreen, navErr);
       }
     }
 
-    // 2. Intelligent fallback based on type/title
+    // 2. Intelligent fallback based on referenceType / type / title
     const title = (item.title || '').toLowerCase();
     const type = (item.type || '').toLowerCase();
+    const ref = (item.referenceType || '').toLowerCase();
 
-    if (type.includes('due') || type.includes('payment') || title.includes('rent') || title.includes('due') || title.includes('fee')) {
-      navigation.navigate('RentPayment', item.params || { feeId: item.referenceId });
+    if (ref === 'visitor' || type.includes('visitor') || title.includes('visitor')) {
+      navigation.navigate('VisitorPass');
+    } else if (ref === 'leave' || type.includes('leave') || type.includes('gate') || title.includes('gate') || title.includes('leave')) {
+      navigation.navigate('GatePass');
+    } else if (type.includes('due') || type.includes('payment') || title.includes('rent') || title.includes('due') || title.includes('fee')) {
+      navigation.navigate('Dues', item.params || { feeId: item.referenceId });
     } else if (type.includes('expense') || type.includes('budget') || title.includes('expense') || title.includes('spend') || title.includes('budget')) {
       navigation.navigate('Expenses');
     } else if (type.includes('notice') || title.includes('notice') || title.includes('announcement')) {
       navigation.navigate('Notices');
     } else if (type.includes('complaint') || title.includes('complaint')) {
       navigation.navigate('Complaints');
-    } else if (type.includes('admission') || title.includes('room') || title.includes('allocated')) {
+    } else if (title.includes('menu') || title.includes('mess') || type.includes('food')) {
+      navigation.navigate('FullMenu');
+    } else if (type.includes('split') || title.includes('split')) {
+      navigation.navigate('Splits');
+    } else {
       navigation.navigate('TenantHome');
     }
   };
@@ -250,9 +391,18 @@ export default function NotificationsScreen({ navigation }: any) {
                 <Text style={styles.headerSub}>You have {unreadCount} unread</Text>
               </View>
             </View>
-            <TouchableOpacity style={styles.filterBtn}>
-              <Filter size={20} color={WHITE} strokeWidth={2.5} />
-            </TouchableOpacity>
+            {unreadCount > 0 ? (
+              <TouchableOpacity
+                style={styles.markAllHeaderBtn}
+                onPress={markAllRead}
+                activeOpacity={0.8}
+              >
+                <CheckCheck size={16} color={WHITE} strokeWidth={2.5} />
+                <Text style={styles.markAllHeaderTxt}>Mark all read</Text>
+              </TouchableOpacity>
+            ) : (
+              <View style={{ width: 32 }} />
+            )}
           </View>
         </SafeAreaView>
       </View>
@@ -284,9 +434,10 @@ export default function NotificationsScreen({ navigation }: any) {
         {renderContent()}
       </ScrollView>
 
-      {!loading && !error && Object.keys(groupedItems).length > 0 && (
-        <View style={styles.footer}>
-          <TouchableOpacity style={styles.markReadBtn} onPress={markAllRead}>
+      {!loading && !error && Object.keys(groupedItems).length > 0 && unreadCount > 0 && (
+        <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 14) }]}>
+          <TouchableOpacity style={styles.markReadBtn} onPress={markAllRead} activeOpacity={0.7}>
+            <CheckCheck size={16} color={BLUE} strokeWidth={2} style={{ marginRight: 6 }} />
             <Text style={styles.markReadText}>Mark all as read</Text>
           </TouchableOpacity>
         </View>
@@ -427,6 +578,23 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
 
+  markAllHeaderBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.22)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
+  },
+  markAllHeaderTxt: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: WHITE,
+  },
+
   // Footer
   footer: {
     position: 'absolute',
@@ -434,18 +602,23 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     backgroundColor: '#FAF9F6',
-    paddingVertical: 16,
+    paddingVertical: 12,
     alignItems: 'center',
     borderTopWidth: 1,
     borderTopColor: '#F1F5F9',
   },
   markReadBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     paddingVertical: 8,
     paddingHorizontal: 20,
+    backgroundColor: '#EEF2FF',
+    borderRadius: 20,
   },
   markReadText: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: '#A0522D', // Using brown for this link as seen in the image
+    fontSize: 13,
+    fontWeight: '700',
+    color: BLUE,
   },
 });

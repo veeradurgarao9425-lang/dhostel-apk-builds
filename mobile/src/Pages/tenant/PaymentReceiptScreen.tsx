@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -224,14 +224,27 @@ export default function PaymentReceiptScreen({ route, navigation }: any) {
     }
   };
 
+  const [downloading, setDownloading] = React.useState(false);
+
   const handleDownload = async () => {
     try {
+      setDownloading(true);
       const { uri } = await Print.printToFileAsync({ html: htmlContent });
       const filename = `receipt_${transactionId.replace(/[^a-zA-Z0-9-_]/g, '_')}.pdf`;
-      await downloadAndSaveFile(uri, filename, 'application/pdf', true);
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(uri, {
+          mimeType: 'application/pdf',
+          UTI: '.pdf',
+          dialogTitle: `Download / Save ${filename}`,
+        });
+      } else {
+        Alert.alert('Success', 'Receipt PDF has been saved.');
+      }
     } catch (error) {
       console.error('Error saving PDF:', error);
-      Alert.alert('Error', 'Failed to save PDF');
+      Alert.alert('Error', 'Failed to generate receipt PDF.');
+    } finally {
+      setDownloading(false);
     }
   };
 
@@ -332,10 +345,8 @@ export default function PaymentReceiptScreen({ route, navigation }: any) {
               </View>
             </View>
             
-            {/* Dashed Bottom / Jagged Edge Simulation */}
-            <View style={styles.dashedBottom}>
-              <Text style={{ color: '#D1D5DB', letterSpacing: 2 }}>- - - - - - - - - - - - - - - - - - - - - - - - - - - -</Text>
-            </View>
+            {/* Dashed Border Divider */}
+            <View style={styles.dashedDivider} />
           </View>
           
           {/* Powered By */}
@@ -345,18 +356,24 @@ export default function PaymentReceiptScreen({ route, navigation }: any) {
 
           {/* Action Buttons */}
           <View style={styles.actionsContainer}>
-            <TouchableOpacity style={styles.actionItem} onPress={handleShare}>
-              <View style={[styles.actionIcon, { backgroundColor: '#EEF2FF' }]}><Share2 size={24} color="#2245D4" /></View>
+            <TouchableOpacity style={styles.actionItem} onPress={handleShare} activeOpacity={0.7}>
+              <View style={[styles.actionIcon, { backgroundColor: '#EEF2FF' }]}><Share2 size={22} color="#2245D4" /></View>
               <Text style={[styles.actionText, { color: '#666666' }]}>Share</Text>
             </TouchableOpacity>
             
-            <TouchableOpacity style={styles.actionItem} onPress={handleDownload}>
-              <View style={[styles.actionIcon, { backgroundColor: '#EEF2FF' }]}><Download size={24} color="#2245D4" /></View>
-              <Text style={[styles.actionText, { color: '#666666' }]}>Download</Text>
+            <TouchableOpacity style={styles.actionItem} onPress={handleDownload} disabled={downloading} activeOpacity={0.7}>
+              <View style={[styles.actionIcon, { backgroundColor: '#ECFDF5' }]}>
+                {downloading ? (
+                  <ActivityIndicator size="small" color="#10B981" />
+                ) : (
+                  <Download size={22} color="#10B981" />
+                )}
+              </View>
+              <Text style={[styles.actionText, { color: '#10B981', fontWeight: '700' }]}>{downloading ? 'Saving...' : 'Download'}</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.actionItem} onPress={() => navigation.navigate('Main', { screen: 'Dues', params: { initialTab: 'Payment History' } })}>
-              <View style={[styles.actionIcon, { backgroundColor: '#F3E8FF' }]}><Clock size={24} color="#9333EA" /></View>
+            <TouchableOpacity style={styles.actionItem} onPress={() => navigation.navigate('Main', { screen: 'Dues', params: { initialTab: 'Payment History' } })} activeOpacity={0.7}>
+              <View style={[styles.actionIcon, { backgroundColor: '#F3E8FF' }]}><Clock size={22} color="#9333EA" /></View>
               <Text style={[styles.actionText, { color: '#666666' }]}>View History</Text>
             </TouchableOpacity>
           </View>
@@ -549,13 +566,14 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '700',
   },
-  dashedBottom: {
-    position: 'absolute',
-    bottom: 5,
-    left: 20,
-    right: 20,
-    alignItems: 'center',
-    opacity: 0.5,
+  dashedDivider: {
+    height: 1,
+    width: '100%',
+    borderStyle: 'dashed',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginTop: 18,
+    marginBottom: 6,
   },
   poweredBy: {
     alignItems: 'center',

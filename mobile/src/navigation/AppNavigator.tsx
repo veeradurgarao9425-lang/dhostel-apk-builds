@@ -53,6 +53,7 @@ import TenantProfileScreen from '../Pages/tenant/ProfileScreen';
 import TenantSettingsScreen from '../Pages/tenant/SettingsScreen';
 import TenantPrivacyPolicyScreen from '../Pages/tenant/PrivacyPolicyScreen';
 import { SubscriptionExpiredScreen as TenantSubscriptionExpiredScreen } from '../Pages/tenant/SubscriptionExpiredScreen';
+import VacateNoticeScreen from '../Pages/tenant/VacateNoticeScreen';
 
 // ── Growth Journey (tenant-only) ──────────────────────────────
 import GrowthHomeScreen from '../Pages/tenant/growth/GrowthHomeScreen';
@@ -213,16 +214,117 @@ interface AppNavigatorProps {
     onRouteChange?: (routeName: string) => void;
 }
 
+const TENANT_SAFE_ROUTE_MAP: Record<string, string> = {
+    TenantHome: 'TenantHome',
+    TenantHomeScreen: 'TenantHome',
+    Main: 'TenantHome',
+    Dues: 'Dues',
+    TenantDues: 'Dues',
+    RentPayment: 'RentPayment',
+    PaymentReceipt: 'PaymentReceipt',
+    Expenses: 'Expenses',
+    TenantExpenses: 'Expenses',
+    Complaints: 'Complaints',
+    TenantComplaints: 'Complaints',
+    VisitorPass: 'VisitorPass',
+    TenantVisitorPass: 'VisitorPass',
+    GatePass: 'GatePass',
+    TenantGatePass: 'GatePass',
+    Notices: 'Notices',
+    TenantNotices: 'Notices',
+    NoticeDetails: 'Notices',
+    TenantDocuments: 'TenantDocuments',
+    Documents: 'TenantDocuments',
+    TenantNotes: 'Notes',
+    Notes: 'Notes',
+    RoomInfo: 'RoomInfo',
+    TenantRoomInfo: 'RoomInfo',
+    MessMenu: 'FullMenu',
+    FullMenu: 'FullMenu',
+    Feedback: 'Feedback',
+    Rating: 'Rating',
+    TenantRating: 'Rating',
+    VacateNotice: 'VacateNotice',
+    VacateRoom: 'VacateNotice',
+    Splits: 'Splits',
+    TenantSplits: 'Splits',
+    HelpScreen: 'HelpScreen',
+    Profile: 'Profile',
+    Settings: 'Settings',
+    PrivacyPolicy: 'PrivacyPolicy',
+
+    // Remap owner screens strictly to tenant equivalents
+    Payments: 'Dues',
+    PendingPayments: 'Dues',
+    PendingTab: 'Dues',
+    OverviewTab: 'Dues',
+    Overview: 'TenantHome',
+    FeeManagement: 'Dues',
+    Receipt: 'PaymentReceipt',
+    DownloadReceipts: 'PaymentReceipt',
+    PaymentDetails: 'PaymentReceipt',
+    PaymentVerification: 'Dues',
+    CollectedPayments: 'Dues',
+    AllTransactions: 'Dues',
+    TenantTransactions: 'Dues',
+    Income: 'TenantHome',
+    IncomeDetails: 'TenantHome',
+    AddIncome: 'TenantHome',
+    Visitors: 'VisitorPass',
+    Guests: 'VisitorPass',
+    GuestDetails: 'VisitorPass',
+    AddGuest: 'VisitorPass',
+    Leaves: 'GatePass',
+    Students: 'TenantHome',
+    StudentDetails: 'TenantHome',
+    AddStudent: 'TenantHome',
+    Rooms: 'RoomInfo',
+    RoomDetails: 'RoomInfo',
+    AddRoom: 'RoomInfo',
+    BulkRoomSetup: 'RoomInfo',
+    BulkDelete: 'TenantHome',
+    Reports: 'Dues',
+    Home: 'TenantHome',
+    Dashboard: 'TenantHome',
+    Hostels: 'TenantHome',
+    HostelDetails: 'TenantHome',
+    AddHostel: 'TenantHome',
+    Staff: 'TenantHome',
+    StaffDetails: 'TenantHome',
+    StaffPayments: 'TenantHome',
+    AddStaff: 'TenantHome',
+    AddTeamMember: 'TenantHome',
+    Subscription: 'TenantHome',
+    PremiumSubscription: 'TenantHome',
+    Reminders: 'Dues',
+    BillReminders: 'Dues',
+    ComplaintsManagement: 'Complaints',
+    RequestsManagement: 'GatePass',
+    MessMenuManagement: 'FullMenu',
+    NoticesManagement: 'Notices',
+    AddNotice: 'Notices',
+    RatingsManagement: 'Feedback',
+    DocumentsHub: 'TenantDocuments',
+    PreBooking: 'TenantHome',
+    QRSignup: 'TenantHome',
+};
+
 // ── Root Stack Navigator ──────────────────────────────────────────────────────
 const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
     const { user, logoutLoading } = useAuth();
+    const isTenant = user?.role_id === 3 || user?.role === 'TENANT' || user?.role === 'tenant' || user?.role === 'student' || (user as any)?.is_tenant;
+    const isDeveloper = user?.role === 'DEVELOPER' || (user as any)?.is_developer;
     const navigationKey = `${user?.user_id || (user as any)?.id || 'guest'}_${user?.role || 'none'}_${user?.is_allocated ? 'alloc' : 'pending'}_${user?.hostel_id || 'none'}`;
 
     useEffect(() => {
         // Setup listeners for foreground notifications, heads-up status bar alerts, and clicks
         const unsubscribe = notificationService.setupNotificationListeners((screen, params) => {
             if (navigationRef.isReady && navigationRef.isReady()) {
-                (navigationRef as any).navigate(screen, params);
+                let targetScreen = screen;
+                if (isTenant) {
+                    targetScreen = TENANT_SAFE_ROUTE_MAP[screen] || 'TenantHome';
+                }
+                (navigationRef as any).navigate(targetScreen, params);
             }
         });
 
@@ -233,7 +335,7 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
         return () => {
             unsubscribe();
         };
-    }, [user?.user_id || (user as any)?.id, user?.role]);
+    }, [user?.user_id || (user as any)?.id, user?.role, (user as any)?.role_id, isTenant]);
 
     return (
         <>
@@ -288,9 +390,9 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
                     <Stack.Screen
                         name="Main"
                         component={
-                            user?.role === 'DEVELOPER'
+                            isDeveloper
                                 ? DeveloperTabNavigator
-                                : user?.role === 'TENANT'
+                                : isTenant
                                 ? (user?.is_allocated ? TenantTabNavigator : PendingApprovalScreen)
                                 : OwnerTabNavigator
                         }
@@ -299,7 +401,7 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
                     {/* Notifications — role-aware: tenant gets their screen, owner gets the owner screen */}
                     <Stack.Screen
                         name="Notifications"
-                        component={user?.role === 'TENANT' ? TenantNotificationsScreen : NotificationScreen}
+                        component={isTenant ? TenantNotificationsScreen : NotificationScreen}
                     />
                     {/* Explicit tenant notification route — always opens the tenant screen */}
                     <Stack.Screen name="TenantNotifications" component={TenantNotificationsScreen} />
@@ -377,10 +479,10 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
                     <Stack.Screen name="Overview" component={OverviewScreen} />
 
                     {/* Expenses */}
-                    <Stack.Screen name="Expenses" component={ExpenseScreen} />
+                    <Stack.Screen name="Expenses" component={isTenant ? ExpensesScreen : ExpenseScreen} />
                     <Stack.Screen
                         name="AddExpense"
-                        component={user?.role === 'TENANT' ? TenantAddExpenseScreen : AddExpenseScreen}
+                        component={isTenant ? TenantAddExpenseScreen : AddExpenseScreen}
                         options={{ animation: 'slide_from_bottom' }}
                     />
                     <Stack.Screen name="ExpenseDetails" component={ExpenseDetailsScreen} />
@@ -390,11 +492,11 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
                         shared route names between the owner and tenant apps; swap the component by
                         role the same way "Main" already does below, so a tenant navigating to
                         'Profile' etc. gets their own screen instead of the owner's. */}
-                    <Stack.Screen name="Profile" component={user?.role === 'TENANT' ? TenantProfileScreen : ProfileScreen} />
-                    <Stack.Screen name="Settings" component={user?.role === 'TENANT' ? TenantSettingsScreen : SettingsScreen} />
+                    <Stack.Screen name="Profile" component={isTenant ? TenantProfileScreen : ProfileScreen} />
+                    <Stack.Screen name="Settings" component={isTenant ? TenantSettingsScreen : SettingsScreen} />
                     <Stack.Screen name="Feedback" component={FeedbackScreen} />
-                    <Stack.Screen name="SubscriptionExpired" component={user?.role === 'TENANT' ? TenantSubscriptionExpiredScreen : SubscriptionExpiredScreen} options={{ headerShown: false, gestureEnabled: false }} />
-                    <Stack.Screen name="PrivacyPolicy" component={user?.role === 'TENANT' ? TenantPrivacyPolicyScreen : PrivacyPolicyScreen} />
+                    <Stack.Screen name="SubscriptionExpired" component={isTenant ? TenantSubscriptionExpiredScreen : SubscriptionExpiredScreen} options={{ headerShown: false, gestureEnabled: false }} />
+                    <Stack.Screen name="PrivacyPolicy" component={isTenant ? TenantPrivacyPolicyScreen : PrivacyPolicyScreen} />
                     <Stack.Screen
                         name="AddHostel"
                         component={AddHostelScreen}
@@ -406,14 +508,12 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
                     {/* Tools */}
                     <Stack.Screen name="QRSignup" component={QRSignupScreen} />
                     <Stack.Screen name="PreBooking" component={PreBookingScreen} />
-                    <Stack.Screen name="Notices" component={NoticesScreen} />
+                    <Stack.Screen name="Notices" component={isTenant ? TenantNoticesScreen : NoticesScreen} />
 
                     {/* Tenant — reachable from Home quick actions, Dues, Expenses, and Profile.
                         None of these route names collide with an owner screen. */}
-                    {/* DISABLED — tenant chat. See the import note at the top of
-                        this file for why and how to re-enable. */}
-                    {/* <Stack.Screen name="ChatRoom" component={ChatRoomScreen} /> */}
-                    {/* <Stack.Screen name="Messages" component={MessagesScreen} /> */}
+                    <Stack.Screen name="TenantHome" component={TenantHomeScreen} />
+                    <Stack.Screen name="TenantHomeScreen" component={TenantHomeScreen} />
                     <Stack.Screen name="Complaints" component={TenantComplaintsScreen} />
                     <Stack.Screen name="TenantComplaints" component={TenantComplaintsScreen} />
                     <Stack.Screen name="RoomInfo" component={RoomInfoScreen} />
@@ -429,6 +529,9 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
                     <Stack.Screen name="HelpScreen" component={TenantHelpScreen} />
                     <Stack.Screen name="PaymentReceipt" component={PaymentReceiptScreen} />
                     <Stack.Screen name="Rating" component={RatingScreen} />
+                    <Stack.Screen name="TenantRating" component={RatingScreen} />
+                    <Stack.Screen name="VacateNotice" component={VacateNoticeScreen} />
+                    <Stack.Screen name="VacateRoom" component={VacateNoticeScreen} />
                     <Stack.Screen name="SplitHistory" component={SplitHistoryScreen} />
                     <Stack.Screen name="Splits" component={SplitsScreen} />
                     <Stack.Screen name="TenantSplits" component={SplitsScreen} />

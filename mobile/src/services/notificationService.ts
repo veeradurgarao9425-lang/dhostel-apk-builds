@@ -90,7 +90,11 @@ export const notificationService = {
             messagingInstance = fcm.getMessaging();
           }
         } catch (nativeErr: any) {
-          console.warn('[FCM] Error initializing messaging instance:', nativeErr);
+          if (nativeErr?.message?.includes?.('No Firebase App')) {
+            console.log('[FCM] Native Firebase not initialized (standard behavior in Expo Go). Push tokens require standalone APK.');
+          } else {
+            console.warn('[FCM] Error initializing messaging instance:', nativeErr?.message || nativeErr);
+          }
         }
 
         if (messagingInstance) {
@@ -120,32 +124,14 @@ export const notificationService = {
         }
       }
 
-      // ── 2. Fallback to Expo Push Token for Local / Expo Go Testing ──
-      if (!token) {
-        try {
-          const Notifications = getExpoNotificationsModule();
-          if (Notifications?.getExpoPushTokenAsync) {
-            const { status: existingStatus } = await Notifications.getPermissionsAsync();
-            let finalStatus = existingStatus;
-            if (existingStatus !== 'granted') {
-              const { status } = await Notifications.requestPermissionsAsync();
-              finalStatus = status;
-            }
-            if (finalStatus === 'granted') {
-              const expoTokenData = await Notifications.getExpoPushTokenAsync();
-              token = expoTokenData?.data || null;
-            }
-          }
-        } catch (expoErr: any) {
-          console.warn('[FCM/Expo] Error obtaining Expo token:', expoErr?.message || expoErr);
-        }
-      }
-
-      console.log('[Notification] ✅ Token obtained:', token ? token.slice(0, 30) + '...' : 'null');
-
-      if (token) {
+      // Pure Firebase FCM only — do NOT request or fallback to ExponentPushTokens
+      if (token && !token.startsWith('ExponentPushToken[') && !token.startsWith('ExpoPushToken[')) {
+        console.log('[FCM] ✅ Firebase FCM Token obtained:', token.slice(0, 30) + '...');
         this._lastRegisteredToken = token;
         await this.sendTokenToBackend(token);
+      } else {
+        console.log('[FCM] ℹ️ Native Firebase FCM is required for push tokens (Expo Go does not support native FCM).');
+        token = null;
       }
 
       return token;
@@ -159,7 +145,7 @@ export const notificationService = {
    * Send the push token to our backend so the server can push to this device.
    */
   async sendTokenToBackend(token: string, force = false) {
-    if (!token) return;
+    if (!token || token.startsWith('ExponentPushToken[') || token.startsWith('ExpoPushToken[')) return;
     try {
       await api.post('/notifications/register-token', {
         push_token: token,
@@ -187,6 +173,29 @@ export const notificationService = {
     try {
       await api.post('/notifications/deregister-token', { push_token: token });
     } catch (err) {}
+  },
+
+  /**
+   * Immediately post a heads-up alert banner in the native system notification tray.
+   */
+  async triggerLocalNotification(title: string, body: string, data?: any): Promise<void> {
+    try {
+      const Notifications = getExpoNotificationsModule();
+      if (Notifications && typeof Notifications.scheduleNotificationAsync === 'function') {
+        await Notifications.scheduleNotificationAsync({
+          content: {
+            title,
+            body,
+            sound: 'default',
+            channelId: 'default',
+            data: data || {},
+          },
+          trigger: null,
+        });
+      }
+    } catch (e) {
+      console.warn('[Notification] triggerLocalNotification error:', e);
+    }
   },
 
   async sendTestNotification(title?: string, message?: string, data?: any): Promise<boolean> {

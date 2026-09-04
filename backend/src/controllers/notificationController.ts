@@ -167,15 +167,17 @@ export const markAsRead = async (req: AuthRequest, res: Response) => {
     }
 
     const isTenant = user.role_id === 3;
-    let condition: any = { notification_id: id, user_id: user.user_id };
+    let query = db('notifications').where('notification_id', id);
     if (isTenant) {
       const realStudentId = await getAuthenticatedStudentId(user) || user.user_id;
-      condition = { notification_id: id, student_id: realStudentId };
+      query = query.andWhere(function() {
+        this.where('student_id', realStudentId).orWhere('user_id', user.user_id);
+      });
+    } else {
+      query = query.andWhere('user_id', user.user_id);
     }
 
-    await db('notifications')
-      .where(condition)
-      .update({ is_read: 1 });
+    await query.update({ is_read: 1 });
 
     res.json({
       success: true,
@@ -203,15 +205,17 @@ export const markAllAsRead = async (req: AuthRequest, res: Response) => {
     }
 
     const isTenant = user.role_id === 3;
-    let condition: any = { user_id: user.user_id };
+    let query = db('notifications');
     if (isTenant) {
       const realStudentId = await getAuthenticatedStudentId(user) || user.user_id;
-      condition = { student_id: realStudentId };
+      query = query.where(function() {
+        this.where('student_id', realStudentId).orWhere('user_id', user.user_id);
+      });
+    } else {
+      query = query.where('user_id', user.user_id);
     }
 
-    await db('notifications')
-      .where(condition)
-      .update({ is_read: 1 });
+    await query.update({ is_read: 1 });
 
     res.json({
       success: true,

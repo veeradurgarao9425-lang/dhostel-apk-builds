@@ -1,13 +1,15 @@
 import React, { useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView, Modal,
-  TextInput, StatusBar, ActivityIndicator, Platform, RefreshControl
+  TextInput, StatusBar, ActivityIndicator, Platform, RefreshControl,
+  KeyboardAvoidingView, LayoutAnimation, UIManager
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
-import { ArrowLeft, Plus, User, Clock, Calendar, X, ChevronDown, Check, Filter } from 'lucide-react-native';
+import { ArrowLeft, Plus, User, Clock, Calendar, X, ChevronDown, Check, Filter, Phone, FileText } from 'lucide-react-native';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useToast } from '../../../contexts/ToastContext';
+import { notifyVisitorPassSubmitted } from '../../hooks/useTenantNotifications';
 import api from '../../services/api';
 import { AppHeader, EmptyState, SkeletonListRow, LoaderOverlay } from '../../components/tenant/ui';
 import DateTimePickerModal from "react-native-modal-datetime-picker";
@@ -19,7 +21,12 @@ const TEXT_MID = '#666666';
 const BORDER = '#E2E8F0';
 const BG = '#F8FAFD';
 
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
+
 export default function VisitorPassScreen({ navigation }: any) {
+  const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const { showError, showSuccess, showWarning } = useToast();
   const [requests, setRequests] = useState<any[]>([]);
@@ -34,15 +41,18 @@ export default function VisitorPassScreen({ navigation }: any) {
 
   // Form state
   const [visitorName, setVisitorName] = useState('');
+  const [visitorPhone, setVisitorPhone] = useState('');
   const [relation, setRelation] = useState('');
   const [visitDate, setVisitDate] = useState('');
   const [visitTime, setVisitTime] = useState('');
+  const [purpose, setPurpose] = useState('');
+  const [errors, setErrors] = useState<{ visitorName?: string; relation?: string; visitDate?: string; visitTime?: string }>({});
   const [showRelationPicker, setShowRelationPicker] = useState(false);
   const [isDatePickerVisible, setDatePickerVisible] = useState(false);
   const [isTimePickerVisible, setTimePickerVisible] = useState(false);
   const [isFilterDatePickerVisible, setFilterDatePickerVisible] = useState(false);
 
-  const RELATIONS = ['Family', 'Friend', 'Colleague', 'Other'];
+  const RELATIONS = ['Family', 'Parent', 'Friend', 'Relative', 'Colleague', 'Delivery / Service', 'Guest', 'Other'];
 
   const handleConfirmDate = (date: Date) => {
     // format to YYYY-MM-DD
@@ -87,26 +97,43 @@ export default function VisitorPassScreen({ navigation }: any) {
     const now = new Date();
     const currentDate = now.toISOString().split('T')[0];
     const currentTime = now.toTimeString().substring(0, 5);
-    setVisitorName(''); setRelation(''); setVisitDate(currentDate); setVisitTime(currentTime);
+    setVisitorName('');
+    setVisitorPhone('');
+    setRelation('');
+    setVisitDate(currentDate);
+    setVisitTime(currentTime);
+    setPurpose('');
+    setErrors({});
   };
 
   const handleSubmit = async () => {
-    if (!visitorName.trim() || !relation || !visitDate || !visitTime) {
-      showWarning('Please fill in all fields.');
+    const newErrors: { visitorName?: string; relation?: string; visitDate?: string; visitTime?: string } = {};
+    if (!visitorName.trim()) newErrors.visitorName = 'Visitor name is required';
+    if (!relation) newErrors.relation = 'Please select a relation';
+    if (!visitDate) newErrors.visitDate = 'Visit date is required';
+    if (!visitTime) newErrors.visitTime = 'Visit time is required';
+
+    setErrors(newErrors);
+    if (Object.keys(newErrors).length > 0) {
+      showWarning('Please fill in all required fields.');
       return;
     }
+
     setSubmitting(true);
     try {
+      const fullName = visitorPhone.trim() ? `${visitorName.trim()} (${visitorPhone.trim()})` : visitorName.trim();
+      const fullRelation = purpose.trim() ? `${relation} - ${purpose.trim()}` : relation;
       await api.post('/requests/visitor/tenant', {
         hostel_id: user?.hostel_id,
-        visitor_name: visitorName.trim(),
-        relation,
+        visitor_name: fullName,
+        relation: fullRelation,
         visit_date: visitDate,
         visit_time: visitTime,
       });
       setShowForm(false);
       resetForm();
       showSuccess('Visitor pass request submitted.');
+      notifyVisitorPassSubmitted(visitorName);
       fetchRequests();
     } catch (e: any) {
       showError(e?.response?.data?.message || 'Failed to submit request.');
@@ -126,6 +153,13 @@ export default function VisitorPassScreen({ navigation }: any) {
     return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
   };
 
+  const counts = {
+    All: requests.length,
+    Pending: requests.filter((r: any) => (r.status || 'Pending') === 'Pending').length,
+    Approved: requests.filter((r: any) => r.status === 'Approved').length,
+    Rejected: requests.filter((r: any) => r.status === 'Rejected').length,
+  };
+
   return (
     <View style={{ flex: 1, backgroundColor: BG }}>
       <StatusBar barStyle="light-content" backgroundColor={BLUE} />
@@ -140,33 +174,101 @@ export default function VisitorPassScreen({ navigation }: any) {
         }
       />
 
-      {/* ── Filter chips ── */}
-      {!loading && requests.length > 0 && (
-        <ScrollView
-          horizontal showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: 20, paddingVertical: 10, gap: 8 }}
-          style={{ backgroundColor: '#FFFFFF', borderBottomWidth: 1, borderBottomColor: BORDER }}
-        >
+      {/* ── Top Tabs Segmented Control ── */}
+      <View style={{ backgroundColor: WHITE, paddingHorizontal: 16, paddingTop: 10, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: BORDER }}>
+        <View style={{ flexDirection: 'row', backgroundColor: '#F1F5F9', borderRadius: 12, padding: 3 }}>
           {(['All', 'Pending', 'Approved', 'Rejected'] as const).map(f => {
             const active = activeFilter === f;
-            const chipColor = f === 'Approved' ? '#22C55E' : f === 'Rejected' ? '#EF4444' : f === 'Pending' ? '#D97706' : BLUE;
+            const count = counts[f] || 0;
+            const activeTextColor =
+              f === 'Approved' ? '#16A34A' :
+              f === 'Rejected' ? '#DC2626' :
+              f === 'Pending' ? '#D97706' : BLUE;
+            const activeBadgeBg =
+              f === 'Approved' ? '#DCFCE7' :
+              f === 'Rejected' ? '#FEE2E2' :
+              f === 'Pending' ? '#FEF3C7' : '#EEF2FF';
+
             return (
               <TouchableOpacity
                 key={f}
-                onPress={() => setActiveFilter(f)}
+                onPress={() => {
+                  try {
+                    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                  } catch (_) {}
+                  setActiveFilter(f);
+                }}
                 activeOpacity={0.7}
                 style={{
-                  paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20,
-                  backgroundColor: active ? chipColor : '#F1F5F9',
-                  borderWidth: 1, borderColor: active ? chipColor : BORDER,
+                  flex: 1,
+                  paddingVertical: 7,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  borderRadius: 9,
+                  backgroundColor: active ? WHITE : 'transparent',
+                  ...(active ? {
+                    shadowColor: '#000',
+                    shadowOffset: { width: 0, height: 1.5 },
+                    shadowOpacity: 0.08,
+                    shadowRadius: 3,
+                    elevation: 2,
+                  } : {}),
                 }}
               >
-                <Text style={{ fontSize: 12, fontWeight: '700', color: active ? '#FFF' : TEXT_MID }}>{f}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
+                  <Text
+                    numberOfLines={1}
+                    style={{
+                      fontSize: 12,
+                      fontWeight: active ? '700' : '600',
+                      color: active ? activeTextColor : '#64748B',
+                    }}
+                  >
+                    {f}
+                  </Text>
+                  <View
+                    style={{
+                      minWidth: 17,
+                      height: 17,
+                      paddingHorizontal: 3,
+                      borderRadius: 9,
+                      backgroundColor: active ? activeBadgeBg : 'rgba(100, 116, 139, 0.12)',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      marginLeft: 4,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 10,
+                        fontWeight: '800',
+                        color: active ? activeTextColor : '#64748B',
+                      }}
+                    >
+                      {count}
+                    </Text>
+                  </View>
+                </View>
               </TouchableOpacity>
             );
           })}
-        </ScrollView>
-      )}
+        </View>
+
+        {/* Date Filter Active Chip */}
+        {filterDate.trim() !== '' && (
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8, paddingHorizontal: 2 }}>
+            <View style={{ backgroundColor: '#EEF2FF', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10, flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: '#C7D2FE' }}>
+              <Calendar size={12} color={BLUE} style={{ marginRight: 5 }} />
+              <Text style={{ fontSize: 12, color: BLUE, fontWeight: '600', marginRight: 8 }}>
+                Date: {formatDate(filterDate)}
+              </Text>
+              <TouchableOpacity onPress={() => setFilterDate('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <X size={13} color={BLUE} strokeWidth={2.5} />
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+      </View>
 
       {loading ? (
         <ScrollView contentContainerStyle={{ padding: 20, gap: 12 }}>
@@ -245,58 +347,131 @@ export default function VisitorPassScreen({ navigation }: any) {
       )}
 
       <Modal visible={showForm} transparent animationType="slide" onRequestClose={() => setShowForm(false)}>
-        <View style={{ flex: 1, backgroundColor: 'transparent', justifyContent: 'flex-end' }}>
-          <View style={{ backgroundColor: WHITE, borderTopLeftRadius: 28, borderTopRightRadius: 28, padding: 28, paddingBottom: Platform.OS === 'ios' ? 48 : 28, borderTopWidth: 1, borderLeftWidth: 1, borderRightWidth: 1, borderColor: '#E2E8F0', shadowColor: '#000', shadowOffset: { width: 0, height: -10 }, shadowOpacity: 0.1, shadowRadius: 20, elevation: 24 }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-              <Text style={{ fontSize: 20, fontWeight: '800', color: TEXT_DARK }}>Request Visitor Pass</Text>
-              <TouchableOpacity onPress={() => setShowForm(false)}>
-                <X size={24} color={TEXT_MID} />
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+          <TouchableOpacity style={{ flex: 1 }} activeOpacity={1} onPress={() => setShowForm(false)} />
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ maxHeight: '90%' }}>
+            <View style={{ backgroundColor: WHITE, borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingHorizontal: 24, paddingTop: 20, paddingBottom: Math.max(insets.bottom, 16), shadowColor: '#000', shadowOffset: { width: 0, height: -8 }, shadowOpacity: 0.15, shadowRadius: 16, elevation: 24 }}>
+              
+              {/* Header */}
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                <View>
+                  <Text style={{ fontSize: 20, fontWeight: '800', color: TEXT_DARK }}>Request Visitor Pass</Text>
+                  <Text style={{ fontSize: 12.5, color: TEXT_MID, marginTop: 2 }}>Enter visitor details to request approval</Text>
+                </View>
+                <TouchableOpacity onPress={() => setShowForm(false)} style={{ padding: 6, borderRadius: 20, backgroundColor: '#F1F5F9' }}>
+                  <X size={20} color={TEXT_MID} />
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 16 }}>
+                
+                {/* Visitor Name */}
+                <Text style={{ fontSize: 13, fontWeight: '700', color: TEXT_DARK, marginBottom: 6 }}>
+                  Visitor Name <Text style={{ color: '#EF4444' }}>*</Text>
+                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: errors.visitorName ? '#EF4444' : BORDER, borderRadius: 14, paddingHorizontal: 14, height: 48, backgroundColor: '#FAFAFA' }}>
+                  <User size={18} color={errors.visitorName ? '#EF4444' : TEXT_MID} style={{ marginRight: 10 }} />
+                  <TextInput
+                    style={{ flex: 1, fontSize: 14, color: TEXT_DARK }}
+                    value={visitorName}
+                    onChangeText={(t) => { setVisitorName(t); setErrors(e => ({ ...e, visitorName: undefined })); }}
+                    placeholder="Visitor's full name"
+                    placeholderTextColor="#9CA3AF"
+                  />
+                </View>
+                {errors.visitorName && <Text style={{ color: '#EF4444', fontSize: 11, marginTop: 4 }}>{errors.visitorName}</Text>}
+
+                {/* Visitor Phone */}
+                <Text style={{ fontSize: 13, fontWeight: '700', color: TEXT_DARK, marginBottom: 6, marginTop: 12 }}>
+                  Phone Number <Text style={{ color: TEXT_MID, fontWeight: '400', fontSize: 12 }}>(Optional)</Text>
+                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: BORDER, borderRadius: 14, paddingHorizontal: 14, height: 48, backgroundColor: '#FAFAFA' }}>
+                  <Phone size={18} color={TEXT_MID} style={{ marginRight: 10 }} />
+                  <TextInput
+                    style={{ flex: 1, fontSize: 14, color: TEXT_DARK }}
+                    value={visitorPhone}
+                    onChangeText={setVisitorPhone}
+                    placeholder="Visitor's 10-digit mobile"
+                    placeholderTextColor="#9CA3AF"
+                    keyboardType="phone-pad"
+                    maxLength={15}
+                  />
+                </View>
+
+                {/* Relation */}
+                <Text style={{ fontSize: 13, fontWeight: '700', color: TEXT_DARK, marginBottom: 6, marginTop: 12 }}>
+                  Relation <Text style={{ color: '#EF4444' }}>*</Text>
+                </Text>
+                <TouchableOpacity
+                  style={{ borderWidth: 1, borderColor: errors.relation ? '#EF4444' : BORDER, borderRadius: 14, paddingHorizontal: 14, height: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#FAFAFA' }}
+                  onPress={() => setShowRelationPicker(true)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={{ fontSize: 14, color: relation ? TEXT_DARK : '#9CA3AF' }}>{relation || 'Select relation'}</Text>
+                  <ChevronDown size={18} color={TEXT_MID} />
+                </TouchableOpacity>
+                {errors.relation && <Text style={{ color: '#EF4444', fontSize: 11, marginTop: 4 }}>{errors.relation}</Text>}
+
+                {/* Date & Time Row */}
+                <View style={{ flexDirection: 'row', gap: 12, marginTop: 12 }}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 13, fontWeight: '700', color: TEXT_DARK, marginBottom: 6 }}>
+                      Visit Date <Text style={{ color: '#EF4444' }}>*</Text>
+                    </Text>
+                    <TouchableOpacity
+                      style={{ borderWidth: 1, borderColor: errors.visitDate ? '#EF4444' : BORDER, borderRadius: 14, paddingHorizontal: 14, height: 48, flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FAFAFA' }}
+                      onPress={() => setDatePickerVisible(true)}
+                      activeOpacity={0.7}
+                    >
+                      <Calendar size={18} color={TEXT_MID} />
+                      <Text style={{ fontSize: 13.5, color: visitDate ? TEXT_DARK : '#9CA3AF' }}>{visitDate || 'Select Date'}</Text>
+                    </TouchableOpacity>
+                    {errors.visitDate && <Text style={{ color: '#EF4444', fontSize: 11, marginTop: 4 }}>{errors.visitDate}</Text>}
+                  </View>
+
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 13, fontWeight: '700', color: TEXT_DARK, marginBottom: 6 }}>
+                      Visit Time <Text style={{ color: '#EF4444' }}>*</Text>
+                    </Text>
+                    <TouchableOpacity
+                      style={{ borderWidth: 1, borderColor: errors.visitTime ? '#EF4444' : BORDER, borderRadius: 14, paddingHorizontal: 14, height: 48, flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FAFAFA' }}
+                      onPress={() => setTimePickerVisible(true)}
+                      activeOpacity={0.7}
+                    >
+                      <Clock size={18} color={TEXT_MID} />
+                      <Text style={{ fontSize: 13.5, color: visitTime ? TEXT_DARK : '#9CA3AF' }}>{visitTime || 'Select Time'}</Text>
+                    </TouchableOpacity>
+                    {errors.visitTime && <Text style={{ color: '#EF4444', fontSize: 11, marginTop: 4 }}>{errors.visitTime}</Text>}
+                  </View>
+                </View>
+
+                {/* Purpose of Visit */}
+                <Text style={{ fontSize: 13, fontWeight: '700', color: TEXT_DARK, marginBottom: 6, marginTop: 12 }}>
+                  Purpose of Visit <Text style={{ color: TEXT_MID, fontWeight: '400', fontSize: 12 }}>(Optional)</Text>
+                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: BORDER, borderRadius: 14, paddingHorizontal: 14, height: 48, backgroundColor: '#FAFAFA' }}>
+                  <FileText size={18} color={TEXT_MID} style={{ marginRight: 10 }} />
+                  <TextInput
+                    style={{ flex: 1, fontSize: 14, color: TEXT_DARK }}
+                    value={purpose}
+                    onChangeText={setPurpose}
+                    placeholder="e.g. Personal visit, Dropping books"
+                    placeholderTextColor="#9CA3AF"
+                  />
+                </View>
+              </ScrollView>
+
+              {/* Submit Button */}
+              <TouchableOpacity
+                style={{ height: 50, backgroundColor: BLUE, borderRadius: 14, justifyContent: 'center', alignItems: 'center', opacity: submitting ? 0.7 : 1, marginTop: 4 }}
+                onPress={handleSubmit}
+                disabled={submitting}
+                activeOpacity={0.8}
+              >
+                {submitting ? <ActivityIndicator color={WHITE} /> : <Text style={{ color: WHITE, fontSize: 16, fontWeight: '700' }}>Submit Request</Text>}
               </TouchableOpacity>
             </View>
-
-            <Text style={{ fontSize: 13, fontWeight: '700', color: TEXT_MID, marginBottom: 8 }}>Visitor Name</Text>
-            <TextInput
-              style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 14, paddingHorizontal: 16, height: 52, fontSize: 15, color: TEXT_DARK, marginBottom: 16 }}
-              value={visitorName} onChangeText={setVisitorName} placeholder="Visitor's full name" placeholderTextColor="#9CA3AF"
-            />
-
-            <Text style={{ fontSize: 13, fontWeight: '700', color: TEXT_MID, marginBottom: 8 }}>Relation</Text>
-            <TouchableOpacity
-              style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 14, paddingHorizontal: 16, height: 52, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}
-              onPress={() => setShowRelationPicker(true)}
-            >
-              <Text style={{ fontSize: 15, color: relation ? TEXT_DARK : '#9CA3AF' }}>{relation || 'Select relation'}</Text>
-              <ChevronDown size={20} color={TEXT_MID} />
-            </TouchableOpacity>
-
-            <View style={{ flexDirection: 'row', gap: 16, marginBottom: 24 }}>
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 13, fontWeight: '700', color: TEXT_MID, marginBottom: 8 }}>Visit Date</Text>
-                <TouchableOpacity
-                  style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 14, paddingHorizontal: 16, height: 52, justifyContent: 'center' }}
-                  onPress={() => setDatePickerVisible(true)}
-                >
-                  <Text style={{ fontSize: 15, color: visitDate ? TEXT_DARK : '#9CA3AF' }}>{visitDate || 'Select Date'}</Text>
-                </TouchableOpacity>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 13, fontWeight: '700', color: TEXT_MID, marginBottom: 8 }}>Visit Time</Text>
-                <TouchableOpacity
-                  style={{ borderWidth: 1, borderColor: BORDER, borderRadius: 14, paddingHorizontal: 16, height: 52, justifyContent: 'center' }}
-                  onPress={() => setTimePickerVisible(true)}
-                >
-                  <Text style={{ fontSize: 15, color: visitTime ? TEXT_DARK : '#9CA3AF' }}>{visitTime || 'Select Time'}</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            <TouchableOpacity
-              style={{ height: 54, backgroundColor: BLUE, borderRadius: 16, justifyContent: 'center', alignItems: 'center', opacity: submitting ? 0.6 : 1 }}
-              onPress={handleSubmit} disabled={submitting}
-            >
-              {submitting ? <ActivityIndicator color={WHITE} /> : <Text style={{ color: WHITE, fontSize: 16, fontWeight: '700' }}>Submit Request</Text>}
-            </TouchableOpacity>
-          </View>
+          </KeyboardAvoidingView>
         </View>
       </Modal>
 

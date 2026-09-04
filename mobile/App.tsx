@@ -19,6 +19,8 @@ LogBox.ignoreLogs([
   'expo-notifications: Android Push notifications',
   'Push notifications (remote notifications)',
   'warnOfExpoGoPushUsage',
+  '`expo-notifications` functionality is not fully supported in Expo Go',
+  'expo-notifications: Android Push notifications (remote notifications)',
 ]);
 
 import './src/i18n';

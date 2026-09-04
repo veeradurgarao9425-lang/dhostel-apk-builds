@@ -229,6 +229,7 @@ function ComplaintDetailView({ complaint, onClose }: { complaint: any; onClose: 
 }
 
 function StepperForm({ visible, onClose, onSubmit, hostelId }: { visible: boolean; onClose: () => void; onSubmit: () => void; hostelId?: number }) {
+  const insets = useSafeAreaInsets();
   const { showError } = useToast();
   const [priority, setPriority] = useState('Medium');
   const [category, setCategory] = useState('Maintenance');
@@ -362,7 +363,7 @@ function StepperForm({ visible, onClose, onSubmit, hostelId }: { visible: boolea
         )}
 
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.formBody}>
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[s.formBody, { paddingBottom: 32 }]} keyboardShouldPersistTaps="handled">
             <View style={s.stepContent}>
               {/* Category Quick Pills */}
               <Text style={s.inputLbl}>Category <Text style={{color: '#EF4444'}}>*</Text></Text>
@@ -452,7 +453,7 @@ function StepperForm({ visible, onClose, onSubmit, hostelId }: { visible: boolea
           </ScrollView>
 
           {/* Bottom Action Footer with Reset & Submit */}
-          <View style={s.formFooter}>
+          <View style={[s.formFooter, { paddingBottom: Math.max(insets.bottom, 18) }]}>
             <TouchableOpacity 
               style={s.btnReset} 
               onPress={handleReset}
