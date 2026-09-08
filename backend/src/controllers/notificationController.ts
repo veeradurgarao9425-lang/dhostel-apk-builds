@@ -18,7 +18,7 @@ export const registerToken = async (req: AuthRequest, res: Response) => {
     }
 
     // Tenants (role_id 3) store both student_id and user_id; owners/staff store user_id
-    const isTenant = user.role_id === 3;
+    const isTenant = Number(user.role_id) === 3 || user.role === 'TENANT' || user.role === 'tenant' || user.role === 'student' || Boolean((user as any).is_tenant);
     let studentId: any = null;
     if (isTenant) {
       try {

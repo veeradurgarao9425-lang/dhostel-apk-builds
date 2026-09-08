@@ -264,6 +264,14 @@ export default function MoreScreen({ hideHeader = false }: MoreScreenProps) {
                 iconBg: '#CFFAFE',
                 route: 'Guests',
             });
+            peopleItems.push({
+                label: 'Gate Pass & Visitor Requests',
+                subtitle: 'Approve or reject tenant leave & visitor passes',
+                icon: 'ticket-outline',
+                iconColor: '#2563EB',
+                iconBg: '#DBEAFE',
+                route: 'RequestsManagement',
+            });
         }
         if (hasPerm('students') || hasPerm('rooms')) {
             peopleItems.push({

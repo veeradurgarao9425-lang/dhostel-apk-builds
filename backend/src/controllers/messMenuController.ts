@@ -41,9 +41,14 @@ export const createOrUpdateMenu = async (req: AuthRequest, res: Response) => {
     sendNotificationToAllHostelStudents(
       Number(hostelId),
       'Notice',
-      '🍽️ Mess Menu Updated',
-      `The ${meal_type} menu for ${day_of_week} has been updated. Check the latest menu in the app.`,
-      'Low'
+      'Mess Menu Updated 🍲',
+      `The ${meal_type} menu for ${day_of_week} has been updated: ${items}. Tap to check the full schedule.`,
+      'Medium',
+      { meal_type, day_of_week },
+      {
+        screen: 'FullMenu',
+        referenceType: 'mess_menu',
+      }
     ).catch(err => console.error('Failed to send mess menu notification:', err));
 
     res.status(200).json({ success: true, message: 'Menu updated successfully' });

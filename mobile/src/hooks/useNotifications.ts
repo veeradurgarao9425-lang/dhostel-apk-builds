@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import api from '../services/api';
 import { getLocalReadIds, saveLocalReadIds } from '../Pages/tenant/NotificationsScreen';
+import { getLocalTriggeredNotifications } from '../services/notificationService';
 
 export type Notification = {
     id: string | number;
@@ -42,14 +43,27 @@ export const useNotifications = () => {
 
         try {
             setLoading(true);
-            const [response, localReadSet] = await Promise.all([
-                api.get('/notifications?limit=30'),
+            const [response, localReadSet, localTriggered] = await Promise.all([
+                api.get('/notifications?limit=30').catch(() => ({ data: { success: true, data: [] } })),
                 getLocalReadIds(),
+                getLocalTriggeredNotifications(),
             ]);
 
-            if (response.data.success) {
-                const dbNotifs = response.data.data;
-                const formattedNotifications: Notification[] = dbNotifs.map((item: any) => {
+            const dbNotifs = response.data?.success && Array.isArray(response.data.data) ? response.data.data : [];
+            const combinedRaw = [...localTriggered, ...dbNotifs];
+            const seenKeys = new Set<string>();
+            const deduped: any[] = [];
+            for (const item of combinedRaw) {
+                const key = String(item.notification_id || `${item.title}_${item.message}_${item.created_at?.slice(0, 10)}`);
+                if (!seenKeys.has(key)) {
+                    seenKeys.add(key);
+                    deduped.push(item);
+                }
+            }
+            deduped.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+            if (deduped.length > 0 || response.data?.success) {
+                const formattedNotifications: Notification[] = deduped.map((item: any) => {
                     let type: Notification['type'] = 'info';
                     
                     // Map backend notification_type to frontend type

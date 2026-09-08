@@ -87,11 +87,13 @@ export function TenantHomeScreen({ navigation }: any) {
     ).start();
   }, []);
 
-  // ── Daily welcome / budget / expense reminder notifications ──────────────────
+  // ── Daily welcome / budget / expense / mess reminder notifications ──────────
   useTenantNotifications({
     userName: user?.name || user?.full_name,
     budget,
     spent,
+    hostelId: user?.hostel_id,
+    isDataLoaded: !loading,
   });
 
 
@@ -181,16 +183,14 @@ export function TenantHomeScreen({ navigation }: any) {
 
   const shortcuts = [
     { id: "rent", name: "Pay Rent", icon: "wallet" as const, nav: "Dues", bg: "#E0E7FF", color: "#6366F1" },
-    { id: "splits", name: "Bill Splits", icon: "people" as const, nav: "Splits", bg: "#ECFDF5", color: "#10B981" },
+    { id: "gatepass", name: "Gate Pass", icon: "exit-outline" as const, nav: "GatePass", bg: "#ECFDF5", color: "#10B981" },
+    { id: "visitor", name: "Visitor Pass", icon: "person-add" as const, nav: "VisitorPass", bg: "#EDE9FE", color: "#7C3AED" },
+    { id: "splits", name: "Bill Splits", icon: "people" as const, nav: "Splits", bg: "#F0FDF4", color: "#16A34A" },
     { id: "complaints", name: "Complaints", icon: "chatbubbles" as const, nav: "Complaints", bg: "#FEF2F2", color: "#EF4444" },
     { id: "room", name: "My Room", icon: "bed" as const, nav: "RoomInfo", bg: "#FEF3C7", color: "#D97706" },
-    // Temporarily hidden — no direct connection to owner yet
-    // { id: "visitor", name: "Visitor Pass", icon: "person-add" as const, nav: "VisitorPass", bg: "#E0E7FF", color: "#6366F1" },
-    // { id: "gatepass", name: "Gate Pass", icon: "qr-code" as const, nav: "GatePass", bg: "#ECFDF5", color: "#10B981" },
-    { id: "vacate", name: "Vacate Room", icon: "exit" as const, nav: "VacateNotice", bg: "#FEE2E2", color: "#EF4444" },
-    { id: "feedback", name: "Feedback", icon: "star" as const, nav: "Rating", bg: "#FEF3C7", color: "#D97706" },
-    { id: "documents", name: "Documents", icon: "document-text" as const, nav: "Documents", bg: "#EDE9FE", color: "#8B5CF6" },
-    { id: "notes", name: "My Notes", icon: "create" as const, nav: "Notes", bg: "#ECFDF5", color: "#10B981" },
+    { id: "vacate", name: "Vacate Room", icon: "exit" as const, nav: "VacateNotice", bg: "#FEE2E2", color: "#DC2626" },
+    { id: "feedback", name: "Feedback", icon: "chatbox-ellipses" as const, nav: "Feedback", bg: "#FAF5FF", color: "#9333EA" },
+    { id: "documents", name: "Documents", icon: "document-text" as const, nav: "Documents", bg: "#EEF2FF", color: "#4F46E5" },
   ];
 
   const fetchUnreadNotifCount = useCallback(async () => {
@@ -357,6 +357,28 @@ export function TenantHomeScreen({ navigation }: any) {
     });
   };
 
+  const scrollToPage = useCallback((pageIndex: number) => {
+    setActivePageIndex(pageIndex);
+    horizontalScrollRef.current?.scrollTo({ x: pageIndex * SCREEN_WIDTH, animated: true });
+    DeviceEventEmitter.emit('TENANT_ACTIVE_PAGE', pageIndex === 1 ? 'growth' : 'dashboard');
+  }, []);
+
+  useEffect(() => {
+    const sub = DeviceEventEmitter.addListener('SWITCH_TENANT_PAGE', (targetPage: number) => {
+      scrollToPage(targetPage);
+    });
+    return () => sub.remove();
+  }, [scrollToPage]);
+
+  useFocusEffect(
+    useCallback(() => {
+      DeviceEventEmitter.emit('TENANT_ACTIVE_PAGE', activePageIndex === 1 ? 'growth' : 'dashboard');
+      return () => {
+        DeviceEventEmitter.emit('TENANT_ACTIVE_PAGE', 'dashboard');
+      };
+    }, [activePageIndex])
+  );
+
   if (loading) {
     return (
       <View style={[styles.root, { backgroundColor: '#F8FAFC' }]}>
@@ -394,13 +416,80 @@ export function TenantHomeScreen({ navigation }: any) {
     );
   }
 
-  const scrollToPage = (pageIndex: number) => {
-    setActivePageIndex(pageIndex);
-    horizontalScrollRef.current?.scrollTo({ x: pageIndex * SCREEN_WIDTH, animated: true });
-  };
-
   return (
     <View style={styles.root}>
+      <StatusBar barStyle="light-content" backgroundColor={BRAND} />
+
+      {/* ── UNIFIED TOP HEADER: Shared across Dashboard & Growth Journey ── */}
+      <LinearGradient
+        colors={[BRAND, BRAND_DARK]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.headerSection}
+      >
+        <View style={styles.headerAccentCircle} />
+        <View style={styles.headerAccentCircle2} />
+
+        <SafeAreaView edges={["top"]} style={{ backgroundColor: "transparent" }}>
+          <View style={styles.headerRow}>
+            <View style={{ flex: 1, marginRight: 10, minWidth: 0, justifyContent: 'center' }}>
+              <Text
+                style={styles.headerGreetingSub}
+                numberOfLines={1}
+              >
+                {greeting} 👋
+              </Text>
+              <Text
+                style={styles.headerNameText}
+                numberOfLines={1}
+                ellipsizeMode="tail"
+                adjustsFontSizeToFit
+                minimumFontScale={0.75}
+              >
+                {firstName}
+              </Text>
+              <View style={styles.hostelRow}>
+                <Ionicons name="location-outline" size={11} color="rgba(255,255,255,0.75)" />
+                <Text style={styles.hostelName} numberOfLines={1} ellipsizeMode="tail">
+                  {(user as any)?.hostel_name || connectedHostel?.hostel_name || "Hostel Resident"}
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.headerActions}>
+              <TenantHeaderNotification navigation={navigation} />
+
+              <TouchableOpacity
+                style={styles.avatarBtn}
+                onPress={() => navigation.navigate("Profile")}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.avatarText}>{initials}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <View style={styles.headerDateStrip}>
+            <View style={styles.datePill}>
+              <Ionicons name="calendar-outline" size={11} color="rgba(255,255,255,0.8)" />
+              <Text style={styles.datePillText}>
+                {new Date().toLocaleDateString('en-IN', {
+                  weekday: 'short',
+                  day: 'numeric',
+                  month: 'long',
+                })}
+              </Text>
+            </View>
+            {user?.room_number && (
+              <View style={styles.roomPill}>
+                <Ionicons name="bed-outline" size={11} color="rgba(255,255,255,0.8)" />
+                <Text style={styles.datePillText}>Room {user.room_number}</Text>
+              </View>
+            )}
+          </View>
+        </SafeAreaView>
+      </LinearGradient>
+
       {/* ── Side-by-Side Horizontal Swipe Pager between Dashboard & Growth Journey ── */}
       <ScrollView
         ref={horizontalScrollRef}
@@ -416,74 +505,9 @@ export function TenantHomeScreen({ navigation }: any) {
         style={{ flex: 1 }}
       >
         {/* ══════════════════════════════════════════════════════
-            PAGE 0: MAIN TENANT DASHBOARD (with purple gradient header)
+            PAGE 0: MAIN TENANT DASHBOARD
         ══════════════════════════════════════════════════════ */}
         <View style={{ width: SCREEN_WIDTH, flex: 1, backgroundColor: '#F8FAFC' }}>
-          <StatusBar barStyle="light-content" backgroundColor={BRAND} />
-
-          <LinearGradient
-            colors={[BRAND, BRAND_DARK]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.headerSection}
-          >
-            <View style={styles.headerAccentCircle} />
-            <View style={styles.headerAccentCircle2} />
-
-            <SafeAreaView edges={["top"]} style={{ backgroundColor: "transparent" }}>
-              <View style={styles.headerRow}>
-                <View style={{ flex: 1, marginRight: 12, minWidth: 0, justifyContent: 'center' }}>
-                  <Text
-                    style={styles.headerGreeting}
-                    numberOfLines={1}
-                    ellipsizeMode="tail"
-                    adjustsFontSizeToFit
-                    minimumFontScale={0.75}
-                  >
-                    {greeting}, {firstName}! 👋
-                  </Text>
-                  <View style={styles.hostelRow}>
-                    <Ionicons name="location-outline" size={12} color="rgba(255,255,255,0.7)" />
-                    <Text style={styles.hostelName} numberOfLines={1} ellipsizeMode="tail">
-                      {(user as any)?.hostel_name || connectedHostel?.hostel_name || "Hostel Resident"}
-                    </Text>
-                  </View>
-                </View>
-
-                <View style={styles.headerActions}>
-                  <TenantHeaderNotification navigation={navigation} />
-
-                  <TouchableOpacity
-                    style={styles.avatarBtn}
-                    onPress={() => navigation.navigate("Profile")}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={styles.avatarText}>{initials}</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-
-              <View style={styles.headerDateStrip}>
-                <View style={styles.datePill}>
-                  <Ionicons name="calendar-outline" size={11} color="rgba(255,255,255,0.8)" />
-                  <Text style={styles.datePillText}>
-                    {new Date().toLocaleDateString('en-IN', {
-                      weekday: 'short',
-                      day: 'numeric',
-                      month: 'long',
-                    })}
-                  </Text>
-                </View>
-                {user?.room_number && (
-                  <View style={styles.roomPill}>
-                    <Ionicons name="bed-outline" size={11} color="rgba(255,255,255,0.8)" />
-                    <Text style={styles.datePillText}>Room {user.room_number}</Text>
-                  </View>
-                )}
-              </View>
-            </SafeAreaView>
-          </LinearGradient>
-
           <Animated.ScrollView
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.scrollContent}
@@ -653,16 +677,23 @@ const styles = StyleSheet.create({
   headerRow: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 18,
-    paddingTop: 12,
-    paddingBottom: 10,
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: 8,
   },
-  headerGreeting: {
+  headerGreetingSub: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "rgba(255,255,255,0.85)",
+    letterSpacing: 0.2,
+    marginBottom: 2,
+  },
+  headerNameText: {
     fontSize: 21,
     fontWeight: "800",
     color: "#FFFFFF",
     letterSpacing: -0.3,
-    marginBottom: 4,
+    marginBottom: 3,
   },
   hostelRow: {
     flexDirection: "row",
@@ -670,7 +701,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   hostelName: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "600",
     color: "rgba(255,255,255,0.75)",
     flexShrink: 1,
@@ -678,7 +709,7 @@ const styles = StyleSheet.create({
   headerActions: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
+    gap: 8,
     flexShrink: 0,
   },
   headerIconBtn: {

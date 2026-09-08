@@ -1,5 +1,5 @@
 import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
-import { DeviceEventEmitter } from 'react-native';
+import { DeviceEventEmitter, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api, { setCachedToken } from '../src/services/api';
 import { getSecureItem, setSecureItem, removeSecureItem } from '../src/services/secureStore';
@@ -476,32 +476,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       .catch(() => {});
   };
 
-  const disconnectHostel = async () => {
-    try {
-      await signOut();
-      setConnectedHostel(null);
-      await AsyncStorage.removeItem('connected_hostel');
-    } catch (error) {
-      console.error('Failed to disconnect hostel', error);
-    }
-  };
-
-  const refreshUser = useCallback(async () => {
-    try {
-      const response = await api.get('/auth/tenant/me');
-      const fresh = response.data?.data;
-      if (!fresh) return;
-      setUser(prev => {
-        const merged = { ...(prev || {}), ...fresh, role: 'TENANT' } as User;
-        AsyncStorage.setItem('user', JSON.stringify(merged)).catch(() => {});
-        return merged;
-      });
-    } catch (error) {
-      if (__DEV__) console.error('Failed to refresh user', error);
-    }
-  }, []);
-
-  const signOut = async () => {
+  const signOut = useCallback(async () => {
     setLogoutLoading(true);
     try {
       delete api.defaults.headers.common['Authorization'];
@@ -529,7 +504,41 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setLogoutLoading(false);
       }, 450);
     }
+  }, []);
+
+  const disconnectHostel = async () => {
+    try {
+      await signOut();
+      setConnectedHostel(null);
+      await AsyncStorage.removeItem('connected_hostel');
+    } catch (error) {
+      console.error('Failed to disconnect hostel', error);
+    }
   };
+
+  const refreshUser = useCallback(async () => {
+    try {
+      const response = await api.get('/auth/tenant/me');
+      const fresh = response.data?.data;
+      if (!fresh) return;
+      if (Number(fresh.status) === 0) {
+        Alert.alert(
+          'Account Settled & Checked Out 🚪',
+          'Your vacate settlement has been completed. Thank you for staying with us, happy to serve you!',
+          [{ text: 'OK', onPress: () => signOut() }],
+          { cancelable: false }
+        );
+        return;
+      }
+      setUser(prev => {
+        const merged = { ...(prev || {}), ...fresh, role: 'TENANT' } as User;
+        AsyncStorage.setItem('user', JSON.stringify(merged)).catch(() => {});
+        return merged;
+      });
+    } catch (error) {
+      if (__DEV__) console.error('Failed to refresh user', error);
+    }
+  }, [signOut]);
 
   const updateTokenAndUser = async (token: string | null | undefined, updatedFields: Partial<User>) => {
     try {

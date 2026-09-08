@@ -9,10 +9,12 @@ import { SkeletonList, SkeletonCardList } from '../components/ui/SkeletonCard';
 import { useToast } from '../context/ToastContext';
 import api from '../services/api';
 import { useAuth } from '../../contexts/AuthContext';
+import { useConfirmation } from '../../contexts/ConfirmationContext';
 
 export default function RequestsManagementScreen({ navigation }: any) {
     const { user } = useAuth();
     const { showApiError, showSuccess, showError } = useToast();
+    const confirm = useConfirmation();
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [activeTab, setActiveTab] = useState<'Leaves' | 'Visitors'>('Leaves');
@@ -55,12 +57,35 @@ export default function RequestsManagementScreen({ navigation }: any) {
                 
             const res = await api.put(endpoint, { status });
             if (res.data.success) {
-                showSuccess(`${type === 'leave' ? 'Leave' : 'Visitor'} request marked as ${status}.`);
+                showSuccess(`${type === 'leave' ? 'Gate Pass / Leave' : 'Visitor Pass'} marked as ${status}.`);
                 fetchData(true);
             }
         } catch (e: any) {
             showApiError(e, 'Failed to update status.');
         }
+    };
+
+    const handleActionWithConfirmation = (
+        type: 'leave' | 'visitor', 
+        id: number, 
+        status: 'Approved' | 'Rejected', 
+        name?: string
+    ) => {
+        const isApprove = status === 'Approved';
+        const label = type === 'leave' ? 'Gate Pass / Leave' : 'Visitor Pass';
+        
+        confirm({
+            title: `${isApprove ? 'Approve' : 'Reject'} ${label}?`,
+            message: isApprove
+                ? `Are you sure you want to approve this ${label.toLowerCase()}${name ? ` for ${name}` : ''}? An instant push notification will be sent to the tenant.`
+                : `Are you sure you want to reject this ${label.toLowerCase()}${name ? ` for ${name}` : ''}?`,
+            confirmText: isApprove ? 'Yes, Approve' : 'Yes, Reject',
+            cancelText: 'Cancel',
+            variant: isApprove ? 'info' : 'danger',
+            onConfirm: async () => {
+                await updateStatus(type, id, status);
+            },
+        });
     };
 
     return (
@@ -97,7 +122,10 @@ export default function RequestsManagementScreen({ navigation }: any) {
                                 <View key={req.leave_id} style={styles.card}>
                                     <View style={styles.cardHeader}>
                                         <View>
-                                            <Text style={styles.title}>Student ID: {req.student_id}</Text>
+                                            <Text style={styles.title}>
+                                                {req.first_name ? `${req.first_name} ${req.last_name || ''}`.trim() : `Student #${req.student_id}`}
+                                                {req.room_number ? ` • Room ${req.room_number}` : ''}
+                                            </Text>
                                             <Text style={styles.subtitle}>
                                                 {new Date(req.start_date).toLocaleDateString()} - {new Date(req.end_date).toLocaleDateString()}
                                             </Text>
@@ -112,10 +140,18 @@ export default function RequestsManagementScreen({ navigation }: any) {
                                     <View style={styles.actionsRow}>
                                         {req.status === 'Pending' && (
                                             <>
-                                                <TouchableOpacity style={[styles.btn, { backgroundColor: '#DC2626' }]} onPress={() => updateStatus('leave', req.leave_id, 'Rejected')}>
+                                                <TouchableOpacity 
+                                                    style={[styles.btn, { backgroundColor: '#DC2626' }]} 
+                                                    onPress={() => handleActionWithConfirmation('leave', req.leave_id, 'Rejected', req.first_name ? `${req.first_name} ${req.last_name || ''}`.trim() : undefined)}
+                                                    activeOpacity={0.8}
+                                                >
                                                     <Text style={styles.btnText}>Reject</Text>
                                                 </TouchableOpacity>
-                                                <TouchableOpacity style={[styles.btn, { backgroundColor: '#10B981' }]} onPress={() => updateStatus('leave', req.leave_id, 'Approved')}>
+                                                <TouchableOpacity 
+                                                    style={[styles.btn, { backgroundColor: '#10B981' }]} 
+                                                    onPress={() => handleActionWithConfirmation('leave', req.leave_id, 'Approved', req.first_name ? `${req.first_name} ${req.last_name || ''}`.trim() : undefined)}
+                                                    activeOpacity={0.8}
+                                                >
                                                     <Text style={styles.btnText}>Approve</Text>
                                                 </TouchableOpacity>
                                             </>
@@ -132,7 +168,10 @@ export default function RequestsManagementScreen({ navigation }: any) {
                                 <View key={req.visitor_id} style={styles.card}>
                                     <View style={styles.cardHeader}>
                                         <View>
-                                            <Text style={styles.title}>{req.visitor_name} ({req.relation})</Text>
+                                            <Text style={styles.title}>
+                                                {req.visitor_name} {req.relation ? `(${req.relation})` : ''}
+                                                {req.first_name ? ` • by ${req.first_name}` : ''}
+                                            </Text>
                                             <Text style={styles.subtitle}>
                                                 Date: {new Date(req.visit_date).toLocaleDateString()} at {req.visit_time}
                                             </Text>
@@ -146,10 +185,18 @@ export default function RequestsManagementScreen({ navigation }: any) {
                                     <View style={styles.actionsRow}>
                                         {req.status === 'Pending' && (
                                             <>
-                                                <TouchableOpacity style={[styles.btn, { backgroundColor: '#DC2626' }]} onPress={() => updateStatus('visitor', req.visitor_id, 'Rejected')}>
+                                                <TouchableOpacity 
+                                                    style={[styles.btn, { backgroundColor: '#DC2626' }]} 
+                                                    onPress={() => handleActionWithConfirmation('visitor', req.visitor_id, 'Rejected', req.visitor_name)}
+                                                    activeOpacity={0.8}
+                                                >
                                                     <Text style={styles.btnText}>Reject</Text>
                                                 </TouchableOpacity>
-                                                <TouchableOpacity style={[styles.btn, { backgroundColor: '#10B981' }]} onPress={() => updateStatus('visitor', req.visitor_id, 'Approved')}>
+                                                <TouchableOpacity 
+                                                    style={[styles.btn, { backgroundColor: '#10B981' }]} 
+                                                    onPress={() => handleActionWithConfirmation('visitor', req.visitor_id, 'Approved', req.visitor_name)}
+                                                    activeOpacity={0.8}
+                                                >
                                                     <Text style={styles.btnText}>Approve</Text>
                                                 </TouchableOpacity>
                                             </>

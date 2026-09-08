@@ -55,7 +55,7 @@ export const runFeeReminders = async () => {
         daysLeft <= 1 ? 'High' : 'Medium',
         { fee_id: fee.fee_id },
         {
-          screen: 'RentPayment',
+          screen: 'Dues',
           params: { feeId: fee.fee_id },
           referenceType: 'monthly_fee',
           referenceId: fee.fee_id,
@@ -104,7 +104,7 @@ export const runFeeReminders = async () => {
         'High',
         { fee_id: fee.fee_id },
         {
-          screen: 'RentPayment',
+          screen: 'Dues',
           params: { feeId: fee.fee_id },
           referenceType: 'monthly_fee',
           referenceId: fee.fee_id,

@@ -181,16 +181,28 @@ const OwnerTabNavigator = () => (
     </Tab.Navigator>
 );
 
-// ── Tab Navigator (Tenant) — 4 tabs ──────────────────────────────────────────
+// ── Tab Navigator (Tenant) ───────────────────────────────────────────────────
 const TenantTabNavigator = () => (
     <Tab.Navigator
         tabBar={props => <TenantBottomTabNavigator {...props} />}
         screenOptions={{ headerShown: false }}
+        backBehavior="history"
     >
         <Tab.Screen name="Home" component={TenantHomeScreen} />
         <Tab.Screen name="Dues" component={DuesScreen} />
         <Tab.Screen name="Expenses" component={ExpensesScreen} />
         <Tab.Screen name="Notices" component={TenantNoticesScreen} />
+        <Tab.Screen name="GrowthSavedStories" component={GrowthSavedStoriesScreen} />
+        <Tab.Screen name="GrowthStats" component={GrowthStatsScreen} />
+        <Tab.Screen name="GatePass" component={GatePassScreen} />
+        <Tab.Screen name="VisitorPass" component={VisitorPassScreen} />
+        <Tab.Screen name="Complaints" component={TenantComplaintsScreen} />
+        <Tab.Screen name="RoomInfo" component={RoomInfoScreen} />
+        <Tab.Screen name="VacateNotice" component={VacateNoticeScreen} />
+        <Tab.Screen name="Feedback" component={FeedbackScreen} />
+        <Tab.Screen name="FullMenu" component={FullMenuScreen} />
+        <Tab.Screen name="TenantDocuments" component={TenantDocumentsScreen} />
+        <Tab.Screen name="Notes" component={NotesScreen} />
     </Tab.Navigator>
 );
 
@@ -214,78 +226,138 @@ interface AppNavigatorProps {
     onRouteChange?: (routeName: string) => void;
 }
 
-const TENANT_SAFE_ROUTE_MAP: Record<string, string> = {
+export const TENANT_SAFE_ROUTE_MAP: Record<string, string> = {
+    // Tenant Home & Main
     TenantHome: 'TenantHome',
     TenantHomeScreen: 'TenantHome',
     Main: 'TenantHome',
+    Home: 'TenantHome',
+    Dashboard: 'TenantHome',
+    Overview: 'TenantHome',
+
+    // Dues & Payments
     Dues: 'Dues',
     TenantDues: 'Dues',
-    RentPayment: 'RentPayment',
-    PaymentReceipt: 'PaymentReceipt',
-    Expenses: 'Expenses',
-    TenantExpenses: 'Expenses',
-    Complaints: 'Complaints',
-    TenantComplaints: 'Complaints',
-    VisitorPass: 'VisitorPass',
-    TenantVisitorPass: 'VisitorPass',
-    GatePass: 'GatePass',
-    TenantGatePass: 'GatePass',
-    Notices: 'Notices',
-    TenantNotices: 'Notices',
-    NoticeDetails: 'Notices',
-    TenantDocuments: 'TenantDocuments',
-    Documents: 'TenantDocuments',
-    TenantNotes: 'Notes',
-    Notes: 'Notes',
-    RoomInfo: 'RoomInfo',
-    TenantRoomInfo: 'RoomInfo',
-    MessMenu: 'FullMenu',
-    FullMenu: 'FullMenu',
-    Feedback: 'Feedback',
-    Rating: 'Rating',
-    TenantRating: 'Rating',
-    VacateNotice: 'VacateNotice',
-    VacateRoom: 'VacateNotice',
-    Splits: 'Splits',
-    TenantSplits: 'Splits',
-    HelpScreen: 'HelpScreen',
-    Profile: 'Profile',
-    Settings: 'Settings',
-    PrivacyPolicy: 'PrivacyPolicy',
-
-    // Remap owner screens strictly to tenant equivalents
+    RentPayment: 'Dues',
+    Payment: 'Dues',
     Payments: 'Dues',
     PendingPayments: 'Dues',
     PendingTab: 'Dues',
     OverviewTab: 'Dues',
-    Overview: 'TenantHome',
     FeeManagement: 'Dues',
-    Receipt: 'PaymentReceipt',
-    DownloadReceipts: 'PaymentReceipt',
-    PaymentDetails: 'PaymentReceipt',
-    PaymentVerification: 'Dues',
+    Reminders: 'Dues',
+    BillReminders: 'Dues',
     CollectedPayments: 'Dues',
     AllTransactions: 'Dues',
     TenantTransactions: 'Dues',
-    Income: 'TenantHome',
-    IncomeDetails: 'TenantHome',
-    AddIncome: 'TenantHome',
-    Visitors: 'VisitorPass',
-    Guests: 'VisitorPass',
-    GuestDetails: 'VisitorPass',
-    AddGuest: 'VisitorPass',
-    Leaves: 'GatePass',
-    Students: 'TenantHome',
-    StudentDetails: 'TenantHome',
-    AddStudent: 'TenantHome',
+    PaymentVerification: 'Dues',
+
+    // Payment Receipts
+    PaymentReceipt: 'PaymentReceipt',
+    Receipt: 'PaymentReceipt',
+    DownloadReceipts: 'PaymentReceipt',
+    PaymentDetails: 'PaymentReceipt',
+
+    // Expenses & Splits
+    Expenses: 'Expenses',
+    TenantExpenses: 'Expenses',
+    AllExpenses: 'AllExpenses',
+    TenantAddExpense: 'Expenses',
+    AddExpense: 'Expenses',
+    CategoryDetail: 'CategoryDetail',
+    Splits: 'Splits',
+    TenantSplits: 'Splits',
+    SplitHistory: 'SplitHistory',
+
+    // Food & Mess Menu
+    MessMenu: 'FullMenu',
+    FullMenu: 'FullMenu',
+    Food: 'FullMenu',
+    Breakfast: 'FullMenu',
+    Lunch: 'FullMenu',
+    Dinner: 'FullMenu',
+    MessMenuManagement: 'FullMenu',
+
+    // Complaints & Requests
+    Complaints: 'Complaints',
+    TenantComplaints: 'Complaints',
+    ComplaintsManagement: 'Complaints',
+
+    // Notices
+    Notices: 'Notices',
+    TenantNotices: 'Notices',
+    NoticeDetails: 'Notices',
+    NoticesManagement: 'Notices',
+    AddNotice: 'Notices',
+
+    // Vacate Notice
+    VacateNotice: 'VacateNotice',
+    Vacate: 'VacateNotice',
+    VacateRoom: 'VacateNotice',
+
+    // Feedback & Ratings
+    Feedback: 'Feedback',
+    Rating: 'Feedback',
+    TenantRating: 'Feedback',
+    RatingsManagement: 'Feedback',
+
+    // Notifications Hub
+    Notifications: 'Notifications',
+    TenantNotifications: 'TenantNotifications',
+    Notification: 'Notifications',
+
+    // Room Info
+    RoomInfo: 'RoomInfo',
+    TenantRoomInfo: 'RoomInfo',
     Rooms: 'RoomInfo',
     RoomDetails: 'RoomInfo',
     AddRoom: 'RoomInfo',
     BulkRoomSetup: 'RoomInfo',
+
+    // Passes
+    VisitorPass: 'VisitorPass',
+    TenantVisitorPass: 'VisitorPass',
+    Visitors: 'VisitorPass',
+    Guests: 'VisitorPass',
+    GuestDetails: 'VisitorPass',
+    AddGuest: 'VisitorPass',
+    GatePass: 'GatePass',
+    TenantGatePass: 'GatePass',
+    Leaves: 'GatePass',
+    RequestsManagement: 'GatePass',
+
+    // Documents & Notes
+    TenantDocuments: 'TenantDocuments',
+    Documents: 'TenantDocuments',
+    DocumentsHub: 'TenantDocuments',
+    TenantNotes: 'Notes',
+    Notes: 'Notes',
+
+    // Growth Journey
+    GrowthHome: 'GrowthHome',
+    GrowthPaths: 'GrowthPaths',
+    GrowthRoadmap: 'GrowthRoadmap',
+    GrowthStory: 'GrowthStory',
+    GrowthQuiz: 'GrowthQuiz',
+    GrowthStats: 'GrowthStats',
+    GrowthVocabularyList: 'GrowthVocabularyList',
+    GrowthSavedStories: 'GrowthSavedStories',
+
+    // Profile, Settings & Help
+    HelpScreen: 'HelpScreen',
+    Profile: 'TenantHome',
+    Settings: 'TenantHome',
+    PrivacyPolicy: 'PrivacyPolicy',
+
+    // Owner screens fallback to safe tenant screens
+    Income: 'TenantHome',
+    IncomeDetails: 'TenantHome',
+    AddIncome: 'TenantHome',
+    Students: 'TenantHome',
+    StudentDetails: 'TenantHome',
+    AddStudent: 'TenantHome',
     BulkDelete: 'TenantHome',
     Reports: 'Dues',
-    Home: 'TenantHome',
-    Dashboard: 'TenantHome',
     Hostels: 'TenantHome',
     HostelDetails: 'TenantHome',
     AddHostel: 'TenantHome',
@@ -296,15 +368,6 @@ const TENANT_SAFE_ROUTE_MAP: Record<string, string> = {
     AddTeamMember: 'TenantHome',
     Subscription: 'TenantHome',
     PremiumSubscription: 'TenantHome',
-    Reminders: 'Dues',
-    BillReminders: 'Dues',
-    ComplaintsManagement: 'Complaints',
-    RequestsManagement: 'GatePass',
-    MessMenuManagement: 'FullMenu',
-    NoticesManagement: 'Notices',
-    AddNotice: 'Notices',
-    RatingsManagement: 'Feedback',
-    DocumentsHub: 'TenantDocuments',
     PreBooking: 'TenantHome',
     QRSignup: 'TenantHome',
 };
@@ -318,15 +381,80 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
 
     useEffect(() => {
         // Setup listeners for foreground notifications, heads-up status bar alerts, and clicks
-        const unsubscribe = notificationService.setupNotificationListeners((screen, params) => {
-            if (navigationRef.isReady && navigationRef.isReady()) {
-                let targetScreen = screen;
+        const handlePushNavigation = (screen: string, params?: any) => {
+            let targetScreen = screen;
+            if (isTenant) {
+                targetScreen = TENANT_SAFE_ROUTE_MAP[screen] || 'TenantHome';
+            }
+            console.log('[PushNavigation] 🎯 Redirecting to targetScreen:', targetScreen, '(raw screen:', screen, ')');
+            notificationService.setPendingInitialRoute(targetScreen, params);
+
+            const TENANT_TAB_MAP: Record<string, string> = {
+                Home: 'Home',
+                TenantHome: 'Home',
+                TenantHomeScreen: 'Home',
+                Dashboard: 'Home',
+                Main: 'Home',
+                Dues: 'Dues',
+                TenantDues: 'Dues',
+                RentPayment: 'Dues',
+                Payment: 'Dues',
+                Payments: 'Dues',
+                PendingPayments: 'Dues',
+                Expenses: 'Expenses',
+                TenantExpenses: 'Expenses',
+                Notices: 'Notices',
+                TenantNotices: 'Notices',
+                GatePass: 'GatePass',
+                TenantGatePass: 'GatePass',
+                Leaves: 'GatePass',
+                VisitorPass: 'VisitorPass',
+                TenantVisitorPass: 'VisitorPass',
+                Visitors: 'VisitorPass',
+                Complaints: 'Complaints',
+                TenantComplaints: 'Complaints',
+                RoomInfo: 'RoomInfo',
+                TenantRoomInfo: 'RoomInfo',
+                VacateNotice: 'VacateNotice',
+                VacateRoom: 'VacateNotice',
+                Feedback: 'Feedback',
+                Rating: 'Feedback',
+                FullMenu: 'FullMenu',
+                MessMenu: 'FullMenu',
+                Food: 'FullMenu',
+                Documents: 'TenantDocuments',
+                TenantDocuments: 'TenantDocuments',
+                Notes: 'Notes',
+                TenantNotes: 'Notes',
+            };
+
+            const doNavigate = () => {
+                if (!navigationRef.isReady || !navigationRef.isReady()) return;
                 if (isTenant) {
-                    targetScreen = TENANT_SAFE_ROUTE_MAP[screen] || 'TenantHome';
+                    if (targetScreen === 'GrowthHome') {
+                        (navigationRef as any).navigate('Main', { screen: 'Home' });
+                        setTimeout(() => {
+                            DeviceEventEmitter.emit('SWITCH_TENANT_PAGE', 1);
+                        }, 200);
+                        return;
+                    }
+                    const mappedTab = TENANT_TAB_MAP[targetScreen];
+                    if (mappedTab) {
+                        (navigationRef as any).navigate('Main', {
+                            screen: mappedTab,
+                            params,
+                        });
+                        return;
+                    }
                 }
                 (navigationRef as any).navigate(targetScreen, params);
-            }
-        });
+            };
+
+            doNavigate();
+            setTimeout(doNavigate, 600);
+        };
+
+        const unsubscribe = notificationService.setupNotificationListeners(handlePushNavigation);
 
         if (user) {
             notificationService.registerForPushNotificationsAsync().catch(() => {});

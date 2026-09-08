@@ -34,7 +34,8 @@ const NAV_MAP: Record<string, string> = {
     // VisitorPass: 'VisitorPass',
     // GatePass: 'GatePass',
     VacateNotice: 'VacateNotice',
-    Rating: 'Rating',
+    Rating: 'Feedback',
+    Feedback: 'Feedback',
     Documents: 'TenantDocuments',
     Notes: 'TenantNotes',
 };

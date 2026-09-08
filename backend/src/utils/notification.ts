@@ -253,12 +253,14 @@ export const sendNotificationToUser = async (options: SendNotificationOptions): 
           android: {
             priority: 'high',
             notification: {
-              channelId: 'default',
+              channelId: 'hostix_alerts',
               sound: 'default',
               icon: 'notification_icon',
-              color: color || '#6D4AFF',
+              color: color || '#7C3AED',
               defaultVibrateTimings: true,
               priority: 'high',
+              visibility: 'public',
+              clickAction: 'FLUTTER_NOTIFICATION_CLICK',
             },
           },
         });

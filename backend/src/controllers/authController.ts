@@ -1304,7 +1304,10 @@ export const authController = {
         return res.status(403).json({ success: false, error: 'Your registration was not approved. Contact hostel administration.' });
       }
       if (Number(tenant.status) === 0) {
-        return res.status(403).json({ success: false, error: 'Your account is inactive. Contact hostel administration.' });
+        return res.status(403).json({ 
+          success: false, 
+          error: 'You have vacated this hostel and your account has been settled. Thank you for staying with us, happy to serve you!' 
+        });
       }
 
       // A pending mobile self-registration (status = 3) has no room yet by definition —
@@ -1473,13 +1476,29 @@ export const authController = {
 
       const tenantFullName = `${first_name}${last_name ? ' ' + last_name : ''}`.trim();
 
+      const registrationSource = req.body.source || req.body.registration_source || (req.body.bed_id ? 'bed_qr' : (req.body.from_qr ? 'hostel_qr' : 'app'));
+      let sourceLabel = 'Hostel QR Code';
+      if (registrationSource === 'bed_qr' || req.body.bed_id) {
+        sourceLabel = 'Room/Bed QR Code';
+      } else if (registrationSource === 'app' || !req.body.from_qr) {
+        sourceLabel = 'Hostix Mobile App';
+      }
+
+      const notifTitle = (registrationSource === 'bed_qr' || req.body.bed_id)
+        ? 'New Registration (Bed QR) 🛏️'
+        : (registrationSource === 'app' || !req.body.from_qr)
+        ? 'New Registration (Direct App) 📱'
+        : 'New Registration (Hostel QR) 📋';
+
+      const notifMessage = `${tenantFullName} registered via ${sourceLabel} and is awaiting room allocation & approval. Tap to review.`;
+
       sendNotificationToHostelOwner(
         hostel_id,
         'General',
-        'New Registration Awaiting Approval',
-        `${tenantFullName} registered via QR code and is awaiting room allocation.`,
-        'Medium',
-        { id: student_id, student_id },
+        notifTitle,
+        notifMessage,
+        'High',
+        { id: student_id, student_id, source: registrationSource },
         { screen: 'Students', params: { tab: 'pending', studentId: student_id }, referenceType: 'student', referenceId: student_id }
       ).catch(err => console.error('Failed to send tenant registration notification:', err));
 

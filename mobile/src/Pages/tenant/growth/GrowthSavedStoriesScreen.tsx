@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   StatusBar,
+  DeviceEventEmitter,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -96,7 +97,18 @@ export function GrowthSavedStoriesScreen({ navigation, route }: any) {
       <LinearGradient colors={['#4F46E5', '#7C3AED']} style={styles.gradientHeader}>
         <SafeAreaView edges={['top']} style={{ backgroundColor: 'transparent' }}>
           <View style={styles.headerRow}>
-            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} hitSlop={12}>
+            <TouchableOpacity
+              onPress={() => {
+                if (navigation.canGoBack()) {
+                  navigation.goBack();
+                } else {
+                  navigation.navigate('Home');
+                  DeviceEventEmitter.emit('SWITCH_TENANT_PAGE', 1);
+                }
+              }}
+              style={styles.backBtn}
+              hitSlop={12}
+            >
               <Ionicons name="chevron-back" size={24} color="#FFFFFF" />
             </TouchableOpacity>
             <View style={{ flex: 1, marginLeft: 12 }}>
@@ -302,7 +314,7 @@ const styles = StyleSheet.create({
   tabTextActive: { color: '#4F46E5' },
 
   // List
-  list: { padding: 16, paddingBottom: 40 },
+  list: { padding: 16, paddingBottom: 110 },
 
   // Card
   card: {

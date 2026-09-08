@@ -1,6 +1,6 @@
 import cron from 'node-cron';
 import db from '../config/database.js';
-import { sendNotificationToHostelOwner } from '../utils/notification.js';
+import { sendNotificationToHostelOwner, sendNotificationToStudent } from '../utils/notification.js';
 
 /**
  * Two independent owner-facing daily checks that previously had zero
@@ -30,15 +30,28 @@ export const runOwnerDailyAlerts = async () => {
     for (const s of upcomingVacancies) {
       const name = `${s.first_name}${s.last_name ? ' ' + s.last_name : ''}`.trim();
       const dateStr = new Date(s.vacate_notice_date).toISOString().split('T')[0];
+      
+      // Notify Owner
       await sendNotificationToHostelOwner(
         s.hostel_id,
-        'General',
-        'Bed Becoming Vacant Soon',
-        `${s.room_number ? `Room ${s.room_number} — ` : ''}${name} is vacating on ${dateStr}. Prepare for turnover.`,
+        'Vacate',
+        'Upcoming Room Vacancy (3 Days) 🚪',
+        `${s.room_number ? `Room ${s.room_number} — ` : ''}${name} is vacating on ${dateStr}. Check dues & prepare bed turnover.`,
         'Medium',
         { student_id: s.student_id, studentId: s.student_id },
         { screen: 'StudentDetails', params: { studentId: s.student_id }, referenceType: 'student', referenceId: s.student_id }
-      ).catch((err) => console.error('[ownerDailyAlerts] vacancy notify failed:', err?.message));
+      ).catch((err) => console.error('[ownerDailyAlerts] vacancy notify owner failed:', err?.message));
+
+      // Notify Tenant
+      await sendNotificationToStudent(
+        s.student_id,
+        'Vacate',
+        '⏳ 3 Days Left to Move Out',
+        `Your scheduled move-out is in 3 days (${dateStr}). Contact management if you need to extend or verify settlement.`,
+        'High',
+        { student_id: s.student_id },
+        { screen: 'VacateNotice', referenceType: 'vacate', referenceId: s.student_id }
+      ).catch((err) => console.error('[ownerDailyAlerts] vacancy notify tenant failed:', err?.message));
 
       await db('students').where('student_id', s.student_id).update({ vacate_reminder_sent: 1 });
       vacancyNotified++;
@@ -137,10 +150,61 @@ export const runOwnerDailyAlerts = async () => {
       }
     }
 
-    if (vacancyNotified > 0 || reminderNotified > 0 || duesSummariesNotified > 0) {
-      console.log(`[ownerDailyAlerts] Notified ${vacancyNotified} upcoming vacancies, ${reminderNotified} reminders, ${duesSummariesNotified} dues summaries`);
+    // 4. Pre-Booking Check-In Today Alert (students with status = 2 whose admission_date is today)
+    let prebookingNotified = 0;
+    try {
+      const todayCheckins = await db('students as s')
+        .where('s.status', 2)
+        .whereRaw('DATE(s.admission_date) = CURDATE()')
+        .select('s.student_id', 's.hostel_id', 's.first_name', 's.last_name', 's.admission_date');
+
+      for (const p of todayCheckins) {
+        const studentName = `${p.first_name}${p.last_name ? ' ' + p.last_name : ''}`.trim();
+        await sendNotificationToHostelOwner(
+          p.hostel_id,
+          'PREBOOKING',
+          'Pre-Booking Check-In Today 🔑',
+          `${studentName} is scheduled to move in today. Tap to allocate bed and complete check-in.`,
+          'High',
+          { student_id: p.student_id },
+          {
+            screen: 'PreBooking',
+            referenceType: 'student',
+            referenceId: p.student_id,
+            deduplicateKey: `prebooking_checkin_${p.student_id}_${new Date().toISOString().split('T')[0]}`
+          }
+        ).catch(() => {});
+        prebookingNotified++;
+      }
+    } catch (pbErr: any) {
+      console.error('[ownerDailyAlerts] prebooking checkin alert failed:', pbErr?.message);
     }
-    return { success: true, vacancyNotified, reminderNotified, duesSummariesNotified };
+
+    // 5. Recurring Owner Expense Logging Reminder (1st, 5th, 10th, 20th of the month)
+    const dayOfMonth = new Date().getDate();
+    if (dayOfMonth === 1 || dayOfMonth === 5 || dayOfMonth === 10 || dayOfMonth === 20) {
+      for (const h of hostels) {
+        if (!h.hostel_id) continue;
+        await sendNotificationToHostelOwner(
+          h.hostel_id,
+          'EXPENSE',
+          'Track Hostel Expenses 🧾',
+          'Don’t forget to record this month’s electricity, water, grocery, or maintenance bills in Hostix to see accurate net profit!',
+          'Medium',
+          { hostel_id: h.hostel_id },
+          {
+            screen: 'Expenses',
+            referenceType: 'expense',
+            deduplicateKey: `owner_expense_reminder_${h.hostel_id}_${dayOfMonth}`
+          }
+        ).catch(() => {});
+      }
+    }
+
+    if (vacancyNotified > 0 || reminderNotified > 0 || duesSummariesNotified > 0 || prebookingNotified > 0) {
+      console.log(`[ownerDailyAlerts] Notified ${vacancyNotified} upcoming vacancies, ${reminderNotified} reminders, ${duesSummariesNotified} dues summaries, ${prebookingNotified} pre-bookings`);
+    }
+    return { success: true, vacancyNotified, reminderNotified, duesSummariesNotified, prebookingNotified };
   } catch (error: any) {
     console.error('[ownerDailyAlerts] Error:', error?.message);
     return { success: false, error: error?.message };

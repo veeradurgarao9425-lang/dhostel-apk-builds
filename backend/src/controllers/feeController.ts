@@ -556,7 +556,7 @@ export const uploadPaymentProof = async (req: AuthRequest, res: Response) => {
         'Medium',
         { payment_id, student_id, studentName: studentFullName, studentId: student_id },
         {
-          screen: 'TenantTransactions',
+          screen: 'PaymentVerification',
           params: { studentId: student_id, studentName: studentFullName },
           referenceType: 'payment_proof',
           referenceId: payment_id,
@@ -712,7 +712,7 @@ export const verifyPaymentProof = async (req: AuthRequest, res: Response) => {
         status === 'Verified' ? 'Medium' : 'High',
         { payment_id: paymentId, status },
         {
-          screen: 'PaymentReceipt',
+          screen: status === 'Verified' ? 'PaymentReceipt' : 'Dues',
           params: { paymentId, studentId: payment.student_id },
           referenceType: 'payment_proof',
           referenceId: paymentId

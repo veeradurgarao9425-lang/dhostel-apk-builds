@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   RefreshControl,
   Alert,
   StatusBar,
+  DeviceEventEmitter,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -127,11 +128,19 @@ export function GrowthHomeScreen({
     }, [load])
   );
 
-  const toggleNight = async () => {
+  const toggleNight = useCallback(async () => {
     const next = !isNightMode;
     setIsNightMode(next);
     await AsyncStorage.setItem('growth_night_mode', next ? '1' : '0');
-  };
+    DeviceEventEmitter.emit('GROWTH_NIGHT_MODE_CHANGED', next);
+  }, [isNightMode]);
+
+  useEffect(() => {
+    const sub = DeviceEventEmitter.addListener('TOGGLE_GROWTH_NIGHT', () => {
+      toggleNight();
+    });
+    return () => sub.remove();
+  }, [toggleNight]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -182,49 +191,40 @@ export function GrowthHomeScreen({
   };
 
   return (
-    <SafeAreaView style={[styles.screen, { backgroundColor: c.bg }]} edges={['top']}>
+    <SafeAreaView style={[styles.screen, { backgroundColor: c.bg }]} edges={embedded ? [] : ['top']}>
       <StatusBar barStyle={isNightMode ? 'light-content' : 'dark-content'} backgroundColor={c.bg} />
 
-      {/* Top Navigation Bar */}
-      <View style={[styles.header, { backgroundColor: c.bg, borderBottomColor: c.border }]}>
-        <TouchableOpacity
-          onPress={() => (embedded && onSwipeToDashboard ? onSwipeToDashboard() : navigation.goBack())}
-          style={[styles.iconBtn, { backgroundColor: c.card, borderColor: c.border }]}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="chevron-back" size={24} color={c.text} />
-        </TouchableOpacity>
-
-        <View style={styles.headerTextWrap}>
-          <Text style={[styles.headerTitle, { color: c.text }]}>Growth Journey</Text>
-          <Text style={[styles.headerSubtitle, { color: c.textSub }]}>Hi {firstName}, ready to learn?</Text>
-        </View>
-
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          {/* Dashboard Switch Button Added Before Day and Night Icon */}
-          {embedded && (
-            <TouchableOpacity
-              style={[styles.iconBtn, { backgroundColor: c.card, borderColor: c.border }]}
-              onPress={onSwipeToDashboard}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="grid-outline" size={18} color={isNightMode ? '#F8FAFC' : '#6D4AFF'} />
-            </TouchableOpacity>
-          )}
-
+      {/* Top Navigation Bar - only shown when accessed standalone */}
+      {!embedded && (
+        <View style={[styles.header, { backgroundColor: c.bg, borderBottomColor: c.border }]}>
           <TouchableOpacity
+            onPress={() => (embedded && onSwipeToDashboard ? onSwipeToDashboard() : navigation.goBack())}
             style={[styles.iconBtn, { backgroundColor: c.card, borderColor: c.border }]}
-            onPress={toggleNight}
             activeOpacity={0.7}
           >
-            <Ionicons
-              name={isNightMode ? 'sunny' : 'moon-outline'}
-              size={20}
-              color={isNightMode ? '#FBBF24' : '#6D4AFF'}
-            />
+            <Ionicons name="chevron-back" size={24} color={c.text} />
           </TouchableOpacity>
+
+          <View style={styles.headerTextWrap}>
+            <Text style={[styles.headerTitle, { color: c.text }]}>Growth Journey</Text>
+            <Text style={[styles.headerSubtitle, { color: c.textSub }]}>Hi {firstName}, ready to learn?</Text>
+          </View>
+
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <TouchableOpacity
+              style={[styles.iconBtn, { backgroundColor: c.card, borderColor: c.border }]}
+              onPress={toggleNight}
+              activeOpacity={0.7}
+            >
+              <Ionicons
+                name={isNightMode ? 'sunny' : 'moon-outline'}
+                size={20}
+                color={isNightMode ? '#FBBF24' : '#6D4AFF'}
+              />
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
+      )}
 
       <ScrollView
         contentContainerStyle={styles.scrollContent}
@@ -267,6 +267,7 @@ export function GrowthHomeScreen({
             </View>
           </View>
         </View>
+
 
         {/* Daily Pick / Today's Story */}
         <View style={styles.sectionHeader}>
@@ -435,84 +436,73 @@ export function GrowthHomeScreen({
           </View>
         ) : null}
 
-        {/* Bottom padding so content is not obscured by the tab bar */}
-        <View style={{ height: TAB_BAR_HEIGHT + Math.max(insets.bottom, 8) + 16 }} />
+        {/* Bottom padding so content is not obscured */}
+        <View style={{ height: embedded ? 28 : TAB_BAR_HEIGHT + Math.max(insets.bottom, 8) + 16 }} />
       </ScrollView>
 
-      {/* Exactly Styled Bottom Tab Navigation Bar Matching Dashboard */}
-      <View
-        style={[
-          styles.bottomTabBar,
-          {
-            backgroundColor: c.bottomNavBg,
-            borderTopColor: c.border,
-            paddingBottom: Math.max(insets.bottom, 8),
-          },
-        ]}
-      >
-        <TouchableOpacity
-          style={styles.tabItem}
-          onPress={toggleNight}
-          activeOpacity={0.7}
+      {/* Exactly Styled Bottom Tab Navigation Bar Matching Dashboard - only when standalone */}
+      {!embedded && (
+        <View
+          style={[
+            styles.bottomTabBar,
+            {
+              backgroundColor: c.bottomNavBg,
+              borderTopColor: c.border,
+              paddingBottom: Math.max(insets.bottom, 8),
+            },
+          ]}
         >
-          <View style={[styles.tabIconWrap, isNightMode && { backgroundColor: '#334155' }]}>
-            <Ionicons
-              name={isNightMode ? 'sunny' : 'moon-outline'}
-              size={22}
-              color={isNightMode ? '#FBBF24' : c.textSub}
-            />
-          </View>
-          <Text
-            style={[
-              styles.tabLabel,
-              { color: isNightMode ? '#FBBF24' : c.textSub },
-              isNightMode && styles.tabLabelActive,
-            ]}
-            numberOfLines={1}
+          <TouchableOpacity
+            style={styles.tabItem}
+            onPress={toggleNight}
+            activeOpacity={0.7}
           >
-            {isNightMode ? 'Day' : 'Night'}
-          </Text>
-        </TouchableOpacity>
+            <View style={[styles.tabIconWrap, isNightMode && { backgroundColor: '#334155' }]}>
+              <Ionicons
+                name={isNightMode ? 'sunny' : 'moon-outline'}
+                size={22}
+                color={isNightMode ? '#FBBF24' : c.textSub}
+              />
+            </View>
+            <Text
+              style={[
+                styles.tabLabel,
+                { color: isNightMode ? '#FBBF24' : c.textSub },
+                isNightMode && styles.tabLabelActive,
+              ]}
+              numberOfLines={1}
+            >
+              {isNightMode ? 'Day' : 'Night'}
+            </Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.tabItem}
-          onPress={() => navigation.navigate('GrowthSavedStories', { tab: 'saved' })}
-          activeOpacity={0.7}
-        >
-          <View style={styles.tabIconWrap}>
-            <Ionicons name="bookmark-outline" size={22} color="#F59E0B" />
-          </View>
-          <Text style={[styles.tabLabel, { color: c.textSub }]} numberOfLines={1}>
-            Saved
-          </Text>
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.tabItem}
+            onPress={() => navigation.navigate('GrowthSavedStories', { tab: 'saved' })}
+            activeOpacity={0.7}
+          >
+            <View style={styles.tabIconWrap}>
+              <Ionicons name="bookmark-outline" size={22} color="#F59E0B" />
+            </View>
+            <Text style={[styles.tabLabel, { color: c.textSub }]} numberOfLines={1}>
+              Saved
+            </Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.tabItem}
-          onPress={() => navigation.navigate('GrowthVocabularyList')}
-          activeOpacity={0.7}
-        >
-          <View style={styles.tabIconWrap}>
-            <Ionicons name="book-outline" size={22} color="#6D4AFF" />
-          </View>
-          <Text style={[styles.tabLabel, { color: c.textSub }]} numberOfLines={1}>
-            Vocab
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.tabItem}
-          onPress={() => navigation.navigate('GrowthStats')}
-          activeOpacity={0.7}
-        >
-          <View style={styles.tabIconWrap}>
-            <Ionicons name="stats-chart-outline" size={22} color="#10B981" />
-          </View>
-          <Text style={[styles.tabLabel, { color: c.textSub }]} numberOfLines={1}>
-            Progress
-          </Text>
-        </TouchableOpacity>
-      </View>
+          <TouchableOpacity
+            style={styles.tabItem}
+            onPress={() => navigation.navigate('GrowthStats')}
+            activeOpacity={0.7}
+          >
+            <View style={styles.tabIconWrap}>
+              <Ionicons name="stats-chart-outline" size={22} color="#10B981" />
+            </View>
+            <Text style={[styles.tabLabel, { color: c.textSub }]} numberOfLines={1}>
+              Progress
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -593,6 +583,7 @@ const styles = StyleSheet.create({
     height: 24,
     marginHorizontal: 4,
   },
+
 
   // Section Headers
   sectionHeader: {

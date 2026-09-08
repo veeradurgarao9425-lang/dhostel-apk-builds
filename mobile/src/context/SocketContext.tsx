@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { io, Socket } from 'socket.io-client';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { DeviceEventEmitter, AppState, AppStateStatus } from 'react-native';
+import { DeviceEventEmitter, AppState, AppStateStatus, Alert } from 'react-native';
 import { useAuth } from '../../contexts/AuthContext';
 import { notificationService } from '../services/notificationService';
 
@@ -10,7 +10,7 @@ const BASE_URL = (envUrl && !envUrl.includes('192.168.')) ? envUrl : 'https://da
 const SOCKET_URL = (envUrl && !envUrl.includes('192.168.')) ? envUrl.replace('/api', '') : 'https://api.143-244-131-69.sslip.io';
 
 export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
-  const { user } = useAuth();
+  const { user, signOut, refreshUser } = useAuth();
 
   useEffect(() => {
     let socket: Socket | null = null;
@@ -69,6 +69,26 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
         DeviceEventEmitter.emit('VACATE_STATUS_CHANGED', p);
         handleEvent(p, 'Vacate Status Updated 🚪', p?.message || 'Vacate request status has changed.', 'vacate');
       });
+      socket.on('TENANT_VACATED', () => {
+        Alert.alert(
+          'Account Settled & Checked Out 🚪',
+          'Your vacate settlement has been completed. Thank you for staying with us, happy to serve you!',
+          [{ text: 'OK', onPress: () => signOut() }],
+          { cancelable: false }
+        );
+      });
+      socket.on('REFRESH_USER_STATUS', (p: any) => {
+        if (Number(p?.status) === 0) {
+          Alert.alert(
+            'Account Settled & Checked Out 🚪',
+            'Your vacate settlement has been completed. Thank you for staying with us, happy to serve you!',
+            [{ text: 'OK', onPress: () => signOut() }],
+            { cancelable: false }
+          );
+        } else {
+          refreshUser();
+        }
+      });
 
       // Complaints
       socket.on('new_complaint', (p) => {
@@ -105,7 +125,7 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
       sub.remove();
       if (socket) socket.disconnect();
     };
-  }, [user?.user_id || (user as any)?.id]);
+  }, [user?.user_id || (user as any)?.id, signOut, refreshUser]);
 
   return <>{children}</>;
 };

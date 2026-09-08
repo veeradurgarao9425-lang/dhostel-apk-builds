@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, StatusBar, Image, Animated } from 'react-native';
+import { View, Text, StyleSheet, StatusBar, Image, Animated, DeviceEventEmitter } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -7,6 +7,8 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useDeveloper } from '../../contexts/DeveloperContext';
 import { COLORS, FONT } from '../theme/index';
 import { ONBOARDING_KEY } from './OnboardingScreen';
+import { notificationService } from '../services/notificationService';
+import { TENANT_SAFE_ROUTE_MAP } from '../navigation/AppNavigator';
 
 const ALWAYS_SHOW_INTRO_IN_DEV = false;
 
@@ -132,6 +134,88 @@ export default function SplashScreen({ navigation }: any) {
 
       // 2. Check Standard User Session
       if (user) {
+        const pendingNotif = notificationService.consumePendingInitialRoute();
+        const isTenant = user?.role_id === 3 || user?.role === 'TENANT' || user?.role === 'tenant' || user?.role === 'student' || (user as any)?.is_tenant;
+        if (pendingNotif?.screen) {
+          const targetScreen = isTenant ? (TENANT_SAFE_ROUTE_MAP[pendingNotif.screen] || 'TenantHome') : pendingNotif.screen;
+          console.log('[SplashScreen] 🎯 Cold-start navigating to notification target:', targetScreen);
+
+          if (isTenant) {
+            if (targetScreen === 'GrowthHome') {
+              navigation.reset({
+                index: 0,
+                routes: [{ name: 'Main', state: { routes: [{ name: 'Home' }] } }],
+              });
+              setTimeout(() => {
+                DeviceEventEmitter.emit('SWITCH_TENANT_PAGE', 1);
+              }, 400);
+              return;
+            }
+
+            const TENANT_TAB_MAP: Record<string, string> = {
+              Home: 'Home',
+              TenantHome: 'Home',
+              TenantHomeScreen: 'Home',
+              Dashboard: 'Home',
+              Main: 'Home',
+              Dues: 'Dues',
+              TenantDues: 'Dues',
+              RentPayment: 'Dues',
+              Payment: 'Dues',
+              Payments: 'Dues',
+              Expenses: 'Expenses',
+              TenantExpenses: 'Expenses',
+              Notices: 'Notices',
+              TenantNotices: 'Notices',
+              GatePass: 'GatePass',
+              TenantGatePass: 'GatePass',
+              Leaves: 'GatePass',
+              VisitorPass: 'VisitorPass',
+              TenantVisitorPass: 'VisitorPass',
+              Visitors: 'VisitorPass',
+              Complaints: 'Complaints',
+              TenantComplaints: 'Complaints',
+              RoomInfo: 'RoomInfo',
+              TenantRoomInfo: 'RoomInfo',
+              VacateNotice: 'VacateNotice',
+              VacateRoom: 'VacateNotice',
+              Feedback: 'Feedback',
+              Rating: 'Feedback',
+              FullMenu: 'FullMenu',
+              MessMenu: 'FullMenu',
+              Food: 'FullMenu',
+              Documents: 'TenantDocuments',
+              TenantDocuments: 'TenantDocuments',
+              Notes: 'Notes',
+              TenantNotes: 'Notes',
+            };
+
+            const mappedTab = TENANT_TAB_MAP[targetScreen] || 'Home';
+            navigation.reset({
+              index: 0,
+              routes: [
+                {
+                  name: 'Main',
+                  state: {
+                    routes: [
+                      { name: mappedTab, params: pendingNotif.params || {} }
+                    ]
+                  }
+                }
+              ]
+            });
+            return;
+          }
+
+          navigation.reset({
+            index: 1,
+            routes: [
+              { name: 'Main' },
+              { name: targetScreen, params: pendingNotif.params || {} },
+            ],
+          });
+          return;
+        }
         navigation.reset({ index: 0, routes: [{ name: 'Main' }] });
         return;
       }

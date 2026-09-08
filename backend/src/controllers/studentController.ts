@@ -964,6 +964,25 @@ export const updateStudent = async (req: AuthRequest, res: Response) => {
             .increment('occupied_beds', 1);
           console.log(`Student ${studentId} moved from room ${oldRoomId} to ${finalRoomId}`);
           kickUserFromRoomChat(parseInt(studentId), oldRoomId);
+
+          // Notify student of room change
+          const [oldRoom, newRoom] = await Promise.all([
+            db('rooms').where({ room_id: oldRoomId }).first().catch(() => null),
+            db('rooms').where({ room_id: finalRoomId }).first().catch(() => null),
+          ]);
+          sendNotificationToStudent(
+            Number(studentId),
+            'Room Allocated',
+            'Room Shifted / Reallocated 🔑',
+            `Your room has been changed to Room ${newRoom?.room_number || '-'}. Tap to view your new room details.`,
+            'High',
+            { room_id: finalRoomId, old_room_id: oldRoomId, room_number: newRoom?.room_number },
+            {
+              screen: 'RoomInfo',
+              referenceType: 'room',
+              referenceId: finalRoomId,
+            }
+          ).catch((err) => console.error('Failed to notify student of room change:', err));
         } catch (bedError: any) {
           console.error('Error updating room occupied_beds:', bedError);
         }
@@ -1475,16 +1494,16 @@ export const submitVacateNotice = async (req: AuthRequest, res: Response) => {
 
       sendNotificationToStudent(
         student.student_id,
-        'General',
-        formattedDate ? 'Vacate Notice Submitted 📅' : 'Vacate Notice Cancelled',
+        'Vacate',
+        formattedDate ? 'Vacate Notice Scheduled 📦' : 'Vacate Notice Cancelled',
         formattedDate
-          ? `Your notice to vacate on ${formattedDate} has been recorded.`
+          ? `Your room move-out is scheduled for ${formattedDate}. Management has been notified.`
           : 'Your vacate notice was cancelled.',
         'Medium',
         { student_id: student.student_id },
         {
-          screen: 'TenantHome',
-          referenceType: 'student',
+          screen: 'VacateNotice',
+          referenceType: 'vacate',
           referenceId: student.student_id,
         }
       ).catch(() => {});
@@ -1617,12 +1636,12 @@ export const vacateSettlement = async (req: AuthRequest, res: Response) => {
       }
       await sendNotificationToStudent(
         parseInt(studentId),
-        'System Alert',
-        'Vacate & Settlement Completed 📦',
-        'Your checkout settlement has been processed successfully. Best wishes for your journey ahead!',
+        'Vacate',
+        'Vacate & Settlement Completed 🎉',
+        'Your room checkout settlement has been processed successfully. Best wishes for your journey ahead!',
         'High',
         { studentId, status: 0 },
-        { screen: 'TenantHome', referenceType: 'vacate_settlement', referenceId: studentId }
+        { screen: 'VacateNotice', referenceType: 'vacate', referenceId: studentId }
       );
     } catch (notifErr) {
       console.error('Failed to send vacate settlement notification:', notifErr);

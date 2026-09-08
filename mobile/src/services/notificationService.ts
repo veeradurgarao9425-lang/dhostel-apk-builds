@@ -3,7 +3,8 @@
  * Pure Firebase Cloud Messaging (FCM) via @react-native-firebase/messaging modular API.
  * Safely guards native module access in local Expo dev environments.
  */
-import { Platform, PermissionsAndroid } from 'react-native';
+import { Platform, PermissionsAndroid, DeviceEventEmitter } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Toast from 'react-native-toast-message';
 import api from './api';
 
@@ -36,8 +37,55 @@ try {
   }
 } catch (_) {}
 
+export const createNotificationChannels = async () => {
+  if (Platform.OS === 'android') {
+    try {
+      const Notifications = getExpoNotificationsModule();
+      if (Notifications?.setNotificationChannelAsync) {
+        const channelConfig = {
+          name: 'Hostix Alerts & Food Menu',
+          importance: Notifications.AndroidImportance?.MAX ?? 5,
+          vibrationPattern: [0, 250, 250, 250],
+          lightColor: '#7C3AED',
+          sound: 'default',
+          enableLights: true,
+          enableVibrate: true,
+          showBadge: true,
+          lockscreenVisibility: Notifications.AndroidNotificationVisibility?.PUBLIC ?? 1,
+        };
+        await Notifications.setNotificationChannelAsync('default', channelConfig);
+        await Notifications.setNotificationChannelAsync('hostix_alerts', channelConfig);
+        console.log('[Notification] ✅ Android notification channels registered: default, hostix_alerts');
+      }
+    } catch (_) {}
+  }
+};
+
+// Immediately invoke channel creation on module import
+createNotificationChannels().catch(() => {});
+
 export const notificationService = {
   _lastRegisteredToken: null as string | null,
+  _pendingInitialNavigation: null as { screen: string; params?: any } | null,
+
+  setPendingInitialRoute(screen: string, params?: any) {
+    if (!screen) return;
+    console.log('[Notification] 📌 Stored pending initial navigation route:', screen, params);
+    this._pendingInitialNavigation = { screen, params };
+  },
+
+  getPendingInitialRoute() {
+    return this._pendingInitialNavigation;
+  },
+
+  consumePendingInitialRoute() {
+    const route = this._pendingInitialNavigation;
+    this._pendingInitialNavigation = null;
+    if (route) {
+      console.log('[Notification] 🚀 Consumed pending initial navigation route:', route.screen);
+    }
+    return route;
+  },
 
   /**
    * Request permission (Android 13+ requires runtime POST_NOTIFICATIONS),
@@ -56,21 +104,24 @@ export const notificationService = {
         } catch (_) {}
       }
 
-      // Create Android Notification Channel
+      // Create Android Notification Channels (default & hostix_alerts)
       if (Platform.OS === 'android') {
         try {
           const Notifications = getExpoNotificationsModule();
           if (Notifications?.setNotificationChannelAsync) {
-            await Notifications.setNotificationChannelAsync('default', {
-              name: 'Hostix Alerts',
+            const channelConfig = {
+              name: 'Hostix Alerts & Food Menu',
               importance: Notifications.AndroidImportance.MAX,
               vibrationPattern: [0, 250, 250, 250],
-              lightColor: '#6D4AFF',
+              lightColor: '#7C3AED',
               sound: 'default',
               enableLights: true,
               enableVibrate: true,
               showBadge: true,
-            });
+              lockscreenVisibility: Notifications.AndroidNotificationVisibility?.PUBLIC ?? 1,
+            };
+            await Notifications.setNotificationChannelAsync('default', channelConfig);
+            await Notifications.setNotificationChannelAsync('hostix_alerts', channelConfig);
           }
         } catch (_) {}
       }
@@ -187,7 +238,7 @@ export const notificationService = {
             title,
             body,
             sound: 'default',
-            channelId: 'default',
+            channelId: 'hostix_alerts',
             data: data || {},
           },
           trigger: null,
@@ -195,6 +246,26 @@ export const notificationService = {
       }
     } catch (e) {
       console.warn('[Notification] triggerLocalNotification error:', e);
+    }
+
+    // Persist triggered notification into local storage so in-app badge count and notifications list show it immediately!
+    try {
+      const item = {
+        notification_id: `loc_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+        title,
+        message: body,
+        notification_type: data?.referenceType ? String(data.referenceType) : 'General',
+        created_at: new Date().toISOString(),
+        is_read: 0,
+        screen: data?.screen || 'TenantHome',
+        params: data?.params || null,
+        reference_type: data?.referenceType || null,
+        reference_id: data?.referenceId || null,
+      };
+      await saveTriggeredNotification(item);
+      DeviceEventEmitter.emit('REFRESH_NOTIFICATIONS');
+    } catch (err) {
+      console.warn('[Notification] saveTriggeredNotification error:', err);
     }
   },
 
@@ -257,7 +328,7 @@ export const notificationService = {
                     title,
                     body,
                     sound: 'default',
-                    channelId: 'default',
+                    channelId: 'hostix_alerts',
                     data: { screen, params },
                   },
                   trigger: null,
@@ -292,8 +363,12 @@ export const notificationService = {
             if (typeof params === 'string') {
               try { params = JSON.parse(params); } catch (_) {}
             }
-            if (navigate && screen) {
-              navigate(screen, params || {});
+            if (screen) {
+              console.log('[Notification] 🔔 Opened notification from background:', screen, params);
+              this.setPendingInitialRoute(screen, params || {});
+              if (navigate) {
+                navigate(screen, params || {});
+              }
             }
           };
 
@@ -315,8 +390,12 @@ export const notificationService = {
               if (typeof params === 'string') {
                 try { params = JSON.parse(params); } catch (_) {}
               }
-              if (navigate && screen) {
-                setTimeout(() => navigate(screen, params || {}), 500);
+              if (screen) {
+                console.log('[Notification] 🌟 Cold start from push notification tap:', screen, params);
+                this.setPendingInitialRoute(screen, params || {});
+                if (navigate) {
+                  navigate(screen, params || {});
+                }
               }
             }
           }).catch(() => {});
@@ -334,10 +413,27 @@ export const notificationService = {
           if (Notifications.addNotificationResponseReceivedListener) {
             unsubscribeExpoResponse = Notifications.addNotificationResponseReceivedListener((response: any) => {
               const data = response.notification?.request?.content?.data || {};
-              if (navigate && data.screen) {
-                navigate(data.screen, data.params || {});
+              if (data.screen) {
+                console.log('[Notification] 🔔 Expo notification response clicked:', data.screen, data.params);
+                this.setPendingInitialRoute(data.screen, data.params || {});
+                if (navigate) {
+                  navigate(data.screen, data.params || {});
+                }
               }
             });
+          }
+
+          if (typeof Notifications.getLastNotificationResponseAsync === 'function') {
+            Notifications.getLastNotificationResponseAsync().then((response: any) => {
+              const data = response?.notification?.request?.content?.data || {};
+              if (data.screen) {
+                console.log('[Notification] 🌟 Cold start from Expo notification response:', data.screen, data.params);
+                this.setPendingInitialRoute(data.screen, data.params || {});
+                if (navigate) {
+                  navigate(data.screen, data.params || {});
+                }
+              }
+            }).catch(() => {});
           }
         }
       } catch (_) {}
@@ -428,3 +524,33 @@ export const sendAppNotification = async (type: NotificationType, customData?: a
   // In-app test trigger placeholder
   console.log('[Notification] sendAppNotification triggered:', type, customData);
 };
+
+// ── Local Triggered Notifications Persistence ────────────────────────────────
+export const LOCAL_TRIGGERED_NOTIFS_KEY = 'hostix_local_triggered_notifications';
+
+export async function getLocalTriggeredNotifications(): Promise<any[]> {
+  try {
+    const raw = await AsyncStorage.getItem(LOCAL_TRIGGERED_NOTIFS_KEY);
+    if (!raw) return [];
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr) ? arr : [];
+  } catch {
+    return [];
+  }
+}
+
+export async function saveTriggeredNotification(notif: any): Promise<void> {
+  try {
+    const current = await getLocalTriggeredNotifications();
+    const isDup = current.some(
+      (n: any) =>
+        n.title === notif.title &&
+        Math.abs(new Date(n.created_at).getTime() - new Date(notif.created_at).getTime()) < 3600 * 1000
+    );
+    if (!isDup) {
+      const updated = [notif, ...current].slice(0, 60);
+      await AsyncStorage.setItem(LOCAL_TRIGGERED_NOTIFS_KEY, JSON.stringify(updated));
+    }
+  } catch {}
+}
+

@@ -4,31 +4,32 @@
  * Central notification helper for the Tenant app.
  *
  * Responsibilities:
- *  - Daily welcome / budget / expense-reminder toasts (once per calendar day)
- *  - Immediate action toasts: payment, complaint, expense, gate pass, growth
- *  - Badge refresh via DeviceEventEmitter after every action
- *  - All toasts call react-native-toast-message directly (same as ToastContext)
- *    so this module works both as a hook and as standalone exported helpers
- *    (action helpers are called from submit handlers, not from render)
- *  - Navigation helpers so every notification can deep-link to the correct screen
- *
- * Architecture:
- *  - Uses AsyncStorage for daily-guard keys (date strings: "YYYY-MM-DD")
- *  - Uses DeviceEventEmitter('REFRESH_NOTIFICATIONS') to trigger badge/list refresh
- *    in the existing useNotifications hook & NotificationsScreen
- *  - Does NOT call any owner-only APIs — tenant endpoints only
+ *  - Once-per-day Daily Welcome notification
+ *  - 3-Time Daily Mess Menu alerts (Breakfast >7 AM, Lunch >12 PM, Dinner >7:30 PM)
+ *  - Budget notification (Prompt to set if <= 0, daily status if > 0)
+ *  - Nightly Pocket Check / Expense Reminder (>8:30 PM)
+ *  - Growth Journey daily career booster (>4:00 PM)
+ *  - Weekly Stay & App Feedback reminder (every 7 days)
+ *  - Immediate action alerts: payment proof, complaints, expense added, vacate notice
+ *  - Native outside tray notifications only — NO double toasts!
+ *  - Navigation helpers so every notification deep-links to the exact screen
  */
 
 import { useEffect, useCallback, useRef } from 'react';
 import { DeviceEventEmitter } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import Toast from 'react-native-toast-message';
 import { notificationService } from '../services/notificationService';
+import api from '../services/api';
 
 // ── Storage keys for daily-guard ──────────────────────────────────────────────
-const KEY_WELCOME  = 'tenant_welcome_date';
-const KEY_BUDGET   = 'tenant_budget_notif_date';
-const KEY_EXPENSE  = 'tenant_expense_notif_date';
+const KEY_WELCOME         = 'tenant_welcome_date';
+const KEY_BUDGET          = 'tenant_budget_notif_date';
+const KEY_EXPENSE_NIGHT   = 'tenant_expense_notif_date';
+const KEY_MESS_BREAKFAST  = 'tenant_mess_bf_date';
+const KEY_MESS_LUNCH      = 'tenant_mess_lunch_date';
+const KEY_MESS_DINNER     = 'tenant_mess_dinner_date';
+const KEY_GROWTH          = 'tenant_growth_notif_date';
+const KEY_LAST_FEEDBACK   = 'tenant_last_feedback_prompt_ts';
 
 // ── Utility: today as YYYY-MM-DD ──────────────────────────────────────────────
 function todayStr(): string {
@@ -60,27 +61,8 @@ function emitRefresh() {
   DeviceEventEmitter.emit('REFRESH_NOTIFICATIONS');
 }
 
-
-// ── Low-level toast helper (wraps react-native-toast-message directly) ─────────
-function showToast(
-  type: 'success' | 'error' | 'warning' | 'info',
-  title: string,
-  message: string,
-  duration = 3500,
-) {
-  Toast.show({
-    type,
-    text1: title,
-    text2: message,
-    visibilityTime: duration,
-    autoHide: true,
-    position: 'top',
-    topOffset: 55,
-  });
-}
-
 // ═════════════════════════════════════════════════════════════════════════════
-// ACTION NOTIFICATION HELPERS  (call these from screen submit handlers)
+// ACTION NOTIFICATION HELPERS (Clean native notifications — NO ugly toasts!)
 // ═════════════════════════════════════════════════════════════════════════════
 
 /**
@@ -88,9 +70,8 @@ function showToast(
  */
 export function notifyPaymentSubmitted(amount?: number) {
   const amtStr = amount ? `₹${amount.toLocaleString('en-IN')} ` : '';
-  const title = '✅ Payment Submitted';
-  const body = `${amtStr}Payment proof submitted! Awaiting owner verification.`;
-  showToast('success', title, body);
+  const title = '✅ Payment Proof Submitted';
+  const body = `${amtStr}Payment submitted! Awaiting owner verification. Receipt will be generated once verified.`;
   notificationService.triggerLocalNotification(title, body, { screen: 'Dues', referenceType: 'payment' }).catch(() => {});
   emitRefresh();
 }
@@ -98,12 +79,18 @@ export function notifyPaymentSubmitted(amount?: number) {
 /**
  * Call after a complaint is successfully raised.
  */
-export function notifyComplaintRaised(title?: string) {
-  const notifTitle = '🔧 Complaint Raised';
-  const notifBody = title
-    ? `"${title}" submitted. We'll get back to you soon.`
-    : "Complaint submitted! We'll get back to you soon.";
-  showToast('info', notifTitle, notifBody);
+export function notifyComplaintRaised(title?: string, category?: string) {
+  const notifTitle = '🔧 Complaint Registered';
+  let formattedSubject = 'Your complaint';
+  if (title && /^\d+$/.test(title.trim())) {
+    formattedSubject = `Complaint for Room #${title.trim()}`;
+  } else if (title) {
+    formattedSubject = `Complaint "${title.trim()}"`;
+  } else if (category) {
+    formattedSubject = `${category} complaint`;
+  }
+
+  const notifBody = `We received ${formattedSubject}. Our maintenance team will review it and get back to you shortly.`;
   notificationService.triggerLocalNotification(notifTitle, notifBody, { screen: 'Complaints', referenceType: 'complaint' }).catch(() => {});
   emitRefresh();
 }
@@ -113,9 +100,8 @@ export function notifyComplaintRaised(title?: string) {
  */
 export function notifyExpenseAdded(amount: number, category?: string) {
   const catStr = category ? ` to ${category}` : '';
-  const title = '🎯 Expense Added';
-  const body = `₹${amount.toLocaleString('en-IN')}${catStr} added to your tracker!`;
-  showToast('success', title, body);
+  const title = '🎯 Expense Logged';
+  const body = `₹${amount.toLocaleString('en-IN')}${catStr} added to your pocket tracker!`;
   notificationService.triggerLocalNotification(title, body, { screen: 'Expenses', referenceType: 'expense' }).catch(() => {});
   emitRefresh();
 }
@@ -124,203 +110,287 @@ export function notifyExpenseAdded(amount: number, category?: string) {
  * Call after a budget is successfully set/updated.
  */
 export function notifyBudgetSet(amount: number) {
-  const title = '💰 Budget Set';
-  const body = `Monthly budget of ₹${amount.toLocaleString('en-IN')} saved!`;
-  showToast('success', title, body);
+  const title = '💰 Monthly Budget Saved';
+  const body = `Monthly budget limit of ₹${amount.toLocaleString('en-IN')} is active. We'll help you track every rupee!`;
   notificationService.triggerLocalNotification(title, body, { screen: 'Expenses', referenceType: 'expense' }).catch(() => {});
   emitRefresh();
 }
 
 /**
  * Call after budget check: threshold exceeded
- * @param pct   - percentage used (0-100+)
- * @param budget - total budget amount
- * @param spent  - total amount spent
  */
 export function notifyBudgetThreshold(pct: number, budget: number, spent: number) {
+  const remaining = Math.max(0, budget - spent);
   if (pct >= 100) {
     const title = '🚨 Budget Exceeded!';
-    const body = `You've exceeded your ₹${budget.toLocaleString('en-IN')} budget. ₹${spent.toLocaleString('en-IN')} spent.`;
-    showToast('error', title, body, 5000);
+    const body = `You have spent ₹${spent.toLocaleString('en-IN')} of your ₹${budget.toLocaleString('en-IN')} budget. Slow down on discretionary spends!`;
     notificationService.triggerLocalNotification(title, body, { screen: 'Expenses', referenceType: 'expense' }).catch(() => {});
   } else if (pct >= 80) {
-    const title = '⚠️ Budget Warning';
-    const body = `You've used ${pct}% of your ₹${budget.toLocaleString('en-IN')} monthly budget.`;
-    showToast('warning', title, body, 4500);
+    const title = `⚠️ Budget Alert (${pct}% Used)`;
+    const body = `You've used ₹${spent.toLocaleString('en-IN')} of your ₹${budget.toLocaleString('en-IN')} budget. Only ₹${remaining.toLocaleString('en-IN')} remaining.`;
     notificationService.triggerLocalNotification(title, body, { screen: 'Expenses', referenceType: 'expense' }).catch(() => {});
   }
   emitRefresh();
 }
 
 /**
- * Call after gate pass is successfully submitted.
+ * Call after vacate notice is submitted.
  */
-export function notifyGatePassSubmitted() {
-  const title = '🎟️ Gate Pass Submitted';
-  const body = 'Your gate pass request has been submitted. Awaiting approval.';
-  showToast('info', title, body);
-  notificationService.triggerLocalNotification(title, body, { screen: 'GatePass', referenceType: 'leave' }).catch(() => {});
+export function notifyVacateNoticeSubmitted(vacateDate: string, refundAmount?: number) {
+  const title = '📦 Vacate Notice Scheduled';
+  const refundStr = refundAmount ? ` Estimated deposit refund: ₹${refundAmount.toLocaleString('en-IN')}.` : '';
+  const body = `Your room move-out is scheduled for ${vacateDate}.${refundStr} Management has been notified.`;
+  notificationService.triggerLocalNotification(title, body, { screen: 'VacateNotice', referenceType: 'vacate' }).catch(() => {});
   emitRefresh();
 }
 
 /**
- * Call after visitor pass is successfully submitted.
- */
-export function notifyVisitorPassSubmitted(visitorName?: string) {
-  const title = '👥 Visitor Pass Submitted';
-  const body = visitorName
-    ? `Visitor pass for ${visitorName} has been submitted for approval.`
-    : 'Your visitor pass request has been submitted. Awaiting approval.';
-  showToast('info', title, body);
-  notificationService.triggerLocalNotification(title, body, { screen: 'VisitorPass', referenceType: 'visitor' }).catch(() => {});
-  emitRefresh();
-}
-
-/**
- * Call when gate pass is approved.
- */
-export function notifyGatePassApproved() {
-  const title = '✅ Gate Pass Approved';
-  const body = "Your gate pass has been approved! You're good to go.";
-  showToast('success', title, body);
-  notificationService.triggerLocalNotification(title, body, { screen: 'GatePass', referenceType: 'leave' }).catch(() => {});
-  emitRefresh();
-}
-
-/**
- * Call when gate pass is rejected.
- */
-export function notifyGatePassRejected() {
-  const title = '❌ Gate Pass Rejected';
-  const body = 'Your gate pass request was rejected. Please check the details.';
-  showToast('error', title, body, 5000);
-  notificationService.triggerLocalNotification(title, body, { screen: 'GatePass', referenceType: 'leave' }).catch(() => {});
-  emitRefresh();
-}
-
-/**
- * Call after Growth Journey story/lesson completion.
+ * Call after Growth Journey milestone/lesson completion.
  */
 export function notifyGrowthMilestoneCompleted(xpEarned?: number, levelTitle?: string) {
   const xpStr = xpEarned ? ` (+${xpEarned} XP)` : '';
-  const titleStr = levelTitle ? `"${levelTitle}"` : 'a level';
+  const titleStr = levelTitle ? `"${levelTitle}"` : 'Stage';
   const title = '🎉 Milestone Completed!';
-  const body = `Great job! You completed ${titleStr}${xpStr}. Keep going!`;
-  showToast('success', title, body, 4500);
+  const body = `Great job! You crushed ${titleStr}${xpStr}. Keep your daily learning streak alive!`;
   notificationService.triggerLocalNotification(title, body, { screen: 'GrowthHome', referenceType: 'growth' }).catch(() => {});
   emitRefresh();
 }
 
 /**
- * Call when a new Growth Journey milestone/level becomes available.
- */
-export function notifyGrowthNewMilestone() {
-  const title = '🚀 New Milestone Available';
-  const body = 'A new Growth Journey level is ready for you!';
-  showToast('info', title, body);
-  notificationService.triggerLocalNotification(title, body, { screen: 'GrowthHome', referenceType: 'growth' }).catch(() => {});
-  emitRefresh();
-}
-
-/**
- * Call when Growth Journey streak/progress updates.
+ * Call when Growth Journey streak updates.
  */
 export function notifyGrowthProgress(streak: number) {
   if (streak > 0 && streak % 5 === 0) {
     const title = '🔥 Streak Milestone!';
     const body = `Amazing! You're on a ${streak}-day learning streak. Keep it up!`;
-    showToast('success', title, body, 4000);
     notificationService.triggerLocalNotification(title, body, { screen: 'GrowthHome', referenceType: 'growth' }).catch(() => {});
     emitRefresh();
   }
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-// DAILY NOTIFICATION HOOK  (mount in TenantHomeScreen)
+// DAILY NOTIFICATION HOOK (Mounts in TenantHomeScreen)
 // ═════════════════════════════════════════════════════════════════════════════
 
 interface UseTenantNotificationsOptions {
   userName?: string;
   budget?: number;
   spent?: number;
+  hostelId?: number | null;
+  isDataLoaded?: boolean;
 }
 
 /**
  * Mount this hook in TenantHomeScreen.
- * Fires daily notifications at most once per calendar day.
+ * Controls the daily outside push notification schedule.
  */
 export function useTenantNotifications({
   userName,
   budget = 0,
   spent = 0,
+  hostelId,
+  isDataLoaded = true,
 }: UseTenantNotificationsOptions = {}) {
   const hasRun = useRef(false);
 
   const fireDailyNotifications = useCallback(async () => {
+    if (!isDataLoaded) return;
     if (hasRun.current) return;
     hasRun.current = true;
 
-    const firstName = userName
-      ? userName.split(' ')[0]
-      : 'there';
+    const firstName = userName ? userName.split(' ')[0] : 'there';
+    const now = new Date();
+    const hour = now.getHours();
+    const minute = now.getMinutes();
+    const timeInHours = hour + minute / 60;
 
-    // ── 1. Budget notification (once/day, only when budget is set) ────────────
-    if (budget > 0) {
-      const showBudget = await shouldShowToday(KEY_BUDGET);
-      if (showBudget) {
-        const pct = Math.round((spent / budget) * 100);
-        setTimeout(() => {
-          if (pct >= 100) {
-            showToast(
-              'error',
-              '🚨 Budget Exceeded!',
-              `You've exceeded your ₹${budget.toLocaleString('en-IN')} budget this month.`,
-              5000,
+    // ── 1. Daily Welcome Notification (STRICTLY ONCE PER CALENDAR DAY) ────────
+    const showWelcome = await shouldShowToday(KEY_WELCOME);
+    if (showWelcome) {
+      setTimeout(() => {
+        notificationService.triggerLocalNotification(
+          `Welcome back, ${firstName}! 👋`,
+          `Your hostel dashboard is ready. Rent status, today's food menu & pocket expense tracker at your fingertips.`,
+          { screen: 'TenantHome', referenceType: 'welcome' }
+        ).catch(() => {});
+      }, 1500);
+      await markShownToday(KEY_WELCOME);
+    }
+
+    // ── 2. Daily Mess Menu Notifications (3 Times Daily with food items) ─────
+    try {
+      if (hostelId) {
+        const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+        const todayFull = dayNames[now.getDay()];
+
+        // Helper to fetch today's meal
+        const fetchMealItems = async (mealType: string): Promise<string | null> => {
+          try {
+            const res = await api.get(`/mess-menu/${hostelId}`);
+            const rows: any[] = res.data?.menu || res.data?.data || [];
+            const todayRows = rows.filter(
+              (m: any) =>
+                m.day_of_week?.trim().toLowerCase() === todayFull.toLowerCase() ||
+                m.day_of_week?.trim().toLowerCase() === todayFull.substring(0, 3).toLowerCase()
             );
-          } else if (pct >= 80) {
-            showToast(
-              'warning',
-              '⚠️ Budget Alert',
-              `You've used ${pct}% of your ₹${budget.toLocaleString('en-IN')} monthly budget.`,
-              4500,
-            );
-          } else if (budget > 0) {
-            const remaining = budget - spent;
-            showToast(
-              'info',
-              '💰 Budget Reminder',
-              `You have ₹${remaining.toLocaleString('en-IN')} left from your ₹${budget.toLocaleString('en-IN')} budget today.`,
-              4000,
-            );
+            const found = todayRows.find((m: any) => m.meal_type?.trim().toLowerCase() === mealType.toLowerCase());
+            return found?.items && found.items !== 'Menu not updated' ? found.items : null;
+          } catch {
+            return null;
           }
-        }, 3000);
+        };
+
+        // Morning Breakfast (> 7:00 AM & < 11:30 AM)
+        if (timeInHours >= 7.0 && timeInHours < 11.5) {
+          const showBreakfast = await shouldShowToday(KEY_MESS_BREAKFAST);
+          if (showBreakfast) {
+            const items = await fetchMealItems('breakfast');
+            const itemsText = items ? `${items}` : 'Breakfast is ready in the dining hall';
+            setTimeout(() => {
+              notificationService.triggerLocalNotification(
+                `🍳 Today's Breakfast is Ready! 🎉`,
+                `${itemsText}. Served 8:00 AM – 10:00 AM. Tap to view today's complete mess menu!`,
+                { screen: 'FullMenu', referenceType: 'food' }
+              ).catch(() => {});
+            }, 3000);
+            await markShownToday(KEY_MESS_BREAKFAST);
+          }
+        }
+
+        // Afternoon Lunch (> 12:00 PM & < 15:30 PM)
+        if (timeInHours >= 12.0 && timeInHours < 15.5) {
+          const showLunch = await shouldShowToday(KEY_MESS_LUNCH);
+          if (showLunch) {
+            const items = await fetchMealItems('lunch');
+            const itemsText = items ? `${items}` : 'Hot lunch is being served';
+            setTimeout(() => {
+              notificationService.triggerLocalNotification(
+                `🍲 What's for Lunch Today?`,
+                `${itemsText}. Served in the dining hall until 2:30 PM. Enjoy your meal!`,
+                { screen: 'FullMenu', referenceType: 'food' }
+              ).catch(() => {});
+            }, 3000);
+            await markShownToday(KEY_MESS_LUNCH);
+          }
+        }
+
+        // Evening / Dinner (> 19:30 PM)
+        if (timeInHours >= 19.5) {
+          const showDinner = await shouldShowToday(KEY_MESS_DINNER);
+          if (showDinner) {
+            const items = await fetchMealItems('dinner');
+            const itemsText = items ? `${items}` : 'Delicious dinner is being served';
+            setTimeout(() => {
+              notificationService.triggerLocalNotification(
+                `🍛 Tonight's Dinner Menu`,
+                `${itemsText}. Served from 8:00 PM – 10:00 PM. Don't miss tonight's dinner!`,
+                { screen: 'FullMenu', referenceType: 'food' }
+              ).catch(() => {});
+            }, 3000);
+            await markShownToday(KEY_MESS_DINNER);
+          }
+        }
+      }
+    } catch {}
+
+    // ── 3. Budget Notification (Once/day) ────────────────────────────────────
+    const showBudget = await shouldShowToday(KEY_BUDGET);
+    if (showBudget) {
+      if (budget <= 0) {
+        // Budget NOT set — encourage tenant to set one
+        setTimeout(() => {
+          notificationService.triggerLocalNotification(
+            `💡 Set Your Monthly Budget`,
+            `Take 10 seconds to set your monthly budget limit so you never run out of money before month-end!`,
+            { screen: 'Expenses', referenceType: 'expense' }
+          ).catch(() => {});
+        }, 4500);
+        await markShownToday(KEY_BUDGET);
+      } else {
+        // Budget is set — inform daily status
+        const pct = Math.round((spent / budget) * 100);
+        const remaining = Math.max(0, budget - spent);
+        if (pct >= 100) {
+          setTimeout(() => {
+            notificationService.triggerLocalNotification(
+              `🚨 Budget Exceeded!`,
+              `You've spent ₹${spent.toLocaleString('en-IN')} of your ₹${budget.toLocaleString('en-IN')} budget this month.`,
+              { screen: 'Expenses', referenceType: 'expense' }
+            ).catch(() => {});
+          }, 4500);
+        } else if (pct >= 80) {
+          setTimeout(() => {
+            notificationService.triggerLocalNotification(
+              `⚠️ Budget Alert (${pct}% Used)`,
+              `You have ₹${remaining.toLocaleString('en-IN')} left from your ₹${budget.toLocaleString('en-IN')} monthly budget.`,
+              { screen: 'Expenses', referenceType: 'expense' }
+            ).catch(() => {});
+          }, 4500);
+        } else {
+          setTimeout(() => {
+            notificationService.triggerLocalNotification(
+              `💰 Daily Budget Status`,
+              `You have ₹${remaining.toLocaleString('en-IN')} left from your ₹${budget.toLocaleString('en-IN')} monthly budget today.`,
+              { screen: 'Expenses', referenceType: 'expense' }
+            ).catch(() => {});
+          }, 4500);
+        }
         await markShownToday(KEY_BUDGET);
       }
     }
 
-    // ── 3. Expense reminder (once/day, shown in evening hours) ───────────────
-    const hour = new Date().getHours();
-    // Show expense reminder from 6 PM onwards if not already shown
-    if (hour >= 18) {
-      const showExpense = await shouldShowToday(KEY_EXPENSE);
-      if (showExpense) {
+    // ── 4. Growth Journey Daily Career Boost (Afternoon > 16:00 PM) ──────────
+    if (timeInHours >= 16.0 && timeInHours < 19.5) {
+      const showGrowth = await shouldShowToday(KEY_GROWTH);
+      if (showGrowth) {
         setTimeout(() => {
-          showToast(
-            'info',
-            '📝 Expense Reminder',
-            'Don\'t forget to log today\'s expenses before the day ends!',
-            4000,
-          );
+          notificationService.triggerLocalNotification(
+            `🚀 Free 2 Minutes? Quick Career Boost`,
+            `Learn 3 new English interview words & keep your learning streak alive. Tap to play!`,
+            { screen: 'GrowthHome', referenceType: 'growth' }
+          ).catch(() => {});
         }, 5000);
-        await markShownToday(KEY_EXPENSE);
+        await markShownToday(KEY_GROWTH);
       }
     }
-  }, [userName, budget, spent]);
+
+    // ── 5. Nightly 10-Second Pocket Check (> 20:30 PM) ───────────────────────
+    if (timeInHours >= 20.5) {
+      const showExpense = await shouldShowToday(KEY_EXPENSE_NIGHT);
+      if (showExpense) {
+        setTimeout(() => {
+          notificationService.triggerLocalNotification(
+            `🌙 10-Second Pocket Check`,
+            `Did you spend on chai, auto, or snacks today? Log today's cash & UPI spends to keep your wallet safe.`,
+            { screen: 'Expenses', referenceType: 'expense' }
+          ).catch(() => {});
+        }, 5000);
+        await markShownToday(KEY_EXPENSE_NIGHT);
+      }
+    }
+
+    // ── 6. Weekly App & Stay Feedback (Every 7 days) ─────────────────────────
+    try {
+      const lastFeedbackPrompt = await AsyncStorage.getItem(KEY_LAST_FEEDBACK);
+      const nowTs = Date.now();
+      const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+      if (!lastFeedbackPrompt || nowTs - Number(lastFeedbackPrompt) > SEVEN_DAYS_MS) {
+        setTimeout(() => {
+          notificationService.triggerLocalNotification(
+            `💬 How is your hostel stay?`,
+            `Tell us what we can improve in your room, mess food, or the app. Share quick feedback!`,
+            { screen: 'Feedback', referenceType: 'feedback' }
+          ).catch(() => {});
+        }, 7000);
+        await AsyncStorage.setItem(KEY_LAST_FEEDBACK, String(nowTs));
+      }
+    } catch {}
+
+  }, [userName, budget, spent, hostelId, isDataLoaded]);
 
   useEffect(() => {
     fireDailyNotifications();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [fireDailyNotifications]);
 }
 
 // ── Navigation target helper ──────────────────────────────────────────────────
@@ -332,20 +402,28 @@ export function getTenantNavigationTarget(
   const type = (notificationType || '').toLowerCase();
   const ref  = (referenceType || '').toLowerCase();
 
-  // Payment related
-  if (type.includes('payment') || type.includes('due') || type.includes('fee') || ref === 'payment') {
+  // Payment / Rent related
+  if (type.includes('payment') || type.includes('due') || type.includes('fee') || ref === 'payment' || ref === 'monthly_fee') {
     return { screen: 'Dues' };
+  }
+  // Food / Mess menu
+  if (type.includes('food') || type.includes('mess') || type.includes('breakfast') || type.includes('lunch') || type.includes('dinner') || ref === 'food') {
+    return { screen: 'FullMenu' };
+  }
+  // Vacate notice
+  if (type.includes('vacate') || ref === 'vacate') {
+    return { screen: 'VacateNotice' };
   }
   // Complaint related
   if (type.includes('complaint') || ref === 'complaint') {
     return { screen: 'Complaints' };
   }
-  // Gate pass / leave request
-  if (type.includes('gate') || type.includes('leave') || type.includes('pass') || ref === 'leave_request') {
-    return { screen: 'GatePass' };
+  // Feedback / suggestions
+  if (type.includes('feedback') || type.includes('review') || type.includes('rate') || ref === 'feedback') {
+    return { screen: 'Feedback' };
   }
   // Expense / budget related
-  if (type.includes('expense') || type.includes('budget') || ref === 'expense') {
+  if (type.includes('expense') || type.includes('budget') || ref === 'expense' || ref === 'tenant_expenses') {
     return { screen: 'Expenses' };
   }
   // Growth Journey related
@@ -357,5 +435,24 @@ export function getTenantNavigationTarget(
     return { screen: 'Notices' };
   }
   // Welcome / general → Home
-  return { screen: 'Home' };
+  return { screen: 'TenantHome' };
 }
+
+export const notifyGatePassSubmitted = () => {
+  notificationService.triggerLocalNotification(
+    'Gate Pass Request Submitted 🎫',
+    'Your leave request was sent to the hostel owner for approval.',
+    { screen: 'GatePass' }
+  ).catch(() => {});
+};
+
+export const notifyVisitorPassSubmitted = (visitorName?: string) => {
+  notificationService.triggerLocalNotification(
+    'Visitor Pass Submitted 👤',
+    visitorName
+      ? `Pass requested for ${visitorName}. Waiting for owner approval.`
+      : 'Your visitor request was sent to the hostel owner for approval.',
+    { screen: 'VisitorPass' }
+  ).catch(() => {});
+};
+

@@ -31,8 +31,10 @@ export default function AppHeader({
     const handleBack = () => {
         if (onBack) {
             onBack();
-        } else {
+        } else if (navigation.canGoBack()) {
             navigation.goBack();
+        } else {
+            (navigation as any).navigate('Home');
         }
     };
 

@@ -39,7 +39,8 @@ export const createLeaveRequest = async (req: AuthRequest, res: Response) => {
       'New Leave Request 📅',
       `${studentName} has requested leave from ${start_date} to ${end_date}.`,
       'Medium',
-      { leave_id }
+      { leave_id },
+      { screen: 'RequestsManagement', params: { tab: 'leaves' }, referenceType: 'leave', referenceId: leave_id }
     );
 
     // Also send instant push confirmation to the tenant
@@ -184,7 +185,8 @@ export const createVisitorRequest = async (req: AuthRequest, res: Response) => {
       'New Visitor Request 👤',
       `${studentName} requested a visitor pass for ${visitor_name} on ${visit_date}.`,
       'Medium',
-      { visitor_id }
+      { visitor_id },
+      { screen: 'RequestsManagement', params: { tab: 'visitors' }, referenceType: 'visitor', referenceId: visitor_id }
     );
 
     // Also send instant push confirmation to the tenant
@@ -195,7 +197,7 @@ export const createVisitorRequest = async (req: AuthRequest, res: Response) => {
       `Your visitor request for ${visitor_name} on ${visit_date} has been submitted for approval.`,
       'Medium',
       { visitor_id },
-      { screen: 'Visitors', referenceType: 'visitor', referenceId: visitor_id }
+      { screen: 'VisitorPass', referenceType: 'visitor', referenceId: visitor_id }
     );
 
     res.status(201).json({ success: true, message: 'Visitor request submitted', visitor_id });
@@ -271,10 +273,11 @@ export const updateVisitorStatus = async (req: AuthRequest, res: Response) => {
     await sendNotificationToStudent(
       visitor.student_id,
       'Visitor',
-      'Visitor Request Update',
+      'Visitor Request Update 👤',
       `Your visitor request for ${visitor.visitor_name} has been ${status}.`,
       'Medium',
-      { visitor_id: visitor.visitor_id }
+      { visitor_id: visitor.visitor_id },
+      { screen: 'VisitorPass', referenceType: 'visitor', referenceId: visitor.visitor_id }
     );
 
     res.status(200).json({ success: true, message: 'Visitor status updated' });
