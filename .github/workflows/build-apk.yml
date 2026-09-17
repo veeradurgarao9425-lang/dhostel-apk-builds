@@ -19,7 +19,8 @@ jobs:
     if: |
       github.event_name == 'workflow_dispatch' ||
       contains(github.event.head_commit.message, '[build]') ||
-      contains(github.event.head_commit.message, '[apk]')
+      contains(github.event.head_commit.message, '[apk]') ||
+      contains(github.event.head_commit.message, '[aab]')
 
     steps:
       - name: Checkout code
@@ -120,29 +121,31 @@ jobs:
           echo "org.gradle.parallel=true" >> gradle.properties
           echo "android.enablePngCrunchInReleaseBuilds=false" >> gradle.properties
 
-      - name: Build Release APK
+      - name: Build Release APK and AAB (App Bundle for Play Store)
         working-directory: mobile/android
         env:
-          EXPO_PUBLIC_API_URL: http://143.244.131.69:8081/api
+          EXPO_PUBLIC_API_URL: https://dark-dew-bf62.veeradurgarao840.workers.dev/api
           GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=1024m -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8"
-        run: ./gradlew assembleRelease -PreactNativeArchitectures=armeabi-v7a,arm64-v8a --no-daemon --stacktrace
+        run: ./gradlew assembleRelease bundleRelease -PreactNativeArchitectures=armeabi-v7a,arm64-v8a --no-daemon --stacktrace
 
-      - name: Upload APK artifact (Non-blocking fallback)
+      - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
         continue-on-error: true
         with:
-          name: dhostel-release-apk
-          path: mobile/android/app/build/outputs/apk/release/app-release.apk
-          retention-days: 1
+          name: hostix-release-builds
+          path: |
+            mobile/android/app/build/outputs/apk/release/app-release.apk
+            mobile/android/app/build/outputs/bundle/release/app-release.aab
+          retention-days: 5
           overwrite: true
 
-      - name: Publish APK to GitHub Releases (Bypasses Actions Storage Quota)
+      - name: Publish APK & AAB to GitHub Releases
         uses: ncipollo/release-action@v1
         with:
-          artifacts: "mobile/android/app/build/outputs/apk/release/app-release.apk"
+          artifacts: "mobile/android/app/build/outputs/apk/release/app-release.apk,mobile/android/app/build/outputs/bundle/release/app-release.aab"
           tag: "v-latest"
-          name: "Latest Android APK Release"
-          body: "Latest compiled Android release APK for Hostix mobile app."
+          name: "Latest Android Release (APK & AAB)"
+          body: "Latest compiled Android release builds (APK for testing, AAB bundle for Google Play Store upload)."
           allowUpdates: true
           recreateRelease: true
           token: ${{ secrets.GITHUB_TOKEN }}

@@ -28,6 +28,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useConfirmation } from '../../contexts/ConfirmationContext';
 import { HeaderNotification } from '../components/HeaderNotification';
 import { HostixBrand } from '../components/HostixBrand';
+import { AppVersionFooter } from '../components/AppVersionFooter';
 
 const ProfileScreen = ({ navigation }: any) => {
     const { user, signOut, updateTokenAndUser, hostels: contextHostels } = useAuth();
@@ -596,13 +597,8 @@ const ProfileScreen = ({ navigation }: any) => {
                     </View>
                 </TouchableOpacity>
 
-                {/* 2-Color Brand Footer */}
-                <View style={{ alignItems: 'center', marginTop: 24, marginBottom: 12 }}>
-                    <HostixBrand fontSize={22} subtitle="PG OS" lightTheme={!isDark} />
-                    <Text style={[styles.version, { color: isDark ? '#475569' : '#94A3B8', marginTop: 4 }]}>
-                        v1.0.0 · Smart Hostel Management
-                    </Text>
-                </View>
+                {/* 2-Color Brand & Version Footer */}
+                <AppVersionFooter style={{ marginTop: 24, marginBottom: 16 }} />
             </ScrollView>
 
             {/* ─── HOSTEL SWITCHER MODAL (DRAWER) ─── */}

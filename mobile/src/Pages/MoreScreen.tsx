@@ -20,6 +20,7 @@ import * as Clipboard from 'expo-clipboard';
 import { TenantAppCard } from '../components/TenantAppCard';
 import { HeaderNotification } from '../components/HeaderNotification';
 import { HostixBrand } from '../components/HostixBrand';
+import { AppVersionFooter } from '../components/AppVersionFooter';
 
 // ─── Menu item definition ─────────────────────────────────────────────────────
 interface MenuItem {
@@ -857,13 +858,8 @@ export default function MoreScreen({ hideHeader = false }: MoreScreenProps) {
                     <Text style={[s.logoutText, { color: '#DC2626', fontSize: fontSize }]}>{t('more.logOut')}</Text>
                 </TouchableOpacity>
 
-                {/* 2-Color Brand Footer */}
-                <View style={{ alignItems: 'center', marginTop: 24, marginBottom: 12 }}>
-                    <HostixBrand fontSize={22} subtitle="PG OS" lightTheme={!isDark} />
-                    <Text style={[s.version, { fontSize: fontSize - 3, color: theme.textSecondary, marginTop: 4 }]}>
-                        v1.0.0 · Smart Hostel Management
-                    </Text>
-                </View>
+                {/* 2-Color Brand & Version Footer */}
+                <AppVersionFooter style={{ marginTop: 24, marginBottom: 16 }} />
             </ScrollView>
 
             {/* ─────────────────── HOSTEL SWITCHER MODAL ─────────────────── */}

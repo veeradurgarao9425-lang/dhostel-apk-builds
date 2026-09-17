@@ -8,6 +8,7 @@ import { ChevronRight, ArrowLeft } from 'lucide-react-native';
 
 import { colors, radius, spacing, shadow } from '../../theme/tenantTheme';
 import { notificationService } from '../../services/notificationService';
+import { APP_VERSION } from '../../constants/appVersion';
 
 const NOTIFICATIONS_ENABLED_KEY = 'tenant_notifications_enabled';
 
@@ -141,7 +142,7 @@ export default function SettingsScreen({ navigation }: any) {
         {/* ── About ────────────────────────────────────────────────────────── */}
         <SectionLabel label="About" />
         <View style={styles.card}>
-          <ChevronRow label="App Version" value="1.0.4" isLast />
+          <ChevronRow label="App Version" value={`v${APP_VERSION}`} isLast />
         </View>
       </ScrollView>
     </SafeAreaView>

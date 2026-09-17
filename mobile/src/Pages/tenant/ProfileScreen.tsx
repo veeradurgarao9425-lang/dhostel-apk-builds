@@ -22,6 +22,7 @@ import { useAuth } from '../../../contexts/AuthContext';
 import { ConfirmationDialog } from '../../components/tenant/UIComponents';
 import VacateModal from '../../components/tenant/VacateModal';
 import api from '../../services/api';
+import { APP_VERSION, APP_NAME } from '../../constants/appVersion';
 
 const BRAND = '#7C3AED';
 const WHITE = '#FFFFFF';
@@ -353,7 +354,7 @@ export default function ProfileScreen({ navigation }: any) {
           <Text style={styles.logoutBtnText}>Log Out</Text>
         </TouchableOpacity>
 
-        <Text style={styles.versionText}>Stayvix App v2.4.0</Text>
+        <Text style={styles.versionText}>{APP_NAME} App v{APP_VERSION}</Text>
       </ScrollView>
 
       {/* ── Vacate Modal ── */}

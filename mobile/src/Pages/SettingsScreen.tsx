@@ -8,6 +8,8 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { useToast } from '../context/ToastContext';
 import { useTranslation } from 'react-i18next';
 import api from '../services/api';
+import { AppVersionFooter } from '../components/AppVersionFooter';
+import { APP_VERSION, APP_BUILD } from '../constants/appVersion';
 
 export const SettingsScreen = ({ navigation }: any) => {
     const { theme, isDark, fontSize } = useTheme();
@@ -507,15 +509,20 @@ export const SettingsScreen = ({ navigation }: any) => {
                         onPress={() => navigation.navigate('PrivacyPolicy')}
                     />
                     <View style={[styles.divider, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]} />
-                    <TouchableOpacity style={styles.row}>
+                    <TouchableOpacity 
+                        style={styles.row}
+                        onPress={() => showSuccess(`Hostix is up to date (v${APP_VERSION} Build ${APP_BUILD})`)}
+                        activeOpacity={0.7}
+                    >
                         <View style={[styles.iconContainer, { backgroundColor: isDark ? '#334155' : theme.lightBg }]}>
                             <Bell size={20} color={theme.primary} />
                         </View>
                         <Text style={[styles.label, { fontSize: fontSize, color: theme.textPrimary }]}>{t('settings.checkUpdates', 'Check for Updates')}</Text>
-                        <Text style={[styles.version, { color: theme.textSecondary }]}>v1.0.4</Text>
+                        <Text style={[styles.version, { color: '#10B981', fontWeight: '700' }]}>v{APP_VERSION}</Text>
                     </TouchableOpacity>
                 </Card>
 
+                <AppVersionFooter style={{ marginTop: 8, marginBottom: 24 }} />
                 <View style={styles.bottomSpacing} />
             </ScrollView>
         </View>
