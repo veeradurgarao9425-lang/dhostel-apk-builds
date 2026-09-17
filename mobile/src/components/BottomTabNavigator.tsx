@@ -1,48 +1,81 @@
 import React, { useEffect, useState } from 'react';
-import { View, TouchableOpacity, Text, StyleSheet, Animated } from 'react-native';
+import { View, TouchableOpacity, Text, StyleSheet, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS, FONT, SHADOW } from '../theme/index';
+import { COLORS, FONT } from '../theme/index';
 import { useTranslation } from 'react-i18next';
 import api from '../services/api';
 import { useAuth } from '../../contexts/AuthContext';
+import { useTheme } from '../../contexts/ThemeContext';
 
-// ─── Tab Config ───────────────────────────────────────────────────────────────
-const TABS = [
+// ─── Tab Config with High-Level Professional Icons & Badges ───────────────────
+interface TabConfig {
+    label: string;
+    route: string;
+    activeIcon: keyof typeof Ionicons.glyphMap;
+    inactiveIcon: keyof typeof Ionicons.glyphMap;
+    getBadge?: (duesBadge: number) => { text: string; color: string } | null;
+}
+
+const TABS: TabConfig[] = [
     {
         label: 'Home',
         route: 'HomeTab',
-        activeIcon: 'home' as const,
-        inactiveIcon: 'home-outline' as const,
+        activeIcon: 'home',
+        inactiveIcon: 'home-outline',
     },
     {
         label: 'Money',
         route: 'PendingDuesTab',
-        activeIcon: 'cash' as const,
-        inactiveIcon: 'cash-outline' as const,
+        activeIcon: 'wallet',
+        inactiveIcon: 'wallet-outline',
+        getBadge: (duesBadge: number) => {
+            if (duesBadge > 0) {
+                return {
+                    text: duesBadge > 99 ? '99+ DUE' : `${duesBadge} DUE`,
+                    color: '#EF4444',
+                };
+            }
+            return null;
+        },
     },
     {
         label: 'Students',
         route: 'StudentsTab',
-        activeIcon: 'people' as const,
-        inactiveIcon: 'people-outline' as const,
+        activeIcon: 'people',
+        inactiveIcon: 'people-outline',
+        getBadge: () => ({
+            text: 'NEW',
+            color: '#E11D48',
+        }),
     },
     {
         label: 'Finance',
         route: 'OverviewTab',
-        activeIcon: 'trending-up' as const,
-        inactiveIcon: 'trending-up-outline' as const,
+        activeIcon: 'stats-chart',
+        inactiveIcon: 'stats-chart-outline',
+        getBadge: () => ({
+            text: 'P&L',
+            color: '#F59E0B',
+        }),
     },
 ];
 
-const TAB_BAR_HEIGHT = 60;
+const TAB_BAR_HEIGHT = 62;
 
 // ─── Component ────────────────────────────────────────────────────────────────
 const BottomTabNavigator = ({ state, descriptors, navigation }: any) => {
     const insets = useSafeAreaInsets();
     const { t } = useTranslation();
     const { user } = useAuth();
+    const { theme, isDark } = useTheme();
     const [duesBadge, setDuesBadge] = useState(0);
+
+    const activeColor = theme?.primary || COLORS.primary || '#4F46E5';
+    const inactiveColor = isDark ? '#94A3B8' : '#64748B';
+    const barBg = isDark ? '#0F172A' : '#FFFFFF';
+    const borderColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
+    const pillBorderColor = isDark ? '#0F172A' : '#FFFFFF';
 
     useEffect(() => {
         // Fetch pending dues count for the Dues tab badge (only for owners/staff)
@@ -59,7 +92,11 @@ const BottomTabNavigator = ({ state, descriptors, navigation }: any) => {
     return (
         <View style={[
             styles.container,
-            { paddingBottom: Math.max(insets.bottom, 8) },
+            {
+                backgroundColor: barBg,
+                borderTopColor: borderColor,
+                paddingBottom: Math.max(insets.bottom, 8),
+            },
         ]}>
             {state.routes.map((route: any, index: number) => {
                 const tabConfig = TABS.find(t => t.route === route.name);
@@ -97,6 +134,7 @@ const BottomTabNavigator = ({ state, descriptors, navigation }: any) => {
 
                 const isActive = state.index === index;
                 const iconName = isActive ? tabConfig.activeIcon : tabConfig.inactiveIcon;
+                const badgeInfo = tabConfig.getBadge ? tabConfig.getBadge(duesBadge) : null;
 
                 const handlePress = () => {
                     const event = navigation.emit({
@@ -114,38 +152,49 @@ const BottomTabNavigator = ({ state, descriptors, navigation }: any) => {
                         key={route.key}
                         style={styles.tabItem}
                         onPress={handlePress}
-                        activeOpacity={0.75}
+                        activeOpacity={0.72}
                         accessibilityRole="button"
                         accessibilityLabel={tabConfig.label}
                     >
-                        {/* Active indicator pill at top */}
+                        {/* Subtle top indicator bar */}
                         {isActive && (
-                            <View style={styles.topPill} />
+                            <View style={[styles.topIndicator, { backgroundColor: activeColor }]} />
                         )}
 
-                        {/* Icon with badge */}
-                        <View style={[styles.iconWrap, isActive && styles.iconWrapActive]}>
+                        {/* High-level Icon with overlapping micro-badge */}
+                        <View style={styles.iconContainer}>
                             <Ionicons
                                 name={iconName}
-                                size={22}
-                                color={isActive ? COLORS.primary : COLORS.textSecondary}
+                                size={24}
+                                color={isActive ? activeColor : inactiveColor}
                             />
-                            {/* Badge for Dues tab */}
-                            {tabConfig.route === 'PendingDuesTab' && duesBadge > 0 && (
-                                <View style={styles.badge}>
-                                    <Text style={styles.badgeText}>
-                                        {duesBadge > 99 ? '99+' : duesBadge}
+
+                            {/* Consumer-app style micro capsule pill badge */}
+                            {badgeInfo && (
+                                <View style={[
+                                    styles.microBadge,
+                                    {
+                                        backgroundColor: badgeInfo.color,
+                                        borderColor: pillBorderColor,
+                                    },
+                                ]}>
+                                    <Text style={styles.microBadgeText}>
+                                        {badgeInfo.text}
                                     </Text>
                                 </View>
                             )}
                         </View>
 
-                        <Text style={[
-                            styles.label,
-                            { color: isActive ? COLORS.primary : COLORS.textSecondary },
-                            isActive && styles.labelActive,
-                        ]}>
-                            {t(`tabs.${tabConfig.label.toLowerCase()}`)}
+                        {/* Tab Label */}
+                        <Text
+                            style={[
+                                styles.label,
+                                { color: isActive ? activeColor : inactiveColor },
+                                isActive && styles.labelActive,
+                            ]}
+                            numberOfLines={1}
+                        >
+                            {t(`tabs.${tabConfig.label.toLowerCase()}`, { defaultValue: tabConfig.label })}
                         </Text>
                     </TouchableOpacity>
                 );
@@ -160,75 +209,71 @@ const styles = StyleSheet.create({
         bottom: 0,
         left: 0,
         right: 0,
-        backgroundColor: COLORS.surface,
-        borderTopWidth: 1,
-        borderTopColor: 'rgba(0,0,0,0.08)',
-        paddingTop: 8,
+        borderTopWidth: StyleSheet.hairlineWidth * 1.5,
+        paddingTop: 6,
         flexDirection: 'row',
         justifyContent: 'space-around',
-        alignItems: 'flex-start',
+        alignItems: 'center',
         minHeight: TAB_BAR_HEIGHT,
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: -4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 12,
-        elevation: 20,
+        shadowOffset: { width: 0, height: -3 },
+        shadowOpacity: 0.08,
+        shadowRadius: 10,
+        elevation: 16,
     },
     tabItem: {
         flex: 1,
         alignItems: 'center',
-        paddingTop: 2,
-        gap: 3,
+        justifyContent: 'center',
+        paddingTop: 3,
         position: 'relative',
         minHeight: TAB_BAR_HEIGHT - 8,
     },
-    topPill: {
+    topIndicator: {
         position: 'absolute',
-        top: -8,
-        width: 28,
+        top: -6,
+        width: 22,
         height: 3,
-        borderRadius: COLORS.primary.length, // just full
-        backgroundColor: COLORS.primary,
-        borderBottomLeftRadius: 2,
-        borderBottomRightRadius: 2,
+        borderRadius: 2,
     },
-    iconWrap: {
-        width: 42,
+    iconContainer: {
+        width: 44,
         height: 32,
-        borderRadius: 10,
         alignItems: 'center',
         justifyContent: 'center',
-    },
-    iconWrapActive: {
-        backgroundColor: COLORS.primaryLight,
+        position: 'relative',
     },
     label: {
-        fontSize: FONT.xs,
-        letterSpacing: 0.1,
-        fontWeight: FONT.medium,
+        fontSize: 11,
+        letterSpacing: 0.2,
+        fontWeight: '600',
+        marginTop: 2,
     },
     labelActive: {
-        fontWeight: FONT.semiBold,
+        fontWeight: '800',
     },
-    badge: {
+    microBadge: {
         position: 'absolute',
-        top: -4,
-        right: -8,
-        backgroundColor: COLORS.error || '#E11D48',
-        borderRadius: 10,
-        minWidth: 18,
-        height: 18,
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingHorizontal: 4,
+        bottom: -5,
+        alignSelf: 'center',
+        paddingHorizontal: 4.5,
+        paddingVertical: 1,
+        borderRadius: 8,
         borderWidth: 1.5,
-        borderColor: COLORS.surface,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.2,
+        shadowRadius: 2,
+        elevation: 4,
     },
-    badgeText: {
-        color: '#FFF',
-        fontSize: 9,
-        fontWeight: 'bold',
+    microBadgeText: {
+        color: '#FFFFFF',
+        fontSize: 7.5,
+        fontWeight: '900',
+        letterSpacing: 0.4,
+        textTransform: 'uppercase',
     },
 });
 
 export default BottomTabNavigator;
+

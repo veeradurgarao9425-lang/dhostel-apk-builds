@@ -160,23 +160,36 @@ const BottomTabNavigator = ({ state, navigation }: any) => {
           }
         };
 
+        const badgeText = tab.route === 'Dues' ? 'DUE' : tab.route === 'Notices' ? 'NEW' : null;
+        const badgeColor = tab.route === 'Dues' ? '#EF4444' : '#E11D48';
+
         return (
           <TouchableOpacity
             key={tab.route}
             style={styles.tabItem}
             onPress={handlePress}
-            activeOpacity={0.7}
+            activeOpacity={0.72}
             accessibilityRole="button"
             accessibilityLabel={tab.label}
             accessibilityState={{ selected: isActive }}
           >
-            {/* Icon */}
-            <View style={[styles.iconWrap, isActive && styles.iconWrapActive]}>
+            {/* Active top line */}
+            {isActive && (
+              <View style={[styles.topIndicator, { backgroundColor: theme.colors.primary }]} />
+            )}
+
+            {/* High-level Icon with overlapping micro-badge */}
+            <View style={styles.iconWrap}>
               <Ionicons
                 name={iconName as any}
-                size={22}
+                size={23}
                 color={isActive ? theme.colors.primary : theme.colors.textMuted}
               />
+              {badgeText && (
+                <View style={[styles.microBadge, { backgroundColor: badgeColor }]}>
+                  <Text style={styles.microBadgeText}>{badgeText}</Text>
+                </View>
+              )}
             </View>
 
             {/* Label */}
@@ -204,18 +217,18 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     backgroundColor: theme.colors.surface,
-    borderTopWidth: 1,
+    borderTopWidth: StyleSheet.hairlineWidth * 1.5,
     borderTopColor: theme.colors.borderSoft,
-    paddingTop: 8,
+    paddingTop: 6,
     flexDirection: 'row',
     justifyContent: 'space-around',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     minHeight: TAB_BAR_HEIGHT,
     shadowColor: '#1F2937',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.04,
-    shadowRadius: 16,
-    elevation: 8,
+    shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 16,
   },
   containerNight: {
     backgroundColor: '#0F172A',
@@ -224,28 +237,56 @@ const styles = StyleSheet.create({
   tabItem: {
     flex: 1,
     alignItems: 'center',
-    gap: 4,
+    justifyContent: 'center',
+    paddingTop: 3,
     position: 'relative',
     minHeight: TAB_BAR_HEIGHT - 8,
   },
+  topIndicator: {
+    position: 'absolute',
+    top: -6,
+    width: 22,
+    height: 3,
+    borderRadius: 2,
+  },
   iconWrap: {
-    width: 48,
+    width: 44,
     height: 32,
-    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  iconWrapActive: {
-    backgroundColor: theme.colors.primarySoft,
+    position: 'relative',
   },
   label: {
-    fontSize: 10,
-    letterSpacing: 0.1,
+    fontSize: 11,
+    letterSpacing: 0.2,
     fontWeight: '600',
+    marginTop: 2,
   },
   labelActive: {
     fontWeight: '800',
     color: theme.colors.primary,
+  },
+  microBadge: {
+    position: 'absolute',
+    bottom: -5,
+    alignSelf: 'center',
+    paddingHorizontal: 4.5,
+    paddingVertical: 1,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 4,
+  },
+  microBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 7.5,
+    fontWeight: '900',
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
   },
 });
 

@@ -255,7 +255,7 @@ export const getRoomById = async (req: AuthRequest, res: Response) => {
     const rawStudents = await db('students')
       .where('room_id', roomId)
       .whereIn('status', [1, 2])
-      .select('student_id', 'first_name', 'last_name', 'phone', 'bed_number');
+      .select('student_id', 'first_name', 'last_name', 'phone', 'bed_number', 'vacate_notice_date', 'vacate_notice_reason');
 
     let studentsWithDues = rawStudents;
     if (rawStudents.length > 0) {
