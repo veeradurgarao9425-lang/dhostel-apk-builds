@@ -13,6 +13,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import api from '../services/api';
 import { DashboardCache } from '../services/dashboardCache';
 import { useTranslation } from 'react-i18next';
+import { changeLanguage, getCurrentLanguage } from '../i18n';
 import { useConfirmation } from '../../contexts/ConfirmationContext';
 import { useToast } from '../context/ToastContext';
 import * as Clipboard from 'expo-clipboard';
@@ -67,6 +68,16 @@ export default function MoreScreen({ hideHeader = false }: MoreScreenProps) {
 
     const [stats, setStats] = useState<any>(null);
     const lastStatsFetchRef = React.useRef<number>(0);
+    const [codeCopied, setCodeCopied] = useState(false);
+    const [currentLang, setCurrentLang] = useState<'en' | 'te'>(getCurrentLanguage() === 'te' ? 'te' : 'en');
+
+    const toggleLanguage = async () => {
+        const next = currentLang === 'en' ? 'te' : 'en';
+        await changeLanguage(next);
+        setCurrentLang(next);
+    };
+
+    const hostelCode = (user as any)?.hostel_code || '';
 
     const fetchStats = async (force = false) => {
         const now = Date.now();
@@ -666,6 +677,30 @@ export default function MoreScreen({ hideHeader = false }: MoreScreenProps) {
                                     <Ionicons name="chevron-down" size={12} color="#FCD34D" />
                                 </TouchableOpacity>
                             )}
+
+                            {/* Hostel code copy pill */}
+                            {hostelCode ? (
+                                <TouchableOpacity
+                                    onPress={async () => {
+                                        try {
+                                            await Clipboard.setStringAsync(hostelCode);
+                                            setCodeCopied(true);
+                                            setTimeout(() => setCodeCopied(false), 2000);
+                                        } catch {}
+                                    }}
+                                    activeOpacity={0.8}
+                                    style={ms.hostelCodePill}
+                                >
+                                    <Ionicons
+                                        name={codeCopied ? 'checkmark-circle' : 'qr-code-outline'}
+                                        size={11}
+                                        color={codeCopied ? '#86EFAC' : 'rgba(255,255,255,0.85)'}
+                                    />
+                                    <Text style={[ms.hostelCodeText, codeCopied && { color: '#86EFAC' }]}>
+                                        {codeCopied ? 'Copied!' : `Code: ${hostelCode}`}
+                                    </Text>
+                                </TouchableOpacity>
+                            ) : null}
                         </View>
 
                         <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.7)" />
@@ -989,6 +1024,45 @@ export default function MoreScreen({ hideHeader = false }: MoreScreenProps) {
         </View>
     );
 }
+
+const ms = StyleSheet.create({
+    langPill: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 3,
+        backgroundColor: 'rgba(255,255,255,0.18)',
+        borderRadius: 16,
+        paddingHorizontal: 9,
+        paddingVertical: 5,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.28)',
+    },
+    langPillText: {
+        fontSize: 11,
+        fontWeight: '900',
+        color: '#FFFFFF',
+        letterSpacing: 0.3,
+    },
+    hostelCodePill: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        backgroundColor: 'rgba(255,255,255,0.12)',
+        borderRadius: 14,
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.2)',
+        marginTop: 6,
+        alignSelf: 'flex-start',
+    },
+    hostelCodeText: {
+        fontSize: 10.5,
+        fontWeight: '800',
+        color: 'rgba(255,255,255,0.88)',
+        letterSpacing: 0.4,
+    },
+});
 
 const s = StyleSheet.create({
     root: { flex: 1, backgroundColor: '#F8F7FF' },

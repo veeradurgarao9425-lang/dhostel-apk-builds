@@ -253,7 +253,12 @@ export default function RegisterScreen({ navigation }: any) {
         const missing: string[] = [];
         if (e1) missing.push('Full Name');
         if (e2) missing.push('Email');
-        else if (trimmedEmail && !emailVerified) missing.push('Email Verification (OTP)');
+        else if (trimmedEmail && !emailVerified) {
+            missing.push('Email Verification (OTP)');
+            if (!otpSent) {
+                handleSendOtp();
+            }
+        }
         if (e3) missing.push('Mobile Number');
         if (e4) missing.push('PG Name');
         if (eFloors) missing.push('Floors');
@@ -261,7 +266,11 @@ export default function RegisterScreen({ navigation }: any) {
         if (e5) missing.push('Password (min 6 chars)');
 
         if (missing.length > 0) {
-            setSubmitError(`Please fill all required details: ${missing.join(', ')}.`);
+            if (trimmedEmail && !emailVerified) {
+                setSubmitError('Please verify your email address. A 6-digit OTP code has been sent to your email.');
+            } else {
+                setSubmitError(`Please fill all required details: ${missing.join(', ')}.`);
+            }
             return;
         }
 
@@ -380,22 +389,11 @@ export default function RegisterScreen({ navigation }: any) {
                     />
                 </Field>
 
-                {/* Email + verify */}
+                {/* Email Field with clear verification flow */}
                 <View style={styles.inputGroup}>
                     <Field
-                        label="Email"
+                        label="Email Address"
                         error={getFieldError('email', email)}
-                        rightAction={otpSent ? (
-                            <TouchableOpacity
-                                onPress={() => {
-                                    setOtpSent(false);
-                                    setOtp('');
-                                    clearErr();
-                                }}
-                            >
-                                <Text style={{ color: '#5F2EEA', fontSize: 13, fontWeight: '700' }}>Change</Text>
-                            </TouchableOpacity>
-                        ) : undefined}
                     >
                         <Ionicons name="mail-outline" size={18} color="#7C3AED" style={styles.icon} />
                         <TextInput
@@ -421,62 +419,102 @@ export default function RegisterScreen({ navigation }: any) {
                         />
                         {emailVerified ? (
                             <View style={styles.verifiedBadge}>
-                                <Ionicons name="checkmark-circle" size={16} color="#16A34A" />
+                                <Ionicons name="checkmark-circle" size={18} color="#16A34A" />
                                 <Text style={styles.verifiedText}>Verified</Text>
                             </View>
                         ) : otpSent ? (
                             <View style={styles.verifiedBadge}>
-                                <Ionicons name="lock-closed-outline" size={16} color="#16A34A" />
-                                <Text style={[styles.verifiedText, { color: '#16A34A' }]}>OTP Sent</Text>
+                                <Ionicons name="lock-closed-outline" size={16} color="#7C3AED" />
+                                <Text style={[styles.verifiedText, { color: '#7C3AED' }]}>OTP Sent</Text>
                             </View>
-                        ) : (
-                            <TouchableOpacity
-                                style={[styles.verifyBtn, (sendingOtp || !email.trim()) && { opacity: 0.6 }]}
-                                onPress={handleSendOtp}
-                                disabled={sendingOtp || !email.trim()}
-                                activeOpacity={0.8}
-                            >
-                                {sendingOtp
-                                    ? <ActivityIndicator color="#5F2EEA" size="small" />
-                                    : <Text style={styles.verifyBtnText}>Verify</Text>}
-                            </TouchableOpacity>
-                        )}
+                        ) : null}
                     </Field>
-                    {!otpSent && (
-                        <Text style={styles.helperText}>
-                            Please enter your correct email; you will receive a verification OTP on this email.
-                        </Text>
+
+                    {/* Prominent Verification Action Card below email */}
+                    {!emailVerified && !otpSent && (
+                        <TouchableOpacity
+                            style={[
+                                styles.sendOtpActionCard,
+                                (!email.trim() || sendingOtp) && { opacity: 0.8 }
+                            ]}
+                            onPress={handleSendOtp}
+                            disabled={sendingOtp || !email.trim()}
+                            activeOpacity={0.85}
+                        >
+                            <View style={styles.sendOtpIconCircle}>
+                                <Ionicons name="shield-checkmark-outline" size={20} color="#7C3AED" />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.sendOtpTitle}>Verify Email with OTP</Text>
+                                <Text style={styles.sendOtpSubtitle}>
+                                    {email.trim()
+                                        ? 'Tap to receive 6-digit verification code'
+                                        : 'Enter your email above to verify'}
+                                </Text>
+                            </View>
+                            {sendingOtp ? (
+                                <ActivityIndicator color="#7C3AED" size="small" />
+                            ) : (
+                                <View style={styles.sendOtpBadge}>
+                                    <Text style={styles.sendOtpBadgeText}>Send OTP</Text>
+                                    <Ionicons name="arrow-forward" size={14} color="#FFFFFF" />
+                                </View>
+                            )}
+                        </TouchableOpacity>
+                    )}
+
+                    {/* Email Verified Success Banner */}
+                    {emailVerified && (
+                        <View style={styles.verifiedSuccessCard}>
+                            <Ionicons name="checkmark-circle" size={20} color="#16A34A" />
+                            <View style={{ flex: 1, marginLeft: 8 }}>
+                                <Text style={styles.verifiedSuccessTitle}>Email Verified</Text>
+                                <Text style={styles.verifiedSuccessSubtitle}>{email.trim()}</Text>
+                            </View>
+                            <TouchableOpacity
+                                onPress={() => {
+                                    setEmailVerified(false);
+                                    setOtpSent(false);
+                                    setOtp('');
+                                }}
+                                style={{ padding: 4 }}
+                            >
+                                <Text style={{ color: '#5F2EEA', fontSize: 13, fontWeight: '700' }}>Change</Text>
+                            </TouchableOpacity>
+                        </View>
                     )}
                 </View>
 
-                {/* OTP entry — shown only after a code has been sent and not yet verified */}
+                {/* Dedicated OTP Verification Card */}
                 {otpSent && !emailVerified && (
-                    <View style={{ marginTop: 10 }}>
-                        <Field
-                            label="Enter Verification Code"
-                            error={getFieldError('otp', otp)}
-                            rightAction={
-                                <TouchableOpacity
-                                    onPress={handleSendOtp}
-                                    disabled={sendingOtp || resendTimer > 0}
-                                    style={{ opacity: (sendingOtp || resendTimer > 0) ? 0.6 : 1 }}
-                                >
-                                    {sendingOtp ? (
-                                        <ActivityIndicator color="#5F2EEA" size="small" />
-                                    ) : (
-                                        <Text style={{ color: '#5F2EEA', fontSize: 13, fontWeight: '700' }}>
-                                            {resendTimer > 0 ? `Resend in ${Math.floor(resendTimer / 60)}:${String(resendTimer % 60).padStart(2, '0')}` : 'Resend OTP'}
-                                        </Text>
-                                    )}
-                                </TouchableOpacity>
-                            }
-                        >
+                    <View style={styles.otpVerificationBox}>
+                        <View style={styles.otpHeaderRow}>
+                            <View style={styles.otpHeaderLeft}>
+                                <Ionicons name="mail-open-outline" size={18} color="#7C3AED" />
+                                <Text style={styles.otpHeaderTitle}>Enter Email Verification Code</Text>
+                            </View>
+                            <TouchableOpacity
+                                onPress={() => {
+                                    setOtpSent(false);
+                                    setOtp('');
+                                    clearErr();
+                                }}
+                            >
+                                <Text style={styles.changeEmailText}>Change Email</Text>
+                            </TouchableOpacity>
+                        </View>
+                        <Text style={styles.otpSentToText}>
+                            We sent a 6-digit OTP code to <Text style={{ fontWeight: '700', color: '#1E293B' }}>{email.trim()}</Text>
+                        </Text>
+
+                        {/* OTP Input Box */}
+                        <View style={styles.otpInputWrapper}>
                             <Ionicons name="key-outline" size={18} color="#7C3AED" style={styles.icon} />
                             <TextInput
                                 ref={otpRef}
-                                style={styles.input}
-                                placeholder="6-digit code"
-                                placeholderTextColor="#B8B8B8"
+                                style={[styles.input, { letterSpacing: 4, fontSize: 18, fontWeight: '700' }]}
+                                placeholder="------"
+                                placeholderTextColor="#94A3B8"
                                 keyboardType="number-pad"
                                 maxLength={6}
                                 value={otp}
@@ -490,27 +528,49 @@ export default function RegisterScreen({ navigation }: any) {
                                     clearErr();
                                 }}
                             />
-                            <TouchableOpacity
-                                style={[styles.verifyBtn, (verifyingOtp || otp.length !== 6) && { opacity: 0.6 }]}
-                                onPress={handleVerifyOtp}
-                                disabled={verifyingOtp || otp.length !== 6}
-                                activeOpacity={0.8}
-                            >
-                                {verifyingOtp
-                                    ? <ActivityIndicator color="#5F2EEA" size="small" />
-                                    : <Text style={styles.verifyBtnText}>Confirm</Text>}
-                            </TouchableOpacity>
-                        </Field>
+                        </View>
+                        {getFieldError('otp', otp) ? (
+                            <Text style={styles.fieldErrorText}>{getFieldError('otp', otp)}</Text>
+                        ) : null}
 
-                        {/* Delayed Spam/Junk hint (appears after 15s) */}
-                        {resendTimer <= 105 && (
-                            <View style={styles.spamHintBox}>
-                                <Ionicons name="information-circle-outline" size={14} color="#64748B" />
-                                <Text style={styles.spamHintText}>
-                                    Didn't receive email? Check your <Text style={{ fontWeight: '700', color: '#475569' }}>Spam</Text> or Junk folder.
+                        {/* Confirm Button */}
+                        <TouchableOpacity
+                            style={[styles.confirmOtpBtn, (verifyingOtp || otp.length !== 6) && { opacity: 0.6 }]}
+                            onPress={handleVerifyOtp}
+                            disabled={verifyingOtp || otp.length !== 6}
+                            activeOpacity={0.85}
+                        >
+                            {verifyingOtp ? (
+                                <ActivityIndicator color="#FFFFFF" size="small" />
+                            ) : (
+                                <>
+                                    <Ionicons name="shield-checkmark" size={18} color="#FFFFFF" />
+                                    <Text style={styles.confirmOtpBtnText}>Confirm & Verify Email</Text>
+                                </>
+                            )}
+                        </TouchableOpacity>
+
+                        {/* Resend Row */}
+                        <View style={styles.resendRow}>
+                            <Text style={styles.resendLabel}>Didn't receive the code?</Text>
+                            <TouchableOpacity
+                                onPress={handleSendOtp}
+                                disabled={sendingOtp || resendTimer > 0}
+                                style={{ opacity: (sendingOtp || resendTimer > 0) ? 0.5 : 1 }}
+                            >
+                                <Text style={styles.resendBtnText}>
+                                    {resendTimer > 0 ? `Resend in ${Math.floor(resendTimer / 60)}:${String(resendTimer % 60).padStart(2, '0')}` : 'Resend OTP'}
                                 </Text>
-                            </View>
-                        )}
+                            </TouchableOpacity>
+                        </View>
+
+                        {/* Spam Hint */}
+                        <View style={styles.spamHintBox}>
+                            <Ionicons name="information-circle-outline" size={14} color="#64748B" />
+                            <Text style={styles.spamHintText}>
+                                Check your <Text style={{ fontWeight: '700', color: '#475569' }}>Spam</Text> or Junk folder if not found in inbox.
+                            </Text>
+                        </View>
                     </View>
                 )}
 
@@ -873,6 +933,146 @@ const styles = StyleSheet.create({
         marginLeft: 2,
         lineHeight: 15,
         fontWeight: '500',
+    },
+    sendOtpActionCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#F5F3FF',
+        borderWidth: 1.5,
+        borderColor: '#DDD6FE',
+        borderRadius: 14,
+        padding: 12,
+        marginTop: 6,
+        marginBottom: 8,
+        gap: 10,
+    },
+    sendOtpIconCircle: {
+        width: 38,
+        height: 38,
+        borderRadius: 19,
+        backgroundColor: '#EDE9FE',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    sendOtpTitle: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: '#6D28D9',
+    },
+    sendOtpSubtitle: {
+        fontSize: 11,
+        color: '#64748B',
+        marginTop: 2,
+    },
+    sendOtpBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#7C3AED',
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 10,
+        gap: 4,
+    },
+    sendOtpBadgeText: {
+        color: '#FFFFFF',
+        fontSize: 12,
+        fontWeight: '700',
+    },
+    otpVerificationBox: {
+        backgroundColor: '#FAFAFF',
+        borderWidth: 1.5,
+        borderColor: '#C4B5FD',
+        borderRadius: 16,
+        padding: 16,
+        marginTop: 4,
+        marginBottom: 16,
+    },
+    otpHeaderRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 6,
+    },
+    otpHeaderLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+    otpHeaderTitle: {
+        fontSize: 15,
+        fontWeight: '800',
+        color: '#4C1D95',
+    },
+    changeEmailText: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: '#7C3AED',
+    },
+    otpSentToText: {
+        fontSize: 12,
+        color: '#64748B',
+        marginBottom: 12,
+    },
+    otpInputWrapper: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#FFFFFF',
+        borderWidth: 1.5,
+        borderColor: '#A78BFA',
+        borderRadius: 12,
+        paddingHorizontal: 14,
+        height: 52,
+    },
+    confirmOtpBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#7C3AED',
+        borderRadius: 12,
+        height: 48,
+        marginTop: 12,
+        gap: 6,
+    },
+    confirmOtpBtnText: {
+        color: '#FFFFFF',
+        fontSize: 14,
+        fontWeight: '800',
+    },
+    resendRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: 12,
+        gap: 6,
+    },
+    resendLabel: {
+        fontSize: 12,
+        color: '#64748B',
+    },
+    resendBtnText: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: '#6D28D9',
+    },
+    verifiedSuccessCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#F0FDF4',
+        borderWidth: 1,
+        borderColor: '#86EFAC',
+        borderRadius: 12,
+        padding: 10,
+        marginTop: 6,
+        marginBottom: 8,
+    },
+    verifiedSuccessTitle: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: '#15803D',
+    },
+    verifiedSuccessSubtitle: {
+        fontSize: 11,
+        color: '#16A34A',
     },
     eyeBtn: {
         padding: 6,

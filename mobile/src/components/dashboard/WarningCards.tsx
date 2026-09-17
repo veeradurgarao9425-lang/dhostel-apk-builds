@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-nati
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../../contexts/ThemeContext';
+import { useTranslation } from 'react-i18next';
 
 interface WarningCardsProps {
     data: {
@@ -29,6 +30,7 @@ interface ChipItem {
 export const WarningCards = ({ data }: WarningCardsProps) => {
     const navigation = useNavigation<any>();
     const { isDark } = useTheme();
+    const { t } = useTranslation();
 
     const chips: ChipItem[] = [];
 
@@ -36,7 +38,7 @@ export const WarningCards = ({ data }: WarningCardsProps) => {
     if (data.qrRegisterCount > 0) {
         chips.push({
             count: data.qrRegisterCount,
-            label: 'QR Requests',
+            label: t('dashboard.qrRequests', 'QR Requests'),
             icon: 'qr-code-outline',
             color: '#0284C7',
             bg: isDark ? 'rgba(2,132,199,0.18)' : '#F0F9FF',
@@ -49,7 +51,7 @@ export const WarningCards = ({ data }: WarningCardsProps) => {
     if (data.unallocatedCount > 0) {
         chips.push({
             count: data.unallocatedCount,
-            label: 'No Room',
+            label: t('dashboard.noRoom', 'No Room'),
             icon: 'bed-outline',
             color: '#E11D48',
             bg: isDark ? 'rgba(225,29,72,0.18)' : '#FFF1F2',
@@ -62,7 +64,7 @@ export const WarningCards = ({ data }: WarningCardsProps) => {
     if (data.pendingAdmissionsCount > 0) {
         chips.push({
             count: data.pendingAdmissionsCount,
-            label: 'Adm Fee Due',
+            label: t('dashboard.admFeeDue', 'Adm Fee Due'),
             icon: 'cash-outline',
             color: '#D97706',
             bg: isDark ? 'rgba(217,119,6,0.18)' : '#FFFBEB',
@@ -75,7 +77,7 @@ export const WarningCards = ({ data }: WarningCardsProps) => {
     if ((data.prebookingsCount || 0) > 0) {
         chips.push({
             count: data.prebookingsCount!,
-            label: 'Pre-Bookings',
+            label: t('dashboard.preBookings', 'Pre-Bookings'),
             icon: 'calendar-outline',
             color: '#7C3AED',
             bg: isDark ? 'rgba(124,58,237,0.18)' : '#F5F3FF',
@@ -88,7 +90,7 @@ export const WarningCards = ({ data }: WarningCardsProps) => {
     if ((data.vacateCount || 0) > 0) {
         chips.push({
             count: data.vacateCount!,
-            label: 'Vacate Bed',
+            label: t('dashboard.vacateBed', 'Vacate Bed'),
             icon: 'exit-outline',
             color: '#DC2626',
             bg: isDark ? 'rgba(220,38,38,0.18)' : '#FEF2F2',
@@ -101,7 +103,7 @@ export const WarningCards = ({ data }: WarningCardsProps) => {
     if ((data.activeGuestsCount || 0) > 0) {
         chips.push({
             count: data.activeGuestsCount!,
-            label: 'Active Guests',
+            label: t('dashboard.activeGuests', 'Active Guests'),
             icon: 'people-outline',
             color: '#059669',
             bg: isDark ? 'rgba(5,150,105,0.18)' : '#ECFDF5',
@@ -114,7 +116,7 @@ export const WarningCards = ({ data }: WarningCardsProps) => {
     if (data.openComplaintsCount > 0) {
         chips.push({
             count: data.openComplaintsCount,
-            label: 'Complaints',
+            label: t('dashboard.complaints', 'Complaints'),
             icon: 'construct-outline',
             color: '#4F46E5',
             bg: isDark ? 'rgba(79,70,229,0.18)' : '#EEF2FF',
@@ -130,7 +132,7 @@ export const WarningCards = ({ data }: WarningCardsProps) => {
             <View style={s.headerRow}>
                 <View style={[s.dot, { backgroundColor: '#EF4444' }]} />
                 <Text style={[s.headerLabel, { color: isDark ? '#94A3B8' : '#64748B' }]}>
-                    Action Required
+                    {t('dashboard.actionRequired', 'Action Required')}
                 </Text>
             </View>
             <ScrollView

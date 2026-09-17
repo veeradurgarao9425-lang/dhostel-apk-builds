@@ -19,6 +19,19 @@ import { getResolvedImageUrl } from '../../utils/imageHelper';
 const { width: SCREEN_W } = Dimensions.get('window');
 const INR = (n: number) => `₹${Number(n).toLocaleString('en-IN')}`;
 
+/**
+ * Close the assistant modal first, then navigate after the slide-out
+ * animation completes (250 ms). This prevents the target screen from
+ * rendering hidden behind the still-visible Modal, which caused the
+ * owner to see a blank/empty details screen.
+ */
+const navigateAndClose = (screen: string, params?: Record<string, any>) => {
+  DeviceEventEmitter.emit('CLOSE_ASSISTANT');
+  setTimeout(() => {
+    RootNavigation.navigate(screen, params);
+  }, 260);
+};
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 export interface StatCard {
   label: string;
@@ -665,8 +678,7 @@ const ActionButtonsBlock = ({ buttons, isWelcome }: { buttons: ActionButton[]; i
                 Haptics.selectionAsync().catch(() => { });
                 if (btn.onPress) { btn.onPress(); return; }
                 if (btn.screen) {
-                  RootNavigation.navigate(btn.screen);
-                  DeviceEventEmitter.emit('CLOSE_ASSISTANT');
+                  navigateAndClose(btn.screen);
                 }
               }}
               activeOpacity={0.75}
@@ -729,8 +741,7 @@ const ActionButtonsBlock = ({ buttons, isWelcome }: { buttons: ActionButton[]; i
               Haptics.selectionAsync().catch(() => { });
               if (btn.onPress) { btn.onPress(); return; }
               if (btn.screen) {
-                RootNavigation.navigate(btn.screen);
-                DeviceEventEmitter.emit('CLOSE_ASSISTANT');
+                navigateAndClose(btn.screen);
               }
             }}
             activeOpacity={0.75}
@@ -786,16 +797,14 @@ const DueListBlock = ({ dues, onCollect }: { dues: DueRecord[]; onCollect?: (id:
     if (due.phone) {
       Linking.openURL(`tel:${due.phone}`).catch(() => {});
     } else if (due.studentId) {
-      RootNavigation.navigate('StudentDetails', { studentId: due.studentId });
-      DeviceEventEmitter.emit('CLOSE_ASSISTANT');
+      navigateAndClose('StudentDetails', { studentId: due.studentId });
     }
   };
 
   const handleOpenStudent = (due: DueRecord) => {
     Haptics.selectionAsync().catch(() => {});
     if (due.studentId) {
-      RootNavigation.navigate('StudentDetails', { studentId: due.studentId });
-      DeviceEventEmitter.emit('CLOSE_ASSISTANT');
+      navigateAndClose('StudentDetails', { studentId: due.studentId });
     }
   };
 
@@ -1031,8 +1040,7 @@ const StepsBlock = ({ title, steps, screen, screenLabel }: {
         style={[st.actionBtn, st.actionBtnPrimary, { marginTop: 16, alignSelf: 'flex-start' }]}
         onPress={() => {
           Haptics.selectionAsync().catch(() => { });
-          RootNavigation.navigate(screen);
-          DeviceEventEmitter.emit('CLOSE_ASSISTANT');
+          navigateAndClose(screen);
         }}
         activeOpacity={0.8}
       >
@@ -1060,8 +1068,7 @@ const EmptyStateBlock = ({ icon, message, subMessage, action }: {
           if (action.onPress) {
             action.onPress();
           } else if (action.screen) {
-            RootNavigation.navigate(action.screen);
-            DeviceEventEmitter.emit('CLOSE_ASSISTANT');
+            navigateAndClose(action.screen);
           }
         }}
       >
@@ -1271,11 +1278,10 @@ const StudentDetailCardBlock = ({ student }: { student: any }) => {
           style={[st.accordionQuickBtn, { backgroundColor: '#EEF2FF', borderColor: '#C7D2FE', flex: 1.2 }]}
           onPress={() => {
             if (student.student_id) {
-              RootNavigation.navigate('StudentDetails', { studentId: student.student_id });
+              navigateAndClose('StudentDetails', { studentId: student.student_id });
             } else {
-              RootNavigation.navigate('Students');
+              navigateAndClose('Students');
             }
-            DeviceEventEmitter.emit('CLOSE_ASSISTANT');
           }}
           activeOpacity={0.75}
         >
@@ -1286,8 +1292,7 @@ const StudentDetailCardBlock = ({ student }: { student: any }) => {
         <TouchableOpacity
           style={[st.accordionQuickBtn, { backgroundColor: '#4F46E5', borderColor: '#4F46E5', flex: 1.2 }]}
           onPress={() => {
-            RootNavigation.navigate('CollectedPayments');
-            DeviceEventEmitter.emit('CLOSE_ASSISTANT');
+            navigateAndClose('CollectedPayments');
           }}
           activeOpacity={0.75}
         >
@@ -1836,8 +1841,7 @@ const RoomDetailCardBlock = ({ room }: { room: any }) => {
                     activeOpacity={0.75}
                     onPress={() => {
                       if (studentId) {
-                        RootNavigation.navigate('StudentDetails', { studentId });
-                        DeviceEventEmitter.emit('CLOSE_ASSISTANT');
+                        navigateAndClose('StudentDetails', { studentId });
                       }
                     }}
                   >
@@ -1946,8 +1950,7 @@ const RoomDetailCardBlock = ({ room }: { room: any }) => {
             }
           ]}
           onPress={() => {
-            RootNavigation.navigate('Rooms');
-            DeviceEventEmitter.emit('CLOSE_ASSISTANT');
+            navigateAndClose('Rooms');
           }}
           activeOpacity={0.8}
         >
@@ -2036,8 +2039,7 @@ const VacantRoomsCardBlock = ({ title, rooms, onSelectRoom }: {
       DeviceEventEmitter.emit('ASSISTANT_CHIP_CLICKED', `Room ${r.room_number}`);
       onSelectRoom(r.room_number);
     } else {
-      RootNavigation.navigate('RoomDetails', { roomId: r.room_id || r.id, roomNumber: r.room_number });
-      DeviceEventEmitter.emit('CLOSE_ASSISTANT');
+      navigateAndClose('RoomDetails', { roomId: r.room_id || r.id, roomNumber: r.room_number });
     }
   };
 
@@ -2127,8 +2129,7 @@ const StudentListCardBlock = ({ title, students }: { title: string; students: an
     const studentId = s.student_id || s.id;
     if (studentId) {
       Haptics.selectionAsync().catch(() => {});
-      RootNavigation.navigate('StudentDetails', { studentId });
-      DeviceEventEmitter.emit('CLOSE_ASSISTANT');
+      navigateAndClose('StudentDetails', { studentId });
     }
   };
 
@@ -2857,6 +2858,9 @@ export const AssistantResponse: React.FC<AssistantResponseProps> = ({ blocks }) 
 
         case 'income_breakdown_card':
           return <IncomeBreakdownCardBlock key={i} data={block.data} />;
+
+        case 'app_info_card':
+          return <AppInfoCardBlock key={i} topic={(block as any).topic} />;
 
         case 'distribution_donut_card':
           return (

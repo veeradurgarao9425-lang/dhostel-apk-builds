@@ -10,14 +10,14 @@ const BODY_PAD = 14;
 
 // Original 8 Quick Actions (with Guests instead of Pre-Book)
 const QUICK_ACTIONS = [
-    { label: 'Add Tenant',     icon: 'person-add',          color: '#7C3AED', bg: '#EDE9FE', route: 'AddStudent' },
-    { label: 'Add Room',       icon: 'bed',                  color: '#0284C7', bg: '#E0F2FE', route: 'AddRoom' },
-    { label: 'Guests',         icon: 'people-circle',        color: '#D97706', bg: '#FEF3C7', route: 'Guests' },
-    { label: 'Collect Rent',   icon: 'cash',                 color: '#10B981', bg: '#D1FAE5', route: 'CollectedPayments' },
-    { label: 'Add Expense',    icon: 'receipt',              color: '#EA580C', bg: '#FFEDD5', route: 'AddExpense' },
-    { label: 'Complaints',     icon: 'chatbubble-ellipses',  color: '#E11D48', bg: '#FFE4E6', route: 'ComplaintsManagement' },
-    { label: 'Bill Reminders', icon: 'notifications',        color: '#4F46E5', bg: '#EEF2FF', route: 'BillReminders' },
-    { label: 'Staff',          icon: 'people',               color: '#0891B2', bg: '#CFFAFE', route: 'AddStaff' },
+    { label: 'Add Tenant', icon: 'person-add', color: '#7C3AED', bg: '#EDE9FE', route: 'AddStudent' },
+    { label: 'Add Room', icon: 'bed', color: '#0284C7', bg: '#E0F2FE', route: 'AddRoom' },
+    { label: 'Guests', icon: 'people-circle', color: '#D97706', bg: '#FEF3C7', route: 'Guests' },
+    { label: 'Collect Rent', icon: 'cash', color: '#10B981', bg: '#D1FAE5', route: 'CollectedPayments' },
+    { label: 'Add Expense', icon: 'receipt', color: '#EA580C', bg: '#FFEDD5', route: 'AddExpense' },
+    { label: 'Complaints', icon: 'chatbubble-ellipses', color: '#E11D48', bg: '#FFE4E6', route: 'ComplaintsManagement' },
+    { label: 'Bill Reminders', icon: 'notifications', color: '#4F46E5', bg: '#EEF2FF', route: 'BillReminders' },
+    { label: 'Staff', icon: 'people', color: '#0891B2', bg: '#CFFAFE', route: 'AddStaff' },
 ];
 
 const getLabel = (label: string, t: any) => {
@@ -26,6 +26,7 @@ const getLabel = (label: string, t: any) => {
     if (label === 'Guests') return t('dashboard.guests', label);
     if (label === 'Collect Rent') return t('dashboard.collectedRent', label);
     if (label === 'Add Expense') return t('dashboard.addExpense', label);
+    if (label === 'Complaints') return t('dashboard.complaints', label);
     if (label === 'Bill Reminders') return t('dashboard.bills', label);
     if (label === 'Staff') return t('dashboard.staff', label);
     return label;
@@ -36,8 +37,38 @@ const PAGES = [QUICK_ACTIONS.slice(0, 4), QUICK_ACTIONS.slice(4, 8)];
 const TOTAL_PAGES = PAGES.length;
 
 interface QuickActionsGridProps {
-    data: { prebookingsCount: number; };
+    data: {
+        prebookingsCount?: number;
+        unallocatedCount?: number;
+        qrRegisterCount?: number;
+        openComplaintsCount?: number;
+        pendingAdmissionsCount?: number;
+        vacateCount?: number;
+        activeGuestsCount?: number;
+    };
 }
+
+const getBadgeInfo = (label: string, data: QuickActionsGridProps['data']) => {
+    if (!data) return null;
+    if (label === 'Complaints' && (data.openComplaintsCount || 0) > 0) {
+        return { count: data.openComplaintsCount!, color: '#E11D48' };
+    }
+    if (label === 'Guests' && (data.activeGuestsCount || 0) > 0) {
+        return { count: data.activeGuestsCount!, color: '#D97706' };
+    }
+    if (label === 'Add Tenant') {
+        const c = (data.qrRegisterCount || 0) + (data.unallocatedCount || 0);
+        if (c > 0) return { count: c, color: '#7C3AED' };
+    }
+    if (label === 'Collect Rent' && (data.pendingAdmissionsCount || 0) > 0) {
+        return { count: data.pendingAdmissionsCount!, color: '#10B981' };
+    }
+    if (label === 'Bill Reminders') {
+        const c = (data.prebookingsCount || 0) + (data.vacateCount || 0);
+        if (c > 0) return { count: c, color: '#4F46E5' };
+    }
+    return null;
+};
 
 export const QuickActionsGrid = ({ data }: QuickActionsGridProps) => {
     const navigation = useNavigation<any>();
@@ -51,26 +82,36 @@ export const QuickActionsGrid = ({ data }: QuickActionsGridProps) => {
 
     const renderPage = ({ item }: { item: typeof QUICK_ACTIONS }) => (
         <View style={[s.page, { width: PAGE_W }]}>
-            {item.map((a, i) => (
-                <TouchableOpacity
-                    key={i}
-                    style={[s.quickItem, { backgroundColor: isDark ? '#1E293B' : theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}
-                    activeOpacity={0.72}
-                    onPress={() => navigation.navigate(a.route)}
-                >
-                    <View style={s.quickIconWrap}>
-                        <View style={[s.iconCircle, { backgroundColor: isDark ? '#0F172A' : a.bg }]}>
-                            <Ionicons name={a.icon as any} size={20} color={a.color} />
-                        </View>
-                    </View>
-                    <Text
-                        style={[s.quickLabel, { fontSize: Math.max(9, fontSize - 4), color: isDark ? '#94A3B8' : '#475569' }]}
-                        numberOfLines={2}
+            {item.map((a, i) => {
+                const badge = getBadgeInfo(a.label, data);
+                return (
+                    <TouchableOpacity
+                        key={i}
+                        style={[s.quickItem, { backgroundColor: isDark ? '#1E293B' : theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9' }]}
+                        activeOpacity={0.72}
+                        onPress={() => navigation.navigate(a.route)}
                     >
-                        {getLabel(a.label, t)}
-                    </Text>
-                </TouchableOpacity>
-            ))}
+                        <View style={s.quickIconWrap}>
+                            <View style={[s.iconCircle, { backgroundColor: isDark ? '#0F172A' : a.bg }]}>
+                                <Ionicons name={a.icon as any} size={20} color={a.color} />
+                            </View>
+                            {badge && badge.count > 0 ? (
+                                <View style={[s.badge, { backgroundColor: badge.color }]}>
+                                    <Text style={s.badgeText}>
+                                        {badge.count > 99 ? '99+' : badge.count}
+                                    </Text>
+                                </View>
+                            ) : null}
+                        </View>
+                        <Text
+                            style={[s.quickLabel, { fontSize: Math.max(9, fontSize - 4), color: isDark ? '#94A3B8' : '#475569' }]}
+                            numberOfLines={2}
+                        >
+                            {getLabel(a.label, t)}
+                        </Text>
+                    </TouchableOpacity>
+                );
+            })}
         </View>
     );
 
@@ -85,6 +126,10 @@ export const QuickActionsGrid = ({ data }: QuickActionsGridProps) => {
                         <Text style={[s.sectionTitle, { fontSize: fontSize - 2, color: theme.textSecondary }]}>
                             {t('dashboard.quickActions')}
                         </Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: isDark ? 'rgba(16, 185, 129, 0.15)' : '#ECFDF5', paddingHorizontal: 7, paddingVertical: 2, borderRadius: 10, borderWidth: 1, borderColor: isDark ? 'rgba(16, 185, 129, 0.3)' : '#A7F3D0', marginLeft: 4 }}>
+                            <Ionicons name="bulb" size={10} color="#10B981" />
+                            <Text style={{ fontSize: 9.5, fontWeight: '700', color: isDark ? '#34D399' : '#047857' }}>Drag cards left & right</Text>
+                        </View>
                     </View>
                     <TouchableOpacity
                         onPress={() => navigation.navigate('More' as any)}

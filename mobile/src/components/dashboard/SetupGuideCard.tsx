@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, LayoutAnimation, Platform, UI
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../../contexts/ThemeContext';
+import { useTranslation } from 'react-i18next';
 import { LinearGradient } from 'expo-linear-gradient';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -36,9 +37,24 @@ const STEPS = [
     },
 ];
 
+const getStepTitle = (key: string, t: any) => {
+    if (key === 'hostel') return t('dashboard.setupHostelTitle', 'Create your Hostel');
+    if (key === 'room') return t('dashboard.setupRoomTitle', 'Add Rooms & Floors');
+    if (key === 'tenant') return t('dashboard.setupTenantTitle', 'Register First Tenant');
+    return '';
+};
+
+const getStepSub = (key: string, t: any) => {
+    if (key === 'hostel') return t('dashboard.setupHostelSub', 'Enter your hostel name, type, and address details');
+    if (key === 'room') return t('dashboard.setupRoomSub', 'Set up room numbers, floors, and single or bulk rooms');
+    if (key === 'tenant') return t('dashboard.setupTenantSub', 'Add a student, allocate room, and set monthly rent');
+    return '';
+};
+
 export const SetupGuideCard = ({ hasHostel, hasRooms, hasTenants }: SetupGuideCardProps) => {
     const navigation = useNavigation<any>();
     const { theme, isDark } = useTheme();
+    const { t } = useTranslation();
     const [isCollapsed, setIsCollapsed] = useState(false);
 
     const isStep1Done = Boolean(hasHostel);
@@ -73,12 +89,9 @@ export const SetupGuideCard = ({ hasHostel, hasRooms, hasTenants }: SetupGuideCa
                             <Ionicons name="rocket-outline" size={18} color={theme.primary} />
                         </View>
                         <View style={styles.headerTextWrap}>
-                            <Text style={[styles.title, { color: theme.textPrimary }]}>Quick Setup Guide</Text>
+                            <Text style={[styles.title, { color: theme.textPrimary }]}>{t('dashboard.quickSetupGuide', 'Quick Setup Guide')}</Text>
                             <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
-                                {isCollapsed 
-                                    ? `Progress: ${completedCount} of 3 tasks completed`
-                                    : `${completedCount} of 3 tasks completed`
-                                }
+                                {`${completedCount} / 3 ${t('dashboard.tasksCompleted', 'tasks completed')}`}
                             </Text>
                         </View>
                     </View>
@@ -175,10 +188,10 @@ export const SetupGuideCard = ({ hasHostel, hasRooms, hasTenants }: SetupGuideCa
                                             fontWeight: isCurrent ? '700' : '600',
                                         }
                                     ]} numberOfLines={1}>
-                                        {step.title}
+                                        {getStepTitle(step.key, t) || step.title}
                                     </Text>
                                     <Text style={[styles.stepSub, { color: theme.textSecondary }]} numberOfLines={2}>
-                                        {step.subtitle}
+                                        {getStepSub(step.key, t) || step.subtitle}
                                     </Text>
                                 </View>
 
@@ -196,7 +209,7 @@ export const SetupGuideCard = ({ hasHostel, hasRooms, hasTenants }: SetupGuideCa
                                             style={styles.actionBtnGradient}
                                         >
                                             <View style={styles.actionBtn}>
-                                                <Text style={styles.actionBtnText}>Start</Text>
+                                                <Text style={styles.actionBtnText}>{t('common.start', 'Start')}</Text>
                                                 <Ionicons name="arrow-forward" size={11} color="#FFF" style={{ marginLeft: 3 }} />
                                             </View>
                                         </LinearGradient>

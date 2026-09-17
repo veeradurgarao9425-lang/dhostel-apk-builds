@@ -10,7 +10,8 @@
     "test": "node --test --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON \"src/**/__tests__/*.test.ts\"",
     "typecheck": "tsc --noEmit",
     "build-apk": "git commit --allow-empty -m \"Trigger APK Build [build]\" && git push origin main && git push builds main",
-    "build-apk:secondary": "git commit --allow-empty -m \"Trigger APK Build [build]\" && git push builds main"
+    "build-apk:secondary": "git commit --allow-empty -m \"Trigger APK Build [build]\" && git push builds main",
+    "build-aab": "cd android && gradlew.bat bundleRelease"
   },
   "dependencies": {
     "@expo-google-fonts/inter": "^0.4.2",

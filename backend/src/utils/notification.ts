@@ -131,49 +131,36 @@ export const sendNotificationToUser = async (options: SendNotificationOptions): 
       console.error('[Notification] Socket emission error:', socErr);
     }
 
-    // 2. Fetch push tokens for this user/student (cross-resolve student_id <-> user_id)
-    let resolvedUserId = userId;
-    let resolvedStudentId = studentId;
-
-    if (studentId && !resolvedUserId) {
-      const studentRecord = await db('students')
-        .where({ student_id: studentId })
-        .orWhere({ user_id: studentId })
-        .select('user_id', 'student_id')
-        .first()
-        .catch(() => null);
-      if (studentRecord?.user_id) resolvedUserId = studentRecord.user_id;
-      if (studentRecord?.student_id) resolvedStudentId = studentRecord.student_id;
-    } else if (userId && !resolvedStudentId) {
-      const studentRecord = await db('students')
-        .where({ user_id: userId })
-        .orWhere({ student_id: userId })
-        .select('student_id', 'user_id')
-        .first()
-        .catch(() => null);
-      if (studentRecord?.student_id) resolvedStudentId = studentRecord.student_id;
-      if (studentRecord?.user_id) resolvedUserId = studentRecord.user_id;
-    }
-
-    const candidateIds = Array.from(
-      new Set(
-        [userId, studentId, resolvedUserId, resolvedStudentId]
-          .filter((id): id is number => id !== undefined && id !== null && !isNaN(Number(id)))
-          .map(Number)
-      )
-    );
-
+    // 2. Fetch push tokens cleanly based on recipient type (preventing cross-wiring between owners and students)
     let userTokens: any[] = [];
-    if (candidateIds.length > 0) {
+    const cleanUserId = userId !== null && userId !== undefined && !isNaN(Number(userId)) ? Number(userId) : null;
+    const cleanStudentId = studentId !== null && studentId !== undefined && !isNaN(Number(studentId)) ? Number(studentId) : null;
+
+    if (cleanStudentId && cleanUserId) {
       userTokens = await db('user_push_tokens')
-        .whereIn('user_id', candidateIds)
-        .orWhereIn('student_id', candidateIds)
+        .where('student_id', cleanStudentId)
+        .orWhere('user_id', cleanUserId)
+        .select('push_token')
+        .catch(() => []);
+    } else if (cleanStudentId) {
+      userTokens = await db('user_push_tokens')
+        .where('student_id', cleanStudentId)
+        // Graceful fallback for legacy records saved before student_id column separation
+        .orWhere(function() {
+          this.where('user_id', cleanStudentId).whereNull('student_id');
+        })
+        .select('push_token')
+        .catch(() => []);
+    } else if (cleanUserId) {
+      userTokens = await db('user_push_tokens')
+        .where('user_id', cleanUserId)
+        .whereNull('student_id')
         .select('push_token')
         .catch(() => []);
     }
 
     if (!userTokens || userTokens.length === 0) {
-      console.log(`[Notification] No push tokens found in DB for User:${userId ?? '-'} / Student:${studentId ?? '-'} (resolved User:${resolvedUserId ?? '-'}). Push delivery skipped.`);
+      console.log(`[Notification] No push tokens found in DB for User:${cleanUserId ?? '-'} / Student:${cleanStudentId ?? '-'}. Push delivery skipped.`);
       return;
     }
 
@@ -260,7 +247,6 @@ export const sendNotificationToUser = async (options: SendNotificationOptions): 
               defaultVibrateTimings: true,
               priority: 'high',
               visibility: 'public',
-              clickAction: 'FLUTTER_NOTIFICATION_CLICK',
             },
           },
         });

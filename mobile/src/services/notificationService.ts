@@ -179,10 +179,19 @@ export const notificationService = {
       if (token && !token.startsWith('ExponentPushToken[') && !token.startsWith('ExpoPushToken[')) {
         console.log('[FCM] ✅ Firebase FCM Token obtained:', token.slice(0, 30) + '...');
         this._lastRegisteredToken = token;
+        AsyncStorage.setItem('cached_fcm_token', token).catch(() => {});
         await this.sendTokenToBackend(token);
       } else {
-        console.log('[FCM] ℹ️ Native Firebase FCM is required for push tokens (Expo Go does not support native FCM).');
-        token = null;
+        const cached = await AsyncStorage.getItem('cached_fcm_token').catch(() => null);
+        if (cached) {
+          console.log('[FCM] ℹ️ Using cached FCM token for session sync:', cached.slice(0, 30) + '...');
+          token = cached;
+          this._lastRegisteredToken = cached;
+          await this.sendTokenToBackend(cached);
+        } else {
+          console.log('[FCM] ℹ️ Native Firebase FCM is required for push tokens (Expo Go does not support native FCM).');
+          token = null;
+        }
       }
 
       return token;

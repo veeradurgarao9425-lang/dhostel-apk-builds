@@ -1426,9 +1426,58 @@ export async function patchDatabaseSchema() {
         }
         console.log('[schema-patch] Relaxing user_push_tokens.user_id to nullable...');
         await db.raw("ALTER TABLE user_push_tokens MODIFY COLUMN user_id INT NULL");
+
+        // Ensure push_token column can accommodate long tokens
+        try {
+          await db.raw("ALTER TABLE user_push_tokens MODIFY COLUMN push_token VARCHAR(500) NOT NULL");
+        } catch (_) {}
       }
     } catch (e: any) {
       console.error('[schema-patch] Error updating user_push_tokens for tenant tokens:', e.message);
+    }
+
+    // 13.55 Ensure notifications table supports student_id, deduplicate_key, and deep-link routing
+    try {
+      if (tableNamesLower.includes('notifications')) {
+        const [notifCols] = await db.raw("SHOW COLUMNS FROM notifications");
+        const notifColNames = (notifCols as any[]).map(c => c.Field.toLowerCase());
+
+        if (!notifColNames.includes('student_id')) {
+          console.log('[schema-patch] adding student_id to notifications...');
+          await db.raw("ALTER TABLE notifications ADD COLUMN student_id INT NULL");
+        }
+        if (!notifColNames.includes('deduplicate_key')) {
+          console.log('[schema-patch] adding deduplicate_key to notifications...');
+          await db.raw("ALTER TABLE notifications ADD COLUMN deduplicate_key VARCHAR(191) NULL");
+          await db.raw("CREATE INDEX idx_notifications_dedup ON notifications(deduplicate_key)");
+        }
+        if (!notifColNames.includes('screen')) {
+          console.log('[schema-patch] adding screen to notifications...');
+          await db.raw("ALTER TABLE notifications ADD COLUMN screen VARCHAR(100) NULL");
+        }
+        if (!notifColNames.includes('params')) {
+          console.log('[schema-patch] adding params to notifications...');
+          await db.raw("ALTER TABLE notifications ADD COLUMN params TEXT NULL");
+        }
+        if (!notifColNames.includes('reference_type')) {
+          console.log('[schema-patch] adding reference_type to notifications...');
+          await db.raw("ALTER TABLE notifications ADD COLUMN reference_type VARCHAR(100) NULL");
+        }
+        if (!notifColNames.includes('reference_id')) {
+          console.log('[schema-patch] adding reference_id to notifications...');
+          await db.raw("ALTER TABLE notifications ADD COLUMN reference_id VARCHAR(100) NULL");
+        }
+        if (!notifColNames.includes('deep_link')) {
+          console.log('[schema-patch] adding deep_link to notifications...');
+          await db.raw("ALTER TABLE notifications ADD COLUMN deep_link VARCHAR(255) NULL");
+        }
+        if (!notifColNames.includes('metadata')) {
+          console.log('[schema-patch] adding metadata to notifications...');
+          await db.raw("ALTER TABLE notifications ADD COLUMN metadata TEXT NULL");
+        }
+      }
+    } catch (e: any) {
+      console.error('[schema-patch] Error ensuring notifications columns:', e.message);
     }
 
     // 13.6 Ensure guests table has email, id_proof_type_id, id_proof_number, and status columns

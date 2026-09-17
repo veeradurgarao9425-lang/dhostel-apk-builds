@@ -98,7 +98,7 @@ export const OverviewCard = ({ data, setShowCollectionSheet, pulseValue, fmt }: 
                             adjustsFontSizeToFit={true}
                             minimumFontScale={0.75}
                         >
-                            {availableRooms > 0 ? `${availableRooms} vacant` : 'Total Rooms'}
+                            {availableRooms > 0 ? `${availableRooms} ${t('dashboard.vacant', 'vacant')}` : t('dashboard.totalRooms', 'Total Rooms')}
                         </Text>
                     </View>
                 </TouchableOpacity>
@@ -127,7 +127,7 @@ export const OverviewCard = ({ data, setShowCollectionSheet, pulseValue, fmt }: 
                             adjustsFontSizeToFit={true}
                             minimumFontScale={0.75}
                         >
-                            {occupancyPct}% full
+                            {occupancyPct}% {t('dashboard.occupied', 'full')}
                         </Text>
                     </View>
                 </TouchableOpacity>
@@ -149,7 +149,7 @@ export const OverviewCard = ({ data, setShowCollectionSheet, pulseValue, fmt }: 
                     </View>
                     <View style={{ flex: 1, minWidth: 0, paddingRight: 4 }}>
                         <Text style={{ fontSize: 9.5, fontWeight: '700', color: theme.textSecondary, textTransform: 'uppercase', letterSpacing: 0.3 }} numberOfLines={1}>
-                            {data.collectionStats.monthName || t('dashboard.month')} Collection
+                            {data.collectionStats.monthName ? `${data.collectionStats.monthName} ${t('dashboard.collection', 'Collection')}` : t('dashboard.monthlyCollection', 'Monthly Collection')}
                         </Text>
                         <Text 
                             style={{ fontSize: 15, fontWeight: '800', color: '#10B981' }} 
@@ -173,7 +173,7 @@ export const OverviewCard = ({ data, setShowCollectionSheet, pulseValue, fmt }: 
                                 adjustsFontSizeToFit={true}
                                 minimumFontScale={0.7}
                             >
-                                {fmt(data.collectionStats.pending)} due
+                                {fmt(data.collectionStats.pending)} {t('dashboard.due', 'due')}
                             </Text>
                         </View>
                     )}
@@ -183,7 +183,7 @@ export const OverviewCard = ({ data, setShowCollectionSheet, pulseValue, fmt }: 
                             <View style={[s.progressFill, { width: `${collectionPct}%` }]} />
                         </View>
                         <Text style={{ fontSize: 8, color: theme.textSecondary, fontWeight: '600', marginTop: 2 }} numberOfLines={1}>
-                            {collectionPct}% collected
+                            {collectionPct}% {t('dashboard.collected', 'collected')}
                         </Text>
                     </View>
                 </View>

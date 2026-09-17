@@ -17,27 +17,27 @@ export const registerToken = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ success: false, error: 'push_token is required' });
     }
 
-    // Tenants (role_id 3) store both student_id and user_id; owners/staff store user_id
+    // Tenants (role_id 3) store student_id (with user_id = null to avoid foreign key violations against users table)
+    // Owners / Staff store user_id (with student_id = null)
     const isTenant = Number(user.role_id) === 3 || user.role === 'TENANT' || user.role === 'tenant' || user.role === 'student' || Boolean((user as any).is_tenant);
-    let studentId: any = null;
+    let studentId: number | null = null;
     if (isTenant) {
       try {
-        studentId = await getAuthenticatedStudentId(user) || user.user_id;
+        const resolved = await getAuthenticatedStudentId(user);
+        studentId = resolved ? Number(resolved) : Number(user.user_id);
       } catch (e) {
-        studentId = user.user_id;
+        studentId = Number(user.user_id);
       }
     }
 
     const upsertData: any = {
       push_token,
-      user_id: user.user_id,
+      user_id: isTenant ? null : Number(user.user_id),
+      student_id: isTenant ? studentId : null,
       device_name: device_name || null,
       platform: platform || null,
       updated_at: new Date(),
     };
-    if (studentId) {
-      upsertData.student_id = studentId;
-    }
 
     try {
       const existing = await db('user_push_tokens').where({ push_token }).first();
@@ -49,17 +49,21 @@ export const registerToken = async (req: AuthRequest, res: Response) => {
           created_at: new Date(),
         });
       }
+      console.log(`[Notification] Token registered for ${isTenant ? `Student ${studentId}` : `User ${user.user_id}`}`);
     } catch (dbErr: any) {
+      console.error('[Notification] Error saving push token:', dbErr?.message);
       // Fallback if student_id column is not in DB table
-      delete upsertData.student_id;
-      const existing = await db('user_push_tokens').where({ push_token }).first().catch(() => null);
-      if (existing) {
-        await db('user_push_tokens').where({ push_token }).update(upsertData).catch(() => {});
-      } else {
-        await db('user_push_tokens').insert({
-          ...upsertData,
-          created_at: new Date(),
-        }).catch(() => {});
+      if (isTenant && (dbErr?.code === 'ER_BAD_FIELD_ERROR' || String(dbErr?.sqlMessage || '').includes('student_id'))) {
+        delete upsertData.student_id;
+        const existing = await db('user_push_tokens').where({ push_token }).first().catch(() => null);
+        if (existing) {
+          await db('user_push_tokens').where({ push_token }).update(upsertData).catch(() => {});
+        } else {
+          await db('user_push_tokens').insert({
+            ...upsertData,
+            created_at: new Date(),
+          }).catch(() => {});
+        }
       }
     }
 
@@ -111,13 +115,14 @@ export const getNotifications = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    const isTenant = user.role_id === 3;
+    const isTenant = Number(user.role_id) === 3 || user.role === 'TENANT' || user.role === 'tenant' || user.role === 'student';
     let realStudentId: any = null;
     if (isTenant) {
       try {
-        realStudentId = await getAuthenticatedStudentId(user) || user.user_id;
+        const resolved = await getAuthenticatedStudentId(user);
+        realStudentId = resolved ? Number(resolved) : Number(user.user_id);
       } catch (e) {
-        realStudentId = user.user_id;
+        realStudentId = Number(user.user_id);
       }
     }
 
@@ -125,16 +130,14 @@ export const getNotifications = async (req: AuthRequest, res: Response) => {
     try {
       let query = db('notifications').orderBy('created_at', 'desc').limit(limit);
       if (isTenant && realStudentId) {
-        query = query.where(function() {
-          this.where('student_id', realStudentId).orWhere('user_id', user.user_id);
-        });
+        query = query.where('student_id', realStudentId);
       } else {
         query = query.where('user_id', user.user_id);
       }
       notifications = await query;
     } catch (queryErr) {
       notifications = await db('notifications')
-        .where('user_id', user.user_id)
+        .where(isTenant && realStudentId ? { student_id: realStudentId } : { user_id: user.user_id })
         .orderBy('created_at', 'desc')
         .limit(limit)
         .catch(() => []);

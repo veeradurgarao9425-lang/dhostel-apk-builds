@@ -6,6 +6,7 @@ import QRCode from 'react-native-qrcode-svg';
 import * as Clipboard from 'expo-clipboard';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../../contexts/AuthContext';
+import { useTranslation } from 'react-i18next';
 import api from '../services/api';
 
 interface TenantAppCardProps {
@@ -18,6 +19,7 @@ interface TenantAppCardProps {
 export const TenantAppCard: React.FC<TenantAppCardProps> = ({ theme, isDark, hostelCode = 'HOSTIX', isMini = false }) => {
     const navigation = useNavigation<any>();
     const { user } = useAuth();
+    const { t } = useTranslation();
     const [isCopied, setIsCopied] = useState(false);
 
     const hostelId = user?.hostel_id || '1';
@@ -73,7 +75,7 @@ export const TenantAppCard: React.FC<TenantAppCardProps> = ({ theme, isDark, hos
                                     onPress={handleShare}
                                 >
                                     <Ionicons name="share-social" size={10} color={isDark ? '#DDD6FE' : '#7C3AED'} />
-                                    <Text style={{ color: isDark ? '#DDD6FE' : '#7C3AED', fontSize: 9, fontWeight: '700' }}>Share Link</Text>
+                                    <Text style={{ color: isDark ? '#DDD6FE' : '#7C3AED', fontSize: 9, fontWeight: '700' }}>{t('dashboard.shareLink', 'Share Link')}</Text>
                                 </TouchableOpacity>
                             </View>
                         </View>
@@ -96,9 +98,9 @@ export const TenantAppCard: React.FC<TenantAppCardProps> = ({ theme, isDark, hos
                                         <Text style={{ color: '#FFFFFF', fontSize: 9.5, fontWeight: '800', textTransform: 'uppercase' }}>QR Signup</Text>
                                     </View>
                                 </View>
-                                <Text style={styles.title}>Register Students & Guests</Text>
+                                <Text style={styles.title}>{t('dashboard.registerStudentsGuests', 'Register Students & Guests')}</Text>
                                 <Text style={styles.subtitle} numberOfLines={2}>
-                                    Self-admission & visitor check-in QR poster for your reception or entrance.
+                                    {t('dashboard.qrPosterSub', 'Self-admission & visitor check-in QR poster for your reception or entrance.')}
                                 </Text>
 
                                 <View style={styles.actionRow}>
@@ -107,7 +109,7 @@ export const TenantAppCard: React.FC<TenantAppCardProps> = ({ theme, isDark, hos
                                         onPress={openQRSignup}
                                     >
                                         <Ionicons name="qr-code" size={13} color="#7C3AED" />
-                                        <Text style={styles.codeText}>View QR Poster</Text>
+                                        <Text style={styles.codeText}>{t('dashboard.viewQRPoster', 'View QR Poster')}</Text>
                                     </TouchableOpacity>
                                     
                                     <TouchableOpacity 
@@ -115,7 +117,7 @@ export const TenantAppCard: React.FC<TenantAppCardProps> = ({ theme, isDark, hos
                                         onPress={handleShare}
                                     >
                                         <Ionicons name="share-social" size={13} color="#FFFFFF" />
-                                        <Text style={styles.secondaryButtonText}>Share Link</Text>
+                                        <Text style={styles.secondaryButtonText}>{t('dashboard.shareLink', 'Share Link')}</Text>
                                     </TouchableOpacity>
                                 </View>
                             </View>

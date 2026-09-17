@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
-    View, Text, StyleSheet, TouchableOpacity,
+    View, Text, StyleSheet, TouchableOpacity, Modal,
     ScrollView, StatusBar, RefreshControl, Animated,
     ActivityIndicator, Linking, Image, Dimensions, Platform, DeviceEventEmitter,
 } from 'react-native';
@@ -10,6 +10,7 @@ import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import * as Clipboard from 'expo-clipboard';
 import api from '../services/api';
 import { DashboardCache } from '../services/dashboardCache';
 import { useAuth } from '../../contexts/AuthContext';
@@ -20,9 +21,11 @@ import { EmptyState } from '../components/ui/EmptyState';
 import { SkeletonList } from '../components/ui/SkeletonCard';
 import { AppHeader } from '../components/AppHeader';
 import { HeaderNotification } from '../components/HeaderNotification';
+import { HostixBrand } from '../components/HostixBrand';
 import { toLocalDateStr } from '../utils/dateUtils';
 import { useRefresh } from '../../contexts/RefreshContext';
 import { useTranslation } from 'react-i18next';
+import { changeLanguage, getCurrentLanguage } from '../i18n';
 import { TenantAppCard } from '../components/TenantAppCard';
 import MoreScreen from './MoreScreen';
 import { ModalSheet } from '../components/FormComponents';
@@ -134,7 +137,14 @@ export default function HomeScreen() {
     const { user, hostels, hostelsLoading, loadHostels, updateTokenAndUser } = useAuth();
     const { showError, showApiError, showSuccess } = useToast();
     const { theme, isDark, fontSize } = useTheme();
-    const { t } = useTranslation();
+    const { t, i18n } = useTranslation();
+    const [showLanguageModal, setShowLanguageModal] = useState(false);
+    const currentLang = (i18n.language && i18n.language.startsWith('te')) ? 'te' : 'en';
+
+    const handleSelectLanguage = async (lang: 'en' | 'te') => {
+        await changeLanguage(lang);
+        setShowLanguageModal(false);
+    };
     const [data, setData] = useState(INITIAL_STATE);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -143,6 +153,8 @@ export default function HomeScreen() {
     const [showCollectionSheet, setShowCollectionSheet] = useState(false);
     const [showHostelSelector, setShowHostelSelector] = useState(false);
     const [switchingHostelId, setSwitchingHostelId] = useState<number | null>(null);
+    const [codeCopied, setCodeCopied] = useState(false);
+    const [copiedHostelId, setCopiedHostelId] = useState<number | string | null>(null);
     const [showTour, setShowTour] = useState(false);
     const [tourStep, setTourStep] = useState(0);
     const [renewalStudents, setRenewalStudents] = useState<any[]>([]);
@@ -489,6 +501,17 @@ export default function HomeScreen() {
         }
     };
 
+    const handleCopyHostelCode = async (code: string, id: number | string) => {
+        try {
+            if (!code) return;
+            await Clipboard.setStringAsync(code);
+            setCopiedHostelId(id);
+            showSuccess(t('dashboard.codeCopied', 'Hostel code copied to clipboard!'));
+            setTimeout(() => setCopiedHostelId(null), 2000);
+        } catch (err) {
+            console.error('Failed to copy code:', err);
+        }
+    };
 
     // ── Quick action press handler ────────────────────────────────────────────
     const handleQuickAction = (a: typeof QUICK_ACTIONS[0]) => {
@@ -745,32 +768,71 @@ export default function HomeScreen() {
                 <View style={s.hdrOrb1} />
                 <View style={s.hdrOrb2} />
 
-                <View style={s.headerRow1}>
-                    {/* LEFT: Avatar + greeting + hostel pill */}
-                    <TouchableOpacity
-                        style={s.avatarCircle}
-                        onPress={() => navigation.navigate('Profile')}
-                        activeOpacity={0.8}
-                    >
-                        {(user as any)?.photo && typeof (user as any).photo === 'string' && (user as any).photo.trim() !== '' && (user as any).photo.trim() !== 'null' && (user as any).photo.startsWith('http') ? (
-                            <Image source={{ uri: (user as any).photo }} style={s.avatarImage} />
-                        ) : (
-                            <Text style={s.avatarLetter}>{avatarLetter(user?.full_name || 'O')}</Text>
-                        )}
-                    </TouchableOpacity>
+                {/* ── ROW 1: Brand & Top Utilities (like 1FCode) ── */}
+                <View style={s.brandRow}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
+                        <View style={s.brandIconWrap}>
+                            <Ionicons name="flash" size={14} color="#F59E0B" />
+                        </View>
+                        <HostixBrand fontSize={20} uppercase={true} />
+                    </View>
 
-                    <View style={{ flex: 1, marginLeft: 10, marginRight: 8, minWidth: 0, justifyContent: 'center' }}>
-                        {/* Greeting + name row */}
-                        <Text style={s.hdrGreeting} numberOfLines={1}>{t(getGreetingKey())} 👋</Text>
-                        <Text style={s.headerOwnerName} numberOfLines={1} ellipsizeMode="tail">
-                            {user?.full_name?.split(' ')[0] || (user?.role === 'STAFF' ? 'Staff' : 'Admin')}
-                        </Text>
-                        {/* Hostel selector pill */}
+                    <View style={s.topUtilities}>
+                        <TouchableOpacity
+                            style={s.headerIconBtn}
+                            onPress={() => scrollToPage(activePageIndex === 0 ? 1 : 0)}
+                            activeOpacity={0.8}
+                        >
+                            <Ionicons name={activePageIndex === 0 ? "apps-outline" : "grid-outline"} size={17} color="#FFF" />
+                        </TouchableOpacity>
+
+                        {backgroundLoading && (
+                            <ActivityIndicator size="small" color="rgba(255,255,255,0.8)" />
+                        )}
+
+                        <HeaderNotification navigation={navigation} />
+
+                        {/* Language Dropdown Pill (Right corner, matching 1FCode) */}
+                        <TouchableOpacity
+                            style={s.topLangPill}
+                            onPress={() => setShowLanguageModal(!showLanguageModal)}
+                            activeOpacity={0.8}
+                        >
+                            <Ionicons name="globe-outline" size={12} color="#FFFFFF" />
+                            <Text style={s.topLangPillText}>
+                                {currentLang === 'te' ? 'తె' : 'EN'}
+                            </Text>
+                            <Ionicons name={showLanguageModal ? "chevron-up" : "chevron-down"} size={10} color="rgba(255,255,255,0.85)" />
+                        </TouchableOpacity>
+                    </View>
+                </View>
+
+                {/* ── ROW 2: Date + Hostel Selection (Slim, Light, 1FCode style) ── */}
+                <View style={s.compactSubRow}>
+                    <View style={s.compactSubLeft}>
+                        {/* Compact Date Pill */}
+                        <View style={s.compactDatePill}>
+                            <Ionicons name="calendar-outline" size={11.5} color="rgba(255,255,255,0.9)" />
+                            <Text style={s.compactDateText}>
+                                {(() => {
+                                    const now = new Date();
+                                    if (currentLang === 'te') {
+                                        return now.toLocaleDateString('te-IN', { weekday: 'short', day: 'numeric', month: 'short' });
+                                    }
+                                    const weekday = now.toLocaleDateString('en-US', { weekday: 'short' });
+                                    const day = now.getDate();
+                                    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                                    return `${weekday}, ${day} ${months[now.getMonth()]}`;
+                                })()}
+                            </Text>
+                        </View>
+
+                        {/* Hostel Selector right after Date */}
                         {user?.role === 'STAFF' || user?.role_id === 4 ? (
-                            <View style={[s.hostelNameBtn, { opacity: 0.95 }]}>
-                                <Ionicons name="business" size={11} color="rgba(255,255,255,0.9)" />
-                                <Text style={s.hostelNameLabel} numberOfLines={1} ellipsizeMode="tail">
-                                    {data.hostelName || user?.hostel_name || 'Assigned Hostel'}
+                            <View style={[s.compactHostelBtn, { opacity: 0.95 }]}>
+                                <Ionicons name="business" size={12} color="rgba(255,255,255,0.9)" />
+                                <Text style={s.compactHostelText} numberOfLines={1} ellipsizeMode="tail">
+                                    {data.hostelName || user?.hostel_name || t('dashboard.assignedHostel', 'Assigned Hostel')}
                                 </Text>
                             </View>
                         ) : (
@@ -778,39 +840,34 @@ export default function HomeScreen() {
                                 ref={headerSelectorRef}
                                 onPress={() => { setShowHostelSelector(true); loadHostels(); }}
                                 activeOpacity={0.75}
-                                style={s.hostelNameBtn}
+                                style={s.compactHostelBtn}
                             >
-                                <Ionicons name="business" size={11} color="rgba(255,255,255,0.9)" />
-                                <Text style={s.hostelNameLabel} numberOfLines={1} ellipsizeMode="tail">
-                                    {data.hostelName || 'My Hostel'}
+                                <Ionicons name="business" size={12} color="#FCD34D" />
+                                <Text style={[s.compactHostelText, { color: '#FCD34D' }]} numberOfLines={1} ellipsizeMode="tail">
+                                    {data.hostelName || t('dashboard.myHostel', 'My Hostel')}
                                 </Text>
-                                <Ionicons name="chevron-down" size={10} color="rgba(255,255,255,0.85)" />
+                                {data.hostelCode ? (
+                                    <View style={s.compactCodeBadge}>
+                                        <Text style={s.compactCodeBadgeText}>{data.hostelCode}</Text>
+                                    </View>
+                                ) : null}
+                                <Ionicons name="chevron-down" size={10} color="#FCD34D" />
                             </TouchableOpacity>
                         )}
                     </View>
 
-                    {/* RIGHT: actions */}
-                    <View style={s.headerActions}>
-                        <TouchableOpacity
-                            style={s.headerIconBtn}
-                            onPress={() => scrollToPage(activePageIndex === 0 ? 1 : 0)}
-                            activeOpacity={0.8}
-                        >
-                            <Ionicons name={activePageIndex === 0 ? "apps-outline" : "grid-outline"} size={18} color="#FFF" />
-                        </TouchableOpacity>
-                        {backgroundLoading && (
-                            <ActivityIndicator size="small" color="rgba(255,255,255,0.8)" style={{ marginRight: 2 }} />
+                    {/* Small User Avatar on Right */}
+                    <TouchableOpacity
+                        style={s.compactAvatar}
+                        onPress={() => navigation.navigate('Profile')}
+                        activeOpacity={0.8}
+                    >
+                        {(user as any)?.photo && typeof (user as any).photo === 'string' && (user as any).photo.trim() !== '' && (user as any).photo.trim() !== 'null' && (user as any).photo.startsWith('http') ? (
+                            <Image source={{ uri: (user as any).photo }} style={s.compactAvatarImg} />
+                        ) : (
+                            <Text style={s.compactAvatarLetter}>{avatarLetter(user?.full_name || 'O')}</Text>
                         )}
-                        <HeaderNotification navigation={navigation} />
-                    </View>
-                </View>
-
-                {/* Date strip */}
-                <View style={s.hdrDateStrip}>
-                    <Ionicons name="calendar-outline" size={12} color="#FFFFFF" />
-                    <Text style={s.hdrDateText}>
-                        {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
-                    </Text>
+                    </TouchableOpacity>
                 </View>
             </LinearGradient>
 
@@ -1008,18 +1065,93 @@ export default function HomeScreen() {
 
                                         {/* Middle info */}
                                         <View style={s.hostelSelectInfo}>
-                                            <Text style={[s.hostelSelectName, { color: theme.textPrimary }]} numberOfLines={1}>
-                                                {h.hostel_name}
-                                            </Text>
+                                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                                <Text style={[s.hostelSelectName, { color: theme.textPrimary, flexShrink: 1, maxWidth: 170 }]} numberOfLines={1} ellipsizeMode="tail">
+                                                    {h.hostel_name}
+                                                </Text>
+                                                {isActive && (
+                                                    <View style={[s.activeChip, { backgroundColor: isDark ? 'rgba(99, 102, 241, 0.25)' : 'rgba(99, 102, 241, 0.12)' }]}>
+                                                        <Text style={[s.activeChipText, { color: theme.primary }]}>{t('dashboard.active', 'Active')}</Text>
+                                                    </View>
+                                                )}
+                                            </View>
                                             <View style={s.hostelSelectSubRow}>
                                                 <Ionicons name="location-outline" size={11} color={theme.textSecondary} style={{ marginRight: 2 }} />
-                                                <Text style={[s.hostelSelectAddress, { color: theme.textSecondary }]} numberOfLines={1}>
+                                                <Text style={[s.hostelSelectAddress, { color: theme.textSecondary, flexShrink: 1 }]} numberOfLines={1} ellipsizeMode="tail">
                                                     {(() => {
                                                         const addressParts = [h.address, h.city].filter(v => v && String(v).trim().length > 0 && String(v).trim() !== ',');
                                                         return addressParts.join(', ') || 'No address';
                                                     })()}
                                                 </Text>
                                             </View>
+
+                                            {/* Hostel Code Pill with Copy Action */}
+                                            {(() => {
+                                                const hCode = h.hostel_code || (isActive ? (data.hostelCode || (user as any)?.hostel_code) : '');
+                                                if (!hCode) return null;
+                                                const isCopied = copiedHostelId === h.hostel_id;
+                                                return (
+                                                    <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 5 }}>
+                                                        <TouchableOpacity
+                                                            onPress={(e) => {
+                                                                e.stopPropagation();
+                                                                handleCopyHostelCode(hCode, h.hostel_id);
+                                                            }}
+                                                            activeOpacity={0.7}
+                                                            style={[
+                                                                s.drawerCodePill,
+                                                                {
+                                                                    backgroundColor: isCopied
+                                                                        ? (isDark ? '#064E3B' : '#D1FAE5')
+                                                                        : (isDark ? '#334155' : '#F1F5F9'),
+                                                                    borderColor: isCopied
+                                                                        ? '#10B981'
+                                                                        : (isDark ? '#475569' : '#E2E8F0'),
+                                                                }
+                                                            ]}
+                                                        >
+                                                            <Ionicons
+                                                                name={isCopied ? "checkmark-circle" : "key-outline"}
+                                                                size={11.5}
+                                                                color={isCopied ? '#10B981' : theme.primary}
+                                                            />
+                                                            <Text
+                                                                style={[
+                                                                    s.drawerCodeLabel,
+                                                                    { color: isCopied ? (isDark ? '#A7F3D0' : '#065F46') : theme.textSecondary }
+                                                                ]}
+                                                            >
+                                                                {t('dashboard.hostelCode', 'Code')}:
+                                                            </Text>
+                                                            <Text
+                                                                style={[
+                                                                    s.drawerCodeValue,
+                                                                    { color: isCopied ? (isDark ? '#A7F3D0' : '#065F46') : theme.textPrimary }
+                                                                ]}
+                                                            >
+                                                                {hCode}
+                                                            </Text>
+                                                            <View
+                                                                style={[
+                                                                    s.drawerCopyTag,
+                                                                    {
+                                                                        backgroundColor: isCopied ? '#10B981' : theme.primary,
+                                                                    }
+                                                                ]}
+                                                            >
+                                                                <Ionicons
+                                                                    name={isCopied ? "checkmark" : "copy-outline"}
+                                                                    size={9.5}
+                                                                    color="#FFF"
+                                                                />
+                                                                <Text style={s.drawerCopyTagText}>
+                                                                    {isCopied ? t('common.copied', 'Copied') : t('common.copy', 'Copy')}
+                                                                </Text>
+                                                            </View>
+                                                        </TouchableOpacity>
+                                                    </View>
+                                                );
+                                            })()}
                                         </View>
 
                                         {/* Right status / actions */}
@@ -1101,6 +1233,70 @@ export default function HomeScreen() {
                     )}
                 </ScrollView>
             </ModalSheet>
+
+            {/* Language Options Dropdown Menu (Anchored under the button) */}
+            <Modal
+                visible={showLanguageModal}
+                transparent={true}
+                animationType="none"
+                onRequestClose={() => setShowLanguageModal(false)}
+            >
+                <TouchableOpacity
+                    style={s.langDropdownOverlay}
+                    activeOpacity={1}
+                    onPress={() => setShowLanguageModal(false)}
+                >
+                    <View
+                        style={[
+                            s.langDropdownMenu,
+                            {
+                                top: Math.max(insets.top + 8, 48) + 40,
+                                right: 18,
+                                backgroundColor: isDark ? '#1E293B' : '#FFFFFF',
+                                borderColor: isDark ? '#334155' : '#E2E8F0',
+                            }
+                        ]}
+                    >
+                        {/* English Option */}
+                        <TouchableOpacity
+                            onPress={() => handleSelectLanguage('en')}
+                            activeOpacity={0.7}
+                            style={[
+                                s.langDropdownItem,
+                                currentLang === 'en' && { backgroundColor: isDark ? '#334155' : '#EEF2FF' }
+                            ]}
+                        >
+                            <Text style={{ fontSize: 16 }}>🇬🇧</Text>
+                            <Text style={[s.langDropdownText, { color: currentLang === 'en' ? theme.primary : (isDark ? '#F1F5F9' : '#1E293B') }]}>
+                                English
+                            </Text>
+                            {currentLang === 'en' && (
+                                <Ionicons name="checkmark" size={15} color={theme.primary} />
+                            )}
+                        </TouchableOpacity>
+
+                        <View style={[s.langDropdownDivider, { backgroundColor: isDark ? '#334155' : '#F1F5F9' }]} />
+
+                        {/* Telugu Option */}
+                        <TouchableOpacity
+                            onPress={() => handleSelectLanguage('te')}
+                            activeOpacity={0.7}
+                            style={[
+                                s.langDropdownItem,
+                                currentLang === 'te' && { backgroundColor: isDark ? '#334155' : '#EEF2FF' }
+                            ]}
+                        >
+                            <Text style={{ fontSize: 16 }}>🇮🇳</Text>
+                            <Text style={[s.langDropdownText, { color: currentLang === 'te' ? theme.primary : (isDark ? '#F1F5F9' : '#1E293B') }]}>
+                                తెలుగు
+                            </Text>
+                            {currentLang === 'te' && (
+                                <Ionicons name="checkmark" size={15} color={theme.primary} />
+                            )}
+                        </TouchableOpacity>
+                    </View>
+                </TouchableOpacity>
+            </Modal>
             {renderTourOverlay()}
         </View>
     );
@@ -1137,26 +1333,179 @@ const s = StyleSheet.create({
         bottom: -20,
         left: 20,
     },
-    hdrGreeting: {
-        fontSize: 11,
-        fontWeight: '600',
-        color: 'rgba(255,255,255,0.65)',
-        marginBottom: 1,
-        letterSpacing: 0.2,
+    // 1FCode Header Styles
+    brandRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 12,
     },
-    hdrDateStrip: {
+    brandIconWrap: {
+        width: 26,
+        height: 26,
+        borderRadius: 8,
+        backgroundColor: 'rgba(245,158,11,0.22)',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    topUtilities: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 7,
+    },
+    topLangPill: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        backgroundColor: 'rgba(255,255,255,0.18)',
+        borderRadius: 16,
+        paddingHorizontal: 9,
+        paddingVertical: 5,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.28)',
+    },
+    topLangPillText: {
+        fontSize: 11,
+        fontWeight: '900',
+        color: '#FFFFFF',
+        letterSpacing: 0.3,
+    },
+    compactSubRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingTop: 1,
+        paddingBottom: 3,
+    },
+    compactSubLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        flex: 1,
+        marginRight: 10,
+    },
+    compactDatePill: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4.5,
+        backgroundColor: 'rgba(255,255,255,0.13)',
+        paddingHorizontal: 9,
+        paddingVertical: 5,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.2)',
+    },
+    compactDateText: {
+        fontSize: 11,
+        fontWeight: '700',
+        color: 'rgba(255,255,255,0.92)',
+        letterSpacing: 0.1,
+    },
+    compactHostelBtn: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 5,
-        marginTop: 10,
-        paddingTop: 8,
-        borderTopWidth: 1,
-        borderTopColor: 'rgba(255,255,255,0.1)',
+        backgroundColor: 'rgba(255,255,255,0.16)',
+        paddingHorizontal: 9,
+        paddingVertical: 5,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.26)',
+        flexShrink: 1,
+        maxWidth: '72%',
     },
-    hdrDateText: {
+    compactHostelText: {
         fontSize: 11.5,
-        fontWeight: '700',
+        fontWeight: '800',
         color: '#FFFFFF',
+        maxWidth: 110,
+        flexShrink: 1,
+    },
+    compactCodeBadge: {
+        backgroundColor: 'rgba(252, 211, 77, 0.22)',
+        paddingHorizontal: 5,
+        paddingVertical: 1.5,
+        borderRadius: 6,
+        marginLeft: 2,
+    },
+    compactCodeBadgeText: {
+        fontSize: 9,
+        fontWeight: '900',
+        color: '#FCD34D',
+        letterSpacing: 0.5,
+    },
+    compactAvatar: {
+        width: 30,
+        height: 30,
+        borderRadius: 15,
+        backgroundColor: 'rgba(255,255,255,0.22)',
+        borderWidth: 1.5,
+        borderColor: 'rgba(255,255,255,0.45)',
+        alignItems: 'center',
+        justifyContent: 'center',
+        overflow: 'hidden',
+    },
+    compactAvatarImg: {
+        width: '100%',
+        height: '100%',
+        borderRadius: 15,
+    },
+    compactAvatarLetter: {
+        fontSize: 13,
+        fontWeight: '900',
+        color: '#FFF',
+    },
+    langDropdownOverlay: {
+        flex: 1,
+        backgroundColor: 'transparent',
+    },
+    langDropdownMenu: {
+        position: 'absolute',
+        width: 145,
+        borderRadius: 14,
+        paddingVertical: 5,
+        paddingHorizontal: 4,
+        borderWidth: 1,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.18,
+        shadowRadius: 12,
+        elevation: 8,
+    },
+    langDropdownItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 8,
+        paddingHorizontal: 10,
+        borderRadius: 9,
+        gap: 8,
+    },
+    langDropdownText: {
+        fontSize: 13,
+        fontWeight: '700',
+        flex: 1,
+    },
+    langDropdownDivider: {
+        height: 1,
+        marginVertical: 2,
+        marginHorizontal: 6,
+    },
+    hostelCodePill: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        backgroundColor: 'rgba(255,255,255,0.12)',
+        borderRadius: 20,
+        paddingHorizontal: 9,
+        paddingVertical: 3,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.2)',
+    },
+    hostelCodePillText: {
+        fontSize: 10.5,
+        fontWeight: '800',
+        color: 'rgba(255,255,255,0.92)',
+        letterSpacing: 0.5,
     },
     // Row 1: left group + right icons
     headerRow1: {
@@ -1228,6 +1577,23 @@ const s = StyleSheet.create({
         backgroundColor: 'rgba(255,255,255,0.18)',
         alignItems: 'center',
         justifyContent: 'center',
+    },
+    langTogglePill: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 3,
+        backgroundColor: 'rgba(255,255,255,0.18)',
+        borderRadius: 16,
+        paddingHorizontal: 9,
+        paddingVertical: 5,
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.28)',
+    },
+    langToggleText: {
+        fontSize: 11,
+        fontWeight: '900',
+        color: '#FFFFFF',
+        letterSpacing: 0.3,
     },
     headerRow2: {
         flexDirection: 'row',
@@ -1900,6 +2266,50 @@ const s = StyleSheet.create({
     hostelSelectAddress: {
         fontSize: 11,
         fontWeight: '500',
+    },
+    activeChip: {
+        paddingHorizontal: 7,
+        paddingVertical: 2,
+        borderRadius: 8,
+        alignSelf: 'center',
+    },
+    activeChipText: {
+        fontSize: 10,
+        fontWeight: '800',
+        letterSpacing: 0.2,
+    },
+    drawerCodePill: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 5,
+        paddingHorizontal: 8,
+        paddingVertical: 3.5,
+        borderRadius: 8,
+        borderWidth: 1,
+        alignSelf: 'flex-start',
+    },
+    drawerCodeLabel: {
+        fontSize: 10.5,
+        fontWeight: '600',
+    },
+    drawerCodeValue: {
+        fontSize: 11,
+        fontWeight: '800',
+        letterSpacing: 0.5,
+    },
+    drawerCopyTag: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 3,
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 6,
+        marginLeft: 4,
+    },
+    drawerCopyTagText: {
+        fontSize: 9.5,
+        fontWeight: '800',
+        color: '#FFFFFF',
     },
     hostelSelectRight: {
         width: 24,

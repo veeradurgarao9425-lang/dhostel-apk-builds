@@ -116,14 +116,16 @@ export const runOwnerDailyAlerts = async () => {
 
         const overdueCount = Number(overdueStats?.count || 0);
         const dueTodayCount = dueTodayList.length;
+        const dueTodayAmount = dueTodayList.reduce((sum: number, d: any) => sum + Number(d.balance || 0), 0);
         const pendingAmount = Number(totalPendingStats?.total || 0);
+        const today = new Date().toISOString().split('T')[0];
 
         let message = '';
         if (dueTodayCount > 0 && dueTodayCount <= 2) {
           const names = dueTodayList.map((d: any) => d.first_name).join(' & ');
-          message = `Good morning! ${names}'s rent is due today (₹${pendingAmount.toLocaleString('en-IN')}). ${overdueCount > 0 ? `${overdueCount} payment(s) overdue.` : ''}`.trim();
+          message = `Good morning! ${names}'s rent is due today (₹${dueTodayAmount.toLocaleString('en-IN')}). ${overdueCount > 0 ? `${overdueCount} payment(s) overdue.` : ''}`.trim();
         } else if (dueTodayCount > 2) {
-          message = `Good morning! ${dueTodayCount} rents are due today (₹${pendingAmount.toLocaleString('en-IN')}). ${overdueCount > 0 ? `${overdueCount} payment(s) overdue.` : ''}`.trim();
+          message = `Good morning! ${dueTodayCount} rents are due today (₹${dueTodayAmount.toLocaleString('en-IN')}). ${overdueCount > 0 ? `${overdueCount} payment(s) overdue.` : ''}`.trim();
         } else if (overdueCount > 0) {
           message = `Morning update: ${overdueCount} overdue rent payment(s) totaling ₹${pendingAmount.toLocaleString('en-IN')}. Tap to review.`;
         }
@@ -135,12 +137,12 @@ export const runOwnerDailyAlerts = async () => {
             'Daily Dues Morning Summary',
             message,
             'High',
-            { dueTodayCount, overdueCount, pendingAmount },
+            { dueTodayCount, overdueCount, dueTodayAmount, pendingAmount },
             {
               screen: 'PendingTab',
               referenceType: 'dues_summary',
               referenceId: h.hostel_id,
-              deduplicateKey: `daily_dues_summary_${h.hostel_id}`
+              deduplicateKey: `daily_dues_summary_${h.hostel_id}_${today}`
             }
           );
           duesSummariesNotified++;
