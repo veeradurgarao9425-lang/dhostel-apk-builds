@@ -152,14 +152,14 @@ export const verifyHostelAccess = async (
   const hostelIdNum = Number(targetHostelId);
   if (isNaN(hostelIdNum) || hostelIdNum <= 0) return false;
 
-  // Super Admin has global access
-  if (user.role_id === 1) return true;
+  // Super Admin, Developer or Support Mode has global access
+  if (user.role_id === 1 || user.is_support_mode || user.role === 'DEVELOPER') return true;
 
   // Owner: verify ownership in hostel_master or token's active hostel_id
   if (user.role_id === 2) {
     if (user.hostel_id && Number(user.hostel_id) === hostelIdNum) return true;
     const owned = await db('hostel_master')
-      .where({ hostel_id: hostelIdNum, owner_id: user.user_id, is_active: 1 })
+      .where({ hostel_id: hostelIdNum, owner_id: user.user_id })
       .first();
     return !!owned;
   }

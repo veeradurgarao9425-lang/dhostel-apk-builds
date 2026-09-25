@@ -21,12 +21,14 @@ import { developerService } from '../../services/developerService';
 import { useDeveloper } from '../../../contexts/DeveloperContext';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useToast } from '../../context/ToastContext';
 
 export default function DeveloperOwnerDetailsScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const insets = useSafeAreaInsets();
   const { enterSupportMode } = useDeveloper();
+  const { showSuccess, showError, showWarning } = useToast();
 
   const ownerId = route.params?.ownerId;
   const initialOwner = route.params?.owner;
@@ -105,16 +107,11 @@ export default function DeveloperOwnerDetailsScreen() {
                 nextStatus,
                 nextStatus ? 'Activated by master admin' : 'Deactivated by master admin'
               );
-              if (res?.success) {
-                setOwner((prev: any) => ({ ...prev, is_active: nextStatus ? 1 : 0 }));
-                Alert.alert('Status Updated', `Owner is now ${nextStatus ? 'ACTIVE' : 'INACTIVE'}.`);
-              } else {
-                Alert.alert('Notice', res?.message || 'Status updated locally.');
-                setOwner((prev: any) => ({ ...prev, is_active: nextStatus ? 1 : 0 }));
-              }
+              setOwner((prev: any) => ({ ...prev, is_active: nextStatus ? 1 : 0 }));
+              showSuccess(`Owner is now ${nextStatus ? 'ACTIVE' : 'INACTIVE'}.`);
             } catch (e: any) {
               setOwner((prev: any) => ({ ...prev, is_active: nextStatus ? 1 : 0 }));
-              Alert.alert('Updated', 'Owner account status has been updated.');
+              showError(e.message || 'Failed to update owner status.');
             }
           },
         },
@@ -129,50 +126,78 @@ export default function DeveloperOwnerDetailsScreen() {
 
   const handleSavePassword = async () => {
     if (!newPassword || newPassword.length < 6) {
-      Alert.alert('Invalid Password', 'Please provide a password of at least 6 characters.');
+      showWarning('Please provide a password of at least 6 characters.');
       return;
     }
 
-    try {
-      setResettingPassword(true);
-      await developerService.resetOwnerPassword(owner.user_id, newPassword);
-      const savedPass = newPassword;
-      const ownerObj = owner;
-      setPasswordModalVisible(false);
-      setPasswordSuccessData({
-        name: ownerObj?.full_name || ownerObj?.name || 'Owner',
-        account: ownerObj?.email || ownerObj?.phone || 'Owner Account',
-        password: savedPass,
-        role: 'Owner',
-      });
-    } catch (e: any) {
-      setPasswordModalVisible(false);
-      Alert.alert('Notice', e.message || 'Password reset failed.');
-    } finally {
-      setResettingPassword(false);
-    }
+    Alert.alert(
+      'Confirm Password Reset 🔐',
+      `Are you sure you want to reset password for ${owner?.full_name || 'this owner'} to "${newPassword.trim()}"?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Confirm Reset',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setResettingPassword(true);
+              await developerService.resetOwnerPassword(owner.user_id, newPassword);
+              const savedPass = newPassword;
+              const ownerObj = owner;
+              setPasswordModalVisible(false);
+              showSuccess('Password reset successfully!');
+              setPasswordSuccessData({
+                name: ownerObj?.full_name || ownerObj?.name || 'Owner',
+                account: ownerObj?.email || ownerObj?.phone || 'Owner Account',
+                password: savedPass,
+                role: 'Owner',
+              });
+            } catch (e: any) {
+              setPasswordModalVisible(false);
+              showError(e.message || 'Password reset failed.');
+            } finally {
+              setResettingPassword(false);
+            }
+          },
+        },
+      ]
+    );
   };
 
   const handleStartSupportMode = async () => {
     if (!owner?.user_id) return;
     setSupportModalVisible(false);
 
-    try {
-      setImpersonating(true);
-      const res = await enterSupportMode({
-        target_user_id: owner.user_id,
-        target_role: 'OWNER',
-        reason: 'Master admin support inspection from owner details screen',
-      });
+    Alert.alert(
+      'Enter Support Mode 🛡️',
+      `Are you sure you want to log into ${owner.full_name}'s owner dashboard?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Enter Support Mode',
+          onPress: async () => {
+            try {
+              setImpersonating(true);
+              const res = await enterSupportMode({
+                target_user_id: owner.user_id,
+                target_role: 'OWNER',
+                reason: 'Master admin support inspection from owner details screen',
+              });
 
-      if (!res.success) {
-        Alert.alert('Support Mode Error', res.error || 'Could not enter owner support mode.');
-      }
-    } catch (err: any) {
-      Alert.alert('Error', err.message || 'Failed to start support session.');
-    } finally {
-      setImpersonating(false);
-    }
+              if (!res.success) {
+                showError(res.error || 'Could not enter owner support mode.');
+              } else {
+                showSuccess(`Logged into ${owner.full_name}'s account in Support Mode`);
+              }
+            } catch (err: any) {
+              showError(err.message || 'Failed to start support session.');
+            } finally {
+              setImpersonating(false);
+            }
+          },
+        },
+      ]
+    );
   };
 
   const totalHostels = hostels.length;

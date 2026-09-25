@@ -223,7 +223,10 @@ export default function HomeScreen() {
 
     // ── Instant Dashboard Cache (0ms display on launch/open) ──
     useEffect(() => {
-        if (!user?.hostel_id) return;
+        if (!user?.hostel_id) {
+            setLoading(false);
+            return;
+        }
         const cacheKey = `dashboard_cache_${user.hostel_id}`;
         AsyncStorage.getItem(cacheKey).then(raw => {
             if (raw) {
@@ -244,7 +247,11 @@ export default function HomeScreen() {
     // Phase 2 (background, deferred): students list + complaints + renewals
     // This gets visible numbers on screen fast and avoids 15-20s blank waits.
     const load = useCallback(async (isRefresh = false) => {
-        if (!user?.hostel_id) return;
+        if (!user?.hostel_id) {
+            setLoading(false);
+            setRefreshing(false);
+            return;
+        }
         // Stamp the load time immediately so the TTL check in useFocusEffect is accurate.
         lastDashboardLoadRef.current = Date.now();
         try {

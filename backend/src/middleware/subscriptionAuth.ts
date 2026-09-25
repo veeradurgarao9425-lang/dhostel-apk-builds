@@ -6,6 +6,11 @@ export const requireActiveSubscription = async (req: AuthRequest, res: Response,
     // If not authenticated or no user payload, skip (authMiddleware should handle this)
     if (!req.user) return next();
 
+    // Bypass check if in developer support mode, developer user, or super admin (role 1)
+    if (req.user.is_support_mode || req.user.role === 'DEVELOPER' || (req.user as any)?.is_developer || req.user.role_id === 1) {
+        return next();
+    }
+
     let targetHostelId = req.user.hostel_id;
 
     // For Main Admin (role 1) or if hostel_id is explicitly passed in the request

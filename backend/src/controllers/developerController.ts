@@ -4,6 +4,7 @@ import { hashPassword, comparePassword } from '../utils/bcrypt.js';
 import { generateDeveloperToken, logDeveloperAction, DeveloperAuthRequest } from '../middleware/developerAuth.js';
 import { generateToken } from '../utils/jwt.js';
 import { sendPasswordResetNotificationEmail, sendLoginAlertEmail } from '../utils/email.js';
+import { sendNotificationToHostelOwner } from '../utils/notification.js';
 
 export const developerController = {
   // ─── 1. AUTHENTICATION ───────────────────────────────────────────────────
@@ -907,10 +908,58 @@ export const developerController = {
         return res.status(404).json({ success: false, error: 'Hostel not found.' });
       }
 
+      const now = new Date();
+      const currentExpiry = hostel.subscription_end_date && new Date(hostel.subscription_end_date) > now
+        ? new Date(hostel.subscription_end_date)
+        : (hostel.trial_end_date && new Date(hostel.trial_end_date) > now
+            ? new Date(hostel.trial_end_date)
+            : now);
+
+      const newEndDate = new Date(currentExpiry.getTime() + days * 24 * 60 * 60 * 1000);
+
       await db('hostel_master').where('hostel_id', hostelId).update({
         is_active: 1,
+        subscription_status_id: 2, // Active
+        subscription_end_date: newEndDate,
+        trial_end_date: newEndDate,
         updated_at: new Date(),
       });
+
+      // Log to subscription_history if table exists
+      try {
+        await db('subscription_history').insert({
+          hostel_id: hostelId,
+          event_type: 'Developer Extension',
+          remarks: `Extended by ${days} days by developer (${req.developer?.username || 'admin'}). New expiry: ${newEndDate.toISOString().split('T')[0]}`,
+        });
+      } catch (histErr) {
+        // Non-blocking history log
+      }
+
+      // Clear out stale 'Subscription Expired' alerts for this hostel
+      try {
+        await db('notifications')
+          .where({ hostel_id: hostelId })
+          .where(function () {
+            this.where('notification_type', 'Subscription Alert')
+              .orWhere('type', 'Subscription Alert')
+              .orWhere('title', 'like', '%Subscription%');
+          })
+          .update({ is_read: 1 });
+      } catch (cleanErr) {}
+
+      // Notify owner of active subscription extension
+      try {
+        await sendNotificationToHostelOwner(
+          hostelId,
+          'Subscription Alert',
+          '🎉 Subscription Active & Extended',
+          `Your subscription for ${hostel.hostel_name} has been extended by ${days} days until ${newEndDate.toLocaleDateString()}. Full access is restored.`,
+          'High',
+          { hostel_id: hostelId },
+          { screen: 'Home', referenceType: 'hostel', referenceId: hostelId }
+        );
+      } catch (notifErr) {}
 
       await logDeveloperAction({
         developer_id: req.developer?.id,
@@ -918,13 +967,19 @@ export const developerController = {
         action: 'DEVELOPER_EXTEND_HOSTEL_TRIAL',
         target_type: 'HOSTEL',
         target_id: hostelId,
-        metadata: { days, hostel_name: hostel.hostel_name },
+        metadata: { days, new_expiry: newEndDate, hostel_name: hostel.hostel_name },
         req,
       });
 
       return res.json({
         success: true,
-        message: `Free trial extended by ${days} days for ${hostel.hostel_name}.`,
+        message: `Subscription / trial extended by ${days} days for ${hostel.hostel_name}. New expiry: ${newEndDate.toLocaleDateString()}.`,
+        data: {
+          hostel_id: hostelId,
+          is_active: 1,
+          subscription_status_id: 2,
+          subscription_end_date: newEndDate,
+        },
       });
     } catch (error: any) {
       return res.status(500).json({ success: false, error: error.message });
@@ -1437,12 +1492,15 @@ export const developerController = {
       const durationMinutes = 30;
       const expiresAt = new Date(Date.now() + durationMinutes * 60 * 1000);
 
-      // Generate delegated JWT token
+      // Generate delegated JWT token with support mode flag to bypass subscription/suspension locks
       const delegatedToken = generateToken({
         user_id: targetUserPayload.user_id,
         email: targetUserPayload.email,
         role_id: targetUserPayload.role_id,
+        role: target_role,
         hostel_id: targetUserPayload.hostel_id,
+        is_support_mode: true,
+        developer_id: dev.id,
       });
 
       // Insert record into support_sessions

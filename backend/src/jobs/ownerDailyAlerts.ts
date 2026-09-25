@@ -1,6 +1,6 @@
 import cron from 'node-cron';
 import db from '../config/database.js';
-import { sendNotificationToHostelOwner, sendNotificationToStudent } from '../utils/notification.js';
+import { sendNotificationToHostelOwner, sendNotificationToStudent, sendNotificationToUser } from '../utils/notification.js';
 
 /**
  * Two independent owner-facing daily checks that previously had zero
@@ -16,6 +16,7 @@ import { sendNotificationToHostelOwner, sendNotificationToStudent } from '../uti
  */
 
 const VACANCY_FORECAST_DAYS = 3;
+const todayStr = () => new Date().toISOString().split('T')[0];
 
 export const runOwnerDailyAlerts = async () => {
   try {
@@ -200,6 +201,150 @@ export const runOwnerDailyAlerts = async () => {
             deduplicateKey: `owner_expense_reminder_${h.hostel_id}_${dayOfMonth}`
           }
         ).catch(() => {});
+      }
+    }
+
+    // 6. Onboarding & Inactivity Setup Nudges for Owners
+    try {
+      const recentOwners = await db('users')
+        .where('role_id', 2)
+        .where('is_active', 1)
+        .whereRaw('created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)')
+        .select('user_id', 'full_name', 'email', 'hostel_id');
+
+      for (const owner of recentOwners) {
+        // Check if owner has added any hostel
+        const ownerHostels = await db('hostel_master').where('owner_id', owner.user_id);
+        if (ownerHostels.length === 0) {
+          await sendNotificationToUser({
+            userId: owner.user_id,
+            type: 'General',
+            title: 'Complete Your Hostel Setup 🏨',
+            message: `Hi ${(owner.full_name || 'Owner').split(' ')[0]}! Add your hostel details and address to start onboarding residents.`,
+            priority: 'High',
+            screen: 'AddHostel',
+            deduplicateKey: `onboarding_no_hostel_${owner.user_id}_${dayOfMonth}`,
+          }).catch(() => {});
+          continue;
+        }
+
+        // For each hostel, check if rooms exist
+        for (const h of ownerHostels) {
+          const roomCountRes = await db('rooms').where('hostel_id', h.hostel_id).count('room_id as count').first();
+          const roomCount = Number(roomCountRes?.count || 0);
+
+          if (roomCount === 0) {
+            await sendNotificationToHostelOwner(
+              h.hostel_id,
+              'General',
+              'Setup Your Rooms & Beds 🛏️',
+              `Your hostel "${h.hostel_name}" has no rooms configured yet. Add room types and bed capacity to begin admissions.`,
+              'High',
+              { hostel_id: h.hostel_id },
+              {
+                screen: 'AddRoom',
+                referenceType: 'room',
+                deduplicateKey: `onboarding_no_rooms_${h.hostel_id}_${dayOfMonth}`,
+              }
+            ).catch(() => {});
+          } else {
+            // Check if students exist
+            const studentCountRes = await db('students')
+              .where('hostel_id', h.hostel_id)
+              .whereIn('status', [1, '1', 'Active'])
+              .count('student_id as count')
+              .first();
+            const studentCount = Number(studentCountRes?.count || 0);
+
+            if (studentCount === 0) {
+              await sendNotificationToHostelOwner(
+                h.hostel_id,
+                'General',
+                'Admit Your First Resident 👥',
+                `Your rooms are set up! Add your first student or share your hostel code so residents can sign in.`,
+                'Medium',
+                { hostel_id: h.hostel_id },
+                {
+                  screen: 'AddStudent',
+                  referenceType: 'student',
+                  deduplicateKey: `onboarding_no_students_${h.hostel_id}_${dayOfMonth}`,
+                }
+              ).catch(() => {});
+            }
+          }
+        }
+      }
+    } catch (onboardingErr: any) {
+      console.error('[ownerDailyAlerts] onboarding nudge error:', onboardingErr?.message);
+    }
+
+    // 7. Weekly Rent Collections & Dues Review (Runs on Mondays, Fridays, or 1st/15th)
+    const dayOfWeek = new Date().getDay(); // 1 = Monday, 5 = Friday
+    if (dayOfWeek === 1 || dayOfWeek === 5 || dayOfMonth === 1 || dayOfMonth === 15) {
+      for (const h of hostels) {
+        if (!h.hostel_id) continue;
+        try {
+          // Calculate payments collected in the last 7 days
+          const paymentsRes = await db('payments')
+            .where('hostel_id', h.hostel_id)
+            .whereRaw('payment_date >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)')
+            .sum('amount as total_collected')
+            .first();
+          const totalCollected = Number(paymentsRes?.total_collected || 0);
+
+          // Calculate current pending dues across active students
+          const pendingRes = await db('monthly_fees as mf')
+            .join('students as s', 'mf.student_id', 's.student_id')
+            .where('mf.hostel_id', h.hostel_id)
+            .where('s.status', 1)
+            .where('mf.balance', '>', 0)
+            .select(db.raw('COUNT(DISTINCT mf.student_id) as pending_count, SUM(mf.balance) as total_pending'))
+            .first();
+
+          const pendingCount = Number((pendingRes as any)?.pending_count || 0);
+          const totalPending = Number((pendingRes as any)?.total_pending || 0);
+
+          if (totalCollected > 0 || totalPending > 0) {
+            const summaryTitle = totalCollected > 0 ? 'Weekly Collections Summary 💰' : 'Pending Rent Dues ⏳';
+            const summaryMsg = totalCollected > 0
+              ? `You collected ₹${totalCollected.toLocaleString('en-IN')} in the last 7 days. ${pendingCount > 0 ? `Pending dues: ₹${totalPending.toLocaleString('en-IN')} across ${pendingCount} tenant(s).` : 'All tenant dues are fully settled! 🎉'}`
+              : `You have ₹${totalPending.toLocaleString('en-IN')} pending across ${pendingCount} tenant(s). Check your Pending Dues tab to collect rent.`;
+
+            await sendNotificationToHostelOwner(
+              h.hostel_id,
+              'Payment Due',
+              summaryTitle,
+              summaryMsg,
+              pendingCount > 0 ? 'High' : 'Medium',
+              { hostel_id: h.hostel_id, collected: totalCollected, pending: totalPending },
+              {
+                screen: 'PendingPayments',
+                referenceType: 'payment',
+                deduplicateKey: `weekly_review_${h.hostel_id}_${todayStr()}`,
+              }
+            ).catch(() => {});
+          } else {
+            // Count active students to see if hostel is populated
+            const activeRes = await db('students').where('hostel_id', h.hostel_id).where('status', 1).count('student_id as c').first();
+            if (Number(activeRes?.c || 0) > 0) {
+              await sendNotificationToHostelOwner(
+                h.hostel_id,
+                'General',
+                'Hostel Rent Status: All Clear ✨',
+                'All resident dues are up to date! Great job on rent collections this cycle.',
+                'Low',
+                { hostel_id: h.hostel_id },
+                {
+                  screen: 'Home',
+                  referenceType: 'hostel',
+                  deduplicateKey: `weekly_clear_${h.hostel_id}_${todayStr()}`,
+                }
+              ).catch(() => {});
+            }
+          }
+        } catch (revErr: any) {
+          console.error(`[ownerDailyAlerts] weekly review error for hostel ${h.hostel_id}:`, revErr?.message);
+        }
       }
     }
 

@@ -21,10 +21,12 @@ import { developerService } from '../../services/developerService';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DeveloperListSkeleton } from '../../components/ui/SkeletonCard';
+import { useToast } from '../../context/ToastContext';
 
 export default function DeveloperHostelsScreen() {
   const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
+  const { showSuccess, showError, showWarning } = useToast();
 
   const [hostels, setHostels] = useState<any[]>([]);
   const [owners, setOwners] = useState<any[]>([]);
@@ -122,9 +124,9 @@ export default function DeveloperHostelsScreen() {
                   h.hostel_id === hostel.hostel_id ? { ...h, is_active: nextStatus ? 1 : 0 } : h
                 )
               );
-              Alert.alert('Status Updated', `${hostel.hostel_name} is now ${nextStatus ? 'ACTIVE' : 'INACTIVE'}.`);
+              showSuccess(`${hostel.hostel_name} is now ${nextStatus ? 'ACTIVE' : 'INACTIVE'}.`);
             } catch (err: any) {
-              Alert.alert('Update Failed', err.message || 'Could not update hostel status.');
+              showError(err.message || 'Could not update hostel status.');
             }
           },
         },
@@ -141,7 +143,7 @@ export default function DeveloperHostelsScreen() {
   const handleConfirmExtendTrial = async () => {
     const days = parseInt(trialDays, 10);
     if (isNaN(days) || days <= 0) {
-      Alert.alert('Invalid Days', 'Please enter a valid number of days.');
+      showWarning('Please enter a valid number of days.');
       return;
     }
 
@@ -154,12 +156,9 @@ export default function DeveloperHostelsScreen() {
           h.hostel_id === selectedHostel.hostel_id ? { ...h, is_active: 1 } : h
         )
       );
-      Alert.alert(
-        'Subscription / Trial Extended! 🎉',
-        `Added ${days} days to ${selectedHostel.hostel_name}. Account is ACTIVE.`
-      );
+      showSuccess(`Subscription / Trial extended by ${days} days for ${selectedHostel.hostel_name}! 🎉`);
     } catch (err: any) {
-      Alert.alert('Action Failed', err.message || 'Could not extend trial.');
+      showError(err.message || 'Could not extend trial.');
     } finally {
       setExtendingTrial(false);
     }

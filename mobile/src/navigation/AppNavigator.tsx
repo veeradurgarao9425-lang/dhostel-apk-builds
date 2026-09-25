@@ -491,6 +491,7 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
                 }}
             >
                 <Stack.Navigator
+                    key={navigationKey}
                     screenOptions={{ headerShown: false }}
                     initialRouteName="Splash"
                 >

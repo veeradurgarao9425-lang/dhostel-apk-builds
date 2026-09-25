@@ -21,12 +21,14 @@ import { developerService } from '../../services/developerService';
 import { useDeveloper } from '../../../contexts/DeveloperContext';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useToast } from '../../context/ToastContext';
 
 export default function DeveloperStudentDetailsScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const insets = useSafeAreaInsets();
   const { enterSupportMode } = useDeveloper();
+  const { showSuccess, showError } = useToast();
 
   const studentId = route.params?.studentId;
   const initialStudent = route.params?.student;
@@ -96,10 +98,9 @@ export default function DeveloperStudentDetailsScreen() {
             try {
               await developerService.updateStudentStatus(targetId, nextStatus);
               setStudent((prev: any) => ({ ...prev, status: nextStatus }));
-              Alert.alert('Status Updated', `Student status is now ${nextStatus.toUpperCase()}.`);
+              showSuccess(`Student status is now ${nextStatus.toUpperCase()}.`);
             } catch (e: any) {
-              setStudent((prev: any) => ({ ...prev, status: nextStatus }));
-              Alert.alert('Status Updated', `Student status has been modified.`);
+              showError(e.message || 'Could not update student status.');
             }
           },
         },
@@ -112,23 +113,38 @@ export default function DeveloperStudentDetailsScreen() {
     if (!targetUserId) return;
     setSupportModalVisible(false);
 
-    try {
-      setImpersonating(true);
-      const res = await enterSupportMode({
-        target_user_id: targetUserId,
-        target_role: 'TENANT',
-        hostel_id: student.hostel_id,
-        reason: 'Master admin tenant support session from student details screen',
-      });
+    const studentName = student?.full_name || student?.first_name || 'this student';
+    Alert.alert(
+      'Enter Student Portal (Support Mode) 🛡️',
+      `Are you sure you want to log into ${studentName}'s student dashboard?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Enter Support Mode',
+          onPress: async () => {
+            try {
+              setImpersonating(true);
+              const res = await enterSupportMode({
+                target_user_id: targetUserId,
+                target_role: 'TENANT',
+                hostel_id: student.hostel_id,
+                reason: 'Master admin tenant support session from student details screen',
+              });
 
-      if (!res.success) {
-        Alert.alert('Support Mode Error', res.error || 'Could not enter student support mode.');
-      }
-    } catch (err: any) {
-      Alert.alert('Error', err.message || 'Failed to start support session.');
-    } finally {
-      setImpersonating(false);
-    }
+              if (!res.success) {
+                showError(res.error || 'Could not enter student support mode.');
+              } else {
+                showSuccess(`Logged into ${studentName}'s student portal in Support Mode`);
+              }
+            } catch (err: any) {
+              showError(err.message || 'Failed to start support session.');
+            } finally {
+              setImpersonating(false);
+            }
+          },
+        },
+      ]
+    );
   };
 
   const name = student?.full_name || student?.name || 'Student';

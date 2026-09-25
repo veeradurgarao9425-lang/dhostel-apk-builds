@@ -543,13 +543,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const updateTokenAndUser = async (token: string | null | undefined, updatedFields: Partial<User>) => {
     try {
       if (token) {
+        setCachedToken(token, false);
         api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
         await setSecureItem('token', token);
         await AsyncStorage.setItem('token', token);
       }
       setUser(prev => {
-        if (!prev) return prev;
-        const newUser = { ...prev, ...updatedFields } as User;
+        const isTargetDev = updatedFields.role === 'DEVELOPER' || (updatedFields as any)?.is_developer;
+        const base = (!prev || (updatedFields.role && updatedFields.role !== prev.role)) ? {} : prev;
+        const newUser = {
+          ...base,
+          ...updatedFields,
+          is_developer: isTargetDev ? true : false,
+        } as User;
         AsyncStorage.setItem('user', JSON.stringify(newUser)).catch(console.error);
         return newUser;
       });

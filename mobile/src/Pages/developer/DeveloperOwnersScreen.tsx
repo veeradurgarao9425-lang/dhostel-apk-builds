@@ -24,11 +24,13 @@ import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DeveloperListSkeleton } from '../../components/ui/SkeletonCard';
 import { DeveloperSupportModal } from '../../components/developer/DeveloperSupportModal';
+import { useToast } from '../../context/ToastContext';
 
 export default function DeveloperOwnersScreen() {
   const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
   const { enterSupportMode } = useDeveloper();
+  const { showSuccess, showError, showWarning } = useToast();
 
   const [owners, setOwners] = useState<any[]>([]);
   const [hostels, setHostels] = useState<any[]>([]);
@@ -159,9 +161,9 @@ export default function DeveloperOwnersScreen() {
                   item.user_id === owner.user_id ? { ...item, is_active: nextStatus ? 1 : 0 } : item
                 )
               );
-              Alert.alert('Success', `Owner account has been ${nextStatus ? 'activated' : 'deactivated'}.`);
+              showSuccess(`Owner account has been ${nextStatus ? 'activated' : 'deactivated'}.`);
             } catch (err: any) {
-              Alert.alert('Error', err.message || 'Failed to update owner status.');
+              showError(err.message || 'Failed to update owner status.');
             }
           },
         },
@@ -177,27 +179,41 @@ export default function DeveloperOwnersScreen() {
 
   const handleSavePassword = async () => {
     if (!newPassword.trim() || newPassword.trim().length < 4) {
-      Alert.alert('Invalid Password', 'Please enter a password with at least 4 characters.');
+      showWarning('Password must be at least 4 characters.');
       return;
     }
 
-    try {
-      setResettingPassword(true);
-      await developerService.resetOwnerPassword(selectedOwner.user_id, newPassword.trim());
-      const savedPass = newPassword.trim();
-      const ownerObj = selectedOwner;
-      setPasswordModalVisible(false);
-      setPasswordSuccessData({
-        name: ownerObj?.full_name || 'Owner',
-        account: ownerObj?.email || ownerObj?.phone || 'Owner Account',
-        password: savedPass,
-        role: 'Owner',
-      });
-    } catch (err: any) {
-      Alert.alert('Reset Failed', err.message || 'Could not reset owner password.');
-    } finally {
-      setResettingPassword(false);
-    }
+    Alert.alert(
+      'Confirm Password Reset 🔐',
+      `Are you sure you want to reset password for ${selectedOwner?.full_name || 'this owner'} to "${newPassword.trim()}"?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Confirm Reset',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setResettingPassword(true);
+              await developerService.resetOwnerPassword(selectedOwner.user_id, newPassword.trim());
+              const savedPass = newPassword.trim();
+              const ownerObj = selectedOwner;
+              setPasswordModalVisible(false);
+              showSuccess('Password reset successfully!');
+              setPasswordSuccessData({
+                name: ownerObj?.full_name || 'Owner',
+                account: ownerObj?.email || ownerObj?.phone || 'Owner Account',
+                password: savedPass,
+                role: 'Owner',
+              });
+            } catch (err: any) {
+              showError(err.message || 'Could not reset owner password.');
+            } finally {
+              setResettingPassword(false);
+            }
+          },
+        },
+      ]
+    );
   };
 
   const handleGenerateRandomPassword = () => {
@@ -206,8 +222,36 @@ export default function DeveloperOwnersScreen() {
   };
 
   const handleImpersonate = (owner: any) => {
-    setSelectedOwnerForSupport(owner);
-    setSupportModalVisible(true);
+    Alert.alert(
+      'Enter Support Mode 🛡️',
+      `Are you sure you want to log into ${owner.full_name}'s owner dashboard? You will have full access to view, troubleshoot, and manage their hostels and settings.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Enter Support Mode',
+          style: 'default',
+          onPress: async () => {
+            try {
+              setImpersonatingId(owner.user_id);
+              const res = await enterSupportMode({
+                target_user_id: owner.user_id,
+                target_role: 'OWNER',
+                reason: 'Master admin support inspection from owners directory',
+              });
+              if (!res.success) {
+                showError(res.error || 'Failed to enter support mode');
+              } else {
+                showSuccess(`Logged into ${owner.full_name}'s account in Support Mode`);
+              }
+            } catch (err: any) {
+              showError(err.message || 'Support mode error');
+            } finally {
+              setImpersonatingId(null);
+            }
+          },
+        },
+      ]
+    );
   };
 
   const renderOwnerCard = ({ item }: { item: any }) => (

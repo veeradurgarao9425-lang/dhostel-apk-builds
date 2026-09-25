@@ -167,10 +167,17 @@ export const DeveloperProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         await AsyncStorage.setItem('support_session', JSON.stringify(sessionData));
 
         // Inject delegated token and user into AuthContext and Axios
-        await updateTokenAndUser(token, target_user);
+        await updateTokenAndUser(token, {
+          ...target_user,
+          role: target_role,
+          is_developer: false,
+        });
 
-        // Navigate to the appropriate user dashboard
-        navigate('Main');
+        // Reset navigation to the target user dashboard
+        reset({
+          index: 0,
+          routes: [{ name: 'Main' }],
+        });
 
         return { success: true };
       }
@@ -196,13 +203,15 @@ export const DeveloperProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setSupportSession(null);
     await AsyncStorage.removeItem('support_session');
 
-    // Restore developer auth header
-    if (developerToken) {
+    // Restore developer auth header and user session
+    if (developerToken && developer) {
       api.defaults.headers.common['Authorization'] = `Bearer ${developerToken}`;
+      await updateTokenAndUser(developerToken, {
+        ...(developer as any),
+        role: 'DEVELOPER',
+        is_developer: true,
+      });
     }
-
-    // Clear normal user session
-    await signOut();
 
     // Navigate smoothly back to Developer Main Hub without routing to Login
     reset({

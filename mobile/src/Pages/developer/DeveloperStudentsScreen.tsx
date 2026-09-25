@@ -24,11 +24,13 @@ import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DeveloperListSkeleton } from '../../components/ui/SkeletonCard';
 import { DeveloperSupportModal } from '../../components/developer/DeveloperSupportModal';
+import { useToast } from '../../context/ToastContext';
 
 export default function DeveloperStudentsScreen() {
   const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
   const { enterSupportMode } = useDeveloper();
+  const { showSuccess, showError } = useToast();
 
   const [students, setStudents] = useState<any[]>([]);
   const [hostels, setHostels] = useState<any[]>([]);
@@ -181,9 +183,9 @@ export default function DeveloperStudentsScreen() {
                     : s
                 )
               );
-              Alert.alert('Status Updated', `Student status is now ${nextStatus.toUpperCase()}.`);
+              showSuccess(`Student status updated to ${nextStatus.toUpperCase()}.`);
             } catch (err: any) {
-              Alert.alert('Update Failed', err.message || 'Could not update student status.');
+              showError(err.message || 'Could not update student status.');
             }
           },
         },
@@ -197,8 +199,37 @@ export default function DeveloperStudentsScreen() {
   };
 
   const handleImpersonate = (student: any) => {
-    setSelectedStudentForSupport(student);
-    setSupportModalVisible(true);
+    const name = `${student.first_name || ''} ${student.last_name || ''}`.trim() || 'Student';
+    Alert.alert(
+      'Enter Student Portal (Support Mode) 🛡️',
+      `Are you sure you want to log into ${name}'s student dashboard? You will be able to inspect room allocations, fee dues, passes, and complaints as this student.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Enter Support Mode',
+          style: 'default',
+          onPress: async () => {
+            try {
+              setImpersonatingId(student.student_id);
+              const res = await enterSupportMode({
+                target_user_id: student.student_id,
+                target_role: 'TENANT',
+                reason: 'Master admin support inspection from students directory',
+              });
+              if (!res.success) {
+                showError(res.error || 'Failed to enter student support mode');
+              } else {
+                showSuccess(`Logged into ${name}'s student portal in Support Mode`);
+              }
+            } catch (err: any) {
+              showError(err.message || 'Support mode error');
+            } finally {
+              setImpersonatingId(null);
+            }
+          },
+        },
+      ]
+    );
   };
 
   const renderStudentCard = ({ item }: { item: any }) => {

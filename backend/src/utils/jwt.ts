@@ -18,6 +18,8 @@ export interface TokenPayload {
   role?: string;
   full_name?: string;
   hostel_id?: number | null;
+  is_support_mode?: boolean;
+  developer_id?: number;
 }
 
 export const generateToken = (payload: TokenPayload): string => {
