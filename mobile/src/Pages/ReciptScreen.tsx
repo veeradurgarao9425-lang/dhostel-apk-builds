@@ -79,6 +79,7 @@ export const ReceiptScreen = ({ navigation, route }: any) => {
         payerName: studentName,
         payerContact: mobileNo,
         roomNo,
+        bedNo: feeData.bed_number || feeData.bed_name || undefined,
         isStaff,
         receiptNo,
         transactionTime,
@@ -89,6 +90,7 @@ export const ReceiptScreen = ({ navigation, route }: any) => {
         duesAmount: parseFloat(String(feeData.total_due ?? feeData.dues_amount ?? amountPaid)) || 0,
         netBalance: parseFloat(String(feeData.balance ?? 0)) || 0,
         recordedBy: user?.full_name || user?.name || undefined,
+        remarks: feeData.notes || feeData.remarks || undefined,
     });
 
     const sharePdf = async () => {

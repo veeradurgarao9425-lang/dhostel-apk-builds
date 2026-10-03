@@ -1,22 +1,18 @@
 /**
  * receiptHtml.ts
  *
- * The Hostix payment receipt, as a print-ready A4 document.
+ * Professional, fintech-grade A4 payment receipt for Hostix Hostel & PG Management.
+ * Designed to look modern, clean, and institutional for both PDF export and physical printing.
  *
- * Rendered to PDF on-device by expo-print, so it must be a single self-contained
- * HTML string: no external CSS, fonts, images or JS — the print engine fetches
- * nothing. Layout uses table/flex only (print engines are unreliable with grid).
- *
- * Design intent — an accounting document, not a coloured app screen:
- *   • Ink-light. One brand band at the top; everything else is type hierarchy
- *     and hairline rules, so it stays legible printed in black and white.
- *   • Billed To / Billed By side by side, the convention on a real invoice.
- *   • A true ledger line: Dues → Paid → Balance, so the reader can see what the
- *     payment settled rather than just the amount that changed hands.
- *   • Amount in words — expected on Indian receipts and what makes it read as
- *     a financial record.
- *   • Everything a dispute needs (receipt no, timestamp, mode, UTR, who
- *     recorded it) is on the page.
+ * Features:
+ *   • Top & bottom vibrant brand gradient accents.
+ *   • Prominent Header with Hostel Branding & Receipt Identification.
+ *   • Resident / Tenant spotlight with room and contact details.
+ *   • High-impact Right Summary Card with big amount, status pill, amount in words,
+ *     and live remaining balance (inspired by modern institutional receipts).
+ *   • Structured 2-column transaction metadata grid with subtle watermark.
+ *   • Full ledger breakdown line: Total Due → Paid Amount → Remaining Balance.
+ *   • Terms & Conditions and Authorised Signatory with computer-generated disclaimer.
  */
 
 export interface ReceiptData {
@@ -29,6 +25,7 @@ export interface ReceiptData {
   payerName: string;
   payerContact?: string;
   roomNo?: string;
+  bedNo?: string;
   isStaff?: boolean;
   receiptNo: string;
   transactionTime: string;
@@ -41,6 +38,7 @@ export interface ReceiptData {
   /** Outstanding after this payment. Falls back to dues - paid. */
   netBalance?: number;
   recordedBy?: string;
+  remarks?: string;
 }
 
 const esc = (v: unknown) =>
@@ -91,11 +89,15 @@ export function generateReceiptHtml(d: ReceiptData): string {
   const initials = (d.hostelName || 'H')
     .split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
 
+  const recipientType = d.isStaff ? 'STAFF MEMBER' : 'RESIDENT';
+  const paymentTypeName = d.isStaff ? 'Staff Wage' : 'Room Rent';
+
   return `<!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Payment Receipt - ${esc(d.receiptNo)}</title>
 <style>
   @page { size: A4; margin: 0; }
   * { box-sizing: border-box; }
@@ -105,238 +107,521 @@ export function generateReceiptHtml(d: ReceiptData): string {
     color: #0F172A; background: #FFFFFF;
     -webkit-print-color-adjust: exact; print-color-adjust: exact;
   }
-  .page { padding: 34px 38px 28px; }
+  .accent-bar {
+    height: 7px;
+    background: linear-gradient(90deg, #6366F1 0%, #8B5CF6 50%, #EC4899 100%);
+    width: 100%;
+  }
+  .page {
+    padding: 30px 42px 28px;
+    max-width: 820px;
+    margin: 0 auto;
+  }
 
-  /* ── Masthead ─────────────────────────────────────────── */
-  .masthead {
-    background: #6D28D9; color: #FFFFFF;
-    padding: 20px 24px; border-radius: 12px;
-    display: flex; align-items: center; justify-content: space-between;
+  /* ── Header ────────────────────────────────────────────── */
+  .header-table {
+    width: 100%;
+    border-collapse: collapse;
+    padding-bottom: 18px;
+    border-bottom: 1.5px solid #F1F5F9;
   }
-  .brand { display: flex; align-items: center; gap: 13px; }
-  .badge {
-    width: 42px; height: 42px; border-radius: 10px;
-    background: rgba(255,255,255,0.16);
-    border: 1px solid rgba(255,255,255,0.28);
-    text-align: center; line-height: 42px;
-    font-size: 15px; font-weight: 800; letter-spacing: 0.5px;
+  .header-table td {
+    vertical-align: top;
+    padding: 0;
   }
-  .hostel-name { font-size: 17px; font-weight: 800; letter-spacing: 0.2px; }
-  .hostel-sub { font-size: 10.5px; opacity: 0.82; margin-top: 2px; }
-  .doc-meta { text-align: right; }
-  .doc-title { font-size: 12.5px; font-weight: 800; letter-spacing: 1.6px; }
-  .doc-no { font-size: 10.5px; opacity: 0.85; margin-top: 3px; }
+  .org-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .org-logo {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%);
+    color: #FFFFFF;
+    text-align: center;
+    line-height: 44px;
+    font-size: 16px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    box-shadow: 0 4px 10px rgba(99, 102, 241, 0.2);
+  }
+  .org-name {
+    font-size: 20px;
+    font-weight: 800;
+    color: #0F172A;
+    letter-spacing: -0.3px;
+    margin: 0;
+  }
+  .org-sub {
+    font-size: 11px;
+    color: #64748B;
+    margin-top: 3px;
+    font-weight: 500;
+  }
+  .header-right {
+    text-align: right;
+  }
+  .receipt-heading {
+    font-size: 13px;
+    font-weight: 800;
+    color: #6366F1;
+    letter-spacing: 1.8px;
+    text-transform: uppercase;
+    margin: 0;
+  }
+  .receipt-number {
+    font-size: 13px;
+    font-weight: 700;
+    color: #1E293B;
+    margin-top: 4px;
+  }
+  .receipt-date {
+    font-size: 11px;
+    color: #64748B;
+    margin-top: 3px;
+  }
 
-  /* ── Status + amount strip ────────────────────────────── */
-  .strip {
-    display: flex; align-items: flex-end; justify-content: space-between;
-    margin-top: 22px; padding-bottom: 16px;
-    border-bottom: 2px solid #0F172A;
+  /* ── Tenant Spotlight Card ─────────────────────────────── */
+  .student-section {
+    margin-top: 22px;
+    background: #F8FAFC;
+    border: 1px solid #E2E8F0;
+    border-radius: 10px;
+    padding: 14px 18px;
   }
-  .paid-stamp {
-    display: inline-block; padding: 5px 12px; border-radius: 5px;
-    font-size: 10.5px; font-weight: 800; letter-spacing: 1.4px;
-    background: ${settled ? '#D1FAE5' : '#FEF3C7'};
-    color: ${settled ? '#065F46' : '#92400E'};
-    border: 1px solid ${settled ? '#6EE7B7' : '#FCD34D'};
-  }
-  .strip-label { font-size: 10px; color: #64748B; letter-spacing: 1.1px; font-weight: 700; margin-bottom: 3px; }
-  .strip-amount { font-size: 30px; font-weight: 800; letter-spacing: -0.8px; line-height: 1; }
-  .strip-right { text-align: right; }
-
-  /* ── Party blocks ─────────────────────────────────────── */
-  .parties { width: 100%; border-collapse: collapse; margin-top: 20px; }
-  .parties td { width: 50%; vertical-align: top; padding: 0; }
-  .parties td:first-child { padding-right: 18px; }
-  .parties td:last-child { padding-left: 18px; border-left: 1px solid #E2E8F0; }
-  .party-label {
-    font-size: 9.5px; font-weight: 800; letter-spacing: 1.2px;
-    color: #7C3AED; margin-bottom: 7px;
-  }
-  .party-name { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
-  .party-line { font-size: 11.5px; color: #475569; line-height: 1.65; }
-
-  /* ── Meta row ─────────────────────────────────────────── */
-  .meta { width: 100%; border-collapse: collapse; margin-top: 20px;
-          background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; }
-  .meta td { padding: 10px 14px; vertical-align: top; }
-  .meta-label { font-size: 9.5px; color: #64748B; font-weight: 700; letter-spacing: 0.8px; }
-  .meta-value { font-size: 12px; font-weight: 700; margin-top: 3px; }
-
-  /* ── Ledger ───────────────────────────────────────────── */
-  .ledger { width: 100%; border-collapse: collapse; margin-top: 24px; }
-  .ledger thead th {
-    font-size: 9.5px; letter-spacing: 1px; font-weight: 800; color: #FFFFFF;
-    background: #1E293B; padding: 10px 12px; text-align: right;
-  }
-  .ledger thead th:first-child { text-align: left; border-radius: 6px 0 0 0; }
-  .ledger thead th:last-child { border-radius: 0 6px 0 0; }
-  .ledger tbody td {
-    padding: 13px 12px; font-size: 12px; text-align: right;
-    border-bottom: 1px solid #E2E8F0;
-  }
-  .ledger tbody td:first-child { text-align: left; }
-  .item-name { font-weight: 700; font-size: 12.5px; }
-  .item-sub { font-size: 10.5px; color: #64748B; margin-top: 2px; }
-  .num-dues { color: #B91C1C; font-weight: 700; }
-  .num-paid { color: #047857; font-weight: 700; }
-  .num-bal { font-weight: 800; color: ${settled ? '#047857' : '#B91C1C'}; }
-
-  /* ── Totals ───────────────────────────────────────────── */
-  .totals { width: 100%; border-collapse: collapse; margin-top: 14px; }
-  .totals td { padding: 0; vertical-align: middle; }
-  .words-box {
-    background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px;
-    padding: 8px 12px; margin-right: 14px;
-  }
-  .words-label { font-size: 8.5px; font-weight: 800; letter-spacing: 0.8px; color: #64748B; }
-  .words-value { font-size: 11px; font-weight: 700; color: #1E293B; margin-top: 2px; line-height: 1.4; }
-  .grand {
+  .student-tag {
     display: inline-block;
-    background: #ECFDF5; border: 1px solid #10B981; border-radius: 8px;
-    padding: 6px 14px; text-align: right;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 1.2px;
+    color: #6366F1;
+    text-transform: uppercase;
+    margin-bottom: 4px;
   }
-  .grand-label { font-size: 8.5px; letter-spacing: 0.8px; font-weight: 800; color: #047857; }
-  .grand-value { font-size: 16px; font-weight: 900; margin-top: 1px; color: #047857; }
+  .student-name {
+    font-size: 18px;
+    font-weight: 800;
+    color: #0F172A;
+    margin: 0;
+    letter-spacing: -0.2px;
+  }
+  .student-meta {
+    font-size: 11.5px;
+    color: #475569;
+    margin-top: 4px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .meta-dot {
+    color: #94A3B8;
+  }
 
-  /* ── Terms + footer ───────────────────────────────────── */
-  .terms { margin-top: 26px; }
-  .terms-title { font-size: 10px; font-weight: 800; letter-spacing: 1.1px; color: #64748B; margin-bottom: 8px; }
-  .terms li { font-size: 10.5px; color: #475569; line-height: 1.75; margin-bottom: 1px; }
-  .terms ul { margin: 0; padding-left: 16px; }
-  .sign {
-    margin-top: 30px; text-align: right;
+  /* ── 2-Column Split: Info Grid + Amount Card ───────────── */
+  .split-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
   }
-  .sign-line { display: inline-block; border-top: 1px solid #94A3B8; padding-top: 6px; min-width: 190px;
-               font-size: 10.5px; color: #475569; font-weight: 600; }
-  .footer {
-    margin-top: 26px; padding-top: 13px; border-top: 1px solid #E2E8F0;
-    display: flex; align-items: center; justify-content: space-between;
+  .split-table td {
+    vertical-align: top;
+    padding: 0;
   }
-  .footer-note { font-size: 9.5px; color: #94A3B8; }
-  .footer-brand { font-size: 10.5px; font-weight: 800; color: #6D28D9; letter-spacing: 0.6px; }
+  .split-left {
+    width: 58%;
+    padding-right: 18px;
+    position: relative;
+  }
+  .split-right {
+    width: 42%;
+  }
+
+  /* Watermark background on left */
+  .watermark-container {
+    position: relative;
+  }
+  .watermark-text {
+    position: absolute;
+    top: 50%;
+    left: 45%;
+    transform: translate(-50%, -50%) rotate(-18deg);
+    font-size: 90px;
+    font-weight: 900;
+    color: rgba(99, 102, 241, 0.04);
+    letter-spacing: 6px;
+    user-select: none;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Key-Value Details Grid */
+  .details-grid {
+    width: 100%;
+    border-collapse: collapse;
+    position: relative;
+    z-index: 1;
+  }
+  .details-grid td {
+    padding: 8px 6px;
+    vertical-align: top;
+  }
+  .grid-cell-label {
+    font-size: 9.5px;
+    font-weight: 700;
+    color: #64748B;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    margin-bottom: 3px;
+  }
+  .grid-cell-value {
+    font-size: 12.5px;
+    font-weight: 700;
+    color: #0F172A;
+    line-height: 1.35;
+  }
+
+  /* High-Impact Right Summary Card (As in Reference) */
+  .amount-box {
+    border: 1.5px solid ${settled ? '#BBF7D0' : '#FECDD3'};
+    background: ${settled ? '#F0FDF4' : '#FFF1F2'};
+    border-radius: 12px;
+    padding: 18px 20px 16px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);
+  }
+  .amount-box-top {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+  }
+  .status-pill {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 6px;
+    font-size: 9.5px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    background: ${settled ? '#DCFCE7' : '#FFE4E6'};
+    color: ${settled ? '#15803D' : '#BE123C'};
+    border: 1px solid ${settled ? '#86EFAC' : '#FDA4AF'};
+  }
+  .total-label {
+    font-size: 9.5px;
+    font-weight: 800;
+    letter-spacing: 1.2px;
+    color: #64748B;
+    text-transform: uppercase;
+    margin-top: 10px;
+  }
+  .total-figure {
+    font-size: 32px;
+    font-weight: 900;
+    color: ${settled ? '#0F172A' : '#BE123C'};
+    letter-spacing: -0.8px;
+    line-height: 1.15;
+    margin: 4px 0 2px;
+  }
+  .amount-words {
+    font-size: 11px;
+    color: #64748B;
+    font-style: italic;
+    line-height: 1.4;
+    margin-top: 4px;
+  }
+  .box-divider {
+    border-top: 1px dashed ${settled ? '#86EFAC' : '#FDA4AF'};
+    margin: 14px 0 10px;
+  }
+  .balance-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .balance-label {
+    font-size: 9px;
+    font-weight: 800;
+    color: #64748B;
+    letter-spacing: 0.9px;
+    text-transform: uppercase;
+  }
+  .balance-figure {
+    font-size: 13px;
+    font-weight: 800;
+    color: ${settled ? '#15803D' : '#BE123C'};
+  }
+
+  /* ── Ledger Table ──────────────────────────────────────── */
+  .ledger-section {
+    margin-top: 24px;
+  }
+  .ledger-table {
+    width: 100%;
+    border-collapse: collapse;
+    border: 1px solid #E2E8F0;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  .ledger-table thead th {
+    background: #0F172A;
+    color: #FFFFFF;
+    font-size: 9.5px;
+    font-weight: 800;
+    letter-spacing: 1.1px;
+    padding: 9px 12px;
+    text-align: right;
+  }
+  .ledger-table thead th:first-child {
+    text-align: left;
+  }
+  .ledger-table tbody td {
+    padding: 12px;
+    font-size: 12px;
+    border-bottom: 1px solid #E2E8F0;
+    text-align: right;
+  }
+  .ledger-table tbody td:first-child {
+    text-align: left;
+  }
+  .ledger-title {
+    font-weight: 700;
+    font-size: 12.5px;
+    color: #0F172A;
+  }
+  .ledger-sub {
+    font-size: 10.5px;
+    color: #64748B;
+    margin-top: 2px;
+  }
+  .col-due { color: #DC2626; font-weight: 700; }
+  .col-paid { color: #15803D; font-weight: 800; }
+  .col-bal { color: ${settled ? '#15803D' : '#DC2626'}; font-weight: 800; }
+
+  /* ── Terms & Signatory ─────────────────────────────────── */
+  .terms-sign-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 22px;
+  }
+  .terms-sign-table td {
+    vertical-align: bottom;
+    padding: 0;
+  }
+  .terms-box {
+    width: 60%;
+    padding-right: 20px;
+  }
+  .terms-heading {
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 1.1px;
+    color: #64748B;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .terms-box ul {
+    margin: 0;
+    padding-left: 15px;
+  }
+  .terms-box li {
+    font-size: 10px;
+    color: #64748B;
+    line-height: 1.6;
+    margin-bottom: 2px;
+  }
+  .sign-box {
+    width: 40%;
+    text-align: right;
+  }
+  .sign-line {
+    display: inline-block;
+    border-top: 1.5px solid #CBD5E1;
+    padding-top: 6px;
+    min-width: 175px;
+    font-size: 11px;
+    color: #334155;
+    font-weight: 700;
+  }
+  .sign-role {
+    font-size: 9.5px;
+    color: #64748B;
+    margin-top: 2px;
+  }
+
+  /* ── Footer ────────────────────────────────────────────── */
+  .footer-row {
+    margin-top: 24px;
+    padding-top: 10px;
+    border-top: 1px solid #F1F5F9;
+    text-align: center;
+    font-size: 9.5px;
+    color: #94A3B8;
+    line-height: 1.5;
+  }
 </style>
 </head>
 <body>
+
+  <!-- Top Brand Accent Bar -->
+  <div class="accent-bar"></div>
+
   <div class="page">
 
-    <div class="masthead">
-      <div class="brand">
-        <div class="badge">${esc(initials)}</div>
-        <div>
-          <div class="hostel-name">${esc(d.hostelName)}</div>
-          <div class="hostel-sub">${esc(d.hostelAddress || 'Hostel / PG Management')}</div>
-        </div>
-      </div>
-      <div class="doc-meta">
-        <div class="doc-title">${esc(d.documentTitle)}</div>
-        <div class="doc-no">No. ${esc(d.receiptNo)}</div>
-      </div>
-    </div>
-
-    <div class="strip">
-      <div>
-        <div class="paid-stamp">${settled ? 'PAID IN FULL' : 'PART PAYMENT'}</div>
-      </div>
-      <div class="strip-right">
-        <div class="strip-label">AMOUNT RECEIVED</div>
-        <div class="strip-amount">₹${money(paid)}</div>
-      </div>
-    </div>
-
-    <table class="parties">
+    <!-- ── Header Section ── -->
+    <table class="header-table">
       <tr>
         <td>
-          <div class="party-label">${esc(d.payerLabel).toUpperCase()}</div>
-          <div class="party-name">${esc(d.payerName)}</div>
-          ${d.roomNo && d.roomNo !== 'N/A' ? `<div class="party-line">Room ${esc(d.roomNo)}</div>` : ''}
-          ${d.payerContact && d.payerContact !== 'N/A' ? `<div class="party-line">${esc(d.payerContact)}</div>` : ''}
+          <div class="org-brand">
+            <div class="org-logo">${esc(initials)}</div>
+            <div>
+              <h1 class="org-name">${esc(d.hostelName)}</h1>
+              <div class="org-sub">${esc(d.hostelAddress || 'Hostel &amp; PG Resident Management')} · Official Transaction Receipt</div>
+            </div>
+          </div>
         </td>
-        <td>
-          <div class="party-label">RECEIVED BY</div>
-          <div class="party-name">${esc(d.hostelName)}</div>
-          ${d.ownerName ? `<div class="party-line">${esc(d.ownerName)}</div>` : ''}
-          ${d.ownerContact ? `<div class="party-line">${esc(d.ownerContact)}</div>` : ''}
+        <td class="header-right">
+          <div class="receipt-heading">${esc(d.documentTitle)}</div>
+          <div class="receipt-number">No. ${esc(d.receiptNo)}</div>
+          <div class="receipt-date">Issued: ${esc(d.transactionTime.split('•')[1] || d.transactionTime)}</div>
         </td>
       </tr>
     </table>
 
-    <table class="meta">
-      <tr>
-        <td>
-          <div class="meta-label">RECEIPT DATE</div>
-          <div class="meta-value">${esc(d.transactionTime)}</div>
-        </td>
-        <td>
-          <div class="meta-label">PAYMENT MODE</div>
-          <div class="meta-value">${esc(d.paymentMode)}</div>
-        </td>
-        <td>
-          <div class="meta-label">REFERENCE / UTR</div>
-          <div class="meta-value">${esc(d.transactionId && d.transactionId !== 'N/A' ? d.transactionId : '—')}</div>
-        </td>
-      </tr>
-    </table>
+    <!-- ── Resident / Tenant Spotlight Card ── -->
+    <div class="student-section">
+      <div class="student-tag">${esc(recipientType)}</div>
+      <div class="student-name">${esc(d.payerName)}</div>
+      <div class="student-meta">
+        ${d.roomNo && d.roomNo !== 'N/A' ? `<span>Room ${esc(d.roomNo)}</span><span class="meta-dot">·</span>` : ''}
+        ${d.bedNo ? `<span>Bed: ${esc(d.bedNo)}</span><span class="meta-dot">·</span>` : ''}
+        ${d.payerContact && d.payerContact !== 'N/A' ? `<span>${esc(d.payerContact)}</span><span class="meta-dot">·</span>` : ''}
+        <span>Period: ${esc(d.periodLabel)}</span>
+      </div>
+    </div>
 
-    <table class="ledger">
-      <thead>
+    <!-- ── 2-Column Split (Left Details + Right Amount Box) ── -->
+    <div class="watermark-container">
+      <div class="watermark-text">${settled ? 'PAID' : 'PARTIAL'}</div>
+
+      <table class="split-table">
         <tr>
-          <th>PARTICULARS</th>
-          <th>DUES</th>
-          <th>PAID</th>
-          <th>BALANCE</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td>
-            <div class="item-name">${d.isStaff ? 'Wage / Advance' : 'Rent &amp; Fee Dues'}</div>
-            <div class="item-sub">${esc(d.periodLabel)}</div>
+          <td class="split-left">
+            <table class="details-grid">
+              <tr>
+                <td style="width: 50%;">
+                  <div class="grid-cell-label">RECEIPT NO.</div>
+                  <div class="grid-cell-value">${esc(d.receiptNo)}</div>
+                </td>
+                <td style="width: 50%;">
+                  <div class="grid-cell-label">TRANSACTION DATE</div>
+                  <div class="grid-cell-value">${esc(d.transactionTime)}</div>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <div class="grid-cell-label">MODE OF PAYMENT</div>
+                  <div class="grid-cell-value">${esc(d.paymentMode)}</div>
+                </td>
+                <td>
+                  <div class="grid-cell-label">PAYMENT TYPE</div>
+                  <div class="grid-cell-value">${esc(paymentTypeName)}</div>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <div class="grid-cell-label">RECORDED BY</div>
+                  <div class="grid-cell-value">${esc(d.recordedBy || d.ownerName || 'Hostel FrontDesk')}</div>
+                </td>
+                <td>
+                  <div class="grid-cell-label">REFERENCE / UTR</div>
+                  <div class="grid-cell-value">${esc(d.transactionId && d.transactionId !== 'N/A' ? d.transactionId : 'Cash / Direct')}</div>
+                </td>
+              </tr>
+              ${d.remarks ? `
+              <tr>
+                <td colspan="2">
+                  <div class="grid-cell-label">REMARKS</div>
+                  <div class="grid-cell-value">${esc(d.remarks)}</div>
+                </td>
+              </tr>` : ''}
+            </table>
           </td>
-          <td class="num-dues">₹${money(dues)}</td>
-          <td class="num-paid">₹${money(paid)}</td>
-          <td class="num-bal">₹${money(balance)}</td>
-        </tr>
-      </tbody>
-    </table>
 
-    <table class="totals">
+          <td class="split-right">
+            <!-- Modern Amount Card (Exact layout reference) -->
+            <div class="amount-box">
+              <div class="amount-box-top">
+                <span class="status-pill">${settled ? 'FULL PAYMENT' : 'PARTIAL PAID'}</span>
+              </div>
+              <div class="total-label">TOTAL AMOUNT RECEIVED</div>
+              <div class="total-figure">₹ ${money(paid)}</div>
+              <div class="amount-words">${esc(amountInWords(paid))}</div>
+              <div class="box-divider"></div>
+              <div class="balance-row">
+                <span class="balance-label">REMAINING BALANCE</span>
+                <span class="balance-figure">₹ ${money(balance)}</span>
+              </div>
+            </div>
+          </td>
+        </tr>
+      </table>
+    </div>
+
+    <!-- ── Ledger Breakdown Table ── -->
+    <div class="ledger-section">
+      <table class="ledger-table">
+        <thead>
+          <tr>
+            <th>PARTICULARS</th>
+            <th>TOTAL DUE</th>
+            <th>AMOUNT PAID</th>
+            <th>REMAINING BALANCE</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>
+              <div class="ledger-title">${d.isStaff ? 'Staff Wage Disbursement' : 'Room Rent &amp; Hostel Maintenance'}</div>
+              <div class="ledger-sub">${esc(d.periodLabel)} · Settled via ${esc(d.paymentMode)}</div>
+            </td>
+            <td class="col-due">₹ ${money(dues)}</td>
+            <td class="col-paid">₹ ${money(paid)}</td>
+            <td class="col-bal">₹ ${money(balance)}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ── Terms & Signatory Section ── -->
+    <table class="terms-sign-table">
       <tr>
-        <td>
-          <div class="words-box">
-            <div class="words-label">AMOUNT IN WORDS</div>
-            <div class="words-value">${esc(amountInWords(paid))}</div>
-          </div>
+        <td class="terms-box">
+          <div class="terms-heading">TERMS &amp; CONDITIONS</div>
+          <ul>
+            <li>This receipt acknowledges the payment recorded against the resident account above.</li>
+            <li>Subject to realization — online transfers are valid upon bank credit confirmation.</li>
+            <li>Discrepancies must be brought to notice within 7 days of receipt issue.</li>
+          </ul>
         </td>
-        <td style="text-align: right; white-space: nowrap;">
-          <div class="grand">
-            <div class="grand-label">TOTAL RECEIVED</div>
-            <div class="grand-value">₹${money(paid)}</div>
-          </div>
+        <td class="sign-box">
+          <div class="sign-line">${esc(d.recordedBy || d.ownerName || 'Authorized Signatory')}</div>
+          <div class="sign-role">For ${esc(d.hostelName)}</div>
         </td>
       </tr>
     </table>
 
-    <div class="terms">
-      <div class="terms-title">TERMS &amp; CONDITIONS</div>
-      <ul>
-        <li>This receipt acknowledges the payment recorded against the account named above.</li>
-        <li>Subject to realisation — a receipt for an online transfer is void if the transfer fails or is reversed.</li>
-        <li>Any discrepancy must be reported to the management within 7 days of the receipt date.</li>
-        <li>This is a computer-generated receipt and is valid without a physical signature.</li>
-      </ul>
-    </div>
-
-    <div class="sign">
-      <div class="sign-line">${esc(d.recordedBy || d.ownerName || 'Authorised Signatory')}</div>
-    </div>
-
-    <div class="footer">
-      <div class="footer-note">Generated ${esc(d.transactionTime)} · Receipt ${esc(d.receiptNo)}</div>
-      <div class="footer-brand">HOSTIX · PG OS</div>
+    <!-- ── Footer Disclaimer ── -->
+    <div class="footer-row">
+      Computer-generated receipt — no physical signature required · Generated on ${esc(d.transactionTime)} · HOSTIX
     </div>
 
   </div>
+
+  <!-- Bottom Brand Accent Bar -->
+  <div class="accent-bar" style="margin-top: 15px;"></div>
+
 </body>
 </html>`;
 }
