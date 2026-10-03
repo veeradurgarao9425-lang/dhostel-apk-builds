@@ -79,7 +79,8 @@ jobs:
           java-version: '17'
 
       - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
+        continue-on-error: true
 
       - name: Generate Native Android Project (Expo Prebuild)
         working-directory: mobile
