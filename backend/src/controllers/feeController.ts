@@ -302,6 +302,7 @@ export const recordPayment = async (req: AuthRequest, res: Response) => {
           screen: 'Dues',
           referenceType: 'payment',
           referenceId: payment_id,
+          deduplicateKey: `payment_tenant_${payment_id}`,
         }
       ).catch(err => console.error('Failed to send payment notification to student:', err));
 
@@ -318,6 +319,7 @@ export const recordPayment = async (req: AuthRequest, res: Response) => {
             screen: 'Payments',
             referenceType: 'payment',
             referenceId: payment_id,
+            deduplicateKey: `payment_owner_${payment_id}`,
           }
         ).catch(() => {});
       }
@@ -699,7 +701,7 @@ export const verifyPaymentProof = async (req: AuthRequest, res: Response) => {
 
     try {
       if (io) {
-        io.to(`tenant_${payment.student_id}`).emit('payment_verified', { payment_id: paymentId, status });
+        io.to(`tenant_${payment.student_id}`).emit(status === 'Rejected' ? 'payment_rejected' : 'payment_verified', { payment_id: paymentId, status });
         io.to(`tenant_${payment.student_id}`).emit('REFRESH_NOTIFICATIONS');
       }
       await sendNotificationToStudent(

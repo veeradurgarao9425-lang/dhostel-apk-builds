@@ -1,260 +1,170 @@
 import cron from 'node-cron';
 import db from '../config/database.js';
 import { sendNotificationToStudent, sendNotificationToHostelOwner } from '../utils/notification.js';
+import { IST_TZ, istToday, istAddDays, istDayOfWeek, inr } from '../utils/istTime.js';
 
 /**
- * Server-side fee reminders — the tenant app only ever scheduled *local*
- * reminders on-device (wiped on reinstall, never reach a device that isn't
- * open). This job sends the same 7/3/1/0-day-before nudge as a real push +
- * in-app notification, plus a recurring nag once a fee is overdue.
+ * Server-side fee reminders (all times IST).
  *
- * `monthly_fees.due_reminder_sent_date` / `overdue_reminder_sent_date`
- * (added in database.ts schema-patch #25) dedupe sends per day.
+ * Tenants, for every unpaid / partially paid fee:
+ *   - EVERY day during the 7 days before due_date (morning run)
+ *   - TWICE a day (09:00 and 18:00) on the due date and while overdue
+ * Owners get an aggregate (not one push per tenant) at 09:00 and 18:00 whenever
+ * anything is due-soon / due-today / overdue. The 07:05 owner morning status
+ * digest lives in ownerDailyAlerts.ts.
+ *
+ * Duplicates are prevented with per-day-per-slot deduplicate keys, so an extra
+ * run (e.g. after a server restart) never double-sends.
  */
 
-const DUE_SOON_DAYS = [7, 3, 1, 0];
-const OVERDUE_RENAG_DAYS = 7;
+type Slot = 'am' | 'pm';
+const DUE_SOON_WINDOW_DAYS = 7;
 
-const todayStr = () => new Date().toISOString().split('T')[0];
+const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? '' : 's'}`;
 
-export const runFeeReminders = async () => {
+export const runFeeReminders = async (slot: Slot = 'am') => {
   try {
-    const today = todayStr();
+    const today = istToday();
+    const in7 = istAddDays(DUE_SOON_WINDOW_DAYS);
 
-    // ── Due soon: 7/3/1/0 days before due_date, active tenants with balance > 0 ──
-    const dueSoon = await db('monthly_fees as mf')
-      .join('students as s', 'mf.student_id', 's.student_id')
-      .where('mf.balance', '>', 0)
-      .whereIn('s.status', [1, '1', 'Active'])
-      .whereNot('mf.fee_status', 'Fully Paid')
-      .whereRaw('mf.due_date BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 7 DAY)')
-      .where(function () {
-        this.whereNull('mf.due_reminder_sent_date').orWhereNot('mf.due_reminder_sent_date', today);
-      })
-      .select(
-        'mf.*',
-        's.first_name',
-        's.last_name',
-        's.room_number',
-        's.hostel_id',
-        db.raw('DATEDIFF(mf.due_date, CURDATE()) as days_left')
-      );
+    const baseFees = () =>
+      db('monthly_fees as mf')
+        .join('students as s', 'mf.student_id', 's.student_id')
+        .where('mf.balance', '>', 0)
+        .whereIn('s.status', [1, '1', 'Active'])
+        .whereNot('mf.fee_status', 'Fully Paid')
+        .select(
+          'mf.fee_id',
+          'mf.student_id',
+          'mf.hostel_id',
+          'mf.balance',
+          'mf.due_date',
+          'mf.fee_status',
+          's.first_name',
+          's.last_name',
+          's.room_number'
+        );
 
-    let dueSoonNotified = 0;
-    for (const fee of dueSoon) {
-      const daysLeft = Number(fee.days_left);
-      if (!DUE_SOON_DAYS.includes(daysLeft)) continue;
+    // ── Tenants: due within 7 days (morning only), due today / overdue (both slots) ──
+    const fees = await baseFees().where('mf.due_date', '<=', in7);
+
+    let tenantNotified = 0;
+    for (const fee of fees) {
+      const dueStr = typeof fee.due_date === 'string'
+        ? fee.due_date.slice(0, 10)
+        : `${new Date(fee.due_date).getFullYear()}-${String(new Date(fee.due_date).getMonth() + 1).padStart(2, '0')}-${String(new Date(fee.due_date).getDate()).padStart(2, '0')}`;
+      const daysLeft = Math.round((Date.parse(dueStr) - Date.parse(today)) / 86400000);
+      if (daysLeft > 0 && slot === 'pm') continue; // upcoming: once a day only
 
       const balance = Number(fee.balance || 0);
-      const tenantName = `${fee.first_name || 'Tenant'}${fee.last_name ? ' ' + fee.last_name : ''}`.trim();
-      const title = daysLeft === 0 ? 'Rent Due Today 📅' : `Rent Due in ${daysLeft} Day${daysLeft === 1 ? '' : 's'} ⏳`;
-      const message = daysLeft === 0
-        ? `₹${balance.toLocaleString('en-IN')} is due today. Avoid late fees — pay now.`
-        : `₹${balance.toLocaleString('en-IN')} is due in ${daysLeft} day${daysLeft === 1 ? '' : 's'}.`;
+      const partial = fee.fee_status === 'Partially Paid';
+      const left = partial ? `${inr(balance)} still remaining` : inr(balance);
 
-      // 1. Notify Student
+      let title: string;
+      let message: string;
+      if (daysLeft > 0) {
+        title = `Rent Due in ${plural(daysLeft, 'Day')} ⏳`;
+        message = `${left} is due in ${plural(daysLeft, 'day')}. Pay on time to avoid late fees.`;
+      } else if (daysLeft === 0) {
+        title = 'Rent Due Today 📅';
+        message = `${left} is due today. Please pay now.`;
+      } else {
+        const od = Math.abs(daysLeft);
+        title = `Rent Overdue (${plural(od, 'day')}) ⚠️`;
+        message = `${left} is ${plural(od, 'day')} overdue. Please pay as soon as possible.`;
+      }
+
       await sendNotificationToStudent(
         fee.student_id,
         'Payment Due',
         title,
         message,
         daysLeft <= 1 ? 'High' : 'Medium',
-        { fee_id: fee.fee_id },
+        { fee_id: fee.fee_id, daysLeft },
         {
           screen: 'Dues',
           params: { feeId: fee.fee_id },
           referenceType: 'monthly_fee',
           referenceId: fee.fee_id,
-          deduplicateKey: `fee_due_${fee.fee_id}_${daysLeft}d`
+          deduplicateKey: `fee_tenant_${fee.fee_id}_${today}_${slot}`,
         }
-      ).catch((err) => console.error('[feeReminders] due-soon notify failed:', err?.message));
-
-      // 2. Notify Owner on all due stages (7d, 3d, 1d, 0d)
-      if (fee.hostel_id) {
-        const ownerTitle = daysLeft === 0
-          ? `Rent Due Today: ${tenantName}`
-          : `Upcoming Due (${daysLeft}d): ${tenantName}`;
-        const ownerMsg = daysLeft === 0
-          ? `${tenantName} (Room ${fee.room_number || '-'}) has ₹${balance.toLocaleString('en-IN')} due today.`
-          : `${tenantName} (Room ${fee.room_number || '-'}) has ₹${balance.toLocaleString('en-IN')} due in ${daysLeft} day${daysLeft === 1 ? '' : 's'}.`;
-
-        await sendNotificationToHostelOwner(
-          fee.hostel_id,
-          'Payment Due',
-          ownerTitle,
-          ownerMsg,
-          daysLeft <= 1 ? 'High' : 'Medium',
-          { fee_id: fee.fee_id, student_id: fee.student_id },
-          {
-            screen: 'PendingPayments',
-            params: { tab: daysLeft === 0 ? 'All Dues' : 'Next 7 Days' },
-            deduplicateKey: `owner_due_alert_${fee.fee_id}_${daysLeft}d`
-          }
-        ).catch(() => {});
-      }
-
-      await db('monthly_fees').where('fee_id', fee.fee_id).update({ due_reminder_sent_date: today });
-      dueSoonNotified++;
+      ).catch((err) => console.error('[feeReminders] tenant notify failed:', err?.message));
+      tenantNotified++;
     }
 
-    // ── Overdue: past due_date, active tenants with balance > 0 ──
-    const overdue = await db('monthly_fees as mf')
-      .join('students as s', 'mf.student_id', 's.student_id')
-      .where('mf.balance', '>', 0)
-      .whereIn('s.status', [1, '1', 'Active'])
-      .whereNot('mf.fee_status', 'Fully Paid')
-      .whereRaw('mf.due_date < CURDATE()')
-      .where(function () {
-        this.whereNull('mf.overdue_reminder_sent_date')
-          .orWhereRaw('mf.overdue_reminder_sent_date < DATE_SUB(CURDATE(), INTERVAL ? DAY)', [OVERDUE_RENAG_DAYS]);
-      })
-      .select(
-        'mf.*',
-        's.first_name',
-        's.last_name',
-        's.room_number',
-        's.hostel_id',
-        db.raw('DATEDIFF(CURDATE(), mf.due_date) as days_overdue')
-      );
-
-    let overdueNotified = 0;
-    for (const fee of overdue) {
-      const balance = Number(fee.balance || 0);
-      const daysOverdue = Math.max(1, Number(fee.days_overdue || 1));
-      const tenantName = `${fee.first_name || 'Tenant'}${fee.last_name ? ' ' + fee.last_name : ''}`.trim();
-
-      // 1. Notify Student about overdue rent
-      await sendNotificationToStudent(
-        fee.student_id,
-        'Payment Due',
-        `Rent Overdue (${daysOverdue}d) ⚠️`,
-        `₹${balance.toLocaleString('en-IN')} is ${daysOverdue} day${daysOverdue === 1 ? '' : 's'} overdue. Please pay as soon as possible to avoid late penalty.`,
-        'High',
-        { fee_id: fee.fee_id, daysOverdue },
-        {
-          screen: 'Dues',
-          params: { feeId: fee.fee_id },
-          referenceType: 'monthly_fee',
-          referenceId: fee.fee_id,
-          deduplicateKey: `fee_overdue_${fee.fee_id}_${today}`
-        }
-      ).catch((err) => console.error('[feeReminders] overdue notify failed:', err?.message));
-
-      // 2. Notify Owner about overdue tenant (previously missing)
-      if (fee.hostel_id) {
-        await sendNotificationToHostelOwner(
-          fee.hostel_id,
-          'Payment Due',
-          `Overdue Rent: ${tenantName}`,
-          `${tenantName} (Room ${fee.room_number || '-'}) has ₹${balance.toLocaleString('en-IN')} overdue by ${daysOverdue} day${daysOverdue === 1 ? '' : 's'}.`,
-          'High',
-          { fee_id: fee.fee_id, student_id: fee.student_id, daysOverdue, balance },
-          {
-            screen: 'PendingPayments',
-            params: { tab: 'Overdue' },
-            deduplicateKey: `owner_fee_overdue_${fee.fee_id}_${today}`
-          }
-        ).catch(() => {});
-      }
-
-      await db('monthly_fees').where('fee_id', fee.fee_id).update({ overdue_reminder_sent_date: today });
-      overdueNotified++;
-    }
-
-    if (dueSoonNotified > 0 || overdueNotified > 0) {
-      console.log(`[feeReminders] Notified ${dueSoonNotified} due-soon, ${overdueNotified} overdue`);
-    }
-
-    // ── Daily Owner Summary: Today's dues & Overdue count ──
-    const hostels = await db('hostel_master').select('hostel_id', 'owner_id', 'hostel_name');
+    // ── Owners: one aggregate per hostel per slot ──
+    const hostels = await db('hostel_master').where('is_active', 1).select('hostel_id', 'owner_id', 'hostel_name');
+    let ownerNotified = 0;
     for (const h of hostels) {
       if (!h.hostel_id || !h.owner_id) continue;
 
-      const [todayDuesRow] = await db('monthly_fees as mf')
-        .join('students as s', 'mf.student_id', 's.student_id')
-        .where('mf.hostel_id', h.hostel_id)
-        .whereIn('s.status', [1, '1', 'Active'])
-        .where('mf.balance', '>', 0)
-        .whereNot('mf.fee_status', 'Fully Paid')
-        .whereRaw('mf.due_date = CURDATE()')
-        .count('* as count')
-        .sum('mf.balance as totalBalance');
+      const rows = await baseFees().where('mf.hostel_id', h.hostel_id).where('mf.due_date', '<=', in7);
+      if (rows.length === 0) continue;
 
-      const [overdueRow] = await db('monthly_fees as mf')
-        .join('students as s', 'mf.student_id', 's.student_id')
-        .where('mf.hostel_id', h.hostel_id)
-        .whereIn('s.status', [1, '1', 'Active'])
-        .where('mf.balance', '>', 0)
-        .whereNot('mf.fee_status', 'Fully Paid')
-        .whereRaw('mf.due_date < CURDATE()')
-        .count('* as count')
-        .sum('mf.balance as totalBalance');
-
-      const todayCount = Number(todayDuesRow?.count || 0);
-      const overdueCount = Number(overdueRow?.count || 0);
-
-      if (todayCount > 0 || overdueCount > 0) {
-        const title = `📊 Daily Dues Summary (${todayCount} Today, ${overdueCount} Overdue)`;
-        const message = `You have ${todayCount} rent payment(s) due today and ${overdueCount} overdue bill(s). Tap to view pending payments.`;
-
-        await sendNotificationToHostelOwner(
-          h.hostel_id,
-          'Payment Due',
-          title,
-          message,
-          'Medium',
-          { todayCount, overdueCount },
-          {
-            screen: 'PendingPayments',
-            params: { tab: overdueCount > 0 ? 'Overdue' : 'All Dues' },
-            deduplicateKey: `daily_owner_dues_digest_${h.hostel_id}_${today}`
-          }
-        ).catch(() => {});
+      let overdue = 0, overdueAmt = 0, dueToday = 0, dueTodayAmt = 0, soon = 0, soonAmt = 0, partial = 0;
+      for (const r of rows) {
+        const d = typeof r.due_date === 'string' ? r.due_date.slice(0, 10) : new Date(r.due_date).toLocaleDateString('en-CA');
+        const b = Number(r.balance || 0);
+        if (r.fee_status === 'Partially Paid') partial++;
+        if (d < today) { overdue++; overdueAmt += b; }
+        else if (d === today) { dueToday++; dueTodayAmt += b; }
+        else { soon++; soonAmt += b; }
       }
+
+      const parts: string[] = [];
+      if (overdue) parts.push(`🔴 ${overdue} overdue (${inr(overdueAmt)})`);
+      if (dueToday) parts.push(`📅 ${dueToday} due today (${inr(dueTodayAmt)})`);
+      if (soon) parts.push(`🗓️ ${soon} due in next 7 days (${inr(soonAmt)})`);
+      if (partial) parts.push(`🟠 ${partial} partially paid`);
+
+      await sendNotificationToHostelOwner(
+        h.hostel_id,
+        'Payment Due',
+        slot === 'am' ? '💰 Fee follow-up needed' : '🌆 Evening fee reminder',
+        parts.join('\n'),
+        overdue > 0 || dueToday > 0 ? 'High' : 'Medium',
+        { overdue, dueToday, soon, partial },
+        {
+          screen: 'PendingPayments',
+          params: { tab: overdue > 0 ? 'Overdue' : 'All Dues' },
+          referenceType: 'fee_followup',
+          referenceId: h.hostel_id,
+          deduplicateKey: `fee_owner_${h.hostel_id}_${today}_${slot}`,
+        }
+      ).catch(() => {});
+      ownerNotified++;
     }
 
-    // ── Weekly Monday Summary (if today is Monday) ──
-    const isMonday = new Date().getDay() === 1;
-    if (isMonday) {
+    // ── Weekly Monday summary (morning only) ──
+    if (slot === 'am' && istDayOfWeek() === 1) {
+      const weekAgo = istAddDays(-7);
       for (const h of hostels) {
         if (!h.hostel_id || !h.owner_id) continue;
-
-        const [next7Row] = await db('monthly_fees as mf')
-          .join('students as s', 'mf.student_id', 's.student_id')
+        const [next7Row] = await baseFees()
+          .clearSelect()
           .where('mf.hostel_id', h.hostel_id)
-          .whereIn('s.status', [1, '1', 'Active'])
-          .where('mf.balance', '>', 0)
-          .whereNot('mf.fee_status', 'Fully Paid')
-          .whereRaw('mf.due_date BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 7 DAY)')
+          .whereBetween('mf.due_date', [today, in7])
           .count('* as count')
           .sum('mf.balance as totalBalance');
-
-        const [lastWeekCollection] = await db('fee_payments')
+        const [collected] = await db('fee_payments')
           .where('hostel_id', h.hostel_id)
-          .whereRaw('payment_date >= DATE_SUB(CURDATE(), INTERVAL 7 DAY)')
+          .where('payment_date', '>=', weekAgo)
           .sum('amount as totalCollected');
-
-        const next7Count = Number(next7Row?.count || 0);
-        const next7Amt = Number(next7Row?.totalBalance || 0);
-        const collectedAmt = Number(lastWeekCollection?.totalCollected || 0);
 
         await sendNotificationToHostelOwner(
           h.hostel_id,
           'General',
           '📈 Weekly Hostel Summary',
-          `Last 7 Days: ₹${collectedAmt.toLocaleString('en-IN')} collected. Next 7 Days: ${next7Count} dues (₹${next7Amt.toLocaleString('en-IN')}) expected.`,
+          `Last 7 days: ${inr(Number(collected?.totalCollected || 0))} collected. Next 7 days: ${Number(next7Row?.count || 0)} dues (${inr(Number(next7Row?.totalBalance || 0))}) expected.`,
           'Medium',
-          { next7Count, next7Amt, collectedAmt },
-          {
-            screen: 'Reports',
-            params: { tab: 'weekly' },
-            deduplicateKey: `weekly_owner_summary_${h.hostel_id}_${today}`
-          }
+          {},
+          { screen: 'Reports', params: { tab: 'weekly' }, deduplicateKey: `weekly_owner_summary_${h.hostel_id}_${today}` }
         ).catch(() => {});
       }
     }
 
-    return { success: true, dueSoonNotified, overdueNotified };
+    console.log(`[feeReminders] ${today} ${slot} IST: ${tenantNotified} tenant reminders, ${ownerNotified} owner follow-ups`);
+    return { success: true, tenantNotified, ownerNotified };
   } catch (error: any) {
     console.error('[feeReminders] Error:', error?.message);
     return { success: false, error: error?.message };
@@ -262,18 +172,22 @@ export const runFeeReminders = async () => {
 };
 
 export const startFeeRemindersJob = () => {
-  // Run daily at 09:00 AM
-  const pattern = '0 9 * * *';
-  const job = cron.schedule(pattern, () => {
-    runFeeReminders().catch((e) => console.error('[feeReminders] cron run failed:', e?.message));
-  });
+  const opts = { timezone: IST_TZ };
+  // 09:00 AM and 06:00 PM IST
+  const am = cron.schedule('0 9 * * *', () => {
+    runFeeReminders('am').catch((e) => console.error('[feeReminders] am run failed:', e?.message));
+  }, opts);
+  cron.schedule('0 18 * * *', () => {
+    runFeeReminders('pm').catch((e) => console.error('[feeReminders] pm run failed:', e?.message));
+  }, opts);
 
-  // Resilient startup catch-up: run 15 seconds after server boot to prevent lost alerts after restarts
+  // Startup catch-up (per-slot dedupe keys make repeats harmless). Only the slot whose time has passed.
   setTimeout(() => {
-    console.log('[feeReminders] Running startup catch-up check for dues and overdues...');
-    runFeeReminders().catch((e) => console.error('[feeReminders] startup check failed:', e?.message));
+    const hourIST = Number(new Intl.DateTimeFormat('en-GB', { timeZone: IST_TZ, hour: '2-digit', hour12: false }).format(new Date()));
+    if (hourIST >= 9) runFeeReminders('am').catch((e) => console.error('[feeReminders] startup am failed:', e?.message));
+    if (hourIST >= 18) runFeeReminders('pm').catch((e) => console.error('[feeReminders] startup pm failed:', e?.message));
   }, 15000);
 
-  console.log('✓ Fee reminders & Daily/Weekly digests scheduled (daily 09:00 AM + startup check)');
-  return job;
+  console.log('✓ Fee reminders scheduled (09:00 & 18:00 IST + startup catch-up)');
+  return am;
 };

@@ -75,9 +75,8 @@ export const AddHostelModal: React.FC<AddHostelModalProps> = ({ isOpen, onClose,
       console.log('Failed to fetch owners, using dummy data');
       // Dummy data for development
       setOwners([
-        { user_id: 2, full_name: 'Mahendra Reddy', email: 'mahendra@gmail.com' },
-        { user_id: 3, full_name: 'Priya Sharma', email: 'priya@gmail.com' },
-        { user_id: 4, full_name: 'Rajesh Kumar', email: 'rajesh@gmail.com' },
+        { user_id: 1, full_name: 'Veera Durgarao', email: 'veeradurgarao840@gmail.com' },
+        { user_id: 2, full_name: 'Priya Sharma', email: 'priya@gmail.com' },
       ]);
     }
   };

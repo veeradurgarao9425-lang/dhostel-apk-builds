@@ -73,9 +73,8 @@ export const OwnersPage: React.FC = () => {
       toast.error('Failed to load owners');
       // Dummy data for development
       const dummyOwners = [
-        { user_id: 2, full_name: 'Mahendra Reddy', email: 'mahendra@gmail.com', phone: '9876543210' },
-        { user_id: 3, full_name: 'Priya Sharma', email: 'priya@gmail.com', phone: '9876543211' },
-        { user_id: 4, full_name: 'Rajesh Kumar', email: 'rajesh@gmail.com', phone: '9876543212' },
+        { user_id: 1, full_name: 'Veera Durgarao', email: 'veeradurgarao840@gmail.com', phone: '6303359425' },
+        { user_id: 2, full_name: 'Priya Sharma', email: 'priya@gmail.com', phone: '9876543211' },
       ];
       setOwners(dummyOwners);
       setFilteredOwners(dummyOwners);

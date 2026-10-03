@@ -157,7 +157,7 @@ export default function IncomeDetailsScreen() {
 
             const todayStr = toLocalDateString(refDate);
             const currentMonthStr = exportMonth || todayStr.slice(0, 7);
-            const baseURL = (api.defaults.baseURL || 'https://dark-dew-bf62.veeradurgarao840.workers.dev/api').replace(/\/$/, '');
+            const baseURL = (api.defaults.baseURL || 'http://168.144.144.220:8081/api').replace(/\/$/, '');
 
             let queryParams = `token=${encodeURIComponent(token)}`;
             let filename = `Earnings_Report_${exportRange}_${todayStr}.xlsx`;

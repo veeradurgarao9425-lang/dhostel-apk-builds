@@ -1,4 +1,4 @@
-import cron from 'node-cron';
+﻿import cron from 'node-cron';
 import db from '../config/database.js';
 import { sendEmail } from '../utils/email.js';
 import { 
@@ -57,18 +57,20 @@ export const startSubscriptionCheckJob = () => {
               emailType: 'Expiry Alert',
               hostelId: hostel.hostel_id
             });
-
-            // Owner in-app + push notification
-            await sendNotificationToHostelOwner(
-              hostel.hostel_id,
-              'Subscription Alert',
-              'Subscription Expired',
-              `Your subscription for ${hostel.hostel_name} has expired. Access is restricted.`,
-              'High',
-              { hostel_id: hostel.hostel_id },
-              { screen: 'Subscription', params: { hostelId: hostel.hostel_id }, referenceType: 'hostel', referenceId: hostel.hostel_id }
-            );
           }
+
+          // Owner in-app + push notification (independent of whether an email exists)
+          await sendNotificationToHostelOwner(
+            hostel.hostel_id,
+            'Subscription Alert',
+            hostel.subscription_status_id === 1 ? 'Free Trial Ended' : 'Subscription Expired',
+            hostel.subscription_status_id === 1
+              ? `Your free trial for ${hostel.hostel_name} has ended. Subscribe now to continue managing your hostel.`
+              : `Your subscription for ${hostel.hostel_name} has expired. Access is restricted.`,
+            'High',
+            { hostel_id: hostel.hostel_id },
+            { screen: 'PremiumSubscription', params: { hostelId: hostel.hostel_id }, referenceType: 'hostel', referenceId: hostel.hostel_id, deduplicateKey: `sub_expired_${hostel.hostel_id}` }
+          ).catch((e) => console.error('[Cron] expiry push failed:', e?.message));
 
           // Email Super Admin
           await sendEmail({
@@ -101,7 +103,7 @@ export const startSubscriptionCheckJob = () => {
       }
 
       // 2. Reminder Notifications (7, 3, 1 days)
-      const daysToRemind = [7, 3, 1];
+      const daysToRemind = [7, 3, 2, 1, 0];
       
       for (const days of daysToRemind) {
         const futureDate = new Date();
@@ -118,24 +120,30 @@ export const startSubscriptionCheckJob = () => {
           try {
              const expiryDate = hostel.subscription_status_id === 1 ? hostel.trial_end_date : hostel.subscription_end_date;
              
-             if (hostel.email) {
+             const isTrial = hostel.subscription_status_id === 1;
+             const what = isTrial ? 'free trial' : 'subscription';
+
+             // Push first: it must not depend on the owner having an email address
+             await sendNotificationToHostelOwner(
+               hostel.hostel_id,
+               'Subscription Alert',
+               days === 0 ? `Your ${what} ends today` : `Your ${what} ends in ${days} day${days === 1 ? '' : 's'}`,
+               days === 0
+                 ? `Your ${what} for ${hostel.hostel_name} ends today. ${isTrial ? 'Subscribe' : 'Renew'} now to avoid losing access.`
+                 : `Your ${what} for ${hostel.hostel_name} ends in ${days} day${days === 1 ? '' : 's'}. ${isTrial ? 'Subscribe' : 'Renew'} to avoid disruption.`,
+               days <= 3 ? 'High' : 'Medium',
+               { hostel_id: hostel.hostel_id, days_left: days },
+               { screen: 'PremiumSubscription', params: { hostelId: hostel.hostel_id }, referenceType: 'hostel', referenceId: hostel.hostel_id, deduplicateKey: `sub_exp_${hostel.hostel_id}_${days}d` }
+             );
+
+             if (hostel.email && days > 0) {
                await sendEmail({
                  to: hostel.email,
-                 subject: `Trial Expiry Reminder - ${days} Days Left`,
+                 subject: `${isTrial ? 'Trial' : 'Subscription'} Expiry Reminder - ${days} Day${days === 1 ? '' : 's'} Left`,
                  html: getTrialReminderTemplate(hostel.full_name, hostel.hostel_name, days, new Date(expiryDate).toLocaleDateString()),
                  emailType: 'Trial Reminder',
                  hostelId: hostel.hostel_id
                });
-
-               await sendNotificationToHostelOwner(
-                 hostel.hostel_id,
-                 'Subscription Alert',
-                 'Subscription Expiring Soon',
-                 `Your subscription for ${hostel.hostel_name} expires in ${days} day(s). Renew to avoid disruption.`,
-                 'Medium',
-                 { hostel_id: hostel.hostel_id, days_left: days },
-                 { screen: 'Subscription', params: { hostelId: hostel.hostel_id }, referenceType: 'hostel', referenceId: hostel.hostel_id, deduplicateKey: `sub_exp_${hostel.hostel_id}_${days}d` }
-               );
              }
           } catch (e) {
             console.error(`[Cron] Failed to send ${days}-day warning to ${hostel.email}`, e);

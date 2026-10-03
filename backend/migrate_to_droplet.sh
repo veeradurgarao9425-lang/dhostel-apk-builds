@@ -15,7 +15,7 @@
 set -e
 
 # ── CONFIG — fill these in ───────────────────────────────────────────────────
-DROPLET_IP="143.244.131.69"      # Your DigitalOcean droplet IP
+DROPLET_IP="168.144.144.220"      # Your DigitalOcean droplet IP
 DROPLET_USER="root"              # SSH user
 
 # Aiven (source)

@@ -370,6 +370,9 @@ export async function patchDatabaseSchema() {
         `);
       }
 
+      // Clean legacy duplicate codes if any remain
+      await db('id_proof_types').whereIn('code', ['AADHAR', 'DL', 'VOTER']).del().catch(() => {});
+
       // Ensure all standard ID proof types are present
       const standardIdProofs = [
         { code: 'AADHAAR', name: 'Aadhaar Card', regex_pattern: '^[0-9]{12}$', min_length: 12, max_length: 12, display_order: 1, is_active: 1 },
@@ -377,14 +380,25 @@ export async function patchDatabaseSchema() {
         { code: 'PASSPORT', name: 'Passport', regex_pattern: '^[A-Z0-9]{8,9}$', min_length: 8, max_length: 9, display_order: 3, is_active: 1 },
         { code: 'DRIVING_LICENCE', name: 'Driving Licence', regex_pattern: '^[A-Z0-9 -]{10,20}$', min_length: 10, max_length: 20, display_order: 4, is_active: 1 },
         { code: 'VOTER_ID', name: 'Voter ID', regex_pattern: '^[A-Z0-9]{10}$', min_length: 10, max_length: 10, display_order: 5, is_active: 1 },
-        { code: 'COLLEGE_EMPLOYEE_ID', name: 'College / Employee ID', regex_pattern: '', min_length: 1, max_length: 50, display_order: 6, is_active: 1 },
-        { code: 'OTHER', name: 'Other ID Card', regex_pattern: '', min_length: 1, max_length: 50, display_order: 7, is_active: 1 }
+        { code: 'RATION', name: 'Ration Card', regex_pattern: '^[A-Z0-9]{8,15}$', min_length: 8, max_length: 15, display_order: 6, is_active: 1 },
+        { code: 'COLLEGE_EMPLOYEE_ID', name: 'College / Employee ID', regex_pattern: '', min_length: 1, max_length: 50, display_order: 7, is_active: 1 },
+        { code: 'OTHER', name: 'Other ID Card', regex_pattern: '', min_length: 1, max_length: 50, display_order: 8, is_active: 1 }
       ];
 
       for (const proof of standardIdProofs) {
-        const exists = await db('id_proof_types').where('code', proof.code).first();
+        const exists = await db('id_proof_types').where('code', proof.code).orWhere('name', proof.name).first();
         if (!exists) {
           await db('id_proof_types').insert(proof);
+        } else {
+          await db('id_proof_types').where('id', exists.id).update({
+            code: proof.code,
+            name: proof.name,
+            regex_pattern: proof.regex_pattern,
+            min_length: proof.min_length,
+            max_length: proof.max_length,
+            display_order: proof.display_order,
+            is_active: 1,
+          });
         }
       }
     } catch (e: any) {

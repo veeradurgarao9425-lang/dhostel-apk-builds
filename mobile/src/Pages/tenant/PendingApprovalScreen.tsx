@@ -40,10 +40,10 @@ const TEXT_DARK = "#0F172A";
 const TEXT_MID = "#64748B";
 const PAGE_BG = "#F8FAFC";
 
-export default function PendingApprovalScreen({ navigation }: any) {
+export default function PendingApprovalScreen({ route, navigation }: any) {
   const { user, refreshUser, disconnectHostel } = useAuth();
   const insets = useSafeAreaInsets();
-  const firstName = (user?.name || "Tenant").split(" ")[0];
+  const firstName = (route?.params?.firstName || route?.params?.student_name || user?.name || "Resident").split(" ")[0];
   const [refreshing, setRefreshing] = useState(false);
   const isRejected = Number(user?.status) === 4;
 
@@ -91,10 +91,10 @@ export default function PendingApprovalScreen({ navigation }: any) {
   };
 
   const helpShortcuts = [
-    { id: 'features', name: 'How it works', icon: Sparkles, nav: 'HowItWorksScreen', bg: '#FEF3C7', color: '#D97706', gradient: ['#D97706', '#F59E0B'] as [string, string] },
+    { id: 'features', name: 'How it works', icon: Sparkles, nav: 'HowItWorks', bg: '#FEF3C7', color: '#D97706', gradient: ['#D97706', '#F59E0B'] as [string, string] },
     { id: 'documents', name: 'My\nDocuments', icon: FileText, nav: 'Documents', bg: '#EDE9FE', color: '#8B5CF6', gradient: ['#7C3AED', '#A78BFA'] as [string, string] },
     { id: 'help', name: 'Need help', icon: HelpCircle, nav: 'HelpScreen', bg: '#E0F2FE', color: '#0EA5E9', gradient: ['#0284C7', '#38BDF8'] as [string, string] },
-    { id: 'security', name: 'Security\n& Policy', icon: ShieldCheck, nav: 'PrivacyPolicyScreen', bg: '#DCFCE7', color: '#22C55E', gradient: ['#16A34A', '#4ADE80'] as [string, string] },
+    { id: 'security', name: 'Security\n& Policy', icon: ShieldCheck, nav: 'PrivacyPolicy', bg: '#DCFCE7', color: '#22C55E', gradient: ['#16A34A', '#4ADE80'] as [string, string] },
   ];
 
   return (
@@ -238,7 +238,17 @@ export default function PendingApprovalScreen({ navigation }: any) {
           <Text style={styles.sectionTitle}>Explore & Resources</Text>
           <View style={styles.shortcutGrid}>
             {helpShortcuts.map((sc) => (
-              <TouchableOpacity key={sc.id} style={styles.shortcutItem} onPress={() => navigation?.navigate?.(sc.nav)}>
+              <TouchableOpacity
+                key={sc.id}
+                style={styles.shortcutItem}
+                onPress={() => {
+                  try {
+                    navigation?.navigate?.(sc.nav);
+                  } catch (e) {
+                    console.warn('[PendingApproval] Navigation to shortcut failed:', sc.nav, e);
+                  }
+                }}
+              >
                 <IconGlowBadge
                   Icon={sc.icon}
                   gradient={sc.gradient}

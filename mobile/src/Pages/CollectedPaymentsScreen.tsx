@@ -205,7 +205,7 @@ export default function CollectedPaymentsScreen() {
                 return;
             }
 
-            const baseURL = (api.defaults.baseURL || 'https://dark-dew-bf62.veeradurgarao840.workers.dev/api').replace(/\/$/, '');
+            const baseURL = (api.defaults.baseURL || 'http://168.144.144.220:8081/api').replace(/\/$/, '');
             const exportUrl = `${baseURL}/reports/download/excel?startDate=${startStr}&endDate=${endStr}&reportType=collection&token=${encodeURIComponent(token)}`;
 
             const filename = `Collected_Rent_Report_${startStr}_to_${endStr}.xlsx`;

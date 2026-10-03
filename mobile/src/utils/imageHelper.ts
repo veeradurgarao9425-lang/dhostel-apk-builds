@@ -1,6 +1,6 @@
 import { Platform } from 'react-native';
 
-const API_FALLBACK_URL = (process.env.EXPO_PUBLIC_API_URL || 'https://dark-dew-bf62.veeradurgarao840.workers.dev/api').replace(/\/api\/?$/, '');
+const API_FALLBACK_URL = (process.env.EXPO_PUBLIC_API_URL || 'http://168.144.144.220:8081/api').replace(/\/api\/?$/, '');
 
 /**
  * Resolves any raw photo/document URL to a fully-qualified, renderable URL.
@@ -11,7 +11,7 @@ export function getResolvedImageUrl(rawUrl: string | null | undefined): string |
   let clean = rawUrl.trim();
   if (!clean) return null;
 
-  // Upgrade legacy HTTP IP links to HTTPS domain
+  // Upgrade legacy HTTP IP links
   if (clean.includes('143.244.131.69:8081')) {
     clean = clean.replace('http://143.244.131.69:8081', API_FALLBACK_URL).replace('https://143.244.131.69:8081', API_FALLBACK_URL);
   }

@@ -282,11 +282,6 @@ function StepperForm({ visible, onClose, onSubmit, hostelId }: { visible: boolea
         text: '🖼️ Choose from Gallery',
         onPress: async () => {
           try {
-            const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-            if (!perm.granted) {
-              Alert.alert('Permission Required', 'Media library access is needed.');
-              return;
-            }
             const result = await ImagePicker.launchImageLibraryAsync({
               mediaTypes: ImagePicker.MediaTypeOptions.Images,
               allowsMultipleSelection: true,

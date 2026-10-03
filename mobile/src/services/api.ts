@@ -5,13 +5,13 @@ import { getSecureItem, multiRemoveSecureItems } from './secureStore';
 import { navigate } from '../navigation/navigationRef';
 
 // ─── Base URL ─────────────────────────────────────────────────────────────────
-// Fast Cloudflare Edge Worker connected to DigitalOcean (Port 443 HTTPS)
-const BASE_URL = 'https://dark-dew-bf62.veeradurgarao840.workers.dev/api';
+// DigitalOcean Droplet API URL
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://168.144.144.220:8081/api';
 
 // ─── Axios Instance ───────────────────────────────────────────────────────────
 export const api = axios.create({
   baseURL: BASE_URL,
-  timeout: 45000, // 45s timeout for multi-image uploads & cold-starts
+  timeout: 15000, // 15s timeout for fast responsiveness (prevents freezing on down/sleeping server)
 });
 
 // ─── Fast Memory Token Cache ──────────────────────────────────────────────────
@@ -91,7 +91,6 @@ api.interceptors.response.use(
       console.error(`[API Error] ${error.config?.url} | Status: ${status || 'No Response'} | Message: ${error.message}`, error.response?.data || '');
     }
 
-    // 401 → clear session + redirect (deduplicated, ignore on login attempts & background auxiliary checks)
     const isLoginEndpoint = error.config?.url?.includes('/auth/login') || error.config?.url?.includes('/developer/auth/login');
     const isAuxiliaryEndpoint = error.config?.url?.includes('/notifications/register-token') ||
       error.config?.url?.includes('/notifications/deregister-token') ||

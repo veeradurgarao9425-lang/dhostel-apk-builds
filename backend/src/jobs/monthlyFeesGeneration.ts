@@ -1,6 +1,6 @@
 import cron from 'node-cron';
 import db from '../config/database.js';
-import { sendNotificationToHostelOwner } from '../utils/notification.js';
+import { sendNotificationToHostelOwner, sendNotificationToStudent } from '../utils/notification.js';
 
 /**
  * Cron Job: Automatic Monthly Fees Generation (Student-Based / Anniversary Billing)
@@ -261,6 +261,20 @@ const generateMonthlyFeesForHostel = async (hostel_id: number) => {
         `Anniversary fees generated for ${totalFeesCreated} students today. Total due: ₹${totalDueSum}.`,
         'High'
       ).catch(err => console.error('Failed to send monthly fee generation notification:', err));
+
+      // Tell each tenant their new bill exists (previously only the owner was told)
+      for (const f of feesData) {
+        const dueStr = f.due_date instanceof Date ? f.due_date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : String(f.due_date || '');
+        sendNotificationToStudent(
+          f.student_id,
+          'Payment Due',
+          'New Rent Bill Generated 🧾',
+          `Your rent bill of ₹${Number(f.total_due || 0).toLocaleString('en-IN')} is ready${dueStr ? `, due on ${dueStr}` : ''}.${Number(f.carry_forward) > 0 ? ` Includes ₹${Number(f.carry_forward).toLocaleString('en-IN')} carried forward.` : ''}`,
+          'Medium',
+          { student_id: f.student_id, fee_month: f.fee_month },
+          { screen: 'Dues', referenceType: 'monthly_fee', deduplicateKey: `fee_generated_${f.student_id}_${f.fee_month}` }
+        ).catch(() => {});
+      }
     }
 
     return {

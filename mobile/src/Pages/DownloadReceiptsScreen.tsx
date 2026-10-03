@@ -144,7 +144,7 @@ export default function DownloadReceiptsScreen() {
                 return;
             }
 
-            const baseURL = (api.defaults.baseURL || 'https://dark-dew-bf62.veeradurgarao840.workers.dev/api').replace(/\/$/, '');
+            const baseURL = (api.defaults.baseURL || 'http://168.144.144.220:8081/api').replace(/\/$/, '');
             const exportUrl = `${baseURL}/income/export?startDate=${startStr}&endDate=${endStr}&token=${encodeURIComponent(token)}&all=true`;
 
             const filename = `receipts_report_${startStr}_to_${endStr}.xlsx`;

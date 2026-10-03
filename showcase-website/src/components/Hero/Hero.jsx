@@ -5,7 +5,7 @@ import styles from './Hero.module.css'
 
 const ROWS = [
   { initials: 'DG', name: 'Durgarao G', sub: 'Room 204 · Triple sharing', status: 'Paid', color: '#4f46e5' },
-  { initials: 'MR', name: 'Mahindhra Reddy', sub: 'Room 106 · Rent due Jul 8', status: 'Due', color: '#f97316' },
+  { initials: 'MR', name: 'Manoj Rao', sub: 'Room 106 · Rent due Jul 8', status: 'Due', color: '#f97316' },
   { initials: 'SK', name: 'Suresh Kumar', sub: 'Room 308 · Double sharing', status: 'Paid', color: '#0d9488' },
 ]
 

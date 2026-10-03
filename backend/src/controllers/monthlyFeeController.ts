@@ -1151,6 +1151,7 @@ export const recordPayment = async (req: AuthRequest, res: Response) => {
           params: { studentId: student_id, studentName: studentFullName },
           referenceType: 'payment',
           referenceId: paymentId,
+          deduplicateKey: `mfpayment_owner_${paymentId}`,
         }
       ).catch(err => console.error('Failed to send payment collection notification:', err));
 
@@ -1165,6 +1166,7 @@ export const recordPayment = async (req: AuthRequest, res: Response) => {
           screen: 'Payments',
           referenceType: 'payment',
           referenceId: paymentId,
+          deduplicateKey: `mfpayment_tenant_${paymentId}`,
         }
       ).catch(err => console.error('Failed to send payment recording notification to student:', err));
 

@@ -134,7 +134,7 @@ export const HeaderNotification = ({ navigation }: { navigation?: any }) => {
                 onPress={() => setShowNotif(true)}
                 activeOpacity={0.8}
             >
-                <Ionicons name="notifications-outline" color="#FFFFFF" size={20} />
+                <Ionicons name="notifications-outline" color="#FFFFFF" size={17} />
                 {unreadCount > 0 && (
                     <View style={styles.badge}>
                         <Text style={styles.badgeText}>{unreadCount}</Text>
@@ -224,26 +224,26 @@ export const HeaderNotification = ({ navigation }: { navigation?: any }) => {
 
 const styles = StyleSheet.create({
     notificationButton: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
+        width: 35,
+        height: 35,
+        borderRadius: 17.5,
         backgroundColor: 'rgba(255,255,255,0.18)',
         alignItems: 'center',
         justifyContent: 'center',
-        borderWidth: 1.5,
+        borderWidth: 1,
         borderColor: 'rgba(255,255,255,0.3)',
     },
     badge: {
         position: 'absolute',
-        top: -4,
-        right: -4,
-        width: 18,
-        height: 18,
-        borderRadius: 9,
+        top: -3,
+        right: -3,
+        width: 16,
+        height: 16,
+        borderRadius: 8,
         backgroundColor: '#EF4444',
         alignItems: 'center',
         justifyContent: 'center',
-        borderWidth: 1.5,
+        borderWidth: 1.2,
         borderColor: '#FFFFFF',
     },
     badgeText: { fontSize: 9, fontWeight: '800', color: '#FFFFFF' },

@@ -169,7 +169,7 @@ export const AddOwnerModal: React.FC<AddOwnerModalProps> = ({ isOpen, onClose, o
               className={`w-full px-4 py-2.5 border rounded-xl bg-slate-50 dark:bg-slate-800/50 text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500 outline-none transition-all ${
                 errors.full_name ? 'border-rose-500' : 'border-slate-200 dark:border-slate-700'
               }`}
-              placeholder="e.g., Rajesh Kumar"
+              placeholder="e.g., Ramesh Kumar"
             />
             {errors.full_name && (
               <p className="mt-1 text-sm text-rose-500">{errors.full_name}</p>

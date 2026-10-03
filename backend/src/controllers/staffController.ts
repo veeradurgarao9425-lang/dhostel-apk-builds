@@ -4,7 +4,7 @@ import { AuthRequest } from '../middleware/auth.js';
 import { checkHostelUniqueIdentifiers } from '../utils/validation.js';
 import { resolveScopedHostelId, resolveOwnerHostelId, canAccessHostel } from '../utils/scope.js';
 import { processFileUpload } from '../utils/fileUpload.js';
-import { sendNotificationToHostelOwner } from '../utils/notification.js';
+import { sendNotificationToHostelOwner, sendNotificationToUser } from '../utils/notification.js';
 
 // Get all staff (Owner sees only their hostel staff)
 export const getStaff = async (req: AuthRequest, res: Response) => {
@@ -252,8 +252,23 @@ export const createStaff = async (req: AuthRequest, res: Response) => {
       'Staff Added 👥',
       `${full_name} was registered as ${role || 'Staff'}.`,
       'Low',
-      { staff_id }
+      { staff_id },
+      { deduplicateKey: `staff_added_${staff_id}` }
     ).catch(() => {});
+
+    // Tell the staff member themselves (they have their own login when linkedUserId exists)
+    if (linkedUserId) {
+      sendNotificationToUser({
+        userId: Number(linkedUserId),
+        hostelId,
+        type: 'General',
+        title: 'Welcome to the team! 👋',
+        message: `You've been added as ${role || 'Staff'}. Log in to Hostix to get started.`,
+        priority: 'Medium',
+        screen: 'Home',
+        deduplicateKey: `staff_welcome_${staff_id}`,
+      }).catch(() => {});
+    }
 
     res.status(201).json({
       success: true,
@@ -532,6 +547,19 @@ export const addStaffPayment = async (req: AuthRequest, res: Response) => {
         created_at: new Date(),
       });
       payment_id = Array.isArray(result) ? result[0] : result;
+    }
+
+    // Notify the staff member about the payment (only if they have a login)
+    if (staff.user_id) {
+      sendNotificationToUser({
+        userId: Number(staff.user_id),
+        hostelId: staff.hostel_id,
+        type: 'Payment Due',
+        title: 'Salary payment recorded 💵',
+        message: `₹${Number(amount).toLocaleString('en-IN')} (${resolvedTypeStr}) was recorded for ${resolvedMonth}.`,
+        priority: 'Medium',
+        deduplicateKey: `staff_pay_${payment_id}`,
+      }).catch(() => {});
     }
 
     // Also auto-sync into expenses table so it shows up in Hostel Expenses

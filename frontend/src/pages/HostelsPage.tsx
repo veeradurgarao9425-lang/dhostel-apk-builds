@@ -74,7 +74,7 @@ export const HostelsPage: React.FC = () => {
           state: 'Telangana',
           hostel_type: 'Boys',
           owner_id: 2,
-          owner_name: 'Mahendra Reddy'
+          owner_name: 'Veera Durgarao'
         },
         {
           hostel_id: 2,

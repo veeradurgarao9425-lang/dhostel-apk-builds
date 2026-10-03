@@ -1,6 +1,7 @@
 import db from '../config/database.js';
 import { io } from '../socket/index.js';
 import { getFirebaseMessaging, isFirebaseReady } from '../config/firebaseAdmin.js';
+import type { MulticastMessage } from 'firebase-admin/messaging';
 
 // Map of notification types to DB enum values (Now VARCHAR in DB)
 export type NotificationType =
@@ -43,7 +44,24 @@ export interface SendNotificationOptions {
 /**
  * Sends a push notification via Expo and saves it in the local database.
  */
+// Keys currently being sent by THIS process. The DB dedupe check is read-then-insert, so two
+// concurrent calls (double-tap, cron + startup catch-up) could both pass it; this closes that race.
+const inFlightKeys = new Set<string>();
+
 export const sendNotificationToUser = async (options: SendNotificationOptions): Promise<void> => {
+  const { deduplicateKey } = options;
+  if (deduplicateKey) {
+    if (inFlightKeys.has(deduplicateKey)) return;
+    inFlightKeys.add(deduplicateKey);
+  }
+  try {
+    await deliverNotification(options);
+  } finally {
+    if (deduplicateKey) inFlightKeys.delete(deduplicateKey);
+  }
+};
+
+const deliverNotification = async (options: SendNotificationOptions): Promise<void> => {
   const {
     userId = null, studentId = null, hostelId = null,
     type, title, message, priority = 'Medium', data = {},
@@ -113,18 +131,15 @@ export const sendNotificationToUser = async (options: SendNotificationOptions): 
         if (userId) {
           io.to(`user_${userId}`).emit('REFRESH_NOTIFICATIONS', payload);
           io.to(`user_${userId}`).emit('new_notification', payload);
-          io.to(`tenant_${userId}`).emit('REFRESH_NOTIFICATIONS', payload);
-          io.to(`tenant_${userId}`).emit('new_notification', payload);
         }
         if (studentId) {
           io.to(`tenant_${studentId}`).emit('REFRESH_NOTIFICATIONS', payload);
           io.to(`tenant_${studentId}`).emit('new_notification', payload);
-          io.to(`user_${studentId}`).emit('REFRESH_NOTIFICATIONS', payload);
-          io.to(`user_${studentId}`).emit('new_notification', payload);
         }
-        if (hostelId) {
-          io.to(`hostel_${hostelId}`).emit('REFRESH_NOTIFICATIONS', payload);
-          io.to(`hostel_${hostelId}`).emit('new_notification', payload);
+        // Hostel room is shared by owner AND tenants, so only broadcast a payload-free
+        // refresh to it when the notification is owner-targeted (never leak title/message).
+        if (hostelId && userId && !studentId) {
+          io.to(`hostel_${hostelId}`).emit('REFRESH_NOTIFICATIONS');
         }
       }
     } catch (socErr) {
@@ -136,19 +151,12 @@ export const sendNotificationToUser = async (options: SendNotificationOptions): 
     const cleanUserId = userId !== null && userId !== undefined && !isNaN(Number(userId)) ? Number(userId) : null;
     const cleanStudentId = studentId !== null && studentId !== undefined && !isNaN(Number(studentId)) ? Number(studentId) : null;
 
-    if (cleanStudentId && cleanUserId) {
+    if (cleanStudentId) {
+      // Tenant device tokens are stored by student_id only (user_id is null for tenants)
       userTokens = await db('user_push_tokens')
+        // Strictly by student_id: a `user_id = studentId` fallback would push tenant
+        // content to an owner whose user_id happens to equal this student's id.
         .where('student_id', cleanStudentId)
-        .orWhere('user_id', cleanUserId)
-        .select('push_token')
-        .catch(() => []);
-    } else if (cleanStudentId) {
-      userTokens = await db('user_push_tokens')
-        .where('student_id', cleanStudentId)
-        // Graceful fallback for legacy records saved before student_id column separation
-        .orWhere(function() {
-          this.where('user_id', cleanStudentId).whereNull('student_id');
-        })
         .select('push_token')
         .catch(() => []);
     } else if (cleanUserId) {
@@ -228,10 +236,13 @@ export const sendNotificationToUser = async (options: SendNotificationOptions): 
 
     // 4. Dispatch via Direct Firebase Cloud Messaging (FCM)
     const messaging = getFirebaseMessaging();
+    if (fcmTokens.length > 0 && (!isFirebaseReady() || !messaging)) {
+      console.error('[FCM] ❌ Firebase Admin is NOT initialised — push NOT sent. Check FIREBASE_SERVICE_ACCOUNT env var on the server.');
+    }
     if (fcmTokens.length > 0 && isFirebaseReady() && messaging) {
       try {
-        const fcmResponse = await messaging.sendEachForMulticast({
-          tokens: fcmTokens,
+        const buildMessage = (tokens: string[]): MulticastMessage => ({
+          tokens,
           notification: {
             title: formattedTitle,
             body: message,
@@ -239,6 +250,8 @@ export const sendNotificationToUser = async (options: SendNotificationOptions): 
           data: stringifiedData,
           android: {
             priority: 'high',
+            // Drop stale alerts (e.g. "due today") instead of delivering them a day late
+            ttl: 12 * 60 * 60 * 1000,
             notification: {
               channelId: 'hostix_alerts',
               sound: 'default',
@@ -247,10 +260,29 @@ export const sendNotificationToUser = async (options: SendNotificationOptions): 
               defaultVibrateTimings: true,
               priority: 'high',
               visibility: 'public',
+              // A repeat of the same alert replaces the earlier one instead of stacking
+              ...(deduplicateKey ? { tag: deduplicateKey.slice(0, 60) } : {}),
             },
           },
         });
+
+        let fcmResponse = await messaging.sendEachForMulticast(buildMessage(fcmTokens));
         console.log(`[Notification] 🚀 Direct Firebase FCM dispatched to ${fcmTokens.length} device(s). Success: ${fcmResponse.successCount}, Failure: ${fcmResponse.failureCount}`);
+
+        // One retry for transient Firebase errors (network blips / FCM 5xx)
+        const TRANSIENT = ['messaging/internal-error', 'messaging/server-unavailable', 'messaging/unknown-error', 'messaging/message-rate-exceeded'];
+        const retryTokens = fcmTokens.filter((_t, i) => !fcmResponse.responses[i].success && TRANSIENT.includes(fcmResponse.responses[i].error?.code || ''));
+        if (retryTokens.length > 0) {
+          await new Promise((r) => setTimeout(r, 2000));
+          const retryResp = await messaging.sendEachForMulticast(buildMessage(retryTokens));
+          console.log(`[Notification] 🔁 Retried ${retryTokens.length} transient failure(s). Success: ${retryResp.successCount}`);
+          // Fold the retry outcome back in so dead-token cleanup below sees final results
+          retryTokens.forEach((t, j) => {
+            const idx = fcmTokens.indexOf(t);
+            fcmResponse.responses[idx] = retryResp.responses[j];
+          });
+          fcmResponse = { ...fcmResponse, failureCount: fcmResponse.responses.filter((x) => !x.success).length, successCount: fcmResponse.responses.filter((x) => x.success).length };
+        }
 
         // Cleanup invalid/unregistered tokens automatically
         if (fcmResponse.failureCount > 0) {
@@ -357,7 +389,9 @@ export const sendNotificationToStudent = async (
       .catch(() => null);
 
     const actualStudentId = student?.student_id || studentId;
-    const actualUserId = student?.user_id || (Number(studentId) || null);
+    // Never fall back to studentId as a user id: student and user ids are different id spaces,
+    // so that would file the notification under (and push to) an unrelated owner account.
+    const actualUserId = student?.user_id || null;
     const actualHostelId = student?.hostel_id || null;
 
     const TENANT_SAFE_SCREENS: Record<string, string> = {
@@ -417,7 +451,7 @@ export const sendNotificationToAllHostelStudents = async (
   message: string,
   priority?: 'Low' | 'Medium' | 'High',
   data?: any,
-  extras?: Pick<SendNotificationOptions, 'screen' | 'params' | 'referenceType' | 'referenceId' | 'deepLink' | 'metadata'>
+  extras?: Pick<SendNotificationOptions, 'screen' | 'params' | 'referenceType' | 'referenceId' | 'deepLink' | 'metadata' | 'deduplicateKey'>
 ): Promise<void> => {
   try {
     const students = await db('students')
@@ -425,18 +459,26 @@ export const sendNotificationToAllHostelStudents = async (
       .whereIn('status', [1, 3, '1', '3', 'Active', 'Pending'])
       .select('student_id', 'user_id')
       .catch(() => []);
-    for (const student of students) {
-      await sendNotificationToUser({
-        studentId: student.student_id,
-        userId: student.user_id || null,
-        hostelId,
-        type,
-        title,
-        message,
-        priority,
-        data,
-        ...(extras || {}),
-      });
+    // Parallel batches of 10 — a sequential loop made a notice to 200 tenants take minutes
+    const BATCH = 10;
+    for (let i = 0; i < students.length; i += BATCH) {
+      await Promise.allSettled(
+        students.slice(i, i + BATCH).map((student: any) =>
+          sendNotificationToUser({
+            studentId: student.student_id,
+            userId: student.user_id || null,
+            hostelId,
+            type,
+            title,
+            message,
+            priority,
+            data,
+            ...(extras || {}),
+            // per-student key so the same notice can't be pushed twice to one tenant
+            deduplicateKey: extras?.deduplicateKey ? `${extras.deduplicateKey}_s${student.student_id}` : undefined,
+          })
+        )
+      );
     }
   } catch (err) {
     console.error(`[Notification] Error sending to all hostel students:`, err);

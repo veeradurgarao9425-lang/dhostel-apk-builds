@@ -99,11 +99,18 @@ const sendViaSendGrid = async (options: EmailOptions): Promise<boolean> => {
   if (!apiKey) return false;
 
   const sender = parseSender();
+  const plainText = options.html ? options.html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim() : '';
   const payload: any = {
-    personalizations: [{ to: [{ email: options.to }] }],
-    from: { email: sender.email, name: sender.name },
-    subject: options.subject,
-    content: [{ type: 'text/html', value: options.html }],
+    personalizations: [{
+      to: [{ email: options.to }],
+      subject: options.subject,
+    }],
+    from: { email: sender.email, name: sender.name || 'Hostix Support' },
+    reply_to: { email: sender.email, name: sender.name || 'Hostix Support' },
+    content: [
+      { type: 'text/plain', value: plainText || 'Your Hostix verification notification' },
+      { type: 'text/html', value: options.html },
+    ],
   };
 
   if (options.attachments && options.attachments.length > 0) {
@@ -379,13 +386,42 @@ export const sendOtpEmail = async (
   otp: string
 ): Promise<void> => {
   const subject = `${otp} is your Hostix verification code`;
-  const html = generateOtpEmailHtml({
-    otp,
-    title: 'Account Verification Code',
-    subtitle: 'Verification Code',
-    description: 'Please use the following 6-digit one-time password (OTP) to sign in or verify your account:',
-    expiresInMinutes: 10,
-  });
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f8fafc; margin: 0; padding: 24px;">
+      <!-- Hidden Preheader to prevent spam classification -->
+      <div style="display:none;font-size:1px;color:#f8fafc;line-height:1px;max-height:0px;max-width:0px;opacity:0;overflow:hidden;">
+        Your Hostix verification code is ${otp}. Valid for 10 minutes.
+      </div>
+      <div style="max-width: 500px; margin: 0 auto; background-color: #ffffff; padding: 32px; border-radius: 16px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
+        <div style="text-align: center; margin-bottom: 24px;">
+          <h2 style="color: #6366f1; margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -0.5px;">Hostix</h2>
+          <p style="color: #64748b; font-size: 13px; margin-top: 4px; margin-bottom: 0;">Smart PG & Hostel Management</p>
+        </div>
+        <div style="border-top: 1px solid #f1f5f9; padding-top: 24px;">
+          <h3 style="color: #0f172a; margin-top: 0; font-size: 18px; font-weight: 700; text-align: center;">Account Verification Code</h3>
+          <p style="color: #475569; font-size: 14px; line-height: 22px; text-align: center; margin-bottom: 24px;">Please use the following one-time password (OTP) to complete your verification:</p>
+          <div style="text-align: center; margin: 24px 0;">
+            <div style="font-size: 34px; font-weight: 800; letter-spacing: 8px; color: #4f46e5; background-color: #f1f5f9; padding: 16px 28px; border-radius: 12px; display: inline-block; font-family: 'Courier New', Courier, monospace;">
+              ${otp}
+            </div>
+          </div>
+          <p style="color: #94a3b8; font-size: 12px; text-align: center; margin-top: 24px; margin-bottom: 0;">
+            This code will expire in 10 minutes. If you did not request this code, you can safely ignore this email.
+          </p>
+        </div>
+        <div style="border-top: 1px solid #f1f5f9; margin-top: 28px; padding-top: 16px; text-align: center;">
+          <p style="color: #94a3b8; font-size: 11px; margin: 0;">&copy; Hostix Systems. All rights reserved.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
 
   console.log('\n' + '='.repeat(70));
   console.log(`🔐 OTP VERIFICATION CODE DISPATCH`);

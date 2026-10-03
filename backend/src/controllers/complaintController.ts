@@ -61,7 +61,8 @@ export const createComplaint = async (req: AuthRequest, res: Response) => {
         'New Maintenance Complaint 🔧',
         `${studentName}${bedInfo} raised a new complaint: ${title}`,
         'Medium',
-        { complaint_id }
+        { complaint_id },
+        { screen: 'Complaints', referenceType: 'complaint', referenceId: complaint_id, deduplicateKey: `complaint_owner_${complaint_id}` }
       );
 
       // Also send instant push confirmation to the tenant
@@ -72,7 +73,7 @@ export const createComplaint = async (req: AuthRequest, res: Response) => {
         `Your complaint "${title}" has been submitted and the owner/staff have been notified.`,
         'Medium',
         { complaint_id },
-        { screen: 'Complaints', referenceType: 'complaint', referenceId: complaint_id }
+        { screen: 'Complaints', referenceType: 'complaint', referenceId: complaint_id, deduplicateKey: `complaint_tenant_${complaint_id}` }
       );
     } catch (err) {
       console.error('Failed to notify owner/student about new complaint:', err);

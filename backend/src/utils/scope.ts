@@ -63,13 +63,29 @@ export const resolveOwnerHostelId = async (
     }
 
     if (requestedId !== null) {
-      // Double-validate: owner_id = user.user_id AND hostel_id = requestedId
-      const hostelRow = await db('hostel_master')
+      // Validate: owner_id = user.user_id AND hostel_id = requestedId
+      let hostelRow = await db('hostel_master')
         .where('owner_id', user.user_id)
         .where('hostel_id', requestedId)
         .where('is_active', 1)
         .select('hostel_id')
         .first();
+
+      // Fallback: If owner account is assigned to this hostel_id
+      if (!hostelRow && user.hostel_id && Number(user.hostel_id) === requestedId) {
+        hostelRow = await db('hostel_master')
+          .where('hostel_id', requestedId)
+          .where('is_active', 1)
+          .select('hostel_id', 'owner_id')
+          .first();
+
+        if (hostelRow && hostelRow.owner_id !== user.user_id) {
+          await db('hostel_master')
+            .where('hostel_id', requestedId)
+            .update({ owner_id: user.user_id })
+            .catch(() => {});
+        }
+      }
 
       if (!hostelRow) {
         return {

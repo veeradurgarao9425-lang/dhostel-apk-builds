@@ -524,7 +524,7 @@ export const createStudent = async (req: AuthRequest, res: Response) => {
       room_id: parsedRoomId,
       bed_id: bed_id && bed_id !== 'null' ? bed_id : null,
       bed_number: bed_number && bed_number !== 'null' ? bed_number : null,
-      monthly_rent: roomDetails ? roomDetails.rent_per_bed : (Number(monthly_rent) || 0),
+      monthly_rent: Number(monthly_rent) > 0 ? Number(monthly_rent) : (roomDetails ? Number(roomDetails.rent_per_bed) || 0 : 0),
       floor_number: parsedFloorNumber,
       fee_plan: resolvedFeePlan,
       plan_start_date: resolvedPlanStart,
@@ -536,7 +536,7 @@ export const createStudent = async (req: AuthRequest, res: Response) => {
     const [student_id] = await db('students').insert(studentInsertData);
 
     const studentStatus = finalStudentStatus;
-    const monthlyRent = roomDetails ? Number(roomDetails.rent_per_bed) : Number(monthly_rent || 0);
+    const resolvedMonthlyRent = Number(studentInsertData.monthly_rent) || 0;
 
     // Update room occupied beds ONLY if a room is allocated and the student is Active.
     if (parsedRoomId && roomDetails && studentStatus === 1) {
@@ -547,9 +547,8 @@ export const createStudent = async (req: AuthRequest, res: Response) => {
 
     // BILLING RULE: a tenant goes on the rent roll ONLY when a room is allocated.
     // Room allocation is the trigger. Active + room + rent > 0 → create the current
-    // month's fee so they appear in Pending Dues with a proper due date. Students
-    // without a room are intentionally NOT billed and won't show in Pending Dues.
-    if (room_id && roomDetails && studentStatus === 1 && monthlyRent > 0) {
+    // month's fee so they appear in Pending Dues immediately.
+    if (parsedRoomId && studentStatus === 1 && resolvedMonthlyRent > 0) {
       try {
         const now = new Date();
         const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
@@ -584,7 +583,7 @@ export const createStudent = async (req: AuthRequest, res: Response) => {
           // For multi-month plans: set total_due to the full plan amount (e.g. ₹25,500),
           // but paid_amount is 0.00 and status is 4 ('Pending') until an actual payment is recorded.
           const isMultiMonthPlan = resolvedFeePlan > 1;
-          const feeAmount = isMultiMonthPlan && resolvedPlanAmount ? resolvedPlanAmount : monthlyRent;
+          const feeAmount = isMultiMonthPlan && resolvedPlanAmount ? resolvedPlanAmount : resolvedMonthlyRent;
 
           await db('monthly_fees').insert({
             student_id,
@@ -632,6 +631,7 @@ export const createStudent = async (req: AuthRequest, res: Response) => {
         params: { studentId: student_id },
         referenceType: 'student',
         referenceId: student_id,
+        deduplicateKey: `admission_owner_${student_id}`,
       }
     ).catch(err => console.error('Failed to send student admission notification:', err));
 
@@ -649,7 +649,7 @@ export const createStudent = async (req: AuthRequest, res: Response) => {
             roomNumber: roomDetails?.room_number || null,
             bedNumber: bed_number || null,
             admissionDate: convertToDateOnly(admission_date) || new Date().toISOString().split('T')[0],
-            monthlyRent: monthlyRent || null,
+            monthlyRent: resolvedMonthlyRent || null,
             admissionFee: admission_fee || null,
           }).catch(err => console.error('[createStudent] Student welcome email error:', err.message));
         } catch (mailErr: any) {
@@ -1507,6 +1507,11 @@ export const submitVacateNotice = async (req: AuthRequest, res: Response) => {
           referenceId: student.student_id,
         }
       ).catch(() => {});
+
+      try {
+        io?.to(`hostel_${student.hostel_id}`).emit('vacate_request', { student_id: student.student_id, name, date: formattedDate, cancelled: !formattedDate });
+        io?.to(`tenant_${student.student_id}`).emit('vacate_status_changed', { student_id: student.student_id, date: formattedDate, cancelled: !formattedDate });
+      } catch (_) { /* socket is best-effort */ }
     }
 
     return res.json({

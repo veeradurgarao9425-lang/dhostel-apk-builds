@@ -490,19 +490,18 @@ export const AddExpenseScreen = ({ route, navigation }: any) => {
 
     const handleGalleryPick = async () => {
         setAttachmentModalVisible(false);
-        const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-        if (permission.status !== 'granted') {
-            Alert.alert("Permission Denied", "Media library access is required to pick receipt.");
-            return;
-        }
-        const result = await ImagePicker.launchImageLibraryAsync({
-            quality: 0.5,
-            base64: true,
-            allowsEditing: false,
-            mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        });
-        if (!result.canceled && result.assets && result.assets.length > 0) {
-            setAttachment(result.assets[0]);
+        try {
+            const result = await ImagePicker.launchImageLibraryAsync({
+                quality: 0.5,
+                base64: true,
+                allowsEditing: false,
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            });
+            if (!result.canceled && result.assets && result.assets.length > 0) {
+                setAttachment(result.assets[0]);
+            }
+        } catch (e: any) {
+            console.error('Gallery pick error:', e);
         }
     };
 

@@ -97,13 +97,13 @@ export const setupSocket = (httpServer: HttpServer) => {
     }
 
     // Join personal user and tenant rooms
-    if (user.user_id) {
+    // Rooms are role-scoped: tenant and owner/staff IDs come from different tables and can
+    // collide numerically, so a tenant must never sit in a `user_` room (and vice versa).
+    if (user.role_id === 3) {
+      if (user.user_id) socket.join(`tenant_${user.user_id}`); // tenant JWTs carry student_id as user_id
+      if (user.student_id && user.student_id !== user.user_id) socket.join(`tenant_${user.student_id}`);
+    } else if (user.user_id) {
       socket.join(`user_${user.user_id}`);
-      socket.join(`tenant_${user.user_id}`);
-    }
-    if (user.student_id && user.student_id !== user.user_id) {
-      socket.join(`user_${user.student_id}`);
-      socket.join(`tenant_${user.student_id}`);
     }
 
     // Typing Indicators

@@ -1,7 +1,6 @@
 -- ============================================
 -- HOSTEL MANAGEMENT APPLICATION DATABASE SCHEMA
 -- ============================================
--- Author: Mahendhra Reddy
 -- Description: Complete database design for multi-hostel management system
 -- Roles: Main Admin and Hostel Owner
 -- ============================================
@@ -370,8 +369,7 @@ INSERT INTO app_settings (setting_key, setting_value, description) VALUES
 -- Insert dummy users (Admin and Hostel Owners)
 INSERT INTO users (username, email, password_hash, role_id, full_name, phone, is_active) VALUES
 ('admin', 'admin@hostelapp.com', '$2b$10$abcdefghijklmnopqrstuvwxyz123456', 1, 'Main Administrator', '9876543210', TRUE),
-('owner_mahendra', 'mahendra@gmail.com', '$2b$10$ownerpasswordhash123456789', 2, 'Mahendhra Reddy', '9876543211', TRUE),
-('owner_rajesh', 'rajesh@gmail.com', '$2b$10$ownerpasswordhash987654321', 2, 'Rajesh Kumar', '9876543212', TRUE);
+('owner_veera', 'veeradurgarao840@gmail.com', '$2b$10$ownerpasswordhash123456789', 2, 'Veera Durgarao', '6303359425', TRUE);
 
 -- Insert dummy hostels
 INSERT INTO hostel_master (hostel_name, owner_id, hostel_type, address, city, state, pincode, total_rooms, contact_number, email, registration_number, is_active) VALUES

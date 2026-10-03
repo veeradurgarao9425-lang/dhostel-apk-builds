@@ -168,7 +168,7 @@ export const EditOwnerModal: React.FC<EditOwnerModalProps> = ({ isOpen, onClose,
               className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${
                 errors.full_name ? 'border-red-500' : 'border-gray-300'
               }`}
-              placeholder="e.g., Rajesh Kumar"
+              placeholder="e.g., Ramesh Kumar"
             />
             {errors.full_name && (
               <p className="mt-1 text-sm text-red-600">{errors.full_name}</p>

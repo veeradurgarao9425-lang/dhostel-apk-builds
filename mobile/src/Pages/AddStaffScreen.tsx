@@ -212,11 +212,6 @@ const DocumentUploadBox = ({ label, uri, onCapture, onRemove, isFront, error }: 
 
     const onSelectGallery = async () => {
         try {
-            const p = await ImagePicker.requestMediaLibraryPermissionsAsync();
-            if (!p.granted) {
-                Alert.alert('Permission Required', 'Media library permission is needed to upload documents.');
-                return;
-            }
             const r = await ImagePicker.launchImageLibraryAsync({ quality: 0.5 });
             if (!r.canceled && r.assets && r.assets.length > 0) {
                 onCapture(r.assets[0].uri);
@@ -377,11 +372,6 @@ const ProfilePhotoCapture = ({ uri, onCapture, onRemove, error }: any) => {
 
     const openGallery = async () => {
         try {
-            const p = await ImagePicker.requestMediaLibraryPermissionsAsync();
-            if (!p.granted) {
-                Alert.alert('Permission Required', 'Gallery permission is needed to pick a photo.');
-                return;
-            }
             const r = await ImagePicker.launchImageLibraryAsync({ quality: 0.6, allowsEditing: false });
             if (!r.canceled && r.assets && r.assets.length > 0) {
                 onCapture(r.assets[0].uri);
@@ -706,11 +696,6 @@ export default function AddStaffScreen() {
 
     const openGallery = async (target: 'photo' | 'front' | 'back') => {
         try {
-            const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-            if (!perm.granted) {
-                Alert.alert('Permission Needed', 'Media library access is required to pick a photo.');
-                return;
-            }
             const res = await ImagePicker.launchImageLibraryAsync({
                 quality: 0.5,
                 allowsEditing: target === 'photo',

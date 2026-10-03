@@ -22,9 +22,7 @@ import { notificationService } from '../services/notificationService';
 import api from '../services/api';
 
 // ── Storage keys for daily-guard ──────────────────────────────────────────────
-const KEY_WELCOME         = 'tenant_welcome_date';
 const KEY_BUDGET          = 'tenant_budget_notif_date';
-const KEY_EXPENSE_NIGHT   = 'tenant_expense_notif_date';
 const KEY_MESS_BREAKFAST  = 'tenant_mess_bf_date';
 const KEY_MESS_LUNCH      = 'tenant_mess_lunch_date';
 const KEY_MESS_DINNER     = 'tenant_mess_dinner_date';
@@ -198,24 +196,13 @@ export function useTenantNotifications({
     if (hasRun.current) return;
     hasRun.current = true;
 
-    const firstName = userName ? userName.split(' ')[0] : 'there';
     const now = new Date();
     const hour = now.getHours();
     const minute = now.getMinutes();
     const timeInHours = hour + minute / 60;
 
-    // ── 1. Daily Welcome Notification (STRICTLY ONCE PER CALENDAR DAY) ────────
-    const showWelcome = await shouldShowToday(KEY_WELCOME);
-    if (showWelcome) {
-      setTimeout(() => {
-        notificationService.triggerLocalNotification(
-          `Welcome back, ${firstName}! 👋`,
-          `Your hostel dashboard is ready. Rent status, today's food menu & pocket expense tracker at your fingertips.`,
-          { screen: 'TenantHome', referenceType: 'welcome' }
-        ).catch(() => {});
-      }, 1500);
-      await markShownToday(KEY_WELCOME);
-    }
+    // ── 1. Welcome-back is now sent by the server on every login (authController),
+    //    so no local welcome here — it produced a duplicate banner.
 
     // ── 2. Daily Mess Menu Notifications (3 Times Daily with food items) ─────
     try {
@@ -354,20 +341,8 @@ export function useTenantNotifications({
       }
     }
 
-    // ── 5. Nightly 10-Second Pocket Check (> 20:30 PM) ───────────────────────
-    if (timeInHours >= 20.5) {
-      const showExpense = await shouldShowToday(KEY_EXPENSE_NIGHT);
-      if (showExpense) {
-        setTimeout(() => {
-          notificationService.triggerLocalNotification(
-            `🌙 10-Second Pocket Check`,
-            `Did you spend on chai, auto, or snacks today? Log today's cash & UPI spends to keep your wallet safe.`,
-            { screen: 'Expenses', referenceType: 'expense' }
-          ).catch(() => {});
-        }, 5000);
-        await markShownToday(KEY_EXPENSE_NIGHT);
-      }
-    }
+    // ── 5. Nightly pocket check is sent by the server at 8 PM IST (tenantFriendlyReminders);
+    //    the local 8:30 PM copy was a duplicate and is removed.
 
     // ── 6. Weekly App & Stay Feedback (Every 7 days) ─────────────────────────
     try {

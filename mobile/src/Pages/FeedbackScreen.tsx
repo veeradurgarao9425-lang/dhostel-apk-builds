@@ -60,11 +60,6 @@ export default function FeedbackScreen({ navigation }: any) {
                     allowsEditing: false,
                 });
             } else {
-                const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-                if (status !== 'granted') {
-                    Alert.alert('Permission needed', 'Gallery permission is required to select photos.');
-                    return;
-                }
                 result = await ImagePicker.launchImageLibraryAsync({
                     mediaTypes: ImagePicker.MediaTypeOptions.Images,
                     quality: 0.8,

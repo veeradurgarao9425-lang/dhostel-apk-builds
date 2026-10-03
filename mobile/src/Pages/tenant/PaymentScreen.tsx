@@ -131,11 +131,6 @@ export default function PaymentScreen({ navigation }: any) {
   const onSelectGallery = async () => {
     try {
       setPickerModalVisible(false);
-      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!perm.granted) {
-        showWarning('Photo library permission is required to select screenshots.');
-        return;
-      }
       const res = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: false,

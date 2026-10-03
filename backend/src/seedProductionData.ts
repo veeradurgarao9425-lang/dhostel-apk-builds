@@ -584,7 +584,7 @@ async function seedProductionData() {
     // 10. Seed Staff Directory (4 Members)
     console.log('👨‍💼 Seeding Staff Members...');
     const staffMembers = [
-      { name: 'Rajesh Sharma', phone: '9876543210', email: 'rajesh.warden@gmail.com', role: 'Warden', salary: 25000, join: '2024-01-10', aadhaar: '3456 7890 1234', notes: 'Overall hostel administration and discipline' },
+      { name: 'Ravi Sharma', phone: '9876543210', email: 'ravi.warden@gmail.com', role: 'Warden', salary: 25000, join: '2024-01-10', aadhaar: '3456 7890 1234', notes: 'Overall hostel administration and discipline' },
       { name: 'Suresh Naik', phone: '9876543211', email: 'suresh.cook@gmail.com', role: 'Head Cook', salary: 18000, join: '2024-03-15', aadhaar: '4567 8901 2345', notes: 'Head of kitchen and mess management' },
       { name: 'Lakshmi Bai', phone: '9876543212', email: 'lakshmi.clean@gmail.com', role: 'Housekeeping Incharge', salary: 12000, join: '2024-02-01', aadhaar: '5678 9012 3456', notes: 'Daily floor cleaning and sanitization supervisor' },
       { name: 'Ramesh Yadav', phone: '9876543213', email: 'ramesh.guard@gmail.com', role: 'Night Security Guard', salary: 14000, join: '2024-04-20', aadhaar: '6789 0123 4567', notes: 'Gate security and visitor log monitoring' },

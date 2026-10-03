@@ -27,7 +27,6 @@ import * as Clipboard from 'expo-clipboard';
 import { useToast } from '../context/ToastContext';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
-import * as MediaLibrary from 'expo-media-library';
 import ViewShot from 'react-native-view-shot';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -322,14 +321,17 @@ export default function QRSignupScreen({ navigation }: any) {
         if (viewShotRef.current && viewShotRef.current.capture) {
             try {
                 const uri = await viewShotRef.current.capture();
-                const { status } = await MediaLibrary.requestPermissionsAsync(true);
-                if (status !== 'granted') {
-                    showWarning("Please grant photo library access to save the QR code.");
-                    return;
+                const canShare = await Sharing.isAvailableAsync();
+                if (canShare) {
+                    await Sharing.shareAsync(uri, {
+                        mimeType: 'image/png',
+                        dialogTitle: 'Save QR Code',
+                        UTI: 'public.png',
+                    });
+                    showSuccess("QR Code ready to save or share!");
+                } else {
+                    showSuccess("QR Code captured!");
                 }
-                
-                await MediaLibrary.saveToLibraryAsync(uri);
-                showSuccess("QR Code saved to gallery!");
             } catch (e) {
                 console.error("Error saving QR:", e);
                 showError("Failed to save QR Code");

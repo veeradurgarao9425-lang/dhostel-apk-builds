@@ -304,15 +304,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       let errorMessage = '';
       if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
-        errorMessage = `Server Timeout: Cannot reach ${api.defaults.baseURL}. Please check your connection.`;
+        errorMessage = 'Connection timeout. Please check your internet connection and try again.';
       } else if (!error.response) {
-        errorMessage = `Network Error: Cannot connect to ${api.defaults.baseURL}. (${error.message || 'Server offline or unreachable'})`;
+        errorMessage = 'Unable to connect to server. Please check your internet connection or try again in a moment.';
+      } else if (error.response?.status === 522 || error.response?.status === 502 || error.response?.status === 504) {
+        errorMessage = 'Server is currently reconnecting or updating. Please try again shortly.';
       } else if (error.response?.data?.error) {
         errorMessage = error.response.data.error;
       } else if (error.response?.data?.message) {
         errorMessage = error.response.data.message;
+      } else if (error.response?.status >= 500) {
+        errorMessage = 'Server is temporarily unavailable. Please try again in a few moments.';
       } else {
-        errorMessage = `Server Error (${error.response.status}): ${error.message || 'Login failed'}`;
+        errorMessage = error.message || 'Login failed. Please check your credentials.';
       }
       return { error: errorMessage, rawError: error.response?.data };
     }
@@ -372,7 +376,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
       return { error: response.data?.error || 'Failed to verify hostel key' };
     } catch (error: any) {
-      const errorMessage = error.response?.data?.error || 'Network error';
+      const errorMessage = error.response?.data?.error || error.response?.data?.message || 'Unable to connect to server. Please try again.';
       return { error: errorMessage };
     }
   };
@@ -392,7 +396,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
       return { error: response.data?.error || response.data?.message || 'Failed to send OTP' };
     } catch (error: any) {
-      const errorMessage = error.response?.data?.error || error.response?.data?.message || 'Network error';
+      const errorMessage = error.response?.data?.error || error.response?.data?.message || 'Failed to send OTP. Please try again.';
       return { error: errorMessage };
     }
   };
@@ -446,7 +450,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
       return { error: body?.error || body?.message || 'Verification failed' };
     } catch (error: any) {
-      const errorMessage = error.response?.data?.error || error.response?.data?.message || 'Network error';
+      const errorMessage = error.response?.data?.error || error.response?.data?.message || 'Verification failed. Please try again.';
       return { error: errorMessage };
     }
   };
@@ -479,6 +483,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const signOut = useCallback(async () => {
     setLogoutLoading(true);
     try {
+      // Unbind this device's push token from the account BEFORE dropping auth, so the
+      // previous user stops receiving pushes here. Bounded so logout never hangs offline.
+      await Promise.race([
+        notificationService.disableNotifications().catch(() => {}),
+        new Promise((resolve) => setTimeout(resolve, 2500)),
+      ]);
       delete api.defaults.headers.common['Authorization'];
       setCachedToken(null, false);
       setCachedToken(null, true);

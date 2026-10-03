@@ -17,7 +17,7 @@ type State = { hasError: boolean; error: Error | null };
 async function reportCrashToBackend(error: Error, componentStack: string | null | undefined) {
   try {
     const rawUrl = process.env.EXPO_PUBLIC_API_URL || '';
-    const API_URL = (rawUrl.includes('192.168.') ? rawUrl : (rawUrl || 'https://dark-dew-bf62.veeradurgarao840.workers.dev/api')).replace(/\/$/, '');
+    const API_URL = (rawUrl.includes('192.168.') ? rawUrl : (rawUrl || 'http://168.144.144.220:8081/api')).replace(/\/$/, '');
 
     // Read auth token from storage — best-effort, no throw
     const token = await AsyncStorage.getItem('authToken').catch(() => null);

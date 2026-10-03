@@ -267,7 +267,7 @@ export const startTenantFriendlyRemindersJob = () => {
     runTenantFriendlyReminders().catch((e) =>
       console.error('[tenantFriendlyReminders] cron run failed:', e?.message)
     );
-  });
+  }, { timezone: 'Asia/Kolkata' });
 
   console.log('✓ Tenant friendly expense reminders job scheduled (daily 08:00 PM)');
   return job;

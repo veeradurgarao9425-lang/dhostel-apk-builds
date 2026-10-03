@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import {
     View, Text, StyleSheet, TouchableOpacity, StatusBar,
     FlatList, Linking, Modal, Image, ImageBackground,
@@ -818,6 +818,41 @@ export default function PendingPaymentsScreen() {
         handleApplyFilters(newFilters);
     };
 
+    const { refreshCounter } = useRefresh();
+    const [totalPending, setTotalPending] = useState(0);
+    const [partialPaid, setPartialPaid] = useState(0);
+    const [totalDefaulters, setTotalDefaulters] = useState(0);
+
+    const initialTab = (['Overdue', 'Next 7 Days', 'Partially Paid', 'Fully Paid', 'All Dues', 'Plan Renewals'] as const).includes(route.params?.tab)
+        ? route.params.tab
+        : 'Overdue';
+    const [activeTab, setActiveTab] = useState<'Overdue' | 'Next 7 Days' | 'Partially Paid' | 'Fully Paid' | 'All Dues' | 'Plan Renewals'>(initialTab);
+    const [tabCounts, setTabCounts] = useState({
+        overdue: 0, next_7_days: 0, all: 0,
+        overdue_amount: 0, next_7_days_amount: 0, all_amount: 0, partial_count: 0
+    });
+
+    // Update activeTab immediately if route params change on navigation
+    useEffect(() => {
+        if (route.params?.tab && (['Overdue', 'Next 7 Days', 'Partially Paid', 'Fully Paid', 'All Dues', 'Plan Renewals'] as const).includes(route.params.tab)) {
+            setActiveTab(route.params.tab);
+            lastDuesFocusRef.current = 0;
+            setPage(1);
+            setHasMore(true);
+            load(1, true);
+        }
+    }, [route.params?.tab]);
+
+    // Instantly reload when global refresh triggers (e.g. newly added student or payment)
+    useEffect(() => {
+        if (refreshCounter > 0) {
+            lastDuesFocusRef.current = 0;
+            setPage(1);
+            setHasMore(true);
+            load(1, true);
+        }
+    }, [refreshCounter]);
+
     const renderTabEmptyState = () => {
         switch (activeTab) {
             case 'Overdue':
@@ -870,18 +905,6 @@ export default function PendingPaymentsScreen() {
                 );
         }
     };
-    const [totalPending, setTotalPending] = useState(0);
-    const [partialPaid, setPartialPaid] = useState(0);
-    const [totalDefaulters, setTotalDefaulters] = useState(0);
-
-    const initialTab = (['Overdue', 'Next 7 Days', 'Partially Paid', 'Fully Paid', 'All Dues', 'Plan Renewals'] as const).includes(route.params?.tab)
-        ? route.params.tab
-        : 'Overdue';
-    const [activeTab, setActiveTab] = useState<'Overdue' | 'Next 7 Days' | 'Partially Paid' | 'Fully Paid' | 'All Dues' | 'Plan Renewals'>(initialTab);
-    const [tabCounts, setTabCounts] = useState({
-        overdue: 0, next_7_days: 0, all: 0,
-        overdue_amount: 0, next_7_days_amount: 0, all_amount: 0, partial_count: 0
-    });
 
     // Plan Renewals state
     const [renewalStudents, setRenewalStudents] = useState<any[]>([]);
@@ -1091,7 +1114,7 @@ export default function PendingPaymentsScreen() {
 
     useFocusEffect(useCallback(() => {
         const now = Date.now();
-        if (now - lastDuesFocusRef.current < 15000 && !isFirstLoadRef.current) {
+        if (now - lastDuesFocusRef.current < 2500 && !isFirstLoadRef.current) {
             return;
         }
         lastDuesFocusRef.current = now;

@@ -89,7 +89,7 @@ export const submitFeedback = async (req: any, res: Response) => {
     // Send instant email notification to Super Admin / Support team (non-blocking)
     const superAdmin = process.env.SUPER_ADMIN_EMAIL || 'hostixhelp@gmail.com';
     const categoryBadge = category === 'Bug / Issue' ? '🐛 BUG REPORT' : (category === 'Feature Request' ? '💡 FEATURE REQUEST' : '💬 APP FEEDBACK');
-    const serverBaseUrl = (process.env.PUBLIC_API_URL || process.env.API_BASE_URL || process.env.BACKEND_URL || 'https://dark-dew-bf62.veeradurgarao840.workers.dev').replace(/\/api\/?$/, '');
+    const serverBaseUrl = (process.env.PUBLIC_API_URL || process.env.API_BASE_URL || process.env.BACKEND_URL || 'http://168.144.144.220:8081').replace(/\/api\/?$/, '');
 
     const imageLinksHtml = imagePaths.map((p, idx) => {
       const fullUrl = p.startsWith('http') ? p : `${serverBaseUrl}${p.startsWith('/') ? '' : '/'}${p}`;

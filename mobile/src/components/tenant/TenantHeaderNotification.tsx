@@ -26,7 +26,7 @@ export const TenantHeaderNotification: React.FC<TenantHeaderNotificationProps> =
       accessibilityLabel="Notifications"
       accessibilityRole="button"
     >
-      <Ionicons name="notifications" size={20} color={iconColor} />
+      <Ionicons name="notifications" size={17} color={iconColor} />
       {unreadCount > 0 && (
         <View style={styles.notifBadge}>
           <Text style={styles.notifBadgeText}>
@@ -40,11 +40,11 @@ export const TenantHeaderNotification: React.FC<TenantHeaderNotificationProps> =
 
 const styles = StyleSheet.create({
   headerIconBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 35,
+    height: 35,
+    borderRadius: 17.5,
     backgroundColor: 'rgba(255,255,255,0.18)',
-    borderWidth: 1.5,
+    borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.3)',
     alignItems: 'center',
     justifyContent: 'center',
@@ -52,16 +52,16 @@ const styles = StyleSheet.create({
   },
   notifBadge: {
     position: 'absolute',
-    top: -4,
-    right: -4,
-    minWidth: 18,
-    height: 18,
-    borderRadius: 9,
+    top: -3,
+    right: -3,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
     backgroundColor: '#EF4444',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 4,
-    borderWidth: 1.5,
+    paddingHorizontal: 3,
+    borderWidth: 1.2,
     borderColor: '#FFFFFF',
     elevation: 3,
     shadowColor: '#000',

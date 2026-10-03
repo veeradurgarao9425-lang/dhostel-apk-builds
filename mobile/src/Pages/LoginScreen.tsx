@@ -202,7 +202,10 @@ export default function LoginScreen({ navigation }: any) {
                 contentContainerStyle={[styles.formContent, { paddingBottom: keyboardHeight > 0 ? 5 : 20 }]}
                 showsVerticalScrollIndicator={false}
                 keyboardShouldPersistTaps="handled"
-                bounces={false}
+                bounces={true}
+                alwaysBounceVertical={true}
+                overScrollMode="always"
+                nestedScrollEnabled={true}
             >
                 <Text style={[styles.signInTitle, isSmall && { fontSize: 20, marginBottom: 2 }]}>Welcome back 👋</Text>
                 <Text style={[styles.signInSubtitle, isSmall && { fontSize: 13, marginBottom: 16 }]}>Sign in to continue managing your PG</Text>
@@ -284,8 +287,20 @@ export default function LoginScreen({ navigation }: any) {
                 {/* Submit level error alert */}
                 {submitError && (
                     <View style={styles.alertBox}>
-                        <Ionicons name="warning-outline" size={20} color="#EF4444" />
-                        <Text style={styles.alertText}>{submitError}</Text>
+                        <Ionicons name="warning-outline" size={20} color="#EF4444" style={{ marginTop: 2 }} />
+                        <View style={{ flex: 1 }}>
+                            <Text style={styles.alertText}>{submitError}</Text>
+                            {(submitError.includes('reconnecting') || submitError.includes('timeout') || submitError.includes('connect') || submitError.includes('unavailable')) && (
+                                <TouchableOpacity
+                                    style={styles.retryBtn}
+                                    onPress={handleLogin}
+                                    activeOpacity={0.7}
+                                >
+                                    <Ionicons name="refresh" size={14} color="#DC2626" />
+                                    <Text style={styles.retryBtnText}>Retry Connection</Text>
+                                </TouchableOpacity>
+                            )}
+                        </View>
                     </View>
                 )}
 
@@ -433,6 +448,23 @@ const styles = StyleSheet.create({
         color: '#DC2626',
         flex: 1,
         fontWeight: '600',
+        lineHeight: 18,
+    },
+    retryBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 8,
+        paddingVertical: 5,
+        paddingHorizontal: 10,
+        backgroundColor: '#FEE2E2',
+        borderRadius: 8,
+        alignSelf: 'flex-start',
+        gap: 6,
+    },
+    retryBtnText: {
+        fontSize: 12,
+        fontWeight: '700',
+        color: '#DC2626',
     },
     inputGroup: {
         marginBottom: 18,

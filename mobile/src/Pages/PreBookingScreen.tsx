@@ -32,6 +32,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import api from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useRefresh } from '../../contexts/RefreshContext';
 import { COLORS, FONT, SPACING } from '../theme/index';
 import { AppHeader } from '../components/AppHeader';
 import { FullScreenLoader } from '../components/FullScreenLoader';
@@ -99,11 +100,6 @@ const DocumentUploadBox = ({ label, uri, onCapture, onRemove, isFront, error }: 
 
     const onSelectGallery = async () => {
         try {
-            const p = await ImagePicker.requestMediaLibraryPermissionsAsync();
-            if (!p.granted) {
-                Alert.alert('Permission Required', 'Media library permission is needed to upload documents.');
-                return;
-            }
             const r = await ImagePicker.launchImageLibraryAsync({ quality: 0.6 });
             if (!r.canceled && r.assets && r.assets.length > 0) {
                 onCapture(r.assets[0].uri);
@@ -660,6 +656,7 @@ const BedPickerDrawer = ({ visible, room, beds, selectedBedId, onSelectBed, onCl
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function PreBookingScreen({ navigation, route }: any) {
     const { user } = useAuth();
+    const { triggerRefresh } = useRefresh();
     const { theme, isDark, fontSize } = useTheme();
     const insets = useSafeAreaInsets();
     const [loading, setLoading] = useState(false);
@@ -863,6 +860,7 @@ export default function PreBookingScreen({ navigation, route }: any) {
                 room_id: parseInt(formData.room_id),
                 bed_id: formData.bed_id || null,
                 bed_number: formData.bed_id || null,
+                monthly_rent: formData.monthly_rent ? parseFloat(formData.monthly_rent) : undefined,
                 status: 2,
                 admission_fee: formData.advance_amount ? parseFloat(formData.advance_amount) : 0,
                 advance_amount: formData.advance_amount ? parseFloat(formData.advance_amount) : 0,
@@ -891,6 +889,7 @@ export default function PreBookingScreen({ navigation, route }: any) {
             }
 
             Toast.show({ type: 'success', text1: 'Pre-Booking Saved', text2: 'The bed has been successfully reserved.' });
+            setTimeout(() => triggerRefresh({ studentAllocated: true }), 50);
             navigation.goBack();
         } catch (e: any) {
             Alert.alert('Error', e.response?.data?.error || 'Failed to save pre-booking');

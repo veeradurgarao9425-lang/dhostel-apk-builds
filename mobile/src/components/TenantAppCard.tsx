@@ -23,7 +23,7 @@ export const TenantAppCard: React.FC<TenantAppCardProps> = ({ theme, isDark, hos
     const [isCopied, setIsCopied] = useState(false);
 
     const hostelId = user?.hostel_id || '1';
-    const apiBase = api.defaults.baseURL || 'https://dark-dew-bf62.veeradurgarao840.workers.dev/api';
+    const apiBase = api.defaults.baseURL || 'http://168.144.144.220:8081/api';
     const baseUrl = apiBase.replace(/\/api$/, '');
     const studentUrl = `${baseUrl}/register?hostelId=${hostelId}`;
 

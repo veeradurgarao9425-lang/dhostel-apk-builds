@@ -1,14 +1,12 @@
 import * as FileSystem from 'expo-file-system/legacy';
 import { Platform } from 'react-native';
 import * as Sharing from 'expo-sharing';
-import * as MediaLibrary from 'expo-media-library';
 import Toast from 'react-native-toast-message';
 
 /**
- * Saves a file directly to the device's Downloads/Media directory.
- * - Images/Videos: Saved directly to Gallery / Photos using MediaLibrary without dialogs.
- * - Documents (Excel, PDF, CSV): Saved directly to Downloads / Documents folder on Android using SAF or saved locally.
- * - Fallback: standard share sheet if required.
+ * Saves a file directly to the device's Downloads/Media directory without broad storage permissions.
+ * - Documents (Excel, PDF, CSV): Saved to folder chosen by user on Android using SAF.
+ * - Media & general files: Opened via native system Share / Save dialog.
  */
 export const downloadAndSaveFile = async (
     sourceUri: string,
@@ -42,25 +40,8 @@ export const downloadAndSaveFile = async (
         if (Platform.OS === 'android') {
             const isMedia = mimeType.startsWith('image/') || mimeType.startsWith('video/');
 
-            if (isMedia) {
-                try {
-                    const { status } = await MediaLibrary.requestPermissionsAsync(true);
-                    if (status === 'granted') {
-                        await MediaLibrary.saveToLibraryAsync(finalLocalUri);
-                        Toast.hide();
-                        Toast.show({
-                            type: 'success',
-                            text1: '✅ Saved to Gallery / Photos!',
-                            text2: filename,
-                            visibilityTime: 4000,
-                        });
-                        return;
-                    }
-                } catch (mediaErr) {
-                    console.warn('Direct media save failed:', mediaErr);
-                }
-            } else {
-                // For Excel .xlsx, PDF, CSV on Android
+            if (!isMedia) {
+                // For Excel .xlsx, PDF, CSV on Android using Storage Access Framework
                 try {
                     const permissions = await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
                     if (permissions.granted) {

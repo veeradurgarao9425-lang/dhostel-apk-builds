@@ -243,11 +243,6 @@ const DocumentUploadBox = ({ label, uri, onCapture, onRemove, isFront, error }: 
 
     const onSelectGallery = async () => {
         try {
-            const p = await ImagePicker.requestMediaLibraryPermissionsAsync();
-            if (!p.granted) {
-                Alert.alert('Permission Required', 'Media library permission is needed to upload documents.');
-                return;
-            }
             const r = await ImagePicker.launchImageLibraryAsync({ quality: 0.75 });
             if (!r.canceled && r.assets && r.assets.length > 0) {
                 onCapture(r.assets[0].uri);
@@ -347,11 +342,6 @@ const ProfilePhotoCapture = ({ uri, onCapture, onRemove, error }: any) => {
 
     const openGallery = async () => {
         try {
-            const p = await ImagePicker.requestMediaLibraryPermissionsAsync();
-            if (!p.granted) {
-                Alert.alert('Permission Required', 'Gallery permission is needed to pick a photo.');
-                return;
-            }
             const r = await ImagePicker.launchImageLibraryAsync({ quality: 0.8, allowsEditing: false });
             if (!r.canceled && r.assets && r.assets.length > 0) {
                 onCapture(r.assets[0].uri);

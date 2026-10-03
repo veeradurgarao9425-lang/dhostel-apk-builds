@@ -7,7 +7,9 @@ import {
   getNotifications,
   markAsRead,
   markAllAsRead,
-  sendTestNotification
+  sendTestNotification,
+  getPushDiagnostics,
+  sendTestMorningDigest
 } from '../controllers/notificationController.js';
 
 const router = express.Router();
@@ -18,6 +20,8 @@ router.use(authMiddleware);
 router.post('/register-token', registerToken);
 router.post('/deregister-token', deregisterToken);
 router.post('/test', sendTestNotification);
+router.get('/diagnostics', getPushDiagnostics);
+router.post('/test-digest', sendTestMorningDigest);
 
 // Notifications fetching and updates
 router.get('/', requireActiveSubscription, getNotifications);

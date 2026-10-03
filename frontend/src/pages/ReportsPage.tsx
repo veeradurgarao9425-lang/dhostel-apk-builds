@@ -70,7 +70,7 @@ export const ReportsPage: React.FC = () => {
       console.error('Failed to load admin report data:', error);
       // Mock fallback data for premium UI display
       setAdminReportData([
-        { ownerName: 'Mahendra Reddy', email: 'mahendra@gmail.com', phone: '9876543210', hostelCount: 2 },
+        { ownerName: 'Veera Durgarao', email: 'veeradurgarao840@gmail.com', phone: '6303359425', hostelCount: 2 },
         { ownerName: 'Priya Sharma', email: 'priya@gmail.com', phone: '9876543211', hostelCount: 1 },
         { ownerName: 'Ravi Kumar', email: 'ravi@gmail.com', phone: '9876543212', hostelCount: 3 },
       ]);

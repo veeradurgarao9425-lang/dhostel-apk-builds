@@ -54,6 +54,7 @@ import TenantSettingsScreen from '../Pages/tenant/SettingsScreen';
 import TenantPrivacyPolicyScreen from '../Pages/tenant/PrivacyPolicyScreen';
 import { SubscriptionExpiredScreen as TenantSubscriptionExpiredScreen } from '../Pages/tenant/SubscriptionExpiredScreen';
 import VacateNoticeScreen from '../Pages/tenant/VacateNoticeScreen';
+import HowItWorksScreen from '../Pages/tenant/HowItWorksScreen';
 
 // ── Growth Journey (tenant-only) ──────────────────────────────
 import GrowthHomeScreen from '../Pages/tenant/growth/GrowthHomeScreen';
@@ -491,7 +492,6 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
                 }}
             >
                 <Stack.Navigator
-                    key={navigationKey}
                     screenOptions={{ headerShown: false }}
                     initialRouteName="Splash"
                 >
@@ -626,6 +626,9 @@ const AppNavigator = ({ onRouteChange }: AppNavigatorProps) => {
                     <Stack.Screen name="Feedback" component={FeedbackScreen} />
                     <Stack.Screen name="SubscriptionExpired" component={isTenant ? TenantSubscriptionExpiredScreen : SubscriptionExpiredScreen} options={{ headerShown: false, gestureEnabled: false }} />
                     <Stack.Screen name="PrivacyPolicy" component={isTenant ? TenantPrivacyPolicyScreen : PrivacyPolicyScreen} />
+                    <Stack.Screen name="PrivacyPolicyScreen" component={isTenant ? TenantPrivacyPolicyScreen : PrivacyPolicyScreen} />
+                    <Stack.Screen name="HowItWorks" component={HowItWorksScreen} />
+                    <Stack.Screen name="HowItWorksScreen" component={HowItWorksScreen} />
                     <Stack.Screen
                         name="AddHostel"
                         component={AddHostelScreen}

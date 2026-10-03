@@ -264,4 +264,4 @@ For support and queries:
 
 ---
 
-Built with ❤️ by **Mahendhra Reddy** for efficient multi-hostel management.
+Built with ❤️ for efficient multi-hostel management.

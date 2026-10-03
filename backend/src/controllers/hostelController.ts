@@ -2,6 +2,7 @@ import { Response } from 'express';
 import db from '../config/database.js';
 import { AuthRequest } from '../middleware/auth.js';
 import { sendEmail } from '../utils/email.js';
+import { sendNotificationToHostelOwner } from '../utils/notification.js';
 import { notifyDeveloper } from '../services/developerNotificationService.js';
 import crypto from 'crypto';
 
@@ -186,6 +187,17 @@ export const createHostel = async (req: AuthRequest, res: Response) => {
       }
 
       const formattedEndDate = trialEndDate.toLocaleDateString();
+
+      // Push + in-app: trial has started (previously email only)
+      sendNotificationToHostelOwner(
+        hostel_id,
+        'Subscription Alert',
+        'Your free trial has started 🎁',
+        `Welcome to Hostix! Your free trial for ${hostel_name} runs until ${formattedEndDate}. Add rooms and residents to get started.`,
+        'Medium',
+        { hostel_id },
+        { screen: 'Home', referenceType: 'hostel', referenceId: hostel_id, deduplicateKey: `trial_started_${hostel_id}` }
+      ).catch(() => {});
 
       // 2. Send Welcome Email to Owner
       if (ownerEmail) {

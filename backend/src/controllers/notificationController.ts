@@ -173,9 +173,7 @@ export const markAsRead = async (req: AuthRequest, res: Response) => {
     let query = db('notifications').where('notification_id', id);
     if (isTenant) {
       const realStudentId = await getAuthenticatedStudentId(user) || user.user_id;
-      query = query.andWhere(function() {
-        this.where('student_id', realStudentId).orWhere('user_id', user.user_id);
-      });
+      query = query.andWhere('student_id', realStudentId);
     } else {
       query = query.andWhere('user_id', user.user_id);
     }
@@ -211,9 +209,7 @@ export const markAllAsRead = async (req: AuthRequest, res: Response) => {
     let query = db('notifications');
     if (isTenant) {
       const realStudentId = await getAuthenticatedStudentId(user) || user.user_id;
-      query = query.where(function() {
-        this.where('student_id', realStudentId).orWhere('user_id', user.user_id);
-      });
+      query = query.where('student_id', realStudentId);
     } else {
       query = query.where('user_id', user.user_id);
     }
@@ -235,6 +231,69 @@ export const markAllAsRead = async (req: AuthRequest, res: Response) => {
 
 // ── Test notification endpoint — fires a real push to the logged-in user ──────
 import { sendNotificationToUser } from '../utils/notification.js';
+import { isFirebaseReady } from '../config/firebaseAdmin.js';
+import { sendMorningDigest } from '../jobs/ownerDailyAlerts.js';
+import { istToday } from '../utils/istTime.js';
+
+/**
+ * GET /notifications/diagnostics — tells the logged-in user exactly why a push
+ * would or wouldn't reach this account (Firebase up? device token registered?).
+ */
+export const getPushDiagnostics = async (req: AuthRequest, res: Response) => {
+  try {
+    const user = req.user;
+    if (!user || !user.user_id) return res.status(401).json({ success: false, error: 'Unauthorized' });
+
+    const isTenant = Number(user.role_id) === 3;
+    let studentId: number | null = null;
+    if (isTenant) {
+      const resolved = await getAuthenticatedStudentId(user).catch(() => null);
+      studentId = resolved ? Number(resolved) : Number(user.user_id);
+    }
+    const tokens = await db('user_push_tokens')
+      .where(isTenant ? { student_id: studentId } : { user_id: Number(user.user_id) })
+      .select('platform', 'device_name', 'updated_at');
+
+    return res.json({
+      success: true,
+      data: {
+        firebaseReady: isFirebaseReady(),
+        role: isTenant ? 'tenant' : 'owner/staff',
+        registeredDevices: tokens.length,
+        devices: tokens,
+        serverTimeIST: new Intl.DateTimeFormat('en-IN', { timeZone: 'Asia/Kolkata', dateStyle: 'medium', timeStyle: 'medium' }).format(new Date()),
+        hint: !isFirebaseReady()
+          ? 'Firebase Admin not initialised on the server — set FIREBASE_SERVICE_ACCOUNT.'
+          : tokens.length === 0
+            ? 'No device token registered for this account — open the app, allow notifications, log in again.'
+            : 'Setup looks good. Use POST /notifications/test to send a real push.',
+      },
+    });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error?.message });
+  }
+};
+
+/**
+ * POST /notifications/test-digest — sends the caller's OWN hostel the real 7 AM
+ * morning status digest right now (owner/staff only; never notifies anyone else).
+ */
+export const sendTestMorningDigest = async (req: AuthRequest, res: Response) => {
+  try {
+    const user = req.user;
+    if (!user || !user.user_id || Number(user.role_id) === 3) {
+      return res.status(403).json({ success: false, error: 'Owner accounts only' });
+    }
+    const hostelId = user.hostel_id;
+    const hostel = hostelId ? await db('hostel_master').where({ hostel_id: hostelId, owner_id: user.user_id }).first() : null;
+    if (!hostel) return res.status(404).json({ success: false, error: 'No hostel found for this owner' });
+
+    await sendMorningDigest(hostel, istToday(), true);
+    return res.json({ success: true, message: 'Morning digest sent to your device' });
+  } catch (error: any) {
+    return res.status(500).json({ success: false, error: error?.message });
+  }
+};
 
 export const sendTestNotification = async (req: AuthRequest, res: Response) => {
   try {
@@ -265,8 +324,8 @@ export const sendTestNotification = async (req: AuthRequest, res: Response) => {
     }
 
     await sendNotificationToUser({
-      userId: user.user_id,
-      studentId,
+      userId: isTenant ? null : user.user_id, // tenant JWT user_id is a student id — never file it as a user id
+      studentId: isTenant ? (studentId || Number(user.user_id)) : null,
       hostelId: user.hostel_id || null,
       type: 'General',
       title,

@@ -108,7 +108,7 @@ export const startGuestOverstayJob = () => {
   const pattern = '0 9 * * *';
   const job = cron.schedule(pattern, () => {
     checkGuestOverstays().catch((e) => console.error('[guestOverstay] cron run failed:', e?.message));
-  });
+  }, { timezone: 'Asia/Kolkata' });
 
   console.log('✓ Guest overstay job scheduled (daily 09:00 AM)');
   return job;

@@ -1617,11 +1617,20 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                                 {/* ── Balance & Quick Pay ───────────────────────────────── */}
                                 <Card style={[styles.rentCard, { backgroundColor: theme.cardBg, borderColor: isDark ? '#334155' : '#F1F5F9', borderWidth: isDark ? 1 : 0 }]}>
                                     <View style={styles.rentHeader}>
-                                        <View>
+                                        <View style={{ flex: 1 }}>
                                             <Text style={[styles.rentLabel, { color: theme.textSecondary }]}>Total Outstanding Balance</Text>
                                             <Text style={[styles.rentValue, { color: outstandingBalance > 0 ? theme.error : theme.success }]}>
-                                                ₹{outstandingBalance}
+                                                ₹{outstandingBalance.toLocaleString('en-IN')}
                                             </Text>
+                                            {student?.pending_dues?.length === 1 && (() => {
+                                                const singleDue = student.pending_dues[0];
+                                                const isDueOverdue = singleDue.due_date && new Date(singleDue.due_date) < new Date() && parseFloat(singleDue.balance || 0) > 0;
+                                                return (
+                                                    <Text style={{ fontSize: 11.5, color: isDueOverdue ? '#EF4444' : theme.textSecondary, fontWeight: isDueOverdue ? '700' : '500', marginTop: 3 }}>
+                                                        {isDueOverdue ? '⚠ Overdue' : 'Due'}: {singleDue.due_date ? new Date(singleDue.due_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'N/A'} ({singleDue.fee_month || 'Current'})
+                                                    </Text>
+                                                );
+                                            })()}
                                         </View>
                                         {outstandingBalance > 0 && (
                                             <TouchableOpacity style={[styles.payButton, { backgroundColor: theme.primary }]} onPress={openPayModal}>
@@ -1631,8 +1640,86 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                                     </View>
                                 </Card>
 
+                                {/* ── Active & Pending Dues Breakdown (shown when multiple months pending) ─────────────────── */}
+                                {student?.pending_dues && student.pending_dues.length > 1 ? (
+                                    <>
+                                        <Text style={styles.sectionTitle}>Pending Dues Breakdown ({student.pending_dues.length} Months)</Text>
+                                        {student.pending_dues.map((due: any, dIdx: number) => {
+                                            const dueBal = parseFloat(due.balance || 0);
+                                            const isDueOverdue = due.due_date && new Date(due.due_date) < new Date() && dueBal > 0;
+                                            const formatMonthName = (m?: string) => {
+                                                if (!m) return 'Current Month';
+                                                try {
+                                                    const [y, mo] = m.split('-').map(Number);
+                                                    if (y && mo) {
+                                                        return new Date(y, mo - 1, 1).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+                                                    }
+                                                } catch (_) {}
+                                                return m;
+                                            };
+
+                                            return (
+                                                <Card
+                                                    key={`pending-due-${due.fee_id || dIdx}`}
+                                                    style={[styles.historyCard, { backgroundColor: theme.cardBg, borderColor: isDueOverdue ? '#FCA5A5' : isDark ? '#334155' : '#F1F5F9', borderWidth: 1 }]}
+                                                >
+                                                    <View style={styles.historyRow}>
+                                                        <View style={styles.historyLeft}>
+                                                            <View style={[styles.historyIcon, { backgroundColor: isDueOverdue ? '#FEE2E2' : theme.primary + '15' }]}>
+                                                                <Calendar size={18} color={isDueOverdue ? '#EF4444' : theme.primary} />
+                                                            </View>
+                                                            <View>
+                                                                <Text style={[styles.historyTitle, { color: theme.textPrimary }]}>
+                                                                    {formatMonthName(due.fee_month)}
+                                                                </Text>
+                                                                <Text style={[styles.historyDate, { color: isDueOverdue ? '#EF4444' : theme.textSecondary, fontWeight: isDueOverdue ? '700' : '500' }]}>
+                                                                    {isDueOverdue ? 'Overdue' : 'Due'}: {due.due_date ? new Date(due.due_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'N/A'}
+                                                                </Text>
+                                                                <View style={styles.historyMetaRow}>
+                                                                    <Text style={[styles.historySubText, { color: theme.textSecondary }]}>
+                                                                        Rent: ₹{due.monthly_rent || 0}
+                                                                    </Text>
+                                                                    {parseFloat(due.carry_forward || 0) > 0 && (
+                                                                        <>
+                                                                            <View style={[styles.dot, { backgroundColor: isDark ? '#475569' : '#CBD5E1' }]} />
+                                                                            <Text style={[styles.historySubText, { color: theme.textSecondary }]}>
+                                                                                Prev: ₹{due.carry_forward}
+                                                                            </Text>
+                                                                        </>
+                                                                    )}
+                                                                </View>
+                                                            </View>
+                                                        </View>
+                                                        <View style={styles.historyRight}>
+                                                            <Text style={[styles.historyAmount, { color: theme.error }]}>₹{dueBal.toLocaleString('en-IN')}</Text>
+                                                            <TouchableOpacity
+                                                                style={[styles.receiptAction, { backgroundColor: theme.primary }]}
+                                                                onPress={openPayModal}
+                                                                activeOpacity={0.8}
+                                                            >
+                                                                <IndianRupee size={12} color="#FFF" />
+                                                                <Text style={[styles.receiptActionText, { color: '#FFF' }]}>Pay</Text>
+                                                            </TouchableOpacity>
+                                                        </View>
+                                                    </View>
+                                                </Card>
+                                            );
+                                        })}
+                                    </>
+                                ) : !student?.pending_dues || student.pending_dues.length === 0 ? (
+                                    <Card style={[styles.historyCard, { backgroundColor: isDark ? '#064E3B' : '#ECFDF5', borderColor: '#A7F3D0', borderWidth: 1 }]}>
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 8 }}>
+                                            <CheckCircle size={20} color="#059669" />
+                                            <View>
+                                                <Text style={{ fontSize: 14, fontWeight: '700', color: '#065F46' }}>All Dues Cleared</Text>
+                                                <Text style={{ fontSize: 12, color: '#047857' }}>No pending monthly fee dues for this resident.</Text>
+                                            </View>
+                                        </View>
+                                    </Card>
+                                ) : null}
+
                                 {/* ── Payment History (deferred render) ────────────────── */}
-                                <Text style={styles.sectionTitle}>Payment History</Text>
+                                <Text style={[styles.sectionTitle, { marginTop: 18 }]}>Payment History</Text>
                                 {historyLoading ? (
                                     <SkeletonList count={2} />
                                 ) : paymentHistory.length > 0 ? (

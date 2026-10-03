@@ -85,9 +85,9 @@ export const AdminDashboard: React.FC = () => {
       });
       const dummyHostels: Hostel[] = [
         {
-          hostel_id: 1, hostel_name: 'Sunrise Boys Hostel', owner_id: 1, owner_name: 'Mahendra Reddy',
+          hostel_id: 1, hostel_name: 'Sunrise Boys Hostel', owner_id: 1, owner_name: 'Veera Durgarao',
           address: 'Gachibowli', city: 'Hyderabad', state: 'Telangana', hostel_type: 'Boys',
-          contact_number: '9876543210', email: 'sunrise@hostel.com', amenities: ['WiFi', 'AC']
+          contact_number: '6303359425', email: 'veeradurgarao840@gmail.com', amenities: ['WiFi', 'AC']
         },
         {
           hostel_id: 2, hostel_name: 'GreenView Girls Hostel', owner_id: 2, owner_name: 'Priya Sharma',
@@ -97,7 +97,7 @@ export const AdminDashboard: React.FC = () => {
       ];
       setOwnersWithHostels([
         {
-          user_id: 1, full_name: 'Mahendra Reddy', email: 'mahendra@gmail.com', phone: '9876543210',
+          user_id: 1, full_name: 'Veera Durgarao', email: 'veeradurgarao840@gmail.com', phone: '6303359425',
           hostels: [dummyHostels[0]]
         },
         {

@@ -289,11 +289,6 @@ export default function PublicRegistrationScreen({ route, navigation }: any) {
         {
           text: 'Choose from Gallery',
           onPress: async () => {
-            const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-            if (status !== 'granted') {
-              Alert.alert('Permission Required', 'Gallery permission is needed to upload photos.');
-              return;
-            }
             const res = await ImagePicker.launchImageLibraryAsync({
               mediaTypes: ['images'],
               quality: 0.8,
@@ -425,17 +420,23 @@ export default function PublicRegistrationScreen({ route, navigation }: any) {
       const res = await api.post('/public/qr-signup', formData);
 
       if (res?.data?.success) {
-        setSubmittedData(res.data.data || {
+        const regData = res.data.data || {
           reference_id: `REG-${hostelData.hostel_code || 'HSTX'}-${Math.floor(1000 + Math.random() * 9000)}`,
           student_name: `${firstName} ${lastName}`.trim(),
           hostel_name: hostelData.hostel_name,
-        });
+        };
+        setSubmittedData(regData);
 
         // Trigger Celebration Animation
         Animated.parallel([
           Animated.spring(successScale, { toValue: 1, friction: 6, useNativeDriver: true }),
           Animated.timing(successOpacity, { toValue: 1, duration: 400, useNativeDriver: true }),
         ]).start();
+
+        // Auto-navigate to PendingApproval after 3.5s if user does not press button
+        setTimeout(() => {
+          navigateToPending(regData);
+        }, 3500);
       } else {
         throw new Error(res?.data?.error || 'Registration failed. Please check your information.');
       }
@@ -444,6 +445,34 @@ export default function PublicRegistrationScreen({ route, navigation }: any) {
       Alert.alert('Registration Notice', msg);
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const navigateToPending = (data?: any) => {
+    const finalData = data || submittedData;
+    setSubmittedData(null);
+    try {
+      navigation.reset({
+        index: 0,
+        routes: [
+          {
+            name: 'PendingApproval',
+            params: {
+              reference_id: finalData?.reference_id,
+              student_name: finalData?.student_name,
+              firstName: firstName.trim(),
+              hostel_name: finalData?.hostel_name,
+            },
+          },
+        ],
+      });
+    } catch {
+      navigation?.navigate?.('PendingApproval', {
+        reference_id: finalData?.reference_id,
+        student_name: finalData?.student_name,
+        firstName: firstName.trim(),
+        hostel_name: finalData?.hostel_name,
+      });
     }
   };
 
@@ -1281,12 +1310,9 @@ export default function PublicRegistrationScreen({ route, navigation }: any) {
             <TouchableOpacity
               style={styles.doneBtn}
               activeOpacity={0.85}
-              onPress={() => {
-                setSubmittedData(null);
-                if (navigation?.canGoBack?.()) navigation.goBack();
-              }}
+              onPress={() => navigateToPending()}
             >
-              <Text style={styles.doneBtnText}>Done</Text>
+              <Text style={styles.doneBtnText}>View Application Status</Text>
             </TouchableOpacity>
           </Animated.View>
         </View>

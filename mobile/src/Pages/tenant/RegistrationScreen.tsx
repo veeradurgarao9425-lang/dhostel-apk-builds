@@ -189,8 +189,6 @@ const PhotoUpload = ({ uri, onCapture, onRemove, label = 'Add Photo', error }: a
 
   const onSelectGallery = async () => {
     try {
-      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!perm.granted) { Alert.alert('Permission needed', 'Allow media access in your device settings.'); return; }
       const res = await ImagePicker.launchImageLibraryAsync({ quality: 0.8, allowsEditing: false });
       if (!res.canceled && res.assets && res.assets.length > 0) onCapture(res.assets[0].uri);
     } catch (e) {
@@ -251,8 +249,6 @@ const DocBox = ({ label, uri, onCapture, onRemove, error }: any) => {
 
   const onSelectGallery = async () => {
     try {
-      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!perm.granted) { Alert.alert('Permission needed', 'Allow media access in your device settings.'); return; }
       const res = await ImagePicker.launchImageLibraryAsync({ quality: 0.75 });
       if (!res.canceled && res.assets && res.assets.length > 0) onCapture(res.assets[0].uri);
     } catch (e) {
@@ -579,12 +575,26 @@ export default function RegistrationScreen({ route, navigation }: any) {
 
       if (response.data?.success) {
         const { token, tenant } = response.data.data;
-        await completeTenantRegistration(token, tenant);
+        await completeTenantRegistration(token, {
+          ...tenant,
+          role: 'TENANT',
+          role_id: 3,
+          is_allocated: false,
+        });
         showSuccess('Registration submitted! Awaiting owner approval.');
         try {
           navigation.reset({
             index: 0,
-            routes: [{ name: 'Main' }],
+            routes: [
+              {
+                name: 'PendingApproval',
+                params: {
+                  student_id: tenant?.id || tenant?.student_id,
+                  firstName: firstName.trim(),
+                  student_name: tenant?.name || `${firstName.trim()} ${lastName.trim()}`.trim(),
+                },
+              },
+            ],
           });
         } catch {
           navigation.replace('PendingApproval');
