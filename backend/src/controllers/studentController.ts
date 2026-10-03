@@ -301,10 +301,77 @@ export const getStudentById = async (req: AuthRequest, res: Response) => {
       .limit(10);
 
     // Get pending dues from monthly_fees
-    const dues = await db('monthly_fees')
+    let dues = await db('monthly_fees')
       .where({ student_id: studentId })
       .where('balance', '>', 0)
-      .select('*');
+      .orderBy('fee_month', 'desc');
+
+    // BILLING CHECK: If tenant is active (status=1), has a room allocated, and rent > 0:
+    // Ensure current month fee exists or is included in pending_dues
+    const isStudentActive = student.status === 1 || student.status === '1' || student.status === 'Active';
+    const rentAmount = parseFloat(student.monthly_rent || 0);
+
+    if (isStudentActive && student.room_id && rentAmount > 0) {
+      const now = new Date();
+      const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+      // Check if ANY fee record exists for this student for current month
+      const currentMonthFee = await db('monthly_fees')
+        .where({ student_id: studentId, fee_month: currentMonth })
+        .first();
+
+      if (!currentMonthFee) {
+        // Find latest fee to check for carry forward
+        const latestFee = await db('monthly_fees')
+          .where({ student_id: studentId })
+          .where('fee_month', '<', currentMonth)
+          .orderBy('fee_month', 'desc')
+          .first();
+
+        let carryForward = 0;
+        let dueDate: any = new Date();
+        if (latestFee) {
+          carryForward = Math.max(0, parseFloat(latestFee.balance || 0));
+          if (latestFee.due_date) {
+            const prevDue = new Date(latestFee.due_date);
+            dueDate = new Date(now.getFullYear(), now.getMonth(), prevDue.getDate());
+          }
+        } else if (student.admission_date) {
+          const adm = new Date(student.admission_date);
+          dueDate = new Date(now.getFullYear(), now.getMonth(), adm.getDate());
+        }
+
+        const totalDue = rentAmount + carryForward;
+
+        try {
+          const [insertedFeeId] = await db('monthly_fees').insert({
+            student_id: Number(student.student_id),
+            hostel_id: student.hostel_id,
+            fee_month: currentMonth,
+            fee_date: dueDate.getDate(),
+            monthly_rent: rentAmount,
+            carry_forward: carryForward,
+            total_due: totalDue,
+            paid_amount: 0,
+            balance: totalDue,
+            amount: 0,
+            due_date: dueDate,
+            fee_status: 'Pending',
+            status: 'Pending',
+            notes: 'Auto-generated current month due',
+            created_at: new Date(),
+            updated_at: new Date()
+          });
+
+          const createdFee = await db('monthly_fees').where({ fee_id: insertedFeeId }).first();
+          if (createdFee) {
+            dues = [createdFee, ...dues];
+          }
+        } catch (insertErr) {
+          console.error('[getStudentById] Error auto-generating current month fee:', insertErr);
+        }
+      }
+    }
 
     res.json({
       success: true,
@@ -1293,6 +1360,41 @@ export const allocateRoom = async (req: AuthRequest, res: Response) => {
     await db('rooms')
       .where({ room_id })
       .increment('occupied_beds', 1);
+
+    // BILLING TRIGGER: Immediately create current month fee for the active tenant
+    const rentAmount = Number(room.rent_per_bed) || 0;
+    if (rentAmount > 0) {
+      try {
+        const now = new Date();
+        const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        const existingFee = await db('monthly_fees')
+          .where({ student_id: Number(studentId), fee_month: currentMonth })
+          .first();
+
+        if (!existingFee) {
+          await db('monthly_fees').insert({
+            student_id: Number(studentId),
+            hostel_id: student.hostel_id,
+            fee_month: currentMonth,
+            fee_date: now.getDate(),
+            monthly_rent: rentAmount,
+            carry_forward: 0,
+            total_due: rentAmount,
+            paid_amount: 0,
+            balance: rentAmount,
+            amount: 0,
+            due_date: now,
+            fee_status: 'Pending',
+            status: 'Pending',
+            notes: 'Auto-created upon room allocation',
+            created_at: new Date(),
+            updated_at: new Date()
+          });
+        }
+      } catch (allocFeeErr: any) {
+        console.error('[allocateRoom] Failed to insert initial fee record:', allocFeeErr?.message);
+      }
+    }
 
     // Send push notification to tenant
     sendNotificationToStudent(

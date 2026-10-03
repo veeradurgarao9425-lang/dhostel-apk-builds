@@ -219,50 +219,78 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                 // Separate payment history from core data so it can be rendered later
                 const { payment_history, ...coreData } = data;
 
-                // FIX: Compute virtual fee row if latest fee month is older than current month
+                // FIX: Compute virtual fee row if pending_dues is empty or latest fee month is older than current month
                 // This ensures StudentDetails matches PendingPayments exactly.
-                if (coreData.pending_dues && coreData.pending_dues.length > 0) {
-                    const dues = [...coreData.pending_dues].sort((a: any, b: any) => b.fee_month.localeCompare(a.fee_month));
-                    const latest = dues[0];
-                    const now = new Date();
-                    const cmYear = now.getFullYear();
-                    const cmMonth = now.getMonth() + 1;
-                    const currentMonthStr = `${cmYear}-${String(cmMonth).padStart(2, '0')}`;
+                const rent = parseFloat(coreData.monthly_rent || 0);
+                const isTenantActive = coreData.status === 1 || coreData.status === '1' || coreData.status === 'Active';
+                const hasRoom = Boolean(coreData.room_id);
+                const now = new Date();
+                const cmYear = now.getFullYear();
+                const cmMonth = now.getMonth() + 1;
+                const currentMonthStr = `${cmYear}-${String(cmMonth).padStart(2, '0')}`;
 
-                    if (latest.fee_month && latest.fee_month < currentMonthStr) {
-                        const [ly, lm] = latest.fee_month.split('-').map(Number);
-                        const gapMonths = (cmYear - ly) * 12 + (cmMonth - lm);
+                if (hasRoom && isTenantActive && rent > 0) {
+                    let dues = [...(coreData.pending_dues || [])];
+                    if (dues.length === 0) {
+                        // Check if tenant has paid anything this month
+                        const paidThisMonth = (payment_history || [])
+                            .filter((p: any) => p.payment_date && String(p.payment_date).startsWith(currentMonthStr))
+                            .reduce((sum: number, p: any) => sum + parseFloat(p.amount || 0), 0);
 
-                        if (gapMonths > 0) {
-                            const rent = parseFloat(coreData.monthly_rent || 0);
-                            const prevTotalDue = parseFloat(latest.total_due || 0);
-                            const prevPaid = parseFloat(latest.paid_amount || 0);
-
-                            // Outstanding from older months + intermediate gap months (minus the current one)
-                            const carryForward = Math.max(0, prevTotalDue - prevPaid) + Math.max(0, gapMonths - 1) * rent;
-                            const newTotalDue = carryForward + rent;
-
-                            let newDueDate = new Date(cmYear, cmMonth - 1, new Date(latest.due_date || now).getDate());
-                            if (newDueDate.getDate() !== new Date(latest.due_date || now).getDate()) {
-                                newDueDate = new Date(cmYear, cmMonth, 0); // fallback to last day of month
-                            }
-
-                            const virtualDue = {
+                        if (paidThisMonth < rent) {
+                            const admDate = coreData.admission_date ? new Date(coreData.admission_date) : now;
+                            let newDueDate = new Date(cmYear, cmMonth - 1, admDate.getDate());
+                            if (isNaN(newDueDate.getTime())) newDueDate = now;
+                            const balanceDue = rent - paidThisMonth;
+                            dues = [{
                                 fee_id: 'virtual-' + currentMonthStr,
                                 student_id: coreData.student_id,
                                 fee_month: currentMonthStr,
                                 monthly_rent: rent,
-                                carry_forward: carryForward,
-                                total_due: newTotalDue,
-                                paid_amount: 0,
-                                balance: newTotalDue,
-                                fee_status: 'Pending',
+                                carry_forward: 0,
+                                total_due: rent,
+                                paid_amount: paidThisMonth,
+                                balance: balanceDue,
+                                fee_status: paidThisMonth > 0 ? 'Partially Paid' : 'Pending',
                                 due_date: newDueDate.toISOString()
-                            };
-
-                            // Insert at beginning because dues is sorted descending
-                            dues.unshift(virtualDue);
+                            }];
                             coreData.pending_dues = dues;
+                        }
+                    } else {
+                        dues.sort((a: any, b: any) => (b.fee_month || '').localeCompare(a.fee_month || ''));
+                        const latest = dues[0];
+                        if (latest.fee_month && latest.fee_month < currentMonthStr) {
+                            const [ly, lm] = latest.fee_month.split('-').map(Number);
+                            const gapMonths = (cmYear - ly) * 12 + (cmMonth - lm);
+
+                            if (gapMonths > 0) {
+                                const prevTotalDue = parseFloat(latest.total_due || 0);
+                                const prevPaid = parseFloat(latest.paid_amount || 0);
+                                const carryForward = Math.max(0, prevTotalDue - prevPaid) + Math.max(0, gapMonths - 1) * rent;
+                                const newTotalDue = carryForward + rent;
+
+                                let newDueDate = new Date(cmYear, cmMonth - 1, new Date(latest.due_date || now).getDate());
+                                if (newDueDate.getDate() !== new Date(latest.due_date || now).getDate()) {
+                                    newDueDate = new Date(cmYear, cmMonth, 0); // fallback to last day of month
+                                }
+
+                                const virtualDue = {
+                                    fee_id: 'virtual-' + currentMonthStr,
+                                    student_id: coreData.student_id,
+                                    fee_month: currentMonthStr,
+                                    monthly_rent: rent,
+                                    carry_forward: carryForward,
+                                    total_due: newTotalDue,
+                                    paid_amount: 0,
+                                    balance: newTotalDue,
+                                    fee_status: 'Pending',
+                                    due_date: newDueDate.toISOString()
+                                };
+
+                                // Insert at beginning because dues is sorted descending
+                                dues.unshift(virtualDue);
+                                coreData.pending_dues = dues;
+                            }
                         }
                     }
                 }
@@ -340,12 +368,17 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
     // We only take the balance from the most recent month up to the current month,
     // because the backend carries forward the balance from older months into newer ones.
     const outstandingBalance = useMemo(() => {
-        if (!student?.pending_dues?.length) return 0;
+        if (!student?.pending_dues?.length) {
+            if (student?.room_id && (student.status === 1 || student.status === '1' || student.status === 'Active') && parseFloat(student.monthly_rent || 0) > 0) {
+                return parseFloat(student.monthly_rent || 0);
+            }
+            return 0;
+        }
         const now = new Date();
         const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
         const relevantDues = student.pending_dues
             .filter((due: any) => !due.fee_month || due.fee_month <= currentMonth)
-            .sort((a: any, b: any) => b.fee_month.localeCompare(a.fee_month)); // Sort descending
+            .sort((a: any, b: any) => (b.fee_month || '').localeCompare(a.fee_month || '')); // Sort descending
         return relevantDues.length > 0 ? (parseFloat(relevantDues[0].balance) || 0) : 0;
     }, [student]);
 
@@ -1640,10 +1673,12 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                                     </View>
                                 </Card>
 
-                                {/* ── Active & Pending Dues Breakdown (shown when multiple months pending) ─────────────────── */}
-                                {student?.pending_dues && student.pending_dues.length > 1 ? (
+                                {/* ── Active & Pending Dues Breakdown ─────────────────── */}
+                                {student?.pending_dues && student.pending_dues.length > 0 ? (
                                     <>
-                                        <Text style={styles.sectionTitle}>Pending Dues Breakdown ({student.pending_dues.length} Months)</Text>
+                                        <Text style={styles.sectionTitle}>
+                                            {student.pending_dues.length > 1 ? `Pending Dues Breakdown (${student.pending_dues.length} Months)` : 'Pending Due Details'}
+                                        </Text>
                                         {student.pending_dues.map((due: any, dIdx: number) => {
                                             const dueBal = parseFloat(due.balance || 0);
                                             const isDueOverdue = due.due_date && new Date(due.due_date) < new Date() && dueBal > 0;
@@ -1706,7 +1741,7 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                                             );
                                         })}
                                     </>
-                                ) : !student?.pending_dues || student.pending_dues.length === 0 ? (
+                                ) : (!student?.pending_dues || student.pending_dues.length === 0) && outstandingBalance === 0 ? (
                                     <Card style={[styles.historyCard, { backgroundColor: isDark ? '#064E3B' : '#ECFDF5', borderColor: '#A7F3D0', borderWidth: 1 }]}>
                                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 8 }}>
                                             <CheckCircle size={20} color="#059669" />
