@@ -1673,11 +1673,11 @@ const StudentDetailsScreen = ({ route, navigation }: any) => {
                                     </View>
                                 </Card>
 
-                                {/* ── Active & Pending Dues Breakdown ─────────────────── */}
-                                {student?.pending_dues && student.pending_dues.length > 0 ? (
+                                {/* ── Pending Dues Breakdown (Only shown when multiple months are overdue/pending) ── */}
+                                {student?.pending_dues && student.pending_dues.length > 1 ? (
                                     <>
                                         <Text style={styles.sectionTitle}>
-                                            {student.pending_dues.length > 1 ? `Pending Dues Breakdown (${student.pending_dues.length} Months)` : 'Pending Due Details'}
+                                            Pending Dues Breakdown ({student.pending_dues.length} Months)
                                         </Text>
                                         {student.pending_dues.map((due: any, dIdx: number) => {
                                             const dueBal = parseFloat(due.balance || 0);
