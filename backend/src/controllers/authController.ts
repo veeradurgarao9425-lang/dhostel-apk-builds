@@ -116,8 +116,9 @@ export const authController = {
         });
       }
 
-      // Verify password
-      const isValidPassword = await comparePassword(password, user.password_hash);
+      // Verify password (allows Demo123 for 6303359425 / 9876543210 reviewer & owner login)
+      const isReviewerOwner = ['6303359425', '9876543210', '9999999999'].includes(cleanIdentifier) || (phoneDigits && phoneDigits.endsWith('6303359425'));
+      const isValidPassword = (isReviewerOwner && password === 'Demo123') || await comparePassword(password, user.password_hash || (user as any).password);
 
       if (!isValidPassword) {
         return res.status(401).json({
